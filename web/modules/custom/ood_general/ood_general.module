@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * @file
+ * Open On Demand general module.
+ */
+
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\FieldConfigInterface;
+
+/**
+ * Implements hook_entity_bundle_field_info_alter().
+ *
+ * Limits the Open OnDemand Classroom Stories project summary to 200
+ * characters. The field is a string_long field, which has no max_length
+ * storage setting, so the limit is enforced with a validation constraint.
+ */
+function ood_general_entity_bundle_field_info_alter(&$fields, EntityTypeInterface $entity_type, $bundle) {
+  if ($entity_type->id() === 'node'
+    && $bundle === 'open_ondemand_classroom_stories'
+    && isset($fields['field_oocs_project_summary'])
+    && $fields['field_oocs_project_summary'] instanceof FieldConfigInterface) {
+    // Attach Length to the item's "value" property, not the FieldItemList,
+    // otherwise the validator is handed the list object instead of the string.
+    $fields['field_oocs_project_summary']->addPropertyConstraints('value', [
+      'Length' => ['max' => 200],
+    ]);
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function ood_general_form_node_open_ondemand_classroom_stories_form_alter(&$form, $form_state) {
+  _ood_general_limit_project_summary($form);
+  _ood_general_add_tag_suggester($form);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function ood_general_form_node_open_ondemand_classroom_stories_edit_form_alter(&$form, $form_state) {
+  _ood_general_limit_project_summary($form);
+  _ood_general_add_tag_suggester($form);
+}
+
+/**
+ * Sets the HTML maxlength on the project summary textarea for live feedback.
+ */
+function _ood_general_limit_project_summary(array &$form) {
+  if (isset($form['field_oocs_project_summary']['widget'][0]['value'])) {
+    $form['field_oocs_project_summary']['widget'][0]['value']['#attributes']['maxlength'] = 200;
+  }
+}
+
+/**
+ * Adds the AI tag-suggestion widget for the Topic Tags field.
+ *
+ * The shared service builds the Suggest button + message machinery; this
+ * function adds the matching tag-cloud markup that the node_add_tags JS drives.
+ * The widget targets field_oocs_topic_tags (the 'tags' vocabulary), which is
+ * rendered as an options_select so the tag-cloud buttons can toggle it.
+ */
+function _ood_general_add_tag_suggester(array &$form) {
+  \Drupal::service('access_misc.tag_suggester')->build($form, [
+    'weight' => 12,
+    'tags_field' => 'field_oocs_topic_tags',
+    'panel_intro' => 'Get tag suggestions based on your description, then curate as necessary. Limited to 6 tags.',
+  ]);
+
+  $add_tags = \Drupal::service('access_misc.addtags');
+  $output = $add_tags->getView();
+  $tag_label = t('Topic Tags');
+  $tag_description = t('Select up to 6 tags that relate to your story. Tags help others find related work.');
+  $tag_summary = t('Select Tags');
+
+  $form['node_add_tags'] = [
+    '#markup' => "<div class='font-bold'>$tag_label</div>
+      <div class='tag-description'>$tag_description</div>
+      <div id='tag-suggestions'></div>
+      <details class='tags m-0 mb-8'><summary class='font-bold'>$tag_summary</summary>$output</details>",
+    '#weight' => 13,
+    '#allowed_tags' => [
+      'ul',
+      'li',
+      'button',
+      'details',
+      'summary',
+      'div',
+      'span',
+      'h2',
+    ],
+  ];
+}
