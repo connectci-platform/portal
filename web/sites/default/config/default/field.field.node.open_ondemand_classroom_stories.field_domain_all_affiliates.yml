@@ -1,0 +1,21 @@
+uuid: b7e00d0d-69a1-4f33-a104-4994491015aa
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_domain_all_affiliates
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_domain_all_affiliates
+field_name: field_domain_all_affiliates
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: 'Send to all affiliates'
+description: 'Make this content available on all domains.'
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  on_label: 'On'
+  off_label: 'Off'
+field_type: boolean

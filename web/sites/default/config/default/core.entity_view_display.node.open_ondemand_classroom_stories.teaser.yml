@@ -1,0 +1,47 @@
+uuid: db10bb17-9e57-4b5d-a567-efadaa3e34b8
+langcode: en
+status: true
+dependencies:
+  config:
+    - core.entity_view_mode.node.teaser
+    - field.field.node.open_ondemand_classroom_stories.body
+    - field.field.node.open_ondemand_classroom_stories.field_domain_access
+    - field.field.node.open_ondemand_classroom_stories.field_domain_all_affiliates
+    - field.field.node.open_ondemand_classroom_stories.field_domain_source
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_apps_used
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
+    - node.type.open_ondemand_classroom_stories
+  module:
+    - text
+    - user
+id: node.open_ondemand_classroom_stories.teaser
+targetEntityType: node
+bundle: open_ondemand_classroom_stories
+mode: teaser
+content:
+  body:
+    type: text_summary_or_trimmed
+    label: hidden
+    settings:
+      trim_length: 600
+    third_party_settings: {  }
+    weight: 101
+    region: content
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden:
+  field_domain_access: true
+  field_domain_all_affiliates: true
+  field_domain_source: true
+  field_oocs_apps_used: true
+  field_oocs_class_context: true
+  field_oocs_implementation_tags: true
+  field_oocs_project_summary: true
+  field_oocs_topic_tags: true
+  search_api_excerpt: true

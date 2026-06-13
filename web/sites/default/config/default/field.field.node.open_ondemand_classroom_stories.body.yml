@@ -1,0 +1,24 @@
+uuid: 8bace402-f62f-41e2-8885-3edfee2cfe63
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.body
+    - node.type.open_ondemand_classroom_stories
+  module:
+    - text
+id: node.open_ondemand_classroom_stories.body
+field_name: body
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: Details
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  display_summary: true
+  required_summary: false
+  allowed_formats: {  }
+field_type: text_with_summary

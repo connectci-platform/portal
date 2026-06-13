@@ -1,0 +1,19 @@
+uuid: 60a9c5ca-d845-4cce-935d-7fd10b1be459
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_oocs_class_context
+field_name: field_oocs_class_context
+entity_type: node
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false
