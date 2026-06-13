@@ -1,0 +1,19 @@
+uuid: fcaa561f-fc6b-4117-bebc-a995225ce1bc
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_class_context
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_oocs_class_context
+field_name: field_oocs_class_context
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: 'Class Context'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long
