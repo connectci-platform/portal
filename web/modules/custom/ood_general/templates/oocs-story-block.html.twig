@@ -1,0 +1,64 @@
+{#
+/**
+ * @file
+ * Renders the OOCS classroom story author card and detail sections.
+ *
+ * Available variables:
+ * - author: Author card data (photo_url, first_name, last_name, job_title,
+ *   organization), or NULL.
+ * - implementation_tags: List of { label, url } linked tag structs.
+ * - topic_tags: List of { label, url } linked tag structs.
+ * - class_context: Plain class context string, or NULL.
+ */
+#}
+
+<div class="bg-header-gray p-3">
+  {% if author %}
+    <div class="oocs-author">
+      <img class="oocs-author__photo rounded-circle mb-3"
+           style="height:150px; width:150px; object-fit: cover;"
+           src="{{ author.photo_url }}"
+           alt="{{ author.first_name }} {{ author.last_name }} profile photo" />
+      <div class="oocs-author__meta mb-3">
+        {% if author.first_name or author.last_name %}
+          <h2 class="oocs-author__name mb-0" style="line-height: 1;">{{ author.first_name }} {{ author.last_name }}</h2>
+        {% endif %}
+        <div class="oocs-author__title-org font-italic">
+          {% if author.job_title %}
+            {{ author.job_title }},
+          {% endif %}
+          {% if author.organization %}
+            {{ author.organization }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if implementation_tags %}
+    <h2>Implementation Tags</h2>
+    <div class="square-tags tag-list">
+      <ul>
+        {% for tag in implementation_tags %}
+          <li><a href="{{ tag.url }}">{{ tag.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if topic_tags %}
+    <h2 class="mt-4">Tags</h2>
+    <div class="square-tags tag-list">
+      <ul>
+        {% for tag in topic_tags %}
+          <li><a href="{{ tag.url }}">{{ tag.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if class_context %}
+    <h2 class="mt-4">Course Context</h2>
+    <p>{{ class_context }}</p>
+  {% endif %}
+</div>

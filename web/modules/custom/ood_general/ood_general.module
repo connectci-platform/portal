@@ -9,6 +9,23 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\FieldConfigInterface;
 
 /**
+ * Implements hook_theme().
+ */
+function ood_general_theme() {
+  return [
+    'oocs_story_block' => [
+      'variables' => [
+        'author' => NULL,
+        'implementation_tags' => [],
+        'topic_tags' => [],
+        'class_context' => NULL,
+      ],
+      'template' => 'oocs-story-block',
+    ],
+  ];
+}
+
+/**
  * Implements hook_entity_bundle_field_info_alter().
  *
  * Limits the Open OnDemand Classroom Stories project summary to 200
