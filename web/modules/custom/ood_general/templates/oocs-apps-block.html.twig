@@ -1,0 +1,26 @@
+{#
+/**
+ * @file
+ * Renders the OOCS "Apps Used" logo row.
+ *
+ * Each item deep-links into the decoupled Appverse SPA. app.link is a raw
+ * client-side hash URL string; Twig autoescaping makes special chars safe in
+ * the href, and slugs are already restricted to [a-z0-9_-] by the block.
+ *
+ * Available variables:
+ * - apps: List of { logo_url, alt, link } structs.
+ */
+#}
+{% if apps %}
+  <div class="oocs-apps">
+    <ul class="list-unstyled d-flex flex-wrap align-items-center">
+      {% for app in apps %}
+        <li class="mr-3">
+          <a href="{{ app.link }}" class="oocs-app">
+            <img src="{{ app.logo_url }}" alt="{{ app.alt }}" style="height: 30px; width: 30px;" />
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

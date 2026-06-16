@@ -22,6 +22,12 @@ function ood_general_theme() {
       ],
       'template' => 'oocs-story-block',
     ],
+    'oocs_apps_block' => [
+      'variables' => [
+        'apps' => [],
+      ],
+      'template' => 'oocs-apps-block',
+    ],
   ];
 }
 
