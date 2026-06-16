@@ -14,8 +14,122 @@ dependencies:
     - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
     - node.type.open_ondemand_classroom_stories
   module:
+    - layout_builder
+    - ood_general
     - text
     - user
+third_party_settings:
+  layout_builder:
+    enabled: true
+    allow_custom: false
+    sections:
+      -
+        layout_id: layout_twocol_section
+        layout_settings:
+          label: 'Content section'
+          context_mapping: {  }
+          column_widths: 75-25
+          layout_builder_styles_style:
+            bg_light_teal_overflow_section: 0
+            border_b_2: 0
+            border_gray: 0
+            mb_10_section: 0
+            md_order_1: 0
+            md_order_2: 0
+            mobile_row_reverse: 0
+            mt_4_section: 0
+            order_1: 0
+            order_2: 0
+            pt_20: 0
+            _layout__region_second_order_1: 0
+        components:
+          65dae20d-250d-4046-bfd7-78861c439f22:
+            uuid: 65dae20d-250d-4046-bfd7-78861c439f22
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:body'
+              label: Details
+              label_display: visible
+              provider: layout_builder
+              context_mapping:
+                entity: layout_builder.entity
+                view_mode: view_mode
+              formatter:
+                type: text_default
+                label: hidden
+                settings: {  }
+                third_party_settings: {  }
+            weight: 1
+            additional:
+              layout_builder_styles_style:
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+                __div_h_full: 0
+          512bed8d-6f36-4c02-bd01-0f58c1164e56:
+            uuid: 512bed8d-6f36-4c02-bd01-0f58c1164e56
+            region: second
+            configuration:
+              id: oocs_story_block
+              label: 'OOCS Classroom Story Details'
+              label_display: '0'
+              provider: ood_general
+              context_mapping: {  }
+            weight: 0
+            additional:
+              layout_builder_styles_style:
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+                __div_h_full: 0
+          bb0d5765-c45b-4277-a0fd-20fbbe99bef7:
+            uuid: bb0d5765-c45b-4277-a0fd-20fbbe99bef7
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:field_oocs_project_summary'
+              label: 'Project Summary'
+              label_display: visible
+              provider: layout_builder
+              context_mapping:
+                entity: layout_builder.entity
+                view_mode: view_mode
+              formatter:
+                type: basic_string
+                label: hidden
+                settings: {  }
+                third_party_settings: {  }
+            weight: 0
+            additional:
+              layout_builder_styles_style:
+                __div_h_full: 0
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+        third_party_settings: {  }
 id: node.open_ondemand_classroom_stories.default
 targetEntityType: node
 bundle: open_ondemand_classroom_stories

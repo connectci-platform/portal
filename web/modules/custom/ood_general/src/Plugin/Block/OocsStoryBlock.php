@@ -1,0 +1,222 @@
+<?php
+
+namespace Drupal\ood_general\Plugin\Block;
+
+use Drupal\Core\Block\BlockBase;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileUrlGeneratorInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\node\NodeInterface;
+use Drupal\user\UserInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+
+/**
+ * Provides the OOCS Classroom Story Details block.
+ *
+ * Renders, on open_ondemand_classroom_stories nodes, the story author's
+ * profile card followed by the story's Implementation Tags, Topic Tags and
+ * Class Context sections. Returns nothing when not on a story node page.
+ *
+ * @Block(
+ *   id = "oocs_story_block",
+ *   admin_label = @Translation("OOCS Classroom Story Details"),
+ *   category = @Translation("Custom"),
+ * )
+ */
+class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterface {
+
+  /**
+   * Root-relative fallback profile photo.
+   */
+  const FALLBACK_PHOTO = '/themes/contrib/asp-theme/images/user-picture.svg';
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
+   * The current route match.
+   *
+   * @var \Drupal\Core\Routing\RouteMatchInterface
+   */
+  protected $routeMatch;
+
+  /**
+   * The file URL generator.
+   *
+   * @var \Drupal\Core\File\FileUrlGeneratorInterface
+   */
+  protected $fileUrlGenerator;
+
+  /**
+   * Constructs a new OocsStoryBlock object.
+   */
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, RouteMatchInterface $route_match, FileUrlGeneratorInterface $file_url_generator) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+    $this->entityTypeManager = $entity_type_manager;
+    $this->routeMatch = $route_match;
+    $this->fileUrlGenerator = $file_url_generator;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new self(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('entity_type.manager'),
+      $container->get('current_route_match'),
+      $container->get('file_url_generator')
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function build() {
+    $node = $this->routeMatch->getParameter('node');
+
+    // Guard: only render on story node pages. Protects the Layout Builder /
+    // layout page, which would otherwise render the block out of context.
+    if (!$node instanceof NodeInterface || $node->bundle() !== 'open_ondemand_classroom_stories') {
+      return [];
+    }
+
+    // Author = node owner, suppressed for NULL / anonymous owners.
+    $owner = $node->getOwner();
+    if (!$owner || $owner->isAnonymous()) {
+      $author = NULL;
+    }
+    else {
+      $author = $this->buildAuthorData($owner);
+    }
+
+    // Tags. Accumulate each rendered term's cache tags so renames/deletes
+    // invalidate the block.
+    $tag_cache_tags = [];
+    $implementation_tags = $this->buildTagData($node, 'field_oocs_implementation_tags', $tag_cache_tags);
+    $topic_tags = $this->buildTagData($node, 'field_oocs_topic_tags', $tag_cache_tags);
+
+    // Class context (plain string_long).
+    $class_context = NULL;
+    if ($node->hasField('field_oocs_class_context') && !$node->get('field_oocs_class_context')->isEmpty()) {
+      $class_context = $node->get('field_oocs_class_context')->value;
+    }
+
+    $cache_tags = Cache::mergeTags(
+      $node->getCacheTags(),
+      ($owner && !$owner->isAnonymous()) ? $owner->getCacheTags() : [],
+      $tag_cache_tags
+    );
+
+    return [
+      '#theme' => 'oocs_story_block',
+      '#author' => $author,
+      '#implementation_tags' => $implementation_tags,
+      '#topic_tags' => $topic_tags,
+      '#class_context' => $class_context,
+      '#cache' => [
+        'tags' => $cache_tags,
+        'contexts' => ['route'],
+      ],
+    ];
+  }
+
+  /**
+   * Builds the author profile card data.
+   *
+   * @param \Drupal\user\UserInterface $user
+   *   The story author (node owner).
+   *
+   * @return array
+   *   Author data: photo_url, first_name, last_name, job_title, organization.
+   */
+  private function buildAuthorData(UserInterface $user) {
+    $photo_url = NULL;
+    if ($user->hasField('user_picture') && !$user->get('user_picture')->isEmpty()) {
+      $file = $user->get('user_picture')->entity;
+      if ($file) {
+        // Root-relative so the real photo matches the fallback SVG and no
+        // host is leaked in cached / multi-domain output.
+        $photo_url = $this->fileUrlGenerator->generateString($file->getFileUri());
+      }
+    }
+
+    if (!$photo_url) {
+      $photo_url = self::FALLBACK_PHOTO;
+    }
+
+    $first_name = '';
+    if ($user->hasField('field_user_first_name') && !$user->get('field_user_first_name')->isEmpty()) {
+      $first_name = $user->get('field_user_first_name')->value;
+    }
+
+    $last_name = '';
+    if ($user->hasField('field_user_last_name') && !$user->get('field_user_last_name')->isEmpty()) {
+      $last_name = $user->get('field_user_last_name')->value;
+    }
+
+    $job_title = '';
+    if ($user->hasField('field_current_occupation') && !$user->get('field_current_occupation')->isEmpty()) {
+      $job_title = $user->get('field_current_occupation')->value;
+    }
+
+    $organization = '';
+    if ($user->hasField('field_access_organization') && !$user->get('field_access_organization')->isEmpty()) {
+      $field = $user->get('field_access_organization');
+      $entity = $field->entity;
+      $organization = $entity ? $entity->label() : $field->value;
+    }
+
+    return [
+      'photo_url' => $photo_url,
+      'first_name' => $first_name,
+      'last_name' => $last_name,
+      'job_title' => $job_title,
+      'organization' => $organization,
+    ];
+  }
+
+  /**
+   * Builds linked tag data from a taxonomy entity-reference field.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   The story node.
+   * @param string $field_name
+   *   The entity-reference field machine name.
+   * @param array $tag_cache_tags
+   *   Running list of term cache tags, merged into by reference.
+   *
+   * @return array
+   *   List of ['label' => ..., 'url' => ...] structs.
+   */
+  private function buildTagData(NodeInterface $node, $field_name, array &$tag_cache_tags) {
+    $tags = [];
+
+    if (!$node->hasField($field_name) || $node->get($field_name)->isEmpty()) {
+      return $tags;
+    }
+
+    foreach ($node->get($field_name) as $item) {
+      $term = $item->entity;
+      if (!$term) {
+        continue;
+      }
+      $tags[] = [
+        'label' => $term->label(),
+        'url' => $term->toUrl()->toString(),
+      ];
+      $tag_cache_tags = Cache::mergeTags($tag_cache_tags, $term->getCacheTags());
+    }
+
+    return $tags;
+  }
+
+}

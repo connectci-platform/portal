@@ -1,6 +1,7 @@
 @import url("../../../nect-theme/css/style.css");
 :root {
   --ood-red: #ca1236;
+  --ood-purple: #686EA7;
   --header-gray: #dddee0;
   --primary: var(--ood-red);
   --primary-hover: #a80e2c;
@@ -1135,7 +1136,7 @@ footer .ood-feedback-btn {
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 1.25rem;
-  background-color: #686EA7;
+  background-color: var(--ood-purple);
   color: #fff;
   font-family: "Source Sans 3", sans-serif;
   font-size: 0.95rem;
@@ -1352,4 +1353,15 @@ body.page-batch [role="banner"] {
 
 .page-tags main {
   margin-bottom: 4rem;
+}
+
+.page-node-type-open-ondemand-classroom-stories {
+  .layout__region--first h2 {
+    padding: .75rem 0 .5rem .5rem;
+    color: #fff;
+    background-color: var(--ood-purple);
+  }
+  .field--name-field-oocs-project-summary {
+    margin-bottom: 1.5rem;
+  }
 }
