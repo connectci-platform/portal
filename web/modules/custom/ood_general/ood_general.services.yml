@@ -1,0 +1,6 @@
+services:
+  ood_general.oocs_apps_resolver:
+    class: Drupal\ood_general\OocsAppsResolver
+    arguments:
+      - '@entity_type.manager'
+      - '@file_url_generator'

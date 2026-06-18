@@ -3,12 +3,10 @@
 namespace Drupal\ood_general\Plugin\Block;
 
 use Drupal\Core\Block\BlockBase;
-use Drupal\Core\Cache\Cache;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\node\NodeInterface;
+use Drupal\ood_general\OocsAppsResolver;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -27,13 +25,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class OocsAppsBlock extends BlockBase implements ContainerFactoryPluginInterface {
 
   /**
-   * The entity type manager.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  protected $entityTypeManager;
-
-  /**
    * The current route match.
    *
    * @var \Drupal\Core\Routing\RouteMatchInterface
@@ -41,20 +32,19 @@ class OocsAppsBlock extends BlockBase implements ContainerFactoryPluginInterface
   protected $routeMatch;
 
   /**
-   * The file URL generator.
+   * The OOCS apps resolver.
    *
-   * @var \Drupal\Core\File\FileUrlGeneratorInterface
+   * @var \Drupal\ood_general\OocsAppsResolver
    */
-  protected $fileUrlGenerator;
+  protected $appsResolver;
 
   /**
    * Constructs a new OocsAppsBlock object.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, RouteMatchInterface $route_match, FileUrlGeneratorInterface $file_url_generator) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteMatchInterface $route_match, OocsAppsResolver $apps_resolver) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
-    $this->entityTypeManager = $entity_type_manager;
     $this->routeMatch = $route_match;
-    $this->fileUrlGenerator = $file_url_generator;
+    $this->appsResolver = $apps_resolver;
   }
 
   /**
@@ -65,9 +55,8 @@ class OocsAppsBlock extends BlockBase implements ContainerFactoryPluginInterface
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('entity_type.manager'),
       $container->get('current_route_match'),
-      $container->get('file_url_generator')
+      $container->get('ood_general.oocs_apps_resolver')
     );
   }
 
@@ -90,14 +79,7 @@ class OocsAppsBlock extends BlockBase implements ContainerFactoryPluginInterface
     // Story node tag invalidates the block when its references change.
     $cache_tags = $node->getCacheTags();
 
-    $apps = [];
-    foreach ($node->get('field_oocs_apps_used')->referencedEntities() as $entity) {
-      $item = $this->buildItem($entity, $cache_tags);
-      if ($item) {
-        $apps[] = $item;
-      }
-    }
-
+    $apps = $this->appsResolver->buildItems($node->get('field_oocs_apps_used')->referencedEntities(), $cache_tags);
     if (!$apps) {
       return [];
     }
@@ -110,123 +92,6 @@ class OocsAppsBlock extends BlockBase implements ContainerFactoryPluginInterface
         'contexts' => ['route'],
       ],
     ];
-  }
-
-  /**
-   * Builds a single rendered app/software item.
-   *
-   * @param \Drupal\node\NodeInterface $entity
-   *   The referenced appverse_app or appverse_software node.
-   * @param array $cache_tags
-   *   Running list of cache tags, merged into by reference for every entity
-   *   touched (app, software, media, file).
-   *
-   * @return array|null
-   *   ['logo_url' => ..., 'alt' => ..., 'link' => ...], or NULL to skip.
-   */
-  private function buildItem(NodeInterface $entity, array &$cache_tags) {
-    $bundle = $entity->bundle();
-
-    if ($bundle === 'appverse_software') {
-      $software = $entity;
-      $alt = $entity->getTitle();
-      $link = '/appverse#/' . $this->slugify($software->getTitle());
-    }
-    elseif ($bundle === 'appverse_app') {
-      // The app's logo and route segment come from its related software.
-      $software = $entity->hasField('field_appverse_software_implemen')
-        ? $entity->get('field_appverse_software_implemen')->entity
-        : NULL;
-      if (!$software) {
-        return NULL;
-      }
-      $cache_tags = Cache::mergeTags($cache_tags, $software->getCacheTags());
-
-      $alt = $entity->getTitle();
-
-      // Organization term name (may be empty).
-      $org = '';
-      if ($entity->hasField('field_appverse_organization') && !$entity->get('field_appverse_organization')->isEmpty()) {
-        $term = $entity->get('field_appverse_organization')->entity;
-        if ($term) {
-          $org = $term->label();
-          $cache_tags = Cache::mergeTags($cache_tags, $term->getCacheTags());
-        }
-      }
-
-      $app_param = $org
-        ? $this->slugify($org) . '--' . $this->slugify($entity->getTitle())
-        : $this->slugify($entity->getTitle());
-      $link = '/appverse#/' . $this->slugify($software->getTitle()) . '?app=' . $app_param;
-    }
-    else {
-      return NULL;
-    }
-
-    $logo_url = $this->getLogoUrl($software, $cache_tags);
-    if (!$logo_url) {
-      return NULL;
-    }
-
-    return [
-      'logo_url' => $logo_url,
-      'alt' => $alt,
-      'link' => $link,
-    ];
-  }
-
-  /**
-   * Resolves a software node's logo URL, accumulating cache tags.
-   *
-   * Mirrors AppverseCacheService::getLogoUrl(); guards every hop and returns
-   * a root-relative URL.
-   *
-   * @param \Drupal\node\NodeInterface $software
-   *   The appverse_software node.
-   * @param array $cache_tags
-   *   Running list of cache tags, merged into by reference for the media and
-   *   file entities.
-   *
-   * @return string|null
-   *   The root-relative logo URL, or NULL if it cannot be produced.
-   */
-  private function getLogoUrl(NodeInterface $software, array &$cache_tags) {
-    if (!$software->hasField('field_appverse_logo') || $software->get('field_appverse_logo')->isEmpty()) {
-      return NULL;
-    }
-    $media = $software->get('field_appverse_logo')->entity;
-    if (!$media) {
-      return NULL;
-    }
-    $cache_tags = Cache::mergeTags($cache_tags, $media->getCacheTags());
-
-    $source_field = $media->getSource()->getConfiguration()['source_field'];
-    if (!$source_field || !$media->hasField($source_field) || $media->get($source_field)->isEmpty()) {
-      return NULL;
-    }
-    $file = $media->get($source_field)->entity;
-    if (!$file) {
-      return NULL;
-    }
-    $cache_tags = Cache::mergeTags($cache_tags, $file->getCacheTags());
-
-    return $this->fileUrlGenerator->generateString($file->getFileUri());
-  }
-
-  /**
-   * Slugifies a value to match the Appverse SPA's ji() function.
-   *
-   * Lowercases, strips punctuation (keeping word chars, whitespace, hyphens),
-   * converts whitespace runs to single hyphens, collapses repeated hyphens and
-   * trims leading/trailing hyphens. JS \w keeps underscores, so /u + \w here
-   * does too.
-   */
-  private function slugify(string $value): string {
-    $value = mb_strtolower(trim($value));
-    $value = preg_replace('/[^\w\s-]/u', '', $value);
-    $value = preg_replace('/\s+/u', '-', $value);
-    $value = preg_replace('/-+/', '-', $value);
-    return trim($value, '-');
   }
 
 }
