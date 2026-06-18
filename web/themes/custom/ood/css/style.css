@@ -21,6 +21,10 @@
   background-color: var(--header-gray);
 }
 
+.bg-purple {
+  background-color: var(--ood-purple);
+}
+
 @font-face {
   font-family: "Serifa Std";
   src: url("/themes/custom/ood/fonts/SerifaStd-Black.woff2") format("woff2"), url("/themes/custom/ood/fonts/SerifaStd-Black.woff") format("woff");
@@ -1363,5 +1367,30 @@ body.page-batch [role="banner"] {
   }
   .field--name-field-oocs-project-summary {
     margin-bottom: 1.5rem;
+  }
+}
+
+/* Open OnDemand classroom slideshow*/
+.oocs {
+  header .title-text {
+    max-width: 700px;
+
+    p {
+      font-size: 1.4rem;
+    }
+  }
+  h3 {
+    min-height: 65px;
+  }
+  .cssn-photo img {
+    height: 75px;
+    width: 75px;
+  }
+  .square-tags {
+    min-height: 85px;
+
+    a {
+      background: #fff;
+    }
   }
 }
