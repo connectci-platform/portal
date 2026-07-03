@@ -1,0 +1,24 @@
+uuid: 2cf8f76a-18ca-4674-912d-4e0c7f847c9e
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - ood
+id: ood_breadcrumbs
+theme: ood
+region: title_area
+weight: 0
+provider: null
+plugin: system_breadcrumb_block
+settings:
+  id: system_breadcrumb_block
+  label: Breadcrumbs
+  label_display: '0'
+  provider: system
+visibility:
+  request_path:
+    id: request_path
+    negate: true
+    pages: '<front>'

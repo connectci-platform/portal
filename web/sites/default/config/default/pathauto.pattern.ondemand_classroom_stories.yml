@@ -1,0 +1,22 @@
+uuid: 3d95f969-bac5-44ba-83b1-203faef4d8f0
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: ondemand_classroom_stories
+label: 'onDemand Classroom Stories'
+type: 'canonical_entities:node'
+pattern: '/appverse/classroom/[node:title]'
+selection_criteria:
+  bc286f33-dc95-41b2-84ce-b0cd7311d1cd:
+    id: 'entity_bundle:node'
+    negate: false
+    uuid: bc286f33-dc95-41b2-84ce-b0cd7311d1cd
+    context_mapping:
+      node: node
+    bundles:
+      open_ondemand_classroom_stories: open_ondemand_classroom_stories
+selection_logic: and
+weight: -5
+relationships: {  }

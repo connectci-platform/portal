@@ -11,6 +11,7 @@ dependencies:
     - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
     - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
     - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
     - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
     - node.type.open_ondemand_classroom_stories
   module:
@@ -153,6 +154,22 @@ third_party_settings:
                 pe_3: 0
                 pt_4: 0
                 tags: 0
+          0c09398a-178f-48a7-9544-0ec81575545f:
+            uuid: 0c09398a-178f-48a7-9544-0ec81575545f
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:field_oocs_science_domain_tags'
+              label_display: '0'
+              context_mapping:
+                entity: layout_builder.entity
+              formatter:
+                type: entity_reference_label
+                label: above
+                settings:
+                  link: true
+                third_party_settings: {  }
+            weight: 3
+            additional: {  }
         third_party_settings: {  }
 id: node.open_ondemand_classroom_stories.default
 targetEntityType: node
@@ -196,6 +213,14 @@ content:
     third_party_settings: {  }
     weight: 102
     region: content
+  field_oocs_science_domain_tags:
+    type: entity_reference_label
+    label: above
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 107
+    region: first
   field_oocs_topic_tags:
     type: entity_reference_label
     label: above
