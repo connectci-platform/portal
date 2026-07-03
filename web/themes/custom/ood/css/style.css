@@ -2,6 +2,7 @@
 :root {
   --ood-red: #ca1236;
   --ood-purple: #686EA7;
+  --ood-ocean-blue: #0076af;
   --header-gray: #dddee0;
   --primary: var(--ood-red);
   --primary-hover: #a80e2c;
@@ -52,6 +53,33 @@ html {
 
 body {
   font-family: "Source Sans 3";
+}
+
+#block-ood-breadcrumbs .breadcrumb {
+  background-color: inherit;
+}
+
+#block-ood-breadcrumbs ol {
+  margin: 0;
+  padding: 0 0 1rem 0;
+}
+[dir="rtl"] #block-ood-breadcrumbs ol {
+  /* This is required to win over specificity of [dir="rtl"] ol */
+  margin-right: 0;
+}
+#block-ood-breadcrumbs li {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+/* IE8 does not support :not() and :last-child. */
+#block-ood-breadcrumbs li:before {
+  content: " \/ " / "";
+  margin: 0 12px;
+}
+#block-ood-breadcrumbs li:first-child:before {
+  content: none;
 }
 
 .page-node-10418 {
@@ -1392,5 +1420,40 @@ body.page-batch [role="banner"] {
     a {
       background: #fff;
     }
+  }
+}
+
+div:has(>#best-practices-classroom):not(.layout-builder-block),
+div:has(>#contributing-classroom-content):not(.layout-builder-block) {
+  background-color: var(--ood-purple);
+  padding-left: 50%;
+  padding-right: 50%;
+  margin-left: -50%;
+  margin-right: -50%;
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+  color: #fff;
+}
+div:has(>#contributing-classroom-content):not(.layout-builder-block) {
+  background-color: var(--ood-ocean-blue);
+}
+
+.oocs-full {
+  h3 {
+    font-size: 2rem;
+  }
+  .border-dark {
+    border-top: 15px solid var(--ood-purple) !important;
+  }
+  .square-tags {
+    a {
+      background: #fff;
+    }
+  }
+}
+
+@media screen and (min-width: 992px) {
+  .oocs-full .right-side {
+    width: 600px;
   }
 }

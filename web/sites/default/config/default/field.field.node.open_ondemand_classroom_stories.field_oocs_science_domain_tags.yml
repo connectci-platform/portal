@@ -1,16 +1,16 @@
-uuid: 1af6eac8-5295-46c1-9cbe-a8dbfeeeda86
+uuid: a65e9901-dc13-4ddc-bd96-00eea14c6391
 langcode: en
 status: true
 dependencies:
   config:
-    - field.storage.node.field_oocs_topic_tags
+    - field.storage.node.field_oocs_science_domain_tags
     - node.type.open_ondemand_classroom_stories
-    - taxonomy.vocabulary.tags
-id: node.open_ondemand_classroom_stories.field_oocs_topic_tags
-field_name: field_oocs_topic_tags
+    - taxonomy.vocabulary.appverse_science_domains
+id: node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
+field_name: field_oocs_science_domain_tags
 entity_type: node
 bundle: open_ondemand_classroom_stories
-label: 'Topic Tags'
+label: 'Science Domain Tags'
 description: ''
 required: false
 translatable: false
@@ -20,10 +20,10 @@ settings:
   handler: 'default:taxonomy_term'
   handler_settings:
     target_bundles:
-      tags: tags
+      appverse_science_domains: appverse_science_domains
     sort:
       field: name
       direction: asc
     auto_create: false
-    auto_create_bundle: appverse_science_domains
+    auto_create_bundle: ''
 field_type: entity_reference
