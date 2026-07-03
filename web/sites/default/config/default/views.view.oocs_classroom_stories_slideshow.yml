@@ -948,7 +948,7 @@ display:
           plugin_id: text
           empty: true
           content:
-            value: "<div class=\"d-flex justify-content-between py-5\">\r\n  <div class=\"title-text\">\r\n    <h2 class=\"text-white fs-1 fw-normal\" style=\"max-width: 700px;\">Classroom Stories</h2>\r\n    <p class=\"text-white\">See how other HPC centers are using Open OnDemand to support classroom instruction. Each story includes the deployment approach, and apps used.</p>\r\n  </div>\r\n  <div class=\"read-more-link\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/node/add/open_ondemand_classroom_stories\">Read the stories</a>\r\n  </div>\r\n</div>"
+            value: "<div class=\"d-flex justify-content-between py-5\">\r\n  <div class=\"title-text\">\r\n    <h2 class=\"text-white fs-1 fw-normal\" style=\"max-width: 700px;\">Classroom Stories</h2>\r\n    <p class=\"text-white\">See how other HPC centers are using Open OnDemand to support classroom instruction. Each story includes the deployment approach, and apps used.</p>\r\n  </div>\r\n  <div class=\"read-more-link\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/classes\">Read the stories</a>\r\n  </div>\r\n</div>"
             format: full_html
           tokenize: false
       footer:
@@ -962,7 +962,7 @@ display:
           plugin_id: text
           empty: true
           content:
-            value: "  <div class=\"d-flex justify-content-center py-5\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/affinity-groups\">Read the stories</a>\r\n  </div>"
+            value: "  <div class=\"d-flex justify-content-center py-5\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/classes\">Read the stories</a>\r\n  </div>"
             format: full_html
           tokenize: false
       display_extenders: {  }
