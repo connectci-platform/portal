@@ -57,9 +57,10 @@
     "require": {
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "1.0.x-dev",
+        "access/operations_cider": "main-dev",
         "composer/installers": "^2.3.0",
-        "connectci/access": "d8-2818-dev",
-        "connectci/asp-theme": "dev-main",
+        "connectci/access": "d8-2753-dev",
+        "connectci/asp-theme": "main-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
         "connectci/webform_submission_search_api": "main-dev",
