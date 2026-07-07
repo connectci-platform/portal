@@ -10,7 +10,10 @@ dependencies:
     - field.field.node.open_ondemand_classroom_stories.field_oocs_apps_used
     - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
     - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_institution
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_name
     - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_role
     - field.field.node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
     - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
     - node.type.open_ondemand_classroom_stories
@@ -169,6 +172,54 @@ third_party_settings:
                 third_party_settings: {  }
             weight: 3
             additional: {  }
+          6aa9cbe6-dbed-40c1-a595-55e6452c0fc3:
+            uuid: 6aa9cbe6-dbed-40c1-a595-55e6452c0fc3
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:field_oocs_name'
+              label_display: '0'
+              context_mapping:
+                entity: layout_builder.entity
+              formatter:
+                type: entity_reference_label
+                label: above
+                settings:
+                  link: true
+                third_party_settings: {  }
+            weight: 4
+            additional: {  }
+          5830223a-a675-4aef-9cdf-775cbeaba0f7:
+            uuid: 5830223a-a675-4aef-9cdf-775cbeaba0f7
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:field_oocs_role'
+              label_display: '0'
+              context_mapping:
+                entity: layout_builder.entity
+              formatter:
+                type: string
+                label: above
+                settings:
+                  link_to_entity: false
+                third_party_settings: {  }
+            weight: 5
+            additional: {  }
+          07b942e2-6f39-4d17-9704-be9b90e2dccc:
+            uuid: 07b942e2-6f39-4d17-9704-be9b90e2dccc
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:field_oocs_institution'
+              label_display: '0'
+              context_mapping:
+                entity: layout_builder.entity
+              formatter:
+                type: string
+                label: above
+                settings:
+                  link_to_entity: false
+                third_party_settings: {  }
+            weight: 6
+            additional: {  }
         third_party_settings: {  }
 id: node.open_ondemand_classroom_stories.default
 targetEntityType: node
@@ -205,6 +256,22 @@ content:
     third_party_settings: {  }
     weight: 104
     region: content
+  field_oocs_institution:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 111
+    region: first
+  field_oocs_name:
+    type: entity_reference_label
+    label: above
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 109
+    region: first
   field_oocs_project_summary:
     type: basic_string
     label: above
@@ -212,6 +279,14 @@ content:
     third_party_settings: {  }
     weight: 102
     region: content
+  field_oocs_role:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 110
+    region: first
   field_oocs_science_domain_tags:
     type: entity_reference_label
     label: above

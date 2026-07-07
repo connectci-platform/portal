@@ -10,7 +10,10 @@ dependencies:
     - field.field.node.open_ondemand_classroom_stories.field_oocs_apps_used
     - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
     - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_institution
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_name
     - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_role
     - field.field.node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
     - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
     - node.type.open_ondemand_classroom_stories
@@ -26,7 +29,7 @@ mode: default
 content:
   body:
     type: text_textarea_with_summary
-    weight: 10
+    weight: 13
     region: content
     settings:
       rows: 9
@@ -42,7 +45,7 @@ content:
     third_party_settings: {  }
   field_oocs_apps_used:
     type: entity_reference_autocomplete
-    weight: 11
+    weight: 14
     region: content
     settings:
       match_operator: CONTAINS
@@ -52,7 +55,7 @@ content:
     third_party_settings: {  }
   field_oocs_class_context:
     type: text_textarea
-    weight: 26
+    weight: 18
     region: content
     settings:
       rows: 5
@@ -60,7 +63,25 @@ content:
     third_party_settings: {  }
   field_oocs_implementation_tags:
     type: entity_reference_autocomplete
-    weight: 12
+    weight: 15
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_oocs_institution:
+    type: string_textfield
+    weight: 10
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_oocs_name:
+    type: entity_reference_autocomplete
+    weight: 9
     region: content
     settings:
       match_operator: CONTAINS
@@ -70,15 +91,23 @@ content:
     third_party_settings: {  }
   field_oocs_project_summary:
     type: string_textarea
-    weight: 9
+    weight: 12
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_oocs_role:
+    type: string_textfield
+    weight: 11
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
   field_oocs_science_domain_tags:
     type: select2_entity_reference
-    weight: 14
+    weight: 17
     region: content
     settings:
       width: 100%
@@ -88,7 +117,7 @@ content:
     third_party_settings: {  }
   field_oocs_topic_tags:
     type: options_select
-    weight: 13
+    weight: 16
     region: content
     settings: {  }
     third_party_settings: {  }
