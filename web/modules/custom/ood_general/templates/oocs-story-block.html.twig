@@ -59,6 +59,6 @@
 
   {% if class_context %}
     <h2 class="mt-4">Course Context</h2>
-    <p>{{ class_context }}</p>
+    {{ class_context|raw }}
   {% endif %}
 </div>

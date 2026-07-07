@@ -1445,6 +1445,7 @@ div:has(>#contributing-classroom-content):not(.layout-builder-block) {
 
 .page-node-type-open-ondemand-classroom-stories {
   .layout__region--second h2 {
+    font-size: 1rem;
     font-family: "Source Sans 3", "Serifa Std", sans-serif;
     text-transform: uppercase;
   }
