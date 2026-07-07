@@ -4,8 +4,8 @@
  * Renders the OOCS classroom story author card and detail sections.
  *
  * Available variables:
- * - author: Author card data (photo_url, first_name, last_name, job_title,
- *   organization), or NULL.
+ * - author: Author card data (photo_url, first_name, last_name, role,
+ *   institution), or NULL.
  * - implementation_tags: List of { label, url } linked tag structs.
  * - topic_tags: List of { label, url } linked tag structs.
  * - class_context: Plain class context string, or NULL.
@@ -24,11 +24,11 @@
           <h2 class="oocs-author__name mb-0" style="line-height: 1;">{{ author.first_name }} {{ author.last_name }}</h2>
         {% endif %}
         <div class="oocs-author__title-org font-italic">
-          {% if author.job_title %}
-            {{ author.job_title }},
+          {% if author.role %}
+            {{ author.role }},
           {% endif %}
-          {% if author.organization %}
-            {{ author.organization }}
+          {% if author.institution %}
+            {{ author.institution }}
           {% endif %}
         </div>
       </div>

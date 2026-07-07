@@ -89,14 +89,14 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
       return [];
     }
 
-    // Author = node owner, suppressed for NULL / anonymous owners.
-    $owner = $node->getOwner();
-    if (!$owner || $owner->isAnonymous()) {
-      $author = NULL;
+    // Author = the person referenced by field_oocs_name, with Role and
+    // Institution taken from the node's own fields. Suppressed when no person
+    // is referenced.
+    $person = NULL;
+    if ($node->hasField('field_oocs_name') && !$node->get('field_oocs_name')->isEmpty()) {
+      $person = $node->get('field_oocs_name')->entity;
     }
-    else {
-      $author = $this->buildAuthorData($owner);
-    }
+    $author = ($person instanceof UserInterface) ? $this->buildAuthorData($node, $person) : NULL;
 
     // Tags. Accumulate each rendered term's cache tags so renames/deletes
     // invalidate the block.
@@ -112,7 +112,7 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
 
     $cache_tags = Cache::mergeTags(
       $node->getCacheTags(),
-      ($owner && !$owner->isAnonymous()) ? $owner->getCacheTags() : [],
+      $person ? $person->getCacheTags() : [],
       $tag_cache_tags
     );
 
@@ -132,13 +132,18 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
   /**
    * Builds the author profile card data.
    *
+   * The person's photo and name come from the referenced user; Role and
+   * Institution come from the story node's own fields.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   The story node.
    * @param \Drupal\user\UserInterface $user
-   *   The story author (node owner).
+   *   The person referenced by field_oocs_name.
    *
    * @return array
-   *   Author data: photo_url, first_name, last_name, job_title, organization.
+   *   Author data: photo_url, first_name, last_name, role, institution.
    */
-  private function buildAuthorData(UserInterface $user) {
+  private function buildAuthorData(NodeInterface $node, UserInterface $user) {
     $photo_url = NULL;
     if ($user->hasField('user_picture') && !$user->get('user_picture')->isEmpty()) {
       $file = $user->get('user_picture')->entity;
@@ -163,24 +168,22 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
       $last_name = $user->get('field_user_last_name')->value;
     }
 
-    $job_title = '';
-    if ($user->hasField('field_current_occupation') && !$user->get('field_current_occupation')->isEmpty()) {
-      $job_title = $user->get('field_current_occupation')->value;
+    $role = '';
+    if ($node->hasField('field_oocs_role') && !$node->get('field_oocs_role')->isEmpty()) {
+      $role = $node->get('field_oocs_role')->value;
     }
 
-    $organization = '';
-    if ($user->hasField('field_access_organization') && !$user->get('field_access_organization')->isEmpty()) {
-      $field = $user->get('field_access_organization');
-      $entity = $field->entity;
-      $organization = $entity ? $entity->label() : $field->value;
+    $institution = '';
+    if ($node->hasField('field_oocs_institution') && !$node->get('field_oocs_institution')->isEmpty()) {
+      $institution = $node->get('field_oocs_institution')->value;
     }
 
     return [
       'photo_url' => $photo_url,
       'first_name' => $first_name,
       'last_name' => $last_name,
-      'job_title' => $job_title,
-      'organization' => $organization,
+      'role' => $role,
+      'institution' => $institution,
     ];
   }
 
