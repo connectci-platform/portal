@@ -279,7 +279,7 @@ display:
           empty_zero: false
           hide_alter_empty: true
           click_sort_column: target_id
-          type: entity_reference_entity_id
+          type: oocs_apps_used
           settings: {  }
           group_column: target_id
           group_columns: {  }
@@ -751,7 +751,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: "<div class=\"bg-white\">\r\n  <h3 class=\"bg-purple p-3\" style=\"min-height: 65px;\">\r\n    <a href=\"/node/{{ nid }}\" class=\"text-white text-decoration-none\">{{ title }}</a>\r\n  </h3>\r\n  <div class=\"p-3\">\r\n    <p>{{ field_oocs_project_summary }}</p>\r\n    {# This section will be replaced programmatically - replaced in ood_general.module #}\r\n      OOCS_APPS_USED: {{ field_oocs_apps_used }}\r\n    {# End replacement #}\r\n  </div>\r\n  <div class=\"bg-header-gray p-3 d-flex\">\r\n    <div class=\"cssn-photo mr-2\">\r\n        {{ user_picture }}\r\n    </div>\r\n    <div class=\"\">\r\n      <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n      <div>{{ field_oocs_role }}</div>\r\n      <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n    </div>\r\n  </div>\r\n  <div class=\"bg-purple p-3 square-tags tag-list\">\r\n    {{ field_oocs_implementation_tags }}\r\n  </div>\r\n</div>"
+            text: "<div class=\"bg-white\">\r\n  <h3 class=\"bg-purple p-3\" style=\"min-height: 65px;\">\r\n    <a href=\"/node/{{ nid }}\" class=\"text-white text-decoration-none\">{{ title }}</a>\r\n  </h3>\r\n  <div class=\"p-3\">\r\n    <p>{{ field_oocs_project_summary }}</p>\r\n    {{ field_oocs_apps_used }}\r\n  </div>\r\n  <div class=\"bg-header-gray p-3 d-flex\">\r\n    <div class=\"cssn-photo mr-2\">\r\n        {{ user_picture }}\r\n    </div>\r\n    <div class=\"\">\r\n      <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n      <div>{{ field_oocs_role }}</div>\r\n      <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n    </div>\r\n  </div>\r\n  <div class=\"bg-purple p-3 square-tags tag-list\">\r\n    {{ field_oocs_implementation_tags }}\r\n  </div>\r\n</div>"
             make_link: false
             path: ''
             absolute: false

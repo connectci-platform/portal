@@ -1451,6 +1451,11 @@ div:has(>#contributing-classroom-content):not(.layout-builder-block) {
   }
 }
 
+.oocs-app img {
+  height: 30px;
+  width: 30px;
+}
+
 .oocs-full {
   h3 {
     font-family: "Source Sans 3", "Serifa Std", sans-serif;

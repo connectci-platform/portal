@@ -35,6 +35,7 @@ class AppverseCacheService {
     protected FileUrlGeneratorInterface $fileUrlGenerator,
     protected FileSystemInterface $fileSystem,
     LoggerChannelFactoryInterface $loggerFactory,
+    protected AppverseLogoUrl $appverseLogoUrl,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -404,25 +405,13 @@ class AppverseCacheService {
 
   /**
    * Get logo URL from a software node's media field.
+   *
+   * Delegates to the shared AppverseLogoUrl service. The feed is a static file
+   * with no render cacheability, so no cache tags are accumulated.
    */
   protected function getLogoUrl(NodeInterface $software): ?string {
-    if (!$software->hasField('field_appverse_logo') || $software->get('field_appverse_logo')->isEmpty()) {
-      return NULL;
-    }
-    $media = $software->get('field_appverse_logo')->entity;
-    if (!$media) {
-      return NULL;
-    }
-    $source_field = $media->getSource()->getConfiguration()['source_field'];
-    if (!$media->hasField($source_field) || $media->get($source_field)->isEmpty()) {
-      return NULL;
-    }
-    $file = $media->get($source_field)->entity;
-    if (!$file) {
-      return NULL;
-    }
-    // Return relative URL — the React app prepends siteBaseUrl.
-    return $this->fileUrlGenerator->generateString($file->getFileUri());
+    // Relative URL — the React app prepends siteBaseUrl.
+    return $this->appverseLogoUrl->get($software);
   }
 
   /**
