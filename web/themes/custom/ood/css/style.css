@@ -1443,8 +1443,16 @@ div:has(>#contributing-classroom-content):not(.layout-builder-block) {
   background-color: var(--ood-ocean-blue);
 }
 
+.page-node-type-open-ondemand-classroom-stories {
+  .layout__region--second h2 {
+    font-family: "Source Sans 3", "Serifa Std", sans-serif;
+    text-transform: uppercase;
+  }
+}
+
 .oocs-full {
   h3 {
+    font-family: "Source Sans 3", "Serifa Std", sans-serif;
     font-size: 2rem;
   }
   .border-dark {
