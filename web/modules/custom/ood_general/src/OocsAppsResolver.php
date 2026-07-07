@@ -3,59 +3,40 @@
 namespace Drupal\ood_general;
 
 use Drupal\Core\Cache\Cache;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileUrlGeneratorInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\AppverseLogoUrl;
 
 /**
  * Resolves appverse_app / appverse_software nodes into "Apps Used" logo items.
  *
- * Shared by OocsAppsBlock (story node pages) and the views field preprocess
- * hook (slideshow "nothing" field) so both render the same logo row from the
- * same traversal: app -> related software -> logo media -> file URL, with a
- * deep link into the decoupled Appverse SPA.
+ * Shared by OocsAppsBlock (story node pages) and OocsAppsUsedFormatter (the
+ * classroom-story listing/slideshow views) so both render the same logo row
+ * from the same traversal: app -> related software -> logo media -> file URL,
+ * with a deep link into the decoupled Appverse SPA.
  */
 class OocsAppsResolver {
 
   /**
-   * The entity type manager.
+   * The shared appverse logo URL resolver.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   * @var \Drupal\ood_software\Service\AppverseLogoUrl
    */
-  protected $entityTypeManager;
+  protected $logoUrl;
 
   /**
-   * The file URL generator.
+   * The current user.
    *
-   * @var \Drupal\Core\File\FileUrlGeneratorInterface
+   * @var \Drupal\Core\Session\AccountInterface
    */
-  protected $fileUrlGenerator;
+  protected $currentUser;
 
   /**
    * Constructs a new OocsAppsResolver object.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, FileUrlGeneratorInterface $file_url_generator) {
-    $this->entityTypeManager = $entity_type_manager;
-    $this->fileUrlGenerator = $file_url_generator;
-  }
-
-  /**
-   * Loads node IDs and builds their rendered app items, skipping any that fail.
-   *
-   * @param array $nids
-   *   App/software node IDs.
-   * @param array $cache_tags
-   *   Running list of cache tags, merged into by reference for every entity
-   *   touched (app, software, media, file).
-   *
-   * @return array
-   *   A list of ['logo_url' => ..., 'alt' => ..., 'link' => ...] structs.
-   */
-  public function buildItemsFromIds(array $nids, array &$cache_tags): array {
-    $nodes = $nids
-      ? $this->entityTypeManager->getStorage('node')->loadMultiple($nids)
-      : [];
-    return $this->buildItems($nodes, $cache_tags);
+  public function __construct(AppverseLogoUrl $logo_url, AccountInterface $current_user) {
+    $this->logoUrl = $logo_url;
+    $this->currentUser = $current_user;
   }
 
   /**
@@ -73,6 +54,12 @@ class OocsAppsResolver {
     $apps = [];
     foreach ($nodes as $node) {
       if (!$node instanceof NodeInterface) {
+        continue;
+      }
+      // Never disclose apps/software the current user cannot view (e.g. drafts
+      // referenced by a story). Callers add the matching
+      // 'user.node_grants:view' cache context.
+      if (!$node->access('view', $this->currentUser)) {
         continue;
       }
       $cache_tags = Cache::mergeTags($cache_tags, $node->getCacheTags());
@@ -102,14 +89,16 @@ class OocsAppsResolver {
     if ($bundle === 'appverse_software') {
       $software = $entity;
       $alt = $entity->getTitle();
-      $link = '/appverse#/' . $this->slugify($software->getTitle());
+      $link = '/appverse#/' . $this->softwareSlug($software);
     }
     elseif ($bundle === 'appverse_app') {
       // The app's logo and route segment come from its related software.
       $software = $entity->hasField('field_appverse_software_implemen')
         ? $entity->get('field_appverse_software_implemen')->entity
         : NULL;
-      if (!$software) {
+      // Suppress the item when the related software is missing or not viewable
+      // by the current user, matching the access gate applied to the app.
+      if (!$software || !$software->access('view', $this->currentUser)) {
         return NULL;
       }
       $cache_tags = Cache::mergeTags($cache_tags, $software->getCacheTags());
@@ -120,7 +109,7 @@ class OocsAppsResolver {
       $org = '';
       if ($entity->hasField('field_appverse_organization') && !$entity->get('field_appverse_organization')->isEmpty()) {
         $term = $entity->get('field_appverse_organization')->entity;
-        if ($term) {
+        if ($term && $term->access('view', $this->currentUser)) {
           $org = $term->label();
           $cache_tags = Cache::mergeTags($cache_tags, $term->getCacheTags());
         }
@@ -129,13 +118,13 @@ class OocsAppsResolver {
       $app_param = $org
         ? $this->slugify($org) . '--' . $this->slugify($entity->getTitle())
         : $this->slugify($entity->getTitle());
-      $link = '/appverse#/' . $this->slugify($software->getTitle()) . '?app=' . $app_param;
+      $link = '/appverse#/' . $this->softwareSlug($software) . '?app=' . $app_param;
     }
     else {
       return NULL;
     }
 
-    $logo_url = $this->getLogoUrl($software, $cache_tags);
+    $logo_url = $this->logoUrl->get($software, $cache_tags);
     if (!$logo_url) {
       return NULL;
     }
@@ -148,41 +137,22 @@ class OocsAppsResolver {
   }
 
   /**
-   * Resolves a software node's logo URL, accumulating cache tags.
+   * Resolves a software node's SPA route slug from its path alias.
    *
-   * Mirrors AppverseCacheService::getLogoUrl(); guards every hop and returns
-   * a root-relative URL.
+   * The Appverse feed (AppverseCacheService) keys each software item by
+   * basename() of its entity URL, so the SPA routes on the pathauto alias.
+   * Deriving the deep-link slug from the same source keeps logo links in step
+   * with the feed instead of re-slugifying the title by hand, which can diverge
+   * when an alias was deduplicated or transliterated differently.
    *
    * @param \Drupal\node\NodeInterface $software
    *   The appverse_software node.
-   * @param array $cache_tags
-   *   Running list of cache tags, merged into by reference for the media and
-   *   file entities.
    *
-   * @return string|null
-   *   The root-relative logo URL, or NULL if it cannot be produced.
+   * @return string
+   *   The route slug (the last segment of the node's URL).
    */
-  public function getLogoUrl(NodeInterface $software, array &$cache_tags) {
-    if (!$software->hasField('field_appverse_logo') || $software->get('field_appverse_logo')->isEmpty()) {
-      return NULL;
-    }
-    $media = $software->get('field_appverse_logo')->entity;
-    if (!$media) {
-      return NULL;
-    }
-    $cache_tags = Cache::mergeTags($cache_tags, $media->getCacheTags());
-
-    $source_field = $media->getSource()->getConfiguration()['source_field'];
-    if (!$source_field || !$media->hasField($source_field) || $media->get($source_field)->isEmpty()) {
-      return NULL;
-    }
-    $file = $media->get($source_field)->entity;
-    if (!$file) {
-      return NULL;
-    }
-    $cache_tags = Cache::mergeTags($cache_tags, $file->getCacheTags());
-
-    return $this->fileUrlGenerator->generateString($file->getFileUri());
+  public function softwareSlug(NodeInterface $software): string {
+    return basename($software->toUrl()->toString());
   }
 
   /**

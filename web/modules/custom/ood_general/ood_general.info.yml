@@ -3,3 +3,7 @@ type: module
 description: Place for misc open on demand code.
 core_version_requirement: ^10 || ^11
 package: Custom
+dependencies:
+  - drupal:node
+  - access_misc
+  - ood_software

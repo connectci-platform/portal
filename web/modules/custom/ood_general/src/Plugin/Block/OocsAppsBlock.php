@@ -89,7 +89,9 @@ class OocsAppsBlock extends BlockBase implements ContainerFactoryPluginInterface
       '#apps' => $apps,
       '#cache' => [
         'tags' => $cache_tags,
-        'contexts' => ['route'],
+        // 'route' scopes the block to the story page; 'user.node_grants:view'
+        // because the resolver filters referenced apps by view access.
+        'contexts' => ['route', 'user.node_grants:view'],
       ],
     ];
   }

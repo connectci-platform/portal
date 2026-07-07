@@ -104,10 +104,18 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     $implementation_tags = $this->buildTagData($node, 'field_oocs_implementation_tags', $tag_cache_tags);
     $topic_tags = $this->buildTagData($node, 'field_oocs_topic_tags', $tag_cache_tags);
 
-    // Class context (plain string_long).
+    // Class context (text_long). Render through Drupal's text-format system so
+    // its HTML displays while the field's format (basic_html / full_html)
+    // filters run — never print the raw value.
     $class_context = NULL;
     if ($node->hasField('field_oocs_class_context') && !$node->get('field_oocs_class_context')->isEmpty()) {
-      $class_context = $node->get('field_oocs_class_context')->value;
+      $item = $node->get('field_oocs_class_context')->first();
+      $class_context = [
+        '#type' => 'processed_text',
+        '#text' => $item->value,
+        '#format' => $item->format,
+        '#langcode' => $node->language()->getId(),
+      ];
     }
 
     $cache_tags = Cache::mergeTags(
