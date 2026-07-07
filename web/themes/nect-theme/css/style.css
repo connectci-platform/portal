@@ -2943,7 +2943,7 @@ details.vertical-tabs__pane > .details-wrapper {
 
 /* Tag-suggester disclosure widget (details.tags) only — scoped so these
    styles don't leak to every <details>/<summary> on the site. */
-details.tags {
+details.shortcode-accordion {
   background-color: #fff;
   padding: 0 1.5rem;
   margin-bottom: 1rem;
@@ -2952,21 +2952,21 @@ details.tags {
     padding: 0 0 1.5rem 0 !important;
   }
 }
-details.tags summary {
+details.shortcode-accordion summary {
   font-size: 1.5rem;
   font-weight: 600;
   display: flex;
   list-style: none;
 }
-details.tags:not([open]) summary:after {
+details.shortcode-accordion:not([open]) summary:after {
   content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/></svg>');
   margin-left: auto;
 
 }
-details.tags:is([open]) summary:after {
+details.shortcode-accordion:is([open]) summary:after {
   content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-up" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5  0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/></svg>');
   margin-left: auto;
 }
-details.tags summary::-webkit-details-marker {
+details.shortcode-accordion summary::-webkit-details-marker {
   display: none;
 }
