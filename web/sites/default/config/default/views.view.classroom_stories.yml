@@ -4,10 +4,9 @@ status: true
 dependencies:
   config:
     - field.storage.node.field_oocs_apps_used
-    - field.storage.node.field_oocs_institution
-    - field.storage.node.field_oocs_name
-    - field.storage.node.field_oocs_project_summary
     - field.storage.node.field_oocs_implementation_tags
+    - field.storage.node.field_oocs_institution
+    - field.storage.node.field_oocs_project_summary
     - field.storage.node.field_oocs_role
     - field.storage.node.field_oocs_topic_tags
     - field.storage.user.field_user_first_name
@@ -18,6 +17,7 @@ dependencies:
   module:
     - domain_access
     - node
+    - ood_general
     - svg_image
     - user
 id: classroom_stories
@@ -626,8 +626,8 @@ display:
           alter:
             alter_text: false
             text: ''
-            make_link: false
-            path: ''
+            make_link: true
+            path: '/appverse/classroom/classes#main-content'
             absolute: false
             external: false
             replace_spaces: false
@@ -665,7 +665,7 @@ display:
           click_sort_column: target_id
           type: entity_reference_label
           settings:
-            link: true
+            link: false
           group_column: target_id
           group_columns: {  }
           group_rows: true
@@ -751,7 +751,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: "<div class=\"border border-dark mb-5 d-lg-flex\">\r\n  <div class=\"p-3\">\r\n      <h3>\r\n        <a href=\"/node/{{ nid }}\" class=\"text-dark text-decoration-none\">{{ title }}</a>\r\n      </h3>\r\n      <div class=\"p-3\">\r\n        <p>{{ field_oocs_project_summary }}</p>\r\n        {{ field_oocs_apps_used }}\r\n      </div>\r\n  </div>\r\n  <div class=\"right-side bg-ood-light-gray p-3\">\r\n    <div class=\"d-flex\">\r\n        <div class=\"cssn-photo mr-2\">\r\n            {{ user_picture }}\r\n        </div>\r\n        <div>\r\n          <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n          <div>{{ field_oocs_role }}</div>\r\n          <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n        </div>\r\n    </div>\r\n    {% if field_oocs_implementation_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Implementation Tags</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_implementation_tags }}\r\n        </div>\r\n    {% endif %}\r\n    {% if field_oocs_topic_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Topics</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_topic_tags }} \r\n        </div>\r\n    {% endif %}\r\n  </div>\r\n</div>"
+            text: "<div class=\"border border-dark mb-5 d-lg-flex\">\r\n  <div class=\"p-4\">\r\n      <h3>\r\n        <a href=\"/node/{{ nid }}\" class=\"text-dark text-decoration-none\">{{ title }}</a>\r\n      </h3>\r\n      <div class=\"\">\r\n        <p>{{ field_oocs_project_summary }}</p>\r\n        {{ field_oocs_apps_used }}\r\n      </div>\r\n  </div>\r\n  <div class=\"right-side bg-ood-light-gray p-3\">\r\n    <div class=\"d-flex\">\r\n        <div class=\"cssn-photo mr-2\">\r\n            {{ user_picture }}\r\n        </div>\r\n        <div>\r\n          <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n          <div>{{ field_oocs_role }}</div>\r\n          <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n        </div>\r\n    </div>\r\n    {% if field_oocs_implementation_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Implementation Tags</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_implementation_tags }}\r\n        </div>\r\n    {% endif %}\r\n    {% if field_oocs_topic_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Topics</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_topic_tags }} \r\n        </div>\r\n    {% endif %}\r\n  </div>\r\n</div>"
             make_link: false
             path: ''
             absolute: false
@@ -1025,11 +1025,10 @@ display:
         - user.permissions
       tags:
         - 'config:field.storage.node.field_oocs_apps_used'
+        - 'config:field.storage.node.field_oocs_implementation_tags'
         - 'config:field.storage.node.field_oocs_institution'
-        - 'config:field.storage.node.field_oocs_name'
         - 'config:field.storage.node.field_oocs_project_summary'
         - 'config:field.storage.node.field_oocs_role'
-        - 'config:field.storage.node.field_oocs_implementation_tags'
         - 'config:field.storage.node.field_oocs_topic_tags'
         - 'config:field.storage.user.field_user_first_name'
         - 'config:field.storage.user.field_user_last_name'
@@ -1053,11 +1052,10 @@ display:
         - user.permissions
       tags:
         - 'config:field.storage.node.field_oocs_apps_used'
+        - 'config:field.storage.node.field_oocs_implementation_tags'
         - 'config:field.storage.node.field_oocs_institution'
-        - 'config:field.storage.node.field_oocs_name'
         - 'config:field.storage.node.field_oocs_project_summary'
         - 'config:field.storage.node.field_oocs_role'
-        - 'config:field.storage.node.field_oocs_implementation_tags'
         - 'config:field.storage.node.field_oocs_topic_tags'
         - 'config:field.storage.user.field_user_first_name'
         - 'config:field.storage.user.field_user_last_name'
