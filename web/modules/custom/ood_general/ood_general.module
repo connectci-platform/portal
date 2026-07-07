@@ -17,6 +17,7 @@ function ood_general_theme() {
       'variables' => [
         'author' => NULL,
         'implementation_tags' => [],
+        'science_domain_tags' => [],
         'topic_tags' => [],
         'class_context' => NULL,
       ],

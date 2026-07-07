@@ -102,6 +102,7 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     // invalidate the block.
     $tag_cache_tags = [];
     $implementation_tags = $this->buildTagData($node, 'field_oocs_implementation_tags', $tag_cache_tags);
+    $science_domain_tags = $this->buildTagData($node, 'field_oocs_science_domain_tags', $tag_cache_tags);
     $topic_tags = $this->buildTagData($node, 'field_oocs_topic_tags', $tag_cache_tags);
 
     // Class context (text_long). Render through Drupal's text-format system so
@@ -128,6 +129,7 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
       '#theme' => 'oocs_story_block',
       '#author' => $author,
       '#implementation_tags' => $implementation_tags,
+      '#science_domain_tags' => $science_domain_tags,
       '#topic_tags' => $topic_tags,
       '#class_context' => $class_context,
       '#cache' => [
