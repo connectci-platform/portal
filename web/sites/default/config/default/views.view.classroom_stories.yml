@@ -4,11 +4,12 @@ status: true
 dependencies:
   config:
     - field.storage.node.field_oocs_apps_used
+    - field.storage.node.field_oocs_institution
+    - field.storage.node.field_oocs_name
     - field.storage.node.field_oocs_project_summary
+    - field.storage.node.field_oocs_role
     - field.storage.node.field_oocs_science_domain_tags
     - field.storage.node.field_oocs_topic_tags
-    - field.storage.user.field_access_organization
-    - field.storage.user.field_current_occupation
     - field.storage.user.field_user_first_name
     - field.storage.user.field_user_last_name
     - field.storage.user.user_picture
@@ -294,7 +295,7 @@ display:
           id: user_picture
           table: user__user_picture
           field: user_picture
-          relationship: uid
+          relationship: field_oocs_name
           group_type: group
           admin_label: ''
           plugin_id: field
@@ -364,7 +365,7 @@ display:
           id: field_user_first_name
           table: user__field_user_first_name
           field: field_user_first_name
-          relationship: uid
+          relationship: field_oocs_name
           group_type: group
           admin_label: ''
           plugin_id: field
@@ -427,7 +428,7 @@ display:
           id: field_user_last_name
           table: user__field_user_last_name
           field: field_user_last_name
-          relationship: uid
+          relationship: field_oocs_name
           group_type: group
           admin_label: ''
           plugin_id: field
@@ -486,11 +487,11 @@ display:
           multi_type: separator
           separator: ', '
           field_api_classes: false
-        field_current_occupation:
-          id: field_current_occupation
-          table: user__field_current_occupation
-          field: field_current_occupation
-          relationship: uid
+        field_oocs_role:
+          id: field_oocs_role
+          table: node__field_oocs_role
+          field: field_oocs_role
+          relationship: none
           group_type: group
           admin_label: ''
           plugin_id: field
@@ -549,11 +550,11 @@ display:
           multi_type: separator
           separator: ', '
           field_api_classes: false
-        field_access_organization:
-          id: field_access_organization
-          table: user__field_access_organization
-          field: field_access_organization
-          relationship: uid
+        field_oocs_institution:
+          id: field_oocs_institution
+          table: node__field_oocs_institution
+          field: field_oocs_institution
+          relationship: none
           group_type: group
           admin_label: ''
           plugin_id: field
@@ -593,16 +594,16 @@ display:
           element_label_colon: false
           element_wrapper_type: ''
           element_wrapper_class: ''
-          element_default_classes: true
+          element_default_classes: false
           empty: ''
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          click_sort_column: target_id
-          type: entity_reference_label
+          click_sort_column: value
+          type: string
           settings:
-            link: false
-          group_column: target_id
+            link_to_entity: false
+          group_column: value
           group_columns: {  }
           group_rows: true
           delta_limit: 0
@@ -750,7 +751,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: "<div class=\"border border-dark mb-5 d-lg-flex\">\r\n  <div class=\"p-3\">\r\n      <h3>\r\n        <a href=\"/node/{{ nid }}\" class=\"text-dark text-decoration-none\">{{ title }}</a>\r\n      </h3>\r\n      <div class=\"p-3\">\r\n        <p>{{ field_oocs_project_summary }}</p>\r\n        {# This section will be replaced programmatically - replaced in ood_general.module #}\r\n          OOCS_APPS_USED: {{ field_oocs_apps_used }}\r\n        {# End replacement #}\r\n      </div>\r\n  </div>\r\n  <div class=\"right-side bg-ood-light-gray p-3\">\r\n    <div class=\"d-flex\">\r\n        <div class=\"cssn-photo mr-2\">\r\n            {{ user_picture }}\r\n        </div>\r\n        <div>\r\n          <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n          <div>{{ field_current_occupation }}</div>\r\n          <div class=\"font-italic\">{{ field_access_organization }}</div>\r\n        </div>\r\n    </div>\r\n    {% if field_oocs_science_domain_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Implementation Tags</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_science_domain_tags }}\r\n        </div>\r\n    {% endif %}\r\n    {% if field_oocs_topic_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Topics</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_topic_tags }} \r\n        </div>\r\n    {% endif %}\r\n  </div>\r\n</div>"
+            text: "<div class=\"border border-dark mb-5 d-lg-flex\">\r\n  <div class=\"p-3\">\r\n      <h3>\r\n        <a href=\"/node/{{ nid }}\" class=\"text-dark text-decoration-none\">{{ title }}</a>\r\n      </h3>\r\n      <div class=\"p-3\">\r\n        <p>{{ field_oocs_project_summary }}</p>\r\n        {# This section will be replaced programmatically - replaced in ood_general.module #}\r\n          OOCS_APPS_USED: {{ field_oocs_apps_used }}\r\n        {# End replacement #}\r\n      </div>\r\n  </div>\r\n  <div class=\"right-side bg-ood-light-gray p-3\">\r\n    <div class=\"d-flex\">\r\n        <div class=\"cssn-photo mr-2\">\r\n            {{ user_picture }}\r\n        </div>\r\n        <div>\r\n          <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n          <div>{{ field_oocs_role }}</div>\r\n          <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n        </div>\r\n    </div>\r\n    {% if field_oocs_science_domain_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Implementation Tags</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_science_domain_tags }}\r\n        </div>\r\n    {% endif %}\r\n    {% if field_oocs_topic_tags %}\r\n        <h4 class=\"mt-3 text-uppercase\">Topics</h4>\r\n        <div class=\"square-tags tag-list\">\r\n          {{ field_oocs_topic_tags }} \r\n        </div>\r\n    {% endif %}\r\n  </div>\r\n</div>"
             make_link: false
             path: ''
             absolute: false
@@ -989,15 +990,13 @@ display:
           query_tags: {  }
           contextual_filters_or: false
       relationships:
-        uid:
-          id: uid
-          table: node_field_data
-          field: uid
+        field_oocs_name:
+          id: field_oocs_name
+          table: node__field_oocs_name
+          field: field_oocs_name
           relationship: none
           group_type: group
-          admin_label: User
-          entity_type: node
-          entity_field: uid
+          admin_label: Name
           plugin_id: standard
           required: false
       css_class: oocs-full
@@ -1026,11 +1025,12 @@ display:
         - user.permissions
       tags:
         - 'config:field.storage.node.field_oocs_apps_used'
+        - 'config:field.storage.node.field_oocs_institution'
+        - 'config:field.storage.node.field_oocs_name'
         - 'config:field.storage.node.field_oocs_project_summary'
+        - 'config:field.storage.node.field_oocs_role'
         - 'config:field.storage.node.field_oocs_science_domain_tags'
         - 'config:field.storage.node.field_oocs_topic_tags'
-        - 'config:field.storage.user.field_access_organization'
-        - 'config:field.storage.user.field_current_occupation'
         - 'config:field.storage.user.field_user_first_name'
         - 'config:field.storage.user.field_user_last_name'
         - 'config:field.storage.user.user_picture'
@@ -1053,11 +1053,12 @@ display:
         - user.permissions
       tags:
         - 'config:field.storage.node.field_oocs_apps_used'
+        - 'config:field.storage.node.field_oocs_institution'
+        - 'config:field.storage.node.field_oocs_name'
         - 'config:field.storage.node.field_oocs_project_summary'
+        - 'config:field.storage.node.field_oocs_role'
         - 'config:field.storage.node.field_oocs_science_domain_tags'
         - 'config:field.storage.node.field_oocs_topic_tags'
-        - 'config:field.storage.user.field_access_organization'
-        - 'config:field.storage.user.field_current_occupation'
         - 'config:field.storage.user.field_user_first_name'
         - 'config:field.storage.user.field_user_last_name'
         - 'config:field.storage.user.user_picture'
