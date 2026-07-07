@@ -3,6 +3,7 @@
   --ood-red: #ca1236;
   --ood-purple: #686EA7;
   --ood-ocean-blue: #0076af;
+  --ood-light-gray: #F4F4F5;
   --header-gray: #dddee0;
   --primary: var(--ood-red);
   --primary-hover: #a80e2c;
@@ -20,6 +21,10 @@
 
 .bg-header-gray {
   background-color: var(--header-gray);
+}
+
+.bg-ood-light-gray {
+  background-color: var(--ood-light-gray);
 }
 
 .bg-purple {
