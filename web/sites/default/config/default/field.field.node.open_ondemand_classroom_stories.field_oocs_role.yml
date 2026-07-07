@@ -1,0 +1,19 @@
+uuid: 2f75a15d-0bd3-411c-8cf5-607def3e2ec9
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_role
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_oocs_role
+field_name: field_oocs_role
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: Role
+description: ''
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

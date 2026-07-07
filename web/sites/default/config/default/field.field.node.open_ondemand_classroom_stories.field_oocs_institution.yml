@@ -1,0 +1,19 @@
+uuid: 6b72fa4c-486f-4722-b6ef-ae8b2f4a8392
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_institution
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_oocs_institution
+field_name: field_oocs_institution
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: Institution
+description: ''
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
