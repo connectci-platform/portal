@@ -16,7 +16,7 @@
     <ul class="list-unstyled d-flex flex-wrap align-items-center">
       {% for app in apps %}
         <li class="mr-3">
-          <a href="{{ app.link }}" class="oocs-app">
+          <a href="{{ app.link }}" class="oocs-app" data-toggle="tooltip" data-placement="top" title="{{ app.alt }}">
             <img src="{{ app.logo_url }}" alt="{{ app.alt }}" style="height: 30px; width: 30px;" />
           </a>
         </li>

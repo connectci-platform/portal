@@ -4,6 +4,7 @@ status: true
 dependencies:
   config:
     - field.storage.node.field_oocs_apps_used
+    - field.storage.node.field_oocs_implementation_tags
     - field.storage.node.field_oocs_project_summary
     - field.storage.node.field_oocs_science_domain_tags
     - field.storage.user.field_access_organization
@@ -674,6 +675,69 @@ display:
           multi_type: ul
           separator: ', '
           field_api_classes: false
+        field_oocs_implementation_tags:
+          id: field_oocs_implementation_tags
+          table: node__field_oocs_implementation_tags
+          field: field_oocs_implementation_tags
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: field
+          label: ''
+          exclude: true
+          alter:
+            alter_text: false
+            text: ''
+            make_link: true
+            path: '/appverse/classroom#projectSlider'
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: false
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          click_sort_column: target_id
+          type: entity_reference_label
+          settings:
+            link: false
+          group_column: target_id
+          group_columns: {  }
+          group_rows: true
+          delta_limit: 0
+          delta_offset: 0
+          delta_reversed: false
+          delta_first_last: false
+          multi_type: separator
+          separator: ', '
+          field_api_classes: false
         nothing:
           id: nothing
           table: views
@@ -686,7 +750,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: "<div class=\"bg-white\">\r\n  <h3 class=\"bg-purple p-3\" style=\"min-height: 65px;\">\r\n    <a href=\"/node/{{ nid }}\" class=\"text-white text-decoration-none\">{{ title }}</a>\r\n  </h3>\r\n  <div class=\"p-3\">\r\n    <p>{{ field_oocs_project_summary }}</p>\r\n    {# This section will be replaced programmatically - replaced in ood_general.module #}\r\n      OOCS_APPS_USED: {{ field_oocs_apps_used }}\r\n    {# End replacement #}\r\n  </div>\r\n  <div class=\"bg-header-gray p-3 d-flex\">\r\n    <div class=\"cssn-photo mr-2\">\r\n        {{ user_picture }}\r\n    </div>\r\n    <div class=\"\">\r\n      <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n      <div>{{ field_current_occupation }}</div>\r\n      <div class=\"font-italic\">{{ field_access_organization }}</div>\r\n    </div>\r\n  </div>\r\n  <div class=\"bg-purple p-3 square-tags tag-list\">\r\n    {{ field_oocs_science_domain_tags }}\r\n  </div>\r\n</div>"
+            text: "<div class=\"bg-white\">\r\n  <h3 class=\"bg-purple p-3\" style=\"min-height: 65px;\">\r\n    <a href=\"/node/{{ nid }}\" class=\"text-white text-decoration-none\">{{ title }}</a>\r\n  </h3>\r\n  <div class=\"p-3\">\r\n    <p>{{ field_oocs_project_summary }}</p>\r\n    {# This section will be replaced programmatically - replaced in ood_general.module #}\r\n      OOCS_APPS_USED: {{ field_oocs_apps_used }}\r\n    {# End replacement #}\r\n  </div>\r\n  <div class=\"bg-header-gray p-3 d-flex\">\r\n    <div class=\"cssn-photo mr-2\">\r\n        {{ user_picture }}\r\n    </div>\r\n    <div class=\"\">\r\n      <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n      <div>{{ field_current_occupation }}</div>\r\n      <div class=\"font-italic\">{{ field_access_organization }}</div>\r\n    </div>\r\n  </div>\r\n  <div class=\"bg-purple p-3 square-tags tag-list\">\r\n    {{ field_oocs_implementation_tags }}\r\n  </div>\r\n</div>"
             make_link: false
             path: ''
             absolute: false
@@ -975,6 +1039,7 @@ display:
         - user.permissions
       tags:
         - 'config:field.storage.node.field_oocs_apps_used'
+        - 'config:field.storage.node.field_oocs_implementation_tags'
         - 'config:field.storage.node.field_oocs_project_summary'
         - 'config:field.storage.node.field_oocs_science_domain_tags'
         - 'config:field.storage.user.field_access_organization'
@@ -1000,6 +1065,7 @@ display:
         - user.permissions
       tags:
         - 'config:field.storage.node.field_oocs_apps_used'
+        - 'config:field.storage.node.field_oocs_implementation_tags'
         - 'config:field.storage.node.field_oocs_project_summary'
         - 'config:field.storage.node.field_oocs_science_domain_tags'
         - 'config:field.storage.user.field_access_organization'

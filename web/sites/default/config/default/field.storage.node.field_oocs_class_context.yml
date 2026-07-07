@@ -1,16 +1,16 @@
-uuid: 60a9c5ca-d845-4cce-935d-7fd10b1be459
+uuid: a59d2d17-0bf2-48e5-add2-726f4601da25
 langcode: en
 status: true
 dependencies:
   module:
     - node
+    - text
 id: node.field_oocs_class_context
 field_name: field_oocs_class_context
 entity_type: node
-type: string_long
-settings:
-  case_sensitive: false
-module: core
+type: text_long
+settings: {  }
+module: text
 locked: false
 cardinality: 1
 translatable: true
