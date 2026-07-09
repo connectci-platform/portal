@@ -61,7 +61,10 @@ body {
 }
 
 #block-ood-breadcrumbs .breadcrumb {
+  font-size: 0.8rem;
   background-color: inherit;
+  padding: 0;
+  margin-bottom: 0;
 }
 
 #block-ood-breadcrumbs ol {
@@ -1394,7 +1397,10 @@ body.page-batch [role="banner"] {
 
 .page-node-type-open-ondemand-classroom-stories {
   .layout__region--first h2 {
-    padding: .75rem 0 .5rem .5rem;
+    font-size: 1rem;
+    text-transform: uppercase;
+    padding: .25rem;
+    margin-bottom: 0;
     color: #fff;
     background-color: var(--ood-purple);
   }
@@ -1475,4 +1481,22 @@ div:has(>#contributing-classroom-content):not(.layout-builder-block) {
   .oocs-full .right-side {
     width: 600px;
   }
+}
+
+.page-node-12116 .carousel {
+  h3 {
+    font-family: "Source Sans 3", "Serifa Std", sans-serif;
+  }
+  p {
+    font-size: 1rem;
+    line-height: 1.25rem;
+  }
+  .oocs-apps ul {
+    margin-bottom: .25rem;
+  }
+}
+
+.classroom-person-details {
+  font-size: 1rem;
+  line-height: 1.2rem;
 }
