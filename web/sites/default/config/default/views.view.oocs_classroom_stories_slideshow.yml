@@ -751,7 +751,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: "<div class=\"bg-white\">\r\n  <h3 class=\"bg-purple p-3\" style=\"min-height: 65px;\">\r\n    <a href=\"/node/{{ nid }}\" class=\"text-white text-decoration-none\">{{ title }}</a>\r\n  </h3>\r\n  <div class=\"p-3\">\r\n    <p>{{ field_oocs_project_summary }}</p>\r\n    {{ field_oocs_apps_used }}\r\n  </div>\r\n  <div class=\"bg-header-gray p-3 d-flex\">\r\n    <div class=\"cssn-photo mr-2\">\r\n        {{ user_picture }}\r\n    </div>\r\n    <div class=\"\">\r\n      <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n      <div>{{ field_oocs_role }}</div>\r\n      <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n    </div>\r\n  </div>\r\n  <div class=\"bg-purple p-3 square-tags tag-list\">\r\n    {{ field_oocs_implementation_tags }}\r\n    {{ field_oocs_science_domain_tags }}\r\n  </div>\r\n</div>"
+            text: "<div class=\"bg-white\">\r\n  <h3 class=\"bg-purple p-3\" style=\"min-height: 65px;\">\r\n    <a href=\"/node/{{ nid }}\" class=\"text-white text-decoration-none\">{{ title }}</a>\r\n  </h3>\r\n  <div class=\"px-3\">\r\n    <p>{{ field_oocs_project_summary }}</p>\r\n    {{ field_oocs_apps_used }}\r\n  </div>\r\n  <div class=\"bg-ood-light-gray p-3 d-flex\">\r\n    <div class=\"cssn-photo mr-2\">\r\n        {{ user_picture }}\r\n    </div>\r\n    <div class=\"person-info\">\r\n      <span class=\"font-weight-bold\">{{ field_user_first_name }} {{ field_user_last_name }}</span>\r\n      <div class=\"classroom-person-details\">\r\n        <div>{{ field_oocs_role }}</div>\r\n        <div class=\"font-italic\">{{ field_oocs_institution }}</div>\r\n      </div>\r\n    </div>\r\n  </div>\r\n  <div class=\"bg-purple p-3 square-tags tag-list\">\r\n    {{ field_oocs_implementation_tags }}\r\n    {{ field_oocs_science_domain_tags }}\r\n  </div>\r\n</div>"
             make_link: false
             path: ''
             absolute: false
@@ -1011,7 +1011,7 @@ display:
           plugin_id: text
           empty: true
           content:
-            value: "<div class=\"d-flex justify-content-between py-5\">\r\n  <div class=\"title-text\">\r\n    <h2 class=\"text-white fs-1 fw-normal\" style=\"max-width: 700px;\">Classroom Stories</h2>\r\n    <p class=\"text-white\">See how other HPC centers are using Open OnDemand to support classroom instruction. Each story includes the deployment approach, and apps used.</p>\r\n  </div>\r\n  <div class=\"read-more-link\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/classes\">Read the stories</a>\r\n  </div>\r\n</div>"
+            value: "<div class=\"d-flex justify-content-between py-5\">\r\n  <div class=\"title-text\">\r\n    <h2 class=\"text-white fs-1 fw-normal\" style=\"max-width: 700px;\">Classroom Stories</h2>\r\n    <p class=\"text-white\">See how other HPC centers are using Open OnDemand to support classroom instruction. Each story includes the deployment approach, and apps used.</p>\r\n  </div>\r\n  <div class=\"read-more-link\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/stories\">Read the stories</a>\r\n  </div>\r\n</div>"
             format: full_html
           tokenize: false
       footer:
@@ -1025,7 +1025,7 @@ display:
           plugin_id: text
           empty: true
           content:
-            value: "  <div class=\"d-flex justify-content-center py-5\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/classes\">Read the stories</a>\r\n  </div>"
+            value: "  <div class=\"d-flex justify-content-center py-5\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/stories\">Read the stories</a>\r\n  </div>"
             format: full_html
           tokenize: false
       display_extenders: {  }

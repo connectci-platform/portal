@@ -2,6 +2,8 @@ uuid: 3d95f969-bac5-44ba-83b1-203faef4d8f0
 langcode: en
 status: true
 dependencies:
+  config:
+    - node.type.open_ondemand_classroom_stories
   module:
     - node
 id: ondemand_classroom_stories
@@ -12,7 +14,6 @@ selection_criteria:
   bc286f33-dc95-41b2-84ce-b0cd7311d1cd:
     id: 'entity_bundle:node'
     negate: false
-    uuid: bc286f33-dc95-41b2-84ce-b0cd7311d1cd
     context_mapping:
       node: node
     bundles:
