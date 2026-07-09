@@ -24,12 +24,12 @@
         {% if author.first_name or author.last_name %}
           <h2 class="oocs-author__name mb-0" style="line-height: 1;">{{ author.first_name }} {{ author.last_name }}</h2>
         {% endif %}
-        <div class="oocs-author__title-org font-italic">
+        <div class="oocs-author__title-org classroom-person-details">
           {% if author.role %}
-            {{ author.role }},
+            <div>{{ author.role }}</div>
           {% endif %}
           {% if author.institution %}
-            {{ author.institution }}
+            <div class="font-italic">{{ author.institution }}</div>
           {% endif %}
         </div>
       </div>
