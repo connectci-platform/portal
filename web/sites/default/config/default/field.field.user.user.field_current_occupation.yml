@@ -21,18 +21,22 @@ third_party_settings:
       student_champion: 0
       domain_champion: 0
       ccmnet: 0
+      ondemand: 0
+      pascience: 0
     user_additional_register_form:
-      mentor: mentor
-      researcher: researcher
-      ccmnet: ccmnet
       authenticated: 0
       student: 0
+      mentor: 0
+      researcher: 0
       representative: 0
       research_computing_facilitator: 0
       research_software_engineer: 0
       ci_systems_engineer: 0
       student_champion: 0
       domain_champion: 0
+      ccmnet: 0
+      ondemand: 0
+      pascience: 0
 id: user.user.field_current_occupation
 field_name: field_current_occupation
 entity_type: user
