@@ -10,10 +10,8 @@ dependencies:
     - field.field.node.open_ondemand_classroom_stories.field_oocs_apps_used
     - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
     - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
-    - field.field.node.open_ondemand_classroom_stories.field_oocs_institution
     - field.field.node.open_ondemand_classroom_stories.field_oocs_name
     - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
-    - field.field.node.open_ondemand_classroom_stories.field_oocs_role
     - field.field.node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
     - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
     - node.type.open_ondemand_classroom_stories
@@ -71,14 +69,6 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_oocs_institution:
-    type: string_textfield
-    weight: 10
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
   field_oocs_name:
     type: entity_reference_autocomplete
     weight: 9
@@ -95,14 +85,6 @@ content:
     region: content
     settings:
       rows: 5
-      placeholder: ''
-    third_party_settings: {  }
-  field_oocs_role:
-    type: string_textfield
-    weight: 11
-    region: content
-    settings:
-      size: 60
       placeholder: ''
     third_party_settings: {  }
   field_oocs_science_domain_tags:

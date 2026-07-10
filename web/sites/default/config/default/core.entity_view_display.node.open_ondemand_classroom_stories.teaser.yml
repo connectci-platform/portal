@@ -11,10 +11,8 @@ dependencies:
     - field.field.node.open_ondemand_classroom_stories.field_oocs_apps_used
     - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
     - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
-    - field.field.node.open_ondemand_classroom_stories.field_oocs_institution
     - field.field.node.open_ondemand_classroom_stories.field_oocs_name
     - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
-    - field.field.node.open_ondemand_classroom_stories.field_oocs_role
     - field.field.node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
     - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
     - node.type.open_ondemand_classroom_stories
@@ -46,10 +44,8 @@ hidden:
   field_oocs_apps_used: true
   field_oocs_class_context: true
   field_oocs_implementation_tags: true
-  field_oocs_institution: true
   field_oocs_name: true
   field_oocs_project_summary: true
-  field_oocs_role: true
   field_oocs_science_domain_tags: true
   field_oocs_topic_tags: true
   search_api_excerpt: true
