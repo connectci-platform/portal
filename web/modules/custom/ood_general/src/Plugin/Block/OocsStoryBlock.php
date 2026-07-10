@@ -96,7 +96,8 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     if ($node->hasField('field_oocs_name') && !$node->get('field_oocs_name')->isEmpty()) {
       $person = $node->get('field_oocs_name')->entity;
     }
-    $author = ($person instanceof UserInterface) ? $this->buildAuthorData($node, $person) : NULL;
+    $author_cache_tags = [];
+    $author = ($person instanceof UserInterface) ? $this->buildAuthorData($node, $person, $author_cache_tags) : NULL;
 
     // Tags. Accumulate each rendered term's cache tags so renames/deletes
     // invalidate the block.
@@ -122,7 +123,8 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     $cache_tags = Cache::mergeTags(
       $node->getCacheTags(),
       $person ? $person->getCacheTags() : [],
-      $tag_cache_tags
+      $tag_cache_tags,
+      $author_cache_tags
     );
 
     return [
@@ -149,11 +151,15 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
    *   The story node.
    * @param \Drupal\user\UserInterface $user
    *   The person referenced by field_oocs_name.
+   * @param array $author_cache_tags
+   *   Running list of cache tags, merged into by reference (e.g. the
+   *   referenced organization node's tags, so renames/deletes invalidate
+   *   the block).
    *
    * @return array
    *   Author data: photo_url, first_name, last_name, role, institution.
    */
-  private function buildAuthorData(NodeInterface $node, UserInterface $user) {
+  private function buildAuthorData(NodeInterface $node, UserInterface $user, array &$author_cache_tags) {
     $photo_url = NULL;
     if ($user->hasField('user_picture') && !$user->get('user_picture')->isEmpty()) {
       $file = $user->get('user_picture')->entity;
@@ -179,13 +185,17 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     }
 
     $role = '';
-    if ($node->hasField('field_oocs_role') && !$node->get('field_oocs_role')->isEmpty()) {
-      $role = $node->get('field_oocs_role')->value;
+    if ($user->hasField('field_current_occupation') && !$user->get('field_current_occupation')->isEmpty()) {
+      $role = $user->get('field_current_occupation')->value;
     }
 
     $institution = '';
-    if ($node->hasField('field_oocs_institution') && !$node->get('field_oocs_institution')->isEmpty()) {
-      $institution = $node->get('field_oocs_institution')->value;
+    if ($user->hasField('field_access_organization') && !$user->get('field_access_organization')->isEmpty()) {
+      $organization = $user->get('field_access_organization')->entity;
+      if ($organization) {
+        $institution = $organization->label();
+        $author_cache_tags = Cache::mergeTags($author_cache_tags, $organization->getCacheTags());
+      }
     }
 
     return [
