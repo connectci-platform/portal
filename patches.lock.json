@@ -1,5 +1,5 @@
 {
-    "_hash": "0b4088526f125e4eb0d196f77764ed33f886a0101eed1f2a18415eb0f23a0ce3",
+    "_hash": "9e27c1654e58d148616acff6dc1f987d099f463ee80196335a7994ee9c8f2367",
     "patches": {
         "drupal/core": [
             {
@@ -145,18 +145,6 @@
                 "description": "Resolve the generation timezone from the event rather than the saving user",
                 "url": "patches/recurring_events-generation-event-timezone.patch",
                 "sha256": "c2984a58bd74dafeee370b02b5b1f404730f1b9be13ac657a8449d8b4d652267",
-                "depth": 1,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            }
-        ],
-        "drupal/domain": [
-            {
-                "package": "drupal/domain",
-                "description": "Fix TypeError when domain source field is not present",
-                "url": "patches/domain_source-null-check-3482951.patch",
-                "sha256": "644b01de70c4374b2f8bc0b81809823e8ee62196877845886e1965a51c23d02e",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
