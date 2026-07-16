@@ -91,7 +91,6 @@
         "drupal/domain_alias": "^2.0@beta",
         "drupal/domain_config": "^2.0@beta",
         "drupal/domain_entity": "^1.0@RC",
-        "drupal/domain_site_settings": "^1.5",
         "drupal/domain_source": "^2.0@beta",
         "drupal/domain_theme_switch": "^2.0",
         "drupal/easy_breadcrumb": "^2.0",
