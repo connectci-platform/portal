@@ -7,3 +7,4 @@ domain_id: openondemand_cyberinfrastructure_org
 pattern: ondemand.connectci.org
 redirect: 301
 environment: default
+weight: 51

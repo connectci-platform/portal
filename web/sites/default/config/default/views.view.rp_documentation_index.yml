@@ -4,15 +4,14 @@ status: true
 dependencies:
   config:
     - field.storage.node.field_access_org_name
-    - field.storage.node.field_access_org_logo_url
     - field.storage.node.field_cider_short_name
     - field.storage.node.field_rp_description
-    - field.storage.node.field_rp_listing
     - node.type.access_active_resources_from_cid
     - node.type.resource_group
   module:
     - domain_access
     - node
+    - text
     - user
 id: rp_documentation_index
 label: 'RP Documentation Index'
@@ -205,7 +204,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             amp_cyberinfrastructure_org: amp_cyberinfrastructure_org
           group: 1
@@ -265,12 +264,26 @@ display:
           field: area_text_custom
           plugin_id: text_custom
           content: '<p>Each ACCESS resource has unique configurations, queue structures, and capabilities. Browse the documentation below to find the technical detail you need to run jobs, manage data, and plan your workflows.</p>'
+      display_extenders: {  }
+    cache_metadata:
+      max-age: -1
+      contexts:
+        - 'languages:language_content'
+        - 'languages:language_interface'
+        - url.query_args
+        - 'user.node_grants:view'
+        - user.permissions
+      tags:
+        - 'config:field.storage.node.field_access_org_name'
+        - 'config:field.storage.node.field_cider_short_name'
+        - 'config:field.storage.node.field_rp_description'
   page_1:
     id: page_1
     display_title: Page
     display_plugin: page
     position: 1
     display_options:
+      display_extenders: {  }
       path: documentation/resources
       menu:
         type: none
@@ -281,3 +294,15 @@ display:
         menu_name: main
         parent: ''
         context: ''
+    cache_metadata:
+      max-age: -1
+      contexts:
+        - 'languages:language_content'
+        - 'languages:language_interface'
+        - url.query_args
+        - 'user.node_grants:view'
+        - user.permissions
+      tags:
+        - 'config:field.storage.node.field_access_org_name'
+        - 'config:field.storage.node.field_cider_short_name'
+        - 'config:field.storage.node.field_rp_description'

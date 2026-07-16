@@ -7,3 +7,4 @@ domain_id: campuschampions_cyberinfrastructure_org
 pattern: campuschampionsdev.wpi.edu
 redirect: 0
 environment: development
+weight: 4

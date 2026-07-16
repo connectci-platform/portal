@@ -7,3 +7,4 @@ domain_id: greatplains_wpi_edu
 pattern: greatplainsdev.wpi.edu
 redirect: 0
 environment: development
+weight: 29

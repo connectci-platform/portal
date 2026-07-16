@@ -1,5 +1,5 @@
 {
-    "_hash": "4ec0d880de81cea18d2e169e9753f8d1d31314787e1e4464f7aede5f86639f56",
+    "_hash": "a3923d75b4cae56808ecc2e8cb9e3bdc9a925bf5bfd02e1ca3736e29a86a87b5",
     "patches": {
         "drupal/core": [
             {
@@ -95,18 +95,6 @@
                 "description": "Debug logging for duplicate event instance investigation",
                 "url": "patches/recurring_events-debug-duplicate-instances.patch",
                 "sha256": "7e308d3eac8bd8368399d44064d41a21e2f6f4ec2707a3f378020ca33567cffc",
-                "depth": 1,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            }
-        ],
-        "drupal/domain": [
-            {
-                "package": "drupal/domain",
-                "description": "Fix TypeError when domain source field is not present",
-                "url": "patches/domain_source-null-check-3482951.patch",
-                "sha256": "644b01de70c4374b2f8bc0b81809823e8ee62196877845886e1965a51c23d02e",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

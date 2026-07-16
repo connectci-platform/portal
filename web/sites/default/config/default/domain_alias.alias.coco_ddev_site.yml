@@ -7,3 +7,4 @@ domain_id: coco_cyberinfrastructure_org
 pattern: coco.ddev.site
 redirect: 0
 environment: default
+weight: 14

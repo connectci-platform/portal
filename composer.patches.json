@@ -19,9 +19,6 @@
       "Registration contact page custom permissions": "patches/recurring_events-registration-route-perm.patch",
       "Debug logging for duplicate event instance investigation": "patches/recurring_events-debug-duplicate-instances.patch"
     },
-    "drupal/domain": {
-      "Fix TypeError when domain source field is not present": "patches/domain_source-null-check-3482951.patch"
-    },
     "drupal/multiple_registration": {
       "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
     }
