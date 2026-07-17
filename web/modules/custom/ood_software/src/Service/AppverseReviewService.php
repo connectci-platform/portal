@@ -26,6 +26,18 @@ use Psr\Log\LoggerInterface;
 class AppverseReviewService {
 
   /**
+   * Minimum seconds between dispatches for the same node.
+   * Self-transitions (review_to_review) bypass this.
+   */
+  const DEBOUNCE_SECONDS = 300;
+
+  /**
+   * Seconds after which a pending review is considered stale.
+   * Reviewers can re-trigger via the review_to_review transition.
+   */
+  const STALE_TIMEOUT_SECONDS = 7200;
+
+  /**
    * The GitHub owner/repo where the review workflow lives.
    */
   const REVIEW_REPO = 'Sweet-and-Fizzy/appverse-review';
@@ -85,10 +97,21 @@ class AppverseReviewService {
       return;
     }
 
-    // Allow re-review on review_to_review self-transition, but skip if
-    // the previous state is unknown (NULL) to avoid false triggers on
-    // bulk operations.
+    // Skip if the previous state is unknown (NULL) to avoid false
+    // triggers on bulk operations or migrations.
     if ($previousState === NULL) {
+      return;
+    }
+
+    // Self-transition (review_to_review) is an explicit admin action
+    // to re-trigger a review — it always bypasses the debounce.
+    $isSelfTransition = ($previousState === 'ready_for_review');
+
+    if (!$isSelfTransition && $this->isWithinDebounce($node)) {
+      $this->logger->info('Skipping review dispatch for node @nid: debounce window (@sec s).', [
+        '@nid' => $node->id(),
+        '@sec' => self::DEBOUNCE_SECONDS,
+      ]);
       return;
     }
 
@@ -112,6 +135,18 @@ class AppverseReviewService {
     if ($this->dispatch($ownerRepo)) {
       $this->recordDispatch($node);
     }
+  }
+
+  /**
+   * Check if the node was dispatched within the debounce window.
+   */
+  protected function isWithinDebounce(NodeInterface $node): bool {
+    if (!$node->hasField('field_review_dispatched_at') || $node->get('field_review_dispatched_at')->isEmpty()) {
+      return FALSE;
+    }
+    $lastDispatch = (int) $node->get('field_review_dispatched_at')->value;
+    $elapsed = $this->time->getRequestTime() - $lastDispatch;
+    return $elapsed < self::DEBOUNCE_SECONDS;
   }
 
   /**
@@ -292,12 +327,19 @@ class AppverseReviewService {
       return;
     }
 
-    $completedRuns = $this->fetchCompletedRuns($token);
+    $completedRuns = $this->fetchWorkflowRuns($token, 'completed');
     if ($completedRuns === NULL) {
       return;
     }
+    $activeRuns = $this->fetchWorkflowRuns($token, 'in_progress') ?? [];
+
+    $now = $this->time->getRequestTime();
 
     foreach ($pendingNodes as $node) {
+      $dispatchedAt = $node->hasField('field_review_dispatched_at')
+        ? (int) $node->get('field_review_dispatched_at')->value
+        : 0;
+
       $repoUrl = $this->extractRepoUrl($node);
       if ($repoUrl === NULL) {
         continue;
@@ -307,16 +349,32 @@ class AppverseReviewService {
         continue;
       }
 
-      $dispatchedAt = $node->hasField('field_review_dispatched_at')
-        ? (int) $node->get('field_review_dispatched_at')->value
-        : 0;
-
+      // Check for a completed run first.
       $matchedRun = $this->matchRun($completedRuns, $ownerRepo, $dispatchedAt);
-      if ($matchedRun === NULL) {
+      if ($matchedRun !== NULL) {
+        $this->processCompletedRun($node, $matchedRun, $token);
         continue;
       }
 
-      $this->processCompletedRun($node, $matchedRun, $token);
+      // If a matching run is still in progress, update status and move on.
+      $activeRun = $this->matchRun($activeRuns, $ownerRepo, $dispatchedAt);
+      if ($activeRun !== NULL) {
+        if ($node->hasField('field_review_status') && $node->get('field_review_status')->value !== 'in_progress') {
+          $this->updateNodeReviewStatus($node, 'in_progress', (int) $activeRun['id']);
+        }
+        continue;
+      }
+
+      // No matching run found (completed or active). If the dispatch
+      // is older than the stale timeout, mark as error so reviewers
+      // can re-trigger via the review_to_review transition.
+      if ($dispatchedAt > 0 && ($now - $dispatchedAt) > self::STALE_TIMEOUT_SECONDS) {
+        $this->logger->warning('Review for node @nid has been pending for @hours hours with no matching run — marking as error.', [
+          '@nid' => $node->id(),
+          '@hours' => round(($now - $dispatchedAt) / 3600, 1),
+        ]);
+        $this->updateNodeReviewStatus($node, 'error', 0);
+      }
     }
   }
 
@@ -341,16 +399,22 @@ class AppverseReviewService {
   }
 
   /**
-   * Fetch recent completed workflow runs from GitHub Actions.
+   * Fetch recent workflow runs from GitHub Actions filtered by status.
+   *
+   * @param string $token
+   *   GitHub API token.
+   * @param string $status
+   *   Run status filter: 'completed', 'in_progress', 'queued', etc.
    *
    * @return array|null
    *   Array of run objects, or NULL on failure.
    */
-  protected function fetchCompletedRuns(string $token): ?array {
+  protected function fetchWorkflowRuns(string $token, string $status = 'completed'): ?array {
     $url = sprintf(
-      'https://api.github.com/repos/%s/actions/workflows/%s/runs?event=workflow_dispatch&status=completed&per_page=20',
+      'https://api.github.com/repos/%s/actions/workflows/%s/runs?event=workflow_dispatch&status=%s&per_page=20',
       self::REVIEW_REPO,
       self::WORKFLOW_FILE,
+      urlencode($status),
     );
 
     try {
