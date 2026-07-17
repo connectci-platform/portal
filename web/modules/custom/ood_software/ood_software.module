@@ -1075,6 +1075,10 @@ function ood_software_node_update(NodeInterface $node): void {
     }
     \Drupal::service('ood_software.repo_notifier')
       ->notifyTransition($node, $previousState, $extras);
+
+    // Dispatch AI review when entering ready_for_review.
+    \Drupal::service('ood_software.review_dispatcher')
+      ->onTransition($node, $previousState);
   }
 }
 

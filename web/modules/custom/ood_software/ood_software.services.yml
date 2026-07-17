@@ -37,6 +37,10 @@ services:
     class: Drupal\ood_software\Service\RepoSyncService
     arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh']
 
+  ood_software.review_dispatcher:
+    class: Drupal\ood_software\Service\AppverseReviewService
+    arguments: ['@http_client', '@key.repository', '@logger.factory']
+
   ood_software.repo_notifier:
     class: Drupal\ood_software\Service\RepoNotificationService
     arguments:
