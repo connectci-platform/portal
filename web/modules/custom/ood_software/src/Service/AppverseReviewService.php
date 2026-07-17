@@ -3,7 +3,6 @@
 namespace Drupal\ood_software\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Component\Utility\Xss;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\key\KeyRepositoryInterface;
@@ -249,7 +248,7 @@ class AppverseReviewService {
    *   "owner/repo" or NULL if the URL doesn't match.
    */
   protected function parseOwnerRepo(string $url): ?string {
-    $parsed = parse_url(Xss::filter($url));
+    $parsed = parse_url($url);
     if (!isset($parsed['host']) || $parsed['host'] !== 'github.com') {
       return NULL;
     }
@@ -259,7 +258,8 @@ class AppverseReviewService {
     }
     $owner = $parts[0];
     $repo = preg_replace('/\.git$/', '', $parts[1]);
-    if ($owner === '' || $repo === '') {
+    // Enforce GitHub's naming rules: alphanumeric, hyphens, dots, underscores.
+    if (!preg_match('/^[A-Za-z0-9._-]+$/', $owner) || !preg_match('/^[A-Za-z0-9._-]+$/', $repo)) {
       return NULL;
     }
     return $owner . '/' . $repo;
