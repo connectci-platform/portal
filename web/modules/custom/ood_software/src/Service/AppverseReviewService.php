@@ -169,6 +169,17 @@ class AppverseReviewService {
    *   TRUE if the dispatch succeeded (HTTP 204), FALSE otherwise.
    */
   public function dispatch(string $targetRepo, string $model = 'sonnet'): bool {
+    // On non-production environments, only dispatch dry-run reviews to
+    // avoid spending API credits on dev/staging test transitions.
+    $env = getenv('PANTHEON_ENVIRONMENT');
+    $aspects = ($env === 'live') ? 'all' : 'dry-run';
+    if ($aspects === 'dry-run') {
+      $this->logger->info('Non-production environment (@env): dispatching dry-run review for @repo.', [
+        '@env' => $env ?: 'local',
+        '@repo' => $targetRepo,
+      ]);
+    }
+
     $token = $this->getToken();
     if ($token === NULL) {
       $this->logger->error('Cannot dispatch review: no GitHub token found (tried keys @primary, @fallback).', [
@@ -192,7 +203,7 @@ class AppverseReviewService {
           'inputs' => [
             'target_repo' => $targetRepo,
             'target_branch' => '',
-            'review_aspects' => 'all',
+            'review_aspects' => $aspects,
             'model' => $model,
           ],
         ],
