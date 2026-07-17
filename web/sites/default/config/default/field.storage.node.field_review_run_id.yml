@@ -1,0 +1,20 @@
+uuid: 01fb70b6-1b88-43ab-aadb-debb4347eac6
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_review_run_id
+field_name: field_review_run_id
+entity_type: node
+type: integer
+settings:
+  unsigned: true
+  size: normal
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false
