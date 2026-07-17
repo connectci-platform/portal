@@ -2,7 +2,9 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\Xss;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\key\KeyRepositoryInterface;
 use Drupal\node\NodeInterface;
@@ -53,6 +55,8 @@ class AppverseReviewService {
     protected ClientInterface $httpClient,
     protected KeyRepositoryInterface $keyRepository,
     LoggerChannelFactoryInterface $loggerFactory,
+    protected EntityTypeManagerInterface $entityTypeManager,
+    protected TimeInterface $time,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -103,7 +107,52 @@ class AppverseReviewService {
       return;
     }
 
-    $this->dispatch($ownerRepo);
+    if ($this->dispatch($ownerRepo)) {
+      $this->recordDispatch($node);
+    }
+  }
+
+  /**
+   * Record a successful dispatch on the node's review tracking fields.
+   *
+   * Re-loads the node to avoid saving stale state from the in-flight
+   * hook_node_update() context. Sets dispatched_at, status=pending,
+   * and clears prior recommendation/report/run_id.
+   */
+  protected function recordDispatch(NodeInterface $node): void {
+    try {
+      $storage = $this->entityTypeManager->getStorage('node');
+      $fresh = $storage->loadUnchanged($node->id());
+      if (!$fresh) {
+        return;
+      }
+
+      $now = $this->time->getRequestTime();
+      if ($fresh->hasField('field_review_dispatched_at')) {
+        $fresh->set('field_review_dispatched_at', $now);
+      }
+      if ($fresh->hasField('field_review_status')) {
+        $fresh->set('field_review_status', 'pending');
+      }
+      if ($fresh->hasField('field_review_recommendation')) {
+        $fresh->set('field_review_recommendation', NULL);
+      }
+      if ($fresh->hasField('field_review_run_id')) {
+        $fresh->set('field_review_run_id', NULL);
+      }
+
+      $fresh->_ood_software_suppress_notifications = TRUE;
+      if (method_exists($fresh, 'setValidationRequired')) {
+        $fresh->setValidationRequired(FALSE);
+      }
+      $fresh->save();
+    }
+    catch (\Throwable $e) {
+      $this->logger->warning('Failed to record review dispatch on node @nid: @msg', [
+        '@nid' => $node->id(),
+        '@msg' => $e->getMessage(),
+      ]);
+    }
   }
 
   /**
