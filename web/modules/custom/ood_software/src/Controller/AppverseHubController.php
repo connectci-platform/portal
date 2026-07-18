@@ -432,6 +432,27 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
+   * Admin action: re-trigger an AI review via the review_to_review transition.
+   *
+   * Route: POST /appverse/repo/{node}/re-review
+   *
+   * Uses the review_to_review self-transition (ready_for_review →
+   * ready_for_review) which bypasses the dispatch debounce in
+   * AppverseReviewService, ensuring a new review is always dispatched.
+   */
+  public function reReview(NodeInterface $node): RedirectResponse {
+    if ($node->bundle() !== 'appverse_repo') {
+      $this->messenger()->addError($this->t('Re-review is only available for Repos.'));
+      return $this->redirectToHub();
+    }
+    return $this->applyTransition(
+      $node,
+      'ready_for_review',
+      $this->t('Re-review triggered for @title.', ['@title' => $node->label()])
+    );
+  }
+
+  /**
    * Admin action: publish a Repo or App.
    *
    * Routes: POST /appverse/repo/{node}/publish
