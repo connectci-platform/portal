@@ -726,16 +726,6 @@ display:
         - 'user.node_grants:view'
         - user.permissions
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_community'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_end_date'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_location'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_start_date'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_track'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_community'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_end_date'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_location'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_start_date'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_track'
         - 'config:field.storage.node.field_community'
         - 'config:field.storage.node.field_end_date'
         - 'config:field.storage.node.field_location'
@@ -948,7 +938,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             campuschampions_cyberinfrastructure_org: campuschampions_cyberinfrastructure_org
           group: 1
@@ -1040,8 +1030,6 @@ display:
         - 'user.node_grants:view'
         - user.permissions
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_published_date'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_published_date'
         - 'config:field.storage.node.field_published_date'
   comm_events_affinity_group:
     id: comm_events_affinity_group
@@ -1645,16 +1633,6 @@ display:
         - 'user.node_grants:view'
         - user.permissions
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_community'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_end_date'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_location'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_start_date'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_track'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_community'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_end_date'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_location'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_start_date'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_track'
         - 'config:field.storage.node.field_community'
         - 'config:field.storage.node.field_end_date'
         - 'config:field.storage.node.field_location'

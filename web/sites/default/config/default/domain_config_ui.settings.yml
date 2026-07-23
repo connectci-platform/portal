@@ -1,0 +1,17 @@
+overridable_configurations:
+  -
+    name: system.site
+    domains:
+      - amp_cyberinfrastructure_org
+      - campuschampions_cyberinfrastructure_org
+      - careersct_cyberinfrastucture_org
+      - ccmnet_org
+      - coco_cyberinfrastructure_org
+      - connectcidev_wpi_edu
+      - greatplains_wpi_edu
+      - kycyberteam_cyberinfrastructure_org
+      - mines_cyberinfrastructure_org
+      - nectd8_wpi_edu
+      - openondemand_cyberinfrastructure_org
+      - pasciencedmz_connectci_org
+      - usrse_cyberinfrastructure_org

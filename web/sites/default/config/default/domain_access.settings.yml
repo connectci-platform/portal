@@ -1,3 +1,5 @@
 _core:
   default_config_hash: t7OcDTvXZT4FQ8IxyPjOy7e-LB2zLZm-b-F5EF89cmE
 node_advanced_tab: true
+access_fields_removal: false
+per_bundle_grants: false

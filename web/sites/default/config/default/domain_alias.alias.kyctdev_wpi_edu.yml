@@ -7,3 +7,4 @@ domain_id: kycyberteam_cyberinfrastructure_org
 pattern: kyctdev.wpi.edu
 redirect: 0
 environment: development
+weight: 35

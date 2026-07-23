@@ -52,11 +52,9 @@ module:
   datetime_range: 0
   dblog: 0
   domain: 0
-  domain_access: 0
   domain_alias: 0
   domain_config: 0
   domain_entity: 0
-  domain_source: 0
   domain_theme_switch: 0
   dynamic_page_cache: 0
   easy_breadcrumb: 0
@@ -224,6 +222,8 @@ module:
   pathauto: 1
   views: 10
   paragraphs: 11
+  domain_access: 20
+  domain_source: 30
   standard: 1000
   readonlymode: 9999
 theme:

@@ -7,3 +7,4 @@ domain_id: connectcidev_wpi_edu
 pattern: connectci.wpi.edu
 redirect: 0
 environment: default
+weight: 20

@@ -9,3 +9,4 @@ name: 'CAREERS Cyberteam'
 scheme: https
 weight: 5
 is_default: false
+path_prefix: ''

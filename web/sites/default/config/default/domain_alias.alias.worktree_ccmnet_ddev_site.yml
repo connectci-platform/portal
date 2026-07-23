@@ -7,3 +7,4 @@ domain_id: ccmnet_org
 pattern: '*.ccmnet.ddev.site'
 redirect: 0
 environment: default
+weight: 65

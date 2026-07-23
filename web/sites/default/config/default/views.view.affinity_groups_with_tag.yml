@@ -825,7 +825,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             all: all
             nectd8_wpi_edu: nectd8_wpi_edu

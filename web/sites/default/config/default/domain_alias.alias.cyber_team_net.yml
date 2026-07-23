@@ -7,3 +7,4 @@ domain_id: greatplains_wpi_edu
 pattern: cyber-team.net
 redirect: 0
 environment: default
+weight: 25

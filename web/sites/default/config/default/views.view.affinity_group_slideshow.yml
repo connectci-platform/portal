@@ -166,7 +166,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             openondemand_cyberinfrastructure_org: openondemand_cyberinfrastructure_org
           group: 1
@@ -290,8 +290,6 @@ display:
         - 'user.node_grants:view'
         - user.permissions
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_image'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_image'
         - 'config:field.storage.node.field_image'
   block_1:
     id: block_1
@@ -310,6 +308,4 @@ display:
         - 'user.node_grants:view'
         - user.permissions
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_image'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_image'
         - 'config:field.storage.node.field_image'

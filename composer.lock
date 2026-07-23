@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f725e6f5634e8e1f3f378b0b946e1f4",
+    "content-hash": "fe6f977a3810b7b0b2dee1cab2160719",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -3606,17 +3606,17 @@
         },
         {
             "name": "drupal/domain",
-            "version": "2.0.0-beta4",
+            "version": "3.0.1",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/domain.git",
-                "reference": "2.0.0-beta4"
+                "reference": "3.0.1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/domain-2.0.0-beta4.zip",
-                "reference": "2.0.0-beta4",
-                "shasum": "4e0479bcda36894e2b2310bf57a670b456cd609f"
+                "url": "https://ftp.drupal.org/files/projects/domain-3.0.1.zip",
+                "reference": "3.0.1",
+                "shasum": "3b2619d738ed01f0979c0a21a693d00dd0c2295d"
             },
             "require": {
                 "drupal/core": "^10.2 || ^11"
@@ -3628,11 +3628,11 @@
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.0.0-beta4",
-                    "datestamp": "1756880886",
+                    "version": "3.0.1",
+                    "datestamp": "1778231514",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -3670,7 +3670,7 @@
         },
         {
             "name": "drupal/domain_access",
-            "version": "2.0.0-beta8",
+            "version": "3.0.1",
             "require": {
                 "drupal/core": "^10.2 || ^11",
                 "drupal/domain": "*"
@@ -3678,11 +3678,11 @@
             "type": "metapackage",
             "extra": {
                 "drupal": {
-                    "version": "2.0.0-beta8",
-                    "datestamp": "1762960258",
+                    "version": "3.0.1",
+                    "datestamp": "1778231514",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -3720,7 +3720,7 @@
         },
         {
             "name": "drupal/domain_alias",
-            "version": "2.0.0-beta3",
+            "version": "3.0.1",
             "require": {
                 "drupal/core": "^10.2 || ^11",
                 "drupal/domain": "*"
@@ -3728,11 +3728,11 @@
             "type": "metapackage",
             "extra": {
                 "drupal": {
-                    "version": "2.0.0-beta3",
-                    "datestamp": "1750326380",
+                    "version": "3.0.1",
+                    "datestamp": "1778231514",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -3770,7 +3770,7 @@
         },
         {
             "name": "drupal/domain_config",
-            "version": "2.0.0-beta3",
+            "version": "3.0.1",
             "require": {
                 "drupal/core": "^10.2 || ^11",
                 "drupal/domain": "*"
@@ -3778,11 +3778,11 @@
             "type": "metapackage",
             "extra": {
                 "drupal": {
-                    "version": "2.0.0-beta3",
-                    "datestamp": "1750326380",
+                    "version": "3.0.1",
+                    "datestamp": "1778231514",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -3820,31 +3820,31 @@
         },
         {
             "name": "drupal/domain_entity",
-            "version": "1.0.0-rc6",
+            "version": "2.0.0",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/domain_entity.git",
-                "reference": "8.x-1.0-rc6"
+                "reference": "2.0.0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/domain_entity-8.x-1.0-rc6.zip",
-                "reference": "8.x-1.0-rc6",
-                "shasum": "ff755b13eec61006a5498a92e1229cfb27614996"
+                "url": "https://ftp.drupal.org/files/projects/domain_entity-2.0.0.zip",
+                "reference": "2.0.0",
+                "shasum": "1f965beb654c8d1d4d95f4dbe38c44d0e9595c12"
             },
             "require": {
-                "drupal/core": "^10 || ^11",
-                "drupal/domain": "^2.0@beta",
+                "drupal/core": "^10.1 || ^11",
+                "drupal/domain": "^2.0@beta || ^3",
                 "drupal/domain_access": "*"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "8.x-1.0-rc6",
-                    "datestamp": "1758178980",
+                    "version": "2.0.0",
+                    "datestamp": "1776328793",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "RC releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -3860,13 +3860,17 @@
                 },
                 {
                     "name": "Andrey Postnikov",
-                    "homepage": "https://www.drupal.org/user/1270276",
+                    "homepage": "https://www.drupal.org/user/289861",
                     "role": "Maintainer"
                 },
                 {
                     "name": "Vincent Baronnet",
-                    "homepage": "https://www.drupal.org/user/3411997",
+                    "homepage": "https://www.drupal.org/user/1270276",
                     "role": "Maintainer"
+                },
+                {
+                    "name": "frederikvho",
+                    "homepage": "https://www.drupal.org/user/3411997"
                 }
             ],
             "description": "Domain entity access",
@@ -3877,66 +3881,8 @@
             }
         },
         {
-            "name": "drupal/domain_site_settings",
-            "version": "1.6.0",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/domain_site_settings.git",
-                "reference": "8.x-1.6"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/domain_site_settings-8.x-1.6.zip",
-                "reference": "8.x-1.6",
-                "shasum": "d0f89411c5dd934a63a1a5991fbc0f76c1515cb2"
-            },
-            "require": {
-                "drupal/core": "^8.8 || ^9 || ^10 || ^11",
-                "drupal/domain": "^1.0 || ^2.0",
-                "drupal/domain_config": "*"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "8.x-1.6",
-                    "datestamp": "1726238712",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0+"
-            ],
-            "authors": [
-                {
-                    "name": "aloknarwaria",
-                    "homepage": "https://www.drupal.org/user/906640"
-                },
-                {
-                    "name": "jeroent",
-                    "homepage": "https://www.drupal.org/user/2228934"
-                },
-                {
-                    "name": "malaynayak",
-                    "homepage": "https://www.drupal.org/user/3529755"
-                }
-            ],
-            "description": "Basic Site Setting for Domains.",
-            "homepage": "https://www.drupal.org/project/domain_site_settings",
-            "keywords": [
-                "Drupal"
-            ],
-            "support": {
-                "source": "http://cgit.drupalcode.org/domain_site_settings",
-                "issues": "https://www.drupal.org/project/issues/domain_site_settings"
-            }
-        },
-        {
             "name": "drupal/domain_source",
-            "version": "2.0.0-beta8",
+            "version": "3.0.1",
             "require": {
                 "drupal/core": "^10.2 || ^11",
                 "drupal/domain": "*"
@@ -3944,11 +3890,11 @@
             "type": "metapackage",
             "extra": {
                 "drupal": {
-                    "version": "2.0.0-beta8",
-                    "datestamp": "1762960258",
+                    "version": "3.0.1",
+                    "datestamp": "1778231514",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -3986,27 +3932,28 @@
         },
         {
             "name": "drupal/domain_theme_switch",
-            "version": "2.1.1",
+            "version": "3.0.4",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/domain_theme_switch.git",
-                "reference": "2.1.1"
+                "reference": "3.0.4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/domain_theme_switch-2.1.1.zip",
-                "reference": "2.1.1",
-                "shasum": "d46e0deae60f9772391a6053a500865c75b3fe28"
+                "url": "https://ftp.drupal.org/files/projects/domain_theme_switch-3.0.4.zip",
+                "reference": "3.0.4",
+                "shasum": "bac993fd8501d562e1bc1111e3fdd92365d29012"
             },
             "require": {
                 "drupal/core": "^10.2 || ^11",
-                "drupal/domain": "^2.0"
+                "drupal/domain": "^3.0",
+                "drupal/domain_config": "*"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.1.1",
-                    "datestamp": "1761816166",
+                    "version": "3.0.4",
+                    "datestamp": "1778183437",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -24463,12 +24410,6 @@
         "drupal/auditfiles": 10,
         "drupal/crawler_rate_limit": 10,
         "drupal/datalayer": 5,
-        "drupal/domain": 10,
-        "drupal/domain_access": 10,
-        "drupal/domain_alias": 10,
-        "drupal/domain_config": 10,
-        "drupal/domain_entity": 5,
-        "drupal/domain_source": 10,
         "drupal/email_change_verification": 10,
         "drupal/inline_entity_form": 5,
         "drupal/label_help": 10,
