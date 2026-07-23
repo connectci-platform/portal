@@ -7,10 +7,14 @@
 use Drupal\campuschampions\Plugin\CarnegieCodesLookup;
 use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\user\Entity\User;
+use Drupal\user\UserInterface;
 use Drupal\views\ResultRow;
 use Drupal\views\ViewExecutable;
 
@@ -98,6 +102,39 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
   $start = 'contact_message';
   if (@substr_compare($form_id, $start, 0, strlen($start)) == 0) {
     $form['actions']['preview']['#access'] = FALSE;
+  }
+
+  // Once the organization has been set, only administrators may change it.
+  // Everyone else gets a read-only widget with a link to request a change.
+  // Campus Champions domain only -- the Letter of Collaboration is what ties
+  // the organization to the account here.
+  $is_cc_domain = \Drupal::service('access_misc.sitetools')->getDomainId() == 'campuschampions_cyberinfrastructure_org';
+  if ($is_cc_domain
+    && in_array($form_id, ['user_form', 'user_register_form'], TRUE)
+    && isset($form['field_access_organization']['widget'][0]['target_id'])) {
+    $element = &$form['field_access_organization']['widget'][0]['target_id'];
+    $is_admin = in_array('administrator', \Drupal::currentUser()->getRoles());
+    $has_value = FALSE;
+    $form_object = $form_state->getFormObject();
+    if ($form_object instanceof EntityFormInterface) {
+      $account = $form_object->getEntity();
+      $has_value = $account instanceof UserInterface
+        && !$account->get('field_access_organization')->isEmpty();
+    }
+
+    if ($has_value && !$is_admin) {
+      $element['#attributes']['readonly'] = 'readonly';
+      // #disabled makes the form API ignore any submitted value and keep
+      // the stored one, so the readonly attribute cannot be bypassed.
+      $element['#disabled'] = TRUE;
+      // Prevent the autocomplete from offering replacement values.
+      $element['#autocomplete_route_name'] = NULL;
+    }
+
+    $element['#suffix'] = ($element['#suffix'] ?? '') . '<div class="description mb-3">'
+      . Link::fromTextAndUrl(t('Update Letter of Collaboration'), Url::fromUri('internal:/form/join-campus-champions'))->toString()
+      . '</div>';
+    unset($element);
   }
 }
 

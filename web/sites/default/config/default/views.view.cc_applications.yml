@@ -10,6 +10,7 @@ dependencies:
     - user.role.lt
     - webform.webform.join_campus_champions
   module:
+    - campuschampions
     - user
     - views_bulk_operations
     - webform
@@ -688,6 +689,47 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
+        cc_duplicate_name:
+          id: cc_duplicate_name
+          table: webform_submission
+          field: cc_duplicate_name
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: campuschampions_duplicate_submission_name
+          operator: '='
+          value: All
+          group: 1
+          exposed: true
+          expose:
+            operator_id: ''
+            label: 'Duplicate names only'
+            description: 'Show only applications whose first and last name match another application.'
+            use_operator: false
+            operator: cc_duplicate_name_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: cc_duplicate_name
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+          webform_id: join_campus_champions
+          first_name_element: user_first_name
+          last_name_element: user_last_name
       style:
         type: table
         options:
@@ -719,7 +761,7 @@ display:
               empty_column: false
               responsive: ''
             webform_submission_value:
-              sortable: false
+              sortable: true
               default_sort_order: asc
               align: ''
               separator: ''

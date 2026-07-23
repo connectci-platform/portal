@@ -61,7 +61,7 @@
         "connectci/asp-theme": "main-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
-        "connectci/webform_submission_search_api": "main-dev",
+        "connectci/access": "3.0.x-dev",
         "composer/installers": "^2.3.0",
         "cweagans/composer-patches": "^2.0",
         "drupal/access_by_ref": "^4.0.0",

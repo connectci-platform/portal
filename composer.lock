@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f725e6f5634e8e1f3f378b0b946e1f4",
+    "content-hash": "f86941ffd70783516cf4447b580da484",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -792,39 +792,6 @@
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
             "time": "2026-07-13T14:40:10+00:00"
-        },
-        {
-            "name": "connectci/webform_submission_search_api",
-            "version": "dev-main",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/connectci-platform/webform_submission_search_api.git",
-                "reference": "a646925bf3c798ba92c3bcfe9624a6654305be1f"
-            },
-            "require": {
-                "drupal/search_api": "^1.3",
-                "drupal/webform": "^6"
-            },
-            "default-branch": true,
-            "type": "drupal-custom-module",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Andrew Pasquale",
-                    "email": "andrew@elytra.net"
-                }
-            ],
-            "description": "Index fields from Webform Submissions for Search API",
-            "keywords": [
-                "Drupal"
-            ],
-            "support": {
-                "issues": "https://github.com/connectci-platform/webform_submission_search_api/issues",
-                "source": "https://github.com/connectci-platform/webform_submission_search_api"
-            },
-            "time": "2026-07-13T01:29:17+00:00"
         },
         {
             "name": "consolidation/annotated-command",
@@ -24459,7 +24426,6 @@
         "connectci/asp-theme": 20,
         "connectci/campus-champions-theme": 20,
         "connectci/operations_cider": 20,
-        "connectci/webform_submission_search_api": 20,
         "drupal/auditfiles": 10,
         "drupal/crawler_rate_limit": 10,
         "drupal/datalayer": 5,
