@@ -1,0 +1,18 @@
+uuid: c9c26750-cb05-44f7-83c9-5ba679048208
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: pasciencedmz_connectci_org
+id: pasciencedmz_connectci_org
+label: 'PA Science sitemap'
+description: 'Sitemap type for domain: PA Science'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

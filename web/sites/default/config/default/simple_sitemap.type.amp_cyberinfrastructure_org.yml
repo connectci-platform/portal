@@ -1,0 +1,18 @@
+uuid: 451af167-39a6-4d36-92b9-e3b4d8ad99d3
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: amp_cyberinfrastructure_org
+id: amp_cyberinfrastructure_org
+label: 'ACCESS Support sitemap'
+description: 'Sitemap type for domain: ACCESS Support'
+sitemap_generator: default
+url_generators:
+  domain_entity: domain_entity
+  arbitrary: arbitrary
+  custom: custom
+  entity_menu_link_content: entity_menu_link_content

@@ -5,4 +5,7 @@ adding:
   permissions:
     - 'access devel information'
     - 'switch users'
-removing: {  }
+removing:
+  dependencies:
+    module:
+      - ood_software

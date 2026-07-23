@@ -1,0 +1,18 @@
+uuid: fad9c620-5e8b-4a53-806c-a7e65d267ce9
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: greatplains_wpi_edu
+id: greatplains_wpi_edu
+label: 'Great Plains Cyberteam sitemap'
+description: 'Sitemap type for domain: Great Plains Cyberteam'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

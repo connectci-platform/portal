@@ -24,6 +24,9 @@
     },
     "drupal/multiple_registration": {
       "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
+    },
+    "drupal/domain_simple_sitemap": {
+      "Long domain machine names exceed the 32 char sitemap ID limit and break generation": "patches/domain_simple_sitemap-sitemap-id-max-length.patch"
     }
   }
 }

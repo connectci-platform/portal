@@ -1,0 +1,142 @@
+diff --git a/domain_simple_sitemap.module b/domain_simple_sitemap.module
+index afdcfc7..dfad367 100644
+--- a/domain_simple_sitemap.module
++++ b/domain_simple_sitemap.module
+@@ -60,10 +60,15 @@ function domain_simple_sitemap_simple_sitemap_links_alter(array &$links, $sitema
+   if (!$replace_homepage) {
+     return;
+   }
+-  // Resolve this variant to a domain.
++  // Resolve this variant to a domain via the sitemap type's third party
++  // setting, as the variant ID may be a shortened version of the domain ID.
+   $storage = \Drupal::entityTypeManager()->getStorage('domain');
++  $domain_id = NULL;
++  if (isset($sitemap_variant->type) && $sitemap_type = SimpleSitemapType::load($sitemap_variant->type)) {
++    $domain_id = $sitemap_type->getThirdPartySetting('domain_simple_sitemap', 'sitemap_domain');
++  }
+ 
+-  if (isset($sitemap_variant->type) && $domain = $storage->load($sitemap_variant->type)) {
++  if ($domain_id && $domain = $storage->load($domain_id)) {
+     // The base URL of the domain is also its path.
+     $front = $domain->getPath();
+     // Load the domain's configuration to find the front page.
+diff --git a/src/DomainSitemapManager.php b/src/DomainSitemapManager.php
+index 649fcb9..170c630 100644
+--- a/src/DomainSitemapManager.php
++++ b/src/DomainSitemapManager.php
+@@ -2,10 +2,11 @@
+ 
+ namespace Drupal\domain_simple_sitemap;
+ 
++use Drupal\Core\Entity\EntityTypeInterface;
+ use Drupal\Core\Entity\EntityTypeManagerInterface;
+ use Drupal\domain\DomainInterface;
+ use Drupal\domain\DomainValidatorInterface;
+-use Drupal\simple_sitemap\Entity\SimpleSitemapType;
++use Drupal\simple_sitemap\Entity\SimpleSitemapTypeInterface;
+ 
+ /**
+  * The service for domain_simple_sitemap module.
+@@ -52,16 +53,20 @@ class DomainSitemapManager {
+    */
+   public function addSitemapVariant(DomainInterface $domain) {
+     // Test if it does not already exist.
+-    $sitemap_type = SimpleSitemapType::load($domain->id());
++    $sitemap_type = $this->loadSitemapType($domain);
+     if (!is_null($sitemap_type)) {
+       \Drupal::logger('domain_simple_sitemap')->notice('Failed creating new sitemap type because it already exists: ' . $domain->id());
+       return;
+     }
++    // The sitemap ID is stored in a varchar(32) column
++    // (EntityTypeInterface::ID_MAX_LENGTH), so long domain machine names
++    // cannot be used as sitemap IDs directly.
++    $sitemap_id = $this->generateSitemapId($domain);
+     // Create a new sitemap type for the domain.
+     $type_storage = $this->entityTypeManager->getStorage('simple_sitemap_type');
+-    if ($type_storage->load($domain->id()) === NULL) {
++    if ($type_storage->load($sitemap_id) === NULL) {
+       $domain_sitemap = $type_storage->create([
+-        'id' => $domain->id(),
++        'id' => $sitemap_id,
+         'label' => $domain->label() . ' sitemap',
+         'description' => 'Sitemap type for domain: ' . $domain->label(),
+         'sitemap_generator' => 'default',
+@@ -79,9 +84,9 @@ class DomainSitemapManager {
+ 
+       // Create a sitemap variant using this sitemap type.
+       $variant_storage = $this->entityTypeManager->getStorage('simple_sitemap');
+-      if ($variant_storage->load($domain->id()) === NULL) {
++      if ($variant_storage->load($sitemap_id) === NULL) {
+         $domain_sitemap_variant = $variant_storage->create([
+-          'id' => $domain->id(),
++          'id' => $sitemap_id,
+           'label' => $domain->label() . ' sitemap',
+           'description' => 'Sitemap variant for domain: ' . $domain->label(),
+           'type' => $domain_sitemap->id(),
+@@ -106,10 +111,65 @@ class DomainSitemapManager {
+    *   The domain of which to delete the sitemap type from.
+    */
+   public function deleteSitemapVariant(DomainInterface $domain) {
+-    $sitemap_type = SimpleSitemapType::load($domain->id());
++    $sitemap_type = $this->loadSitemapType($domain);
+     if ($sitemap_type) {
++      $variants = $this->entityTypeManager->getStorage('simple_sitemap')
++        ->loadByProperties(['type' => $sitemap_type->id()]);
++      foreach ($variants as $variant) {
++        $variant->delete();
++      }
+       $sitemap_type->delete();
+     }
+   }
+ 
++  /**
++   * Load the sitemap type belonging to a domain.
++   *
++   * The domain is resolved via the sitemap_domain third party setting rather
++   * than the entity ID, as the sitemap type ID may be a shortened version of
++   * the domain ID.
++   *
++   * @param \Drupal\domain\DomainInterface $domain
++   *   The domain to load the sitemap type for.
++   *
++   * @return \Drupal\simple_sitemap\Entity\SimpleSitemapTypeInterface|null
++   *   The sitemap type or NULL if none exists for this domain.
++   */
++  public function loadSitemapType(DomainInterface $domain): ?SimpleSitemapTypeInterface {
++    $type_storage = $this->entityTypeManager->getStorage('simple_sitemap_type');
++    $ids = $type_storage->getQuery()
++      ->condition('third_party_settings.domain_simple_sitemap.sitemap_domain', $domain->id())
++      ->execute();
++    if ($ids) {
++      return $type_storage->load(reset($ids));
++    }
++    // Fall back to the legacy behavior of the sitemap type ID matching the
++    // domain ID.
++    $sitemap_type = $type_storage->load($domain->id());
++    return $sitemap_type instanceof SimpleSitemapTypeInterface ? $sitemap_type : NULL;
++  }
++
++  /**
++   * Generate a sitemap/sitemap type ID for a domain.
++   *
++   * Sitemap IDs are limited to EntityTypeInterface::ID_MAX_LENGTH (32)
++   * characters because the simple_sitemap table stores them in a varchar(32)
++   * column. Domain machine names can be longer, so IDs exceeding the limit
++   * are truncated and suffixed with a hash to keep them unique.
++   *
++   * @param \Drupal\domain\DomainInterface $domain
++   *   The domain to generate the sitemap ID for.
++   *
++   * @return string
++   *   A sitemap ID no longer than 32 characters.
++   */
++  public function generateSitemapId(DomainInterface $domain): string {
++    $id = $domain->id();
++    if (strlen($id) <= EntityTypeInterface::ID_MAX_LENGTH) {
++      return $id;
++    }
++    $hash = substr(md5($id), 0, 6);
++    return substr($id, 0, EntityTypeInterface::ID_MAX_LENGTH - 7) . '_' . $hash;
++  }
++
+ }

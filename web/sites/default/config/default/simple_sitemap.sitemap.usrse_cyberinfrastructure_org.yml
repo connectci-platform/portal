@@ -1,0 +1,11 @@
+uuid: ce4b54f9-99a9-4785-a50c-9b2dca745994
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.usrse_cyberinfrastructure_org
+id: usrse_cyberinfrastructure_org
+label: 'USRSE sitemap'
+description: 'Sitemap variant for domain: USRSE'
+type: usrse_cyberinfrastructure_org
+weight: 0

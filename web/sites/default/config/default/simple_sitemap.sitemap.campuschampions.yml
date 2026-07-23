@@ -1,0 +1,11 @@
+uuid: 588593bd-3d5e-408d-927a-61085eb31a11
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.campuschampions
+id: campuschampions
+label: 'Campus Champions sitemap'
+description: 'Sitemap variant for domain: Campus Champions'
+type: campuschampions
+weight: 0

@@ -1,0 +1,18 @@
+uuid: 35982697-5ea2-4e6f-a883-dcf92b39f3fa
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: ccmnet_org
+id: ccmnet_org
+label: 'CCMNet sitemap'
+description: 'Sitemap type for domain: CCMNet'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f725e6f5634e8e1f3f378b0b946e1f4",
+    "content-hash": "2b823120cfd7a83d21ac258f5aa45e2a",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -675,18 +675,17 @@
         },
         {
             "name": "connectci/access",
-            "version": "3.0.x-dev",
+            "version": "dev-d8-2780",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "af9568ee97dd366c9df6af8cc42f1d374bb7939a"
+                "reference": "097164df4a2c4d6a952b642ab9dffdcb1661e43e"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -702,7 +701,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-07-23T16:17:43+00:00"
+            "time": "2026-07-23T17:44:08+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -3874,6 +3873,81 @@
             "support": {
                 "source": "https://git.drupalcode.org/project/domain_entity.git",
                 "issues": "https://www.drupal.org/project/issues/domain_entity"
+            }
+        },
+        {
+            "name": "drupal/domain_simple_sitemap",
+            "version": "3.0.0-rc3",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/domain_simple_sitemap.git",
+                "reference": "3.0.0-rc3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/domain_simple_sitemap-3.0.0-rc3.zip",
+                "reference": "3.0.0-rc3",
+                "shasum": "791254b45dec3670af7c67aa69f5a617fec8b444"
+            },
+            "require": {
+                "drupal/core": "^9 || ^10 || ^11",
+                "drupal/domain_access": "*",
+                "drupal/simple_sitemap": "*"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "3.0.0-rc3",
+                    "datestamp": "1751635848",
+                    "security-coverage": {
+                        "status": "not-covered",
+                        "message": "Project has not opted into security advisory coverage!"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0+"
+            ],
+            "authors": [
+                {
+                    "name": "Mladen Stankovic a.k.a euphoric_mv",
+                    "homepage": "https://www.drupal.org/user/172527",
+                    "email": "mstankovic@adyax.com"
+                },
+                {
+                    "name": "Ruben Egiguren a.k.a keopx",
+                    "homepage": "https://www.drupal.org/user/1571216",
+                    "email": "keopx@keopx.net"
+                },
+                {
+                    "name": "Ambroise Nicolas a.k.a nambroise",
+                    "homepage": "https://www.drupal.org/user/3204205",
+                    "email": "info@nicolasambroise.com"
+                },
+                {
+                    "name": "i-trokhanenko",
+                    "homepage": "https://www.drupal.org/user/3546872"
+                },
+                {
+                    "name": "keopx",
+                    "homepage": "https://www.drupal.org/user/377362"
+                },
+                {
+                    "name": "nicolasambroise",
+                    "homepage": "https://www.drupal.org/user/3441721"
+                }
+            ],
+            "description": "Domain Access Sitemap module generates sitemaps for active domains. It requires Domain Access and Simple Sitemap modules.",
+            "homepage": "https://www.drupal.org/project/domain_simple_sitemap",
+            "keywords": [
+                "Drupal",
+                "SEO",
+                "Utility"
+            ],
+            "support": {
+                "source": "http://cgit.drupalcode.org/domain_simple_sitemap",
+                "issues": "https://www.drupal.org/project/issues/domain_simple_sitemap"
             }
         },
         {
@@ -9193,6 +9267,64 @@
             "homepage": "https://www.drupal.org/project/shortcode",
             "support": {
                 "source": "https://git.drupalcode.org/project/shortcode"
+            }
+        },
+        {
+            "name": "drupal/simple_sitemap",
+            "version": "4.2.3",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/simple_sitemap.git",
+                "reference": "4.2.3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/simple_sitemap-4.2.3.zip",
+                "reference": "4.2.3",
+                "shasum": "08e87178a35fe2a89202d2423f3de1656e1e814a"
+            },
+            "require": {
+                "drupal/core": "^10.3 || ^11",
+                "ext-xmlwriter": "*"
+            },
+            "conflict": {
+                "drush/drush": "<12.5.1"
+            },
+            "require-dev": {
+                "drupal/paragraphs": "^1.18"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "4.2.3",
+                    "datestamp": "1764147268",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Pawel Ginalski (gbyte)",
+                    "homepage": "https://www.drupal.org/u/gbyte",
+                    "email": "contact@gbyte.dev",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "walkingdexter",
+                    "homepage": "https://www.drupal.org/user/3251330"
+                }
+            ],
+            "description": "Creates a standard conform hreflang XML sitemap of the site content and provides a framework for developing other sitemap types.",
+            "homepage": "https://drupal.org/project/simple_sitemap",
+            "support": {
+                "source": "https://cgit.drupalcode.org/simple_sitemap",
+                "issues": "https://drupal.org/project/issues/simple_sitemap"
             }
         },
         {
@@ -24468,6 +24600,7 @@
         "drupal/domain_alias": 10,
         "drupal/domain_config": 10,
         "drupal/domain_entity": 5,
+        "drupal/domain_simple_sitemap": 5,
         "drupal/domain_source": 10,
         "drupal/email_change_verification": 10,
         "drupal/inline_entity_form": 5,

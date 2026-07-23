@@ -1,0 +1,11 @@
+uuid: ac28299c-8fc4-448b-8480-1d3c59b71a05
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.kycyberteam
+id: kycyberteam
+label: 'Kentucky Cyberteam sitemap'
+description: 'Sitemap variant for domain: Kentucky Cyberteam'
+type: kycyberteam
+weight: 0

@@ -1,5 +1,5 @@
 {
-    "_hash": "4ec0d880de81cea18d2e169e9753f8d1d31314787e1e4464f7aede5f86639f56",
+    "_hash": "55cca132e229fb934d451c0ec48ac8529d6d0259bf3c74d817195d10a4b736a5",
     "patches": {
         "drupal/core": [
             {
@@ -119,6 +119,18 @@
                 "description": "Undefined array key #access in form_alter",
                 "url": "patches/multiple_registration-undefined-access-key.patch",
                 "sha256": "c2c2db46bf70e0dff2a4422680b17f68480fb976868ba53cc99717801daf7684",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/domain_simple_sitemap": [
+            {
+                "package": "drupal/domain_simple_sitemap",
+                "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
+                "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
+                "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

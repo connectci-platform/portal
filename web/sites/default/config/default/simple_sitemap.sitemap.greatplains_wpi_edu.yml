@@ -1,0 +1,11 @@
+uuid: 3396da7f-82b7-4978-8c6a-2d9a011db8c4
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.greatplains_wpi_edu
+id: greatplains_wpi_edu
+label: 'Great Plains Cyberteam sitemap'
+description: 'Sitemap variant for domain: Great Plains Cyberteam'
+type: greatplains_wpi_edu
+weight: 0

@@ -1,0 +1,11 @@
+uuid: ed0d79a8-a048-4d4b-a1e3-dcf45218d0b0
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.mines_cyberinfrastructure_org
+id: mines_cyberinfrastructure_org
+label: 'MINES Cyberteam sitemap'
+description: 'Sitemap variant for domain: MINES Cyberteam'
+type: mines_cyberinfrastructure_org
+weight: 0
