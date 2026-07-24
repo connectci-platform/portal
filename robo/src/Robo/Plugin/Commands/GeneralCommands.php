@@ -3,8 +3,6 @@
 namespace Mih\Robo\Plugin\Commands;
 
 use Robo\Exception\TaskException;
-use Robo\Result;
-use Robo\Robo;
 use Robo\Tasks;
 use Drupal\Component\Utility\Crypt;
 
@@ -12,7 +10,6 @@ use Drupal\Component\Utility\Crypt;
  * Defines general commands.
  */
 class GeneralCommands extends Tasks {
-
 
   /**
    * DDEV command prefix.
@@ -23,15 +20,6 @@ class GeneralCommands extends Tasks {
       $ddev = "";
     }
     return $ddev;
-  }
-
-  /**
-   * Return system uname.
-   */
-  private function uname() {
-    $os = shell_exec("uname -s");
-    $os = str_replace(array("\n", "\r"), '', $os);
-    return $os;
   }
 
   /**
@@ -46,15 +34,15 @@ class GeneralCommands extends Tasks {
       $domain_id = '';
     }
 
-    // Detect if we're in DDEV container or native environment
+    // Detect if we're in DDEV container or native environment.
     $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
 
     if ($is_ddev) {
-      // When inside DDEV container, commands don't need ddev prefix
+      // When inside DDEV container, commands don't need ddev prefix.
       $cmd_prefix = "";
     }
     else {
-      // Native environment - use DDEV commands from host
+      // Native environment - use DDEV commands from host.
       $cmd_prefix = "ddev ";
     }
 
@@ -67,8 +55,9 @@ class GeneralCommands extends Tasks {
     $this->_exec($cmd_prefix . "drush deploy -y");
     $this->_exec("sleep 1");
     $this->_exec($cmd_prefix . "drush cim -y");
-    // Disable seamless CILogon — it survives config import via config_exclude_modules
-    // and redirects authenticated users without the SSO cookie to logout.
+    // Disable seamless CILogon — it survives config import via
+    // config_exclude_modules and redirects authenticated users without the
+    // SSO cookie to logout.
     $this->_exec($cmd_prefix . "drush sset drupal_seamless_cilogon.seamless_login_enabled 0 2>/dev/null || true");
     $this->_exec("sleep 1");
     if (!empty($domain_id)) {
@@ -76,9 +65,9 @@ class GeneralCommands extends Tasks {
     }
     else {
       $this->_exec("sleep 1");
-      # Enable symfony_mailer_log module for testing
+      // Enable symfony_mailer_log module for testing.
       $this->_exec($cmd_prefix . "drush en symfony_mailer_log -y");
-      # Use sendmail transport locally (DDEV routes to Mailpit)
+      // Use sendmail transport locally (DDEV routes to Mailpit)
       $this->_exec($cmd_prefix . "drush cset symfony_mailer.settings default_transport sendmail -y");
       $this->_exec($cmd_prefix . "drush cr");
     }
@@ -92,7 +81,7 @@ class GeneralCommands extends Tasks {
    * @description Login locally with personal username set in github.
    */
   public function uli() {
-    $uid = $_ENV["AMP_UID"] ?? null;
+    $uid = $_ENV["AMP_UID"] ?? NULL;
 
     if ($this->ddev() == '') {
       if ($uid) {
@@ -107,7 +96,6 @@ class GeneralCommands extends Tasks {
     }
   }
 
-
   /**
    * Setup DDEV environment.
    *
@@ -115,7 +103,7 @@ class GeneralCommands extends Tasks {
    * @description Setup DDEV environment with GitHub auth and database.
    */
   public function ddevsetup(array $args) {
-    // Detect if we're running inside DDEV container
+    // Detect if we're running inside DDEV container.
     $in_container = getcwd() == '/var/www/html' || getenv('DDEV_PROJECT');
 
     if ($in_container) {
@@ -133,7 +121,6 @@ class GeneralCommands extends Tasks {
       $uid = $this->ask("What is your drupal user id: ");
     }
 
-    $files = 'web/sites/default/files';
     $db_backup = 'backups';
 
     // Create symlink if needed (DDEV uses 'web' as docroot)
@@ -141,11 +128,11 @@ class GeneralCommands extends Tasks {
       $this->_exec("ln -s web docroot");
     }
 
-    // Setup directories and settings
+    // Setup directories and settings.
     $this->_exec("mkdir -p web/sites/default/settings");
     $this->_exec("cp robo/assets/ddev.local.settings.php web/sites/default/settings/local.settings.php");
 
-    // Generate hash and create .env file
+    // Generate hash and create .env file.
     $hash = Crypt::randomBytesBase64(55);
     $this->_exec("echo 'PANTHEON_ENVIRONMENT=local
 DRUPAL_HASH_SALT=$hash
@@ -155,12 +142,12 @@ GITHUB_TOKEN=$token'>.env");
     $this->say("❗️ Environment vars setup, now starting DDEV. ❗️");
     $this->_exec("ddev start");
 
-    // Setup GitHub auth in DDEV
+    // Setup GitHub auth in DDEV.
     $this->_exec("echo \"$token\" | ddev exec gh auth login --with-token");
     $this->_exec("ddev exec composer config --global github-protocols https");
     $this->_exec("ddev exec composer config -g github-oauth.github.com $token");
 
-    // Download database if needed
+    // Download database if needed.
     if (!file_exists($db_backup)) {
       $this->_exec("mkdir backups");
       $this->_exec("ddev exec vendor/bin/robo gh:pulldb");
@@ -170,7 +157,7 @@ GITHUB_TOKEN=$token'>.env");
     $this->say("Downloading files from backup...");
     $this->_exec("ddev exec vendor/bin/robo gh:pullfiles");
 
-    // Import database and deploy
+    // Import database and deploy.
     $this->_exec("ddev exec vendor/bin/robo did");
     $this->_exec("ddev exec drush deploy");
 
@@ -191,13 +178,25 @@ GITHUB_TOKEN=$token'>.env");
       $this->say("No security updates found.");
       return;
     }
+    $repo = "connectci-platform/portal";
     foreach ($security_updates as $value) {
       $name = $value[0]['packageName'];
+
+      // Skip if an update branch for this package already exists on the repo.
+      // The composer_update runner names the branch after the package
+      // (e.g. drupal/core), so a lingering branch means an update is in flight.
+      $branch_exists = shell_exec(
+        "gh api repos/$repo/git/ref/heads/$name --silent >/dev/null 2>&1 && echo yes"
+      );
+      if (trim((string) $branch_exists) === 'yes') {
+        $this->say("Branch already exists for $name, skipping.");
+        continue;
+      }
+
       $this->say("Sending update to GitHub composer action for $name");
-      $this->_exec("gh workflow run updates.yml --ref main --repo github.com/connectci-platform/portal -f drupal_update=$name");
+      $this->_exec("gh workflow run updates.yml --ref main --repo github.com/$repo -f drupal_update=$name");
     }
   }
-
 
   /**
    * Config export.
@@ -234,7 +233,8 @@ GITHUB_TOKEN=$token'>.env");
     $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
     if ($is_ddev) {
       $this->_exec("drush sql-dump --result-file=backups/snapshots/" . $date . "_" . $branch . "_" . $snap_name . ".sql.gz");
-    } else {
+    }
+    else {
       $this->_exec("ddev export-db --file=backups/snapshots/" . $date . "_" . $branch . "_" . $snap_name . ".sql.gz");
     }
   }
@@ -264,7 +264,8 @@ GITHUB_TOKEN=$token'>.env");
     $this->_exec($cmd_prefix . "composer install");
     if ($is_ddev) {
       $this->_exec("drush sql-drop -y && gunzip -c backups/snapshots/" . $snap_name[$snap_selected][0] . "_" . $snap_name[$snap_selected][1] . "_" . $snap_name[$snap_selected][2] . ".sql.gz | drush sqlc");
-    } else {
+    }
+    else {
       $this->_exec("ddev import-db --file=backups/snapshots/" . $snap_name[$snap_selected][0] . "_" . $snap_name[$snap_selected][1] . "_" . $snap_name[$snap_selected][2] . ".sql.gz");
     }
     $this->say("Restored Snapshot: " . $snap_name[$snap_selected][2]);
@@ -287,7 +288,7 @@ GITHUB_TOKEN=$token'>.env");
     if ($module == 'drupal/core') {
       $this->say("Updating Drupal core");
       $this->_exec("composer update drupal/core-recommended drupal/core-composer-scaffold drupal/core-dev --ignore-platform-reqs -W >log.txt 2>&1");
-      $this->composer_updates('/Upgrading (drupal)\/core \((.* => .*)\)$/mU', TRUE);
+      $this->composerUpdates('/Upgrading (drupal)\/core \((.* => .*)\)$/mU', TRUE);
     }
     elseif (!empty($module)) {
       echo $version;
@@ -299,14 +300,14 @@ GITHUB_TOKEN=$token'>.env");
         $this->say("Updating $module minor release");
         $this->_exec("composer update $module --no-scripts --ignore-platform-reqs >log.txt 2>&1");
       }
-      $this->composer_updates('/Upgrading .*\/(.*)\((.* => .*)\)$/m', TRUE);
+      $this->composerUpdates('/Upgrading .*\/(.*)\((.* => .*)\)$/m', TRUE);
     }
   }
 
   /**
    * Composer updates.
    */
-  private function composer_updates($regex, $ci = FALSE) {
+  private function composerUpdates($regex, $ci = FALSE) {
     $log = file_get_contents("log.txt");
     $log = preg_match_all($regex, $log, $update_matches);
     $this->say("-=-=-=-=-Log Message=-=-===-\n$log");
@@ -360,7 +361,6 @@ GITHUB_TOKEN=$token'>.env");
     $this->_exec("rm log.txt");
   }
 
-
   /**
    * Drush Deploy.
    *
@@ -397,17 +397,17 @@ GITHUB_TOKEN=$token'>.env");
       $this->_exec($cmd_prefix . 'drush cr');
     }
 
-    // Detect if we're running inside DDEV container or on host
+    // Detect if we're running inside DDEV container or on host.
     $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
 
     if ($is_ddev) {
-      // Running inside DDEV container - delegate to host
+      // Running inside DDEV container - delegate to host.
       $this->say("Running Cypress tests from host machine...");
       $this->_exec('vendor/bin/robo cypress ' . implode(' ', $args));
       return;
     }
 
-    // Running on host - proceed with Cypress setup
+    // Running on host - proceed with Cypress setup.
     $this->say("Setting up Cypress dependencies on host...");
     $this->_exec('cd tests/cypress && npm ci');
 
@@ -434,7 +434,8 @@ GITHUB_TOKEN=$token'>.env");
           $this->_exec('cp -r tests/cypress/cypress/screenshots/* /tmp/screenshots/');
         }
       }
-    } else {
+    }
+    else {
       $results = $this->_exec('cd tests/cypress && npx cypress run --config baseUrl=https://' . $domain . '.ddev.site --spec "cypress/e2e/' . $site . '/**/*.js" --browser chrome');
 
       if ($results->wasSuccessful() == FALSE) {
@@ -450,36 +451,6 @@ GITHUB_TOKEN=$token'>.env");
     else {
       $this->say("✅ Cypress tests passed. ✅");
     }
-  }
-
-  /**
-   * Check for cypress error.
-   */
-  private function cypress_error($process, $pipes) {
-    $error = FALSE;
-
-    // Read the output from the command in real-time.
-    while ($line = fgets($pipes[1])) {
-      echo $line;
-      $pattern = "/failed/i";
-      if (preg_match($pattern, $line)) {
-        // Close the pipes and the process.
-        fclose($pipes[0]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
-        $error = TRUE;
-      }
-    }
-
-    // Close the pipes and the process.
-    fclose($pipes[0]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-    proc_close($process);
-
-
-    return $error;
   }
 
   /**
@@ -594,7 +565,7 @@ GITHUB_TOKEN=$token'>.env");
     $worktree = "../worktrees/$branch";
 
     $this->_exec("git worktree add -f $worktree $branch");
-    //$this->_exec("chmod -R 777 $worktree/web/sites/default/files");
+    // $this->_exec("chmod -R 777 $worktree/web/sites/default/files");
     $this->_exec("cd $worktree && composer install");
     $source_env = '.ddev/.env';
     $destination_env = "$worktree/.ddev/.env";
@@ -640,7 +611,7 @@ GITHUB_TOKEN=$token'>.env");
   }
 
   /**
-   * Reset .ddev/config.yaml in a worktree to its correct state after a merge or rebase.
+   * Reset a worktree's .ddev/config.yaml after a merge or rebase.
    *
    * @command tree:config
    * @description Resets the worktree's .ddev/config.yaml with the correct project name and domain alias prefixes, then marks it assume-unchanged.
