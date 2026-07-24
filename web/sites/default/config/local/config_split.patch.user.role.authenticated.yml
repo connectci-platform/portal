@@ -5,4 +5,4 @@ adding:
   permissions:
     - 'access devel information'
     - 'switch users'
-removing: { }
+removing: {  }
