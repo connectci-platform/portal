@@ -31,6 +31,9 @@ vendor/bin/phpstan analyse -l 0 docroot/modules/custom/<module>
 # Run PHPUnit for a specific module
 cd docroot/modules/custom/<module> && ../../../../vendor/bin/phpunit
 
+# Interacting with Jira
+acli
+
 # When changing composer patches, be sure to run:
 composer patches-relock
 composer patches-repatch
