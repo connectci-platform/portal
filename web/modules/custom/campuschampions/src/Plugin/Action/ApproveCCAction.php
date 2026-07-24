@@ -115,6 +115,30 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
 
     $user = user_load_by_mail($user_email);
     if (!$user) {
+      // The applicant may already have an account under a different email
+      // whose username matches the one they entered (e.g. an ACCESS-CI ID).
+      // Fall back to a username lookup so we update that existing account
+      // rather than failing the approval.
+      $username = $data['username'] ?? NULL;
+      if ($username) {
+        $user = user_load_by_name($username);
+        if ($user) {
+          // Audit trail: the approval is adopting an account whose email
+          // differs from the application's. The welcome email goes to the
+          // account's registered address, not the one on the application.
+          $this->loggerFactory->get('campuschampions')->notice(
+            'Approval for @app_email adopted existing account @name (uid @uid, account email @acct_email).',
+            [
+              '@app_email' => $user_email,
+              '@name' => $username,
+              '@uid' => $user->id(),
+              '@acct_email' => $user->getEmail(),
+            ]
+          );
+        }
+      }
+    }
+    if (!$user) {
       $this->loggerFactory->get('campuschampions')->error('Could not find user with email @email for approval.', ['@email' => $user_email]);
       return $this->t('Error: User not found for email @email.', ['@email' => $user_email]);
     }

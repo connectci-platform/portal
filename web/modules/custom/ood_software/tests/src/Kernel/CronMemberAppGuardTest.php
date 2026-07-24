@@ -129,24 +129,24 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $this->container->get('entity_type.manager'),
     ) extends GitHubService {
 
-      public function parseUrl($repo) {
+      public function parseUrl(string $repo): bool {
         return TRUE;
       }
 
-      public function getData() {}
+      public function getData(): ?array { return []; }
 
       // A last-committed date that will differ from the app's stored
       // lastupdated, so the "new commits" branch is entered.
-      public function getLastComittedDate() {
-        return '2000000000';
+      public function getLastComittedDate(): ?int {
+        return 2000000000;
       }
 
       // Root data — what would clobber a member app if the guard is absent.
-      public function getDescription() {
+      public function getDescription(): ?string {
         return 'ROOT DESCRIPTION';
       }
 
-      public function getReadme() {
+      public function getReadme(): ?string {
         return 'ROOT README';
       }
 
@@ -154,7 +154,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
         return [];
       }
 
-      public function getStars() {
+      public function getStars(): ?int {
         return 0;
       }
 
@@ -162,7 +162,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
         return 'https://github.com/OSC/mono';
       }
 
-      public function getRepoName() {
+      public function getRepoName(): ?string {
         return 'mono';
       }
 
@@ -170,7 +170,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
         return '';
       }
 
-      public function getOrganization() {
+      public function getOrganization(): ?string {
         return '';
       }
 
@@ -207,6 +207,8 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $this->container->get('entity_type.manager'),
       $gh,
       $repoSync,
+      $this->container->get('logger.factory')->get('ood_software'),
+      $this->container->get('datetime.time'),
     );
   }
 
@@ -312,17 +314,17 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $this->container->get('logger.factory'),
       $this->container->get('entity_type.manager'),
     ) extends GitHubService {
-      public function parseUrl($repo) { return TRUE; }
-      public function getData() {}
-      public function getLastComittedDate() { return '2000000000'; }
-      public function getDescription() { return 'D'; }
-      public function getReadme() { return 'R'; }
+      public function parseUrl(string $repo): bool { return TRUE; }
+      public function getData(): ?array { return []; }
+      public function getLastComittedDate(): ?int { return 2000000000; }
+      public function getDescription(): ?string { return 'D'; }
+      public function getReadme(): ?string { return 'R'; }
       public function getAppTypeIds(): array { return []; }
-      public function getStars() { return 0; }
+      public function getStars(): ?int { return 0; }
       public function getRepoUrl(): string { return 'https://github.com/OSC/mono'; }
-      public function getRepoName() { return 'mono'; }
+      public function getRepoName(): ?string { return 'mono'; }
       public function getRepoDescription(): string { return ''; }
-      public function getOrganization() { return ''; }
+      public function getOrganization(): ?string { return ''; }
       // Now HAS a root appverse.yml → isDeclaredRepo() returns TRUE.
       // (isDeclaredRepo reads the $appverseYmlText property, which parseUrl
       // would set in real cron; override it directly in the stub.)
@@ -346,6 +348,8 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $this->container->get('entity_type.manager'),
       $gh,
       $repoSync,
+      $this->container->get('logger.factory')->get('ood_software'),
+      $this->container->get('datetime.time'),
     );
     $worker->processItem(['nid' => $app->id()]);
 
@@ -392,17 +396,17 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $this->container->get('logger.factory'),
       $this->container->get('entity_type.manager'),
     ) extends GitHubService {
-      public function parseUrl($repo) { return TRUE; }
-      public function getData() {}
-      public function getLastComittedDate() { return '2000000000'; }
-      public function getDescription() { return 'D'; }
-      public function getReadme() { return 'R'; }
+      public function parseUrl(string $repo): bool { return TRUE; }
+      public function getData(): ?array { return []; }
+      public function getLastComittedDate(): ?int { return 2000000000; }
+      public function getDescription(): ?string { return 'D'; }
+      public function getReadme(): ?string { return 'R'; }
       public function getAppTypeIds(): array { return []; }
-      public function getStars() { return 0; }
+      public function getStars(): ?int { return 0; }
       public function getRepoUrl(): string { return 'https://github.com/OSC/mono'; }
-      public function getRepoName() { return 'mono'; }
+      public function getRepoName(): ?string { return 'mono'; }
       public function getRepoDescription(): string { return ''; }
-      public function getOrganization() { return ''; }
+      public function getOrganization(): ?string { return ''; }
       public function getAppverseYmlText(): ?string { return NULL; }
       public function isDeclaredRepo(): bool { return FALSE; }
     };
@@ -421,6 +425,8 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $this->container->get('entity_type.manager'),
       $gh,
       $repoSync,
+      $this->container->get('logger.factory')->get('ood_software'),
+      $this->container->get('datetime.time'),
     );
     $worker->processItem(['nid' => $app->id()]);
 

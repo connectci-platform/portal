@@ -57,14 +57,14 @@ class GitHubService {
   /**
    * Github data.
    *
-   * @var array
+   * @var array<string, mixed>|null
    */
   protected $data;
 
   /**
    * Manifest data.
    *
-   * @var array
+   * @var array<string, mixed>|false|null
    */
   protected $manifestData;
 
@@ -80,21 +80,21 @@ class GitHubService {
    *
    * Shape: ['jupyter_example' => ['manifestYml' => '...', 'appverseYml' => '...']].
    *
-   * @var array
+   * @var array<string, array<string, string|null>>
    */
   protected array $appSubpathFiles = [];
 
   /**
    * Is Archived.
    *
-   * @var bool
+   * @var bool|null
    */
   protected $isArchived;
 
   /**
    * Stars for repo.
    *
-   * @var int
+   * @var int|null
    */
   protected $stars;
 
@@ -108,49 +108,49 @@ class GitHubService {
   /**
    * Repo name.
    *
-   * @var string
+   * @var string|null
    */
   protected $repoName;
 
   /**
    * Repo description.
    *
-   * @var string
+   * @var string|null
    */
   protected $description;
 
   /**
    * Last commited unix timestamp.
    *
-   * @var int
+   * @var int|null
    */
   protected $lastComittedDate;
 
   /**
    * Repo license.
    *
-   * @var string
+   * @var string|null
    */
   protected $license;
 
   /**
    * Repo license link.
    *
-   * @var string
+   * @var string|null
    */
   protected $licenseLink;
 
   /**
    * Organization name.
    *
-   * @var string
+   * @var string|null
    */
   protected $organization;
 
   /**
    * Role - app type.
    *
-   * @var string
+   * @var string|null
    */
   protected $role;
 
@@ -221,7 +221,7 @@ class GitHubService {
   /**
    * Parse github repo url.
    */
-  public function parseUrl($repo) {
+  public function parseUrl(string $repo): bool {
     $parsed_url = parse_url(Xss::filter($repo));
     if (isset($parsed_url['host']) && $parsed_url['host'] === 'github.com') {
       $path_parts = explode('/', trim($parsed_url['path'], '/'));
@@ -262,7 +262,7 @@ class GitHubService {
   /**
    * Fetch github repo.
    */
-  public function fetchRepoData() {
+  public function fetchRepoData(): bool {
     $token = $this->keyRepository->getKey('appverse_github')->getKeyValue();
 
     $query = <<<'GRAPHQL'
@@ -314,7 +314,7 @@ class GitHubService {
     }
     GRAPHQL;
 
-    $response = $this->httpClient->post('https://api.github.com/graphql', [
+    $response = $this->httpClient->request('POST', 'https://api.github.com/graphql', [
       'headers' => [
         'Authorization' => 'Bearer ' . $token,
         'Content-Type' => 'application/json',
@@ -518,7 +518,7 @@ class GitHubService {
     }
     GRAPHQL;
 
-    $response = $this->httpClient->post('https://api.github.com/graphql', [
+    $response = $this->httpClient->request('POST', 'https://api.github.com/graphql', [
       'headers' => [
         'Authorization' => 'Bearer ' . $token,
         'Content-Type' => 'application/json',
@@ -617,6 +617,9 @@ class GitHubService {
    *   attributes: array<string, array>,
    * }
    *   Empty arrays at each key when $yaml is NULL, empty, or malformed.
+   */
+  /**
+   * @return array<string, mixed>
    */
   public function parseFormYml(?string $yaml): array {
     $empty = ['clusters' => [], 'formFields' => [], 'attributes' => []];
@@ -750,6 +753,12 @@ class GitHubService {
    *   - unresolved: declarations with no exact match; each carries an
    *     optional Levenshtein-≤-3 suggestion of the closest existing term.
    */
+  /**
+   * @param array<int, string>|null $declared
+   *   Declared term names from appverse.yml.
+   *
+   * @return array<string, mixed>
+   */
   public function resolveTaxonomyTermsFromAppverseYml(string $vocabularyId, ?array $declared): array {
     $result = ['declared' => [], 'resolved' => [], 'unresolved' => []];
     if ($declared === NULL || empty($declared)) {
@@ -851,6 +860,9 @@ class GitHubService {
    *     suggestionDistance: ?int,
    *   },
    * }>
+   */
+  /**
+   * @return array<int|string, mixed>
    */
   public function getAppPreviewData(): array {
     if ($this->isEmptyRepo()) {
@@ -1013,77 +1025,83 @@ class GitHubService {
   /**
    * Get github data.
    */
-  public function getData() {
+  /**
+   * @return array<string, mixed>|null
+   */
+  public function getData(): ?array {
     return $this->data;
   }
 
   /**
    * Get manifest.
    */
-  public function getManifestData() {
+  /**
+   * @return array<string, mixed>|false|null
+   */
+  public function getManifestData(): array|false|null {
     return $this->manifestData;
   }
 
   /**
    * Get is archived.
    */
-  public function getIsArchived() {
+  public function getIsArchived(): ?bool {
     return $this->isArchived;
   }
 
   /**
    * Get stars.
    */
-  public function getStars() {
+  public function getStars(): ?int {
     return $this->stars;
   }
 
   /**
    * Get readme.
    */
-  public function getReadme() {
+  public function getReadme(): ?string {
     return $this->readme;
   }
 
   /**
    * Get repo name.
    */
-  public function getRepoName() {
+  public function getRepoName(): ?string {
     return $this->repoName;
   }
 
   /**
    * Get description.
    */
-  public function getDescription() {
+  public function getDescription(): ?string {
     return $this->description;
   }
 
   /**
    * Get last committed date.
    */
-  public function getLastComittedDate() {
+  public function getLastComittedDate(): ?int {
     return $this->lastComittedDate;
   }
 
   /**
    * Get license.
    */
-  public function getLicenseLink() {
+  public function getLicenseLink(): ?string {
     return $this->licenseLink;
   }
 
   /**
    * Get license.
    */
-  public function getLicense() {
+  public function getLicense(): ?string {
     return $this->license;
   }
 
   /**
    * Get Organization.
    */
-  public function getOrganization() {
+  public function getOrganization(): ?string {
     return $this->organization;
   }
 
@@ -1136,7 +1154,7 @@ class GitHubService {
   /**
    * Get AppType label for form display.
    */
-  public function getAppType() {
+  public function getAppType(): ?string {
     $label = $this->role;
     if ($label && $this->subcategory) {
       $label .= ' (' . $this->subcategory . ')';
@@ -1147,20 +1165,23 @@ class GitHubService {
   /**
    * Get subcategory from manifest.
    */
-  public function getSubcategory() {
+  public function getSubcategory(): ?string {
     return $this->subcategory;
   }
 
   /**
    * Get AppTypeId based on set role (backward compat, returns first match).
    */
-  public function getAppTypeId() {
+  public function getAppTypeId(): int|string|false|null {
     $ids = $this->getAppTypeIds();
     return $ids ? reset($ids) : NULL;
   }
 
   /**
    * Resolve role + subcategory to taxonomy term IDs.
+   */
+  /**
+   * @return array<int, int>
    */
   public function getAppTypeIds(): array {
     if (empty($this->role)) {
@@ -1171,7 +1192,14 @@ class GitHubService {
       $this->logger->notice('No app type mapping for manifest role: @role', ['@role' => $this->role]);
       return [];
     }
+    // The '*' fallback and the emptiness check are defensive: PHPStan resolves
+    // APP_TYPE_MANIFEST_MAP as a constant and concludes '*' always exists and is
+    // non-empty, but that holds only for the map's current contents. Keep both
+    // guards so adding a role without a '*' default degrades to "no terms"
+    // rather than a fatal.
+    // @phpstan-ignore-next-line
     $term_names = $role_map[$this->subcategory] ?? $role_map['*'] ?? [];
+    // @phpstan-ignore-next-line
     if (empty($term_names)) {
       return [];
     }
@@ -1193,6 +1221,9 @@ class GitHubService {
   /**
    * Get all term names that can be auto-assigned from manifest data.
    */
+  /**
+   * @return array<int, string>
+   */
   public static function getAutoAssignableTermNames(): array {
     $names = [];
     foreach (self::APP_TYPE_MANIFEST_MAP as $subcategories) {
@@ -1206,7 +1237,7 @@ class GitHubService {
   /**
    * Get license.
    */
-  public function getLicenseInfo() {
+  public function getLicenseInfo(): ?string {
     return $this->license;
   }
 
