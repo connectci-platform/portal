@@ -115,19 +115,19 @@ resourceFields:
     enhancer:
       id: ''
   field_domain_access:
-    disabled: true
+    disabled: false
     fieldName: field_domain_access
     publicName: field_domain_access
     enhancer:
       id: ''
   field_domain_all_affiliates:
-    disabled: true
+    disabled: false
     fieldName: field_domain_all_affiliates
     publicName: field_domain_all_affiliates
     enhancer:
       id: ''
   field_domain_source:
-    disabled: true
+    disabled: false
     fieldName: field_domain_source
     publicName: field_domain_source
     enhancer:
