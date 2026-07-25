@@ -344,8 +344,19 @@ header:has(> .appverse-hub-add-repo) {
   font-weight: 600;
   color: #c91235; /* appverse-red — brand link color */
   text-decoration: none;
+  /* Truncate a long owner name so it stays within the fixed owner track
+     instead of overflowing into the status column and colliding with the
+     badge. The envelope icon that follows keeps its space. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .appverse-hub-card__owner:hover { text-decoration: underline; }
+/* The email icon must not shrink when the name truncates. */
+.appverse-hub-card__cell--owner .appverse-hub-card__icon-btn {
+  flex-shrink: 0;
+}
 
 /* Icon buttons (links and form submits share one look). */
 .appverse-hub-card__icon-btn {
