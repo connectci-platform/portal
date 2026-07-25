@@ -84,6 +84,23 @@ header:has(> .appverse-hub-add-repo) {
   font-size: 0.9em;
   margin-top: 0.5rem;
 }
+/* On narrow screens the 5-column table can't fit; rather than let it blow out
+   the page width (and push the Status column off-screen), let the table scroll
+   horizontally within the card. `display: block` makes the <table> itself the
+   scroll container without needing a wrapper element in the template. */
+@media (max-width: 768px) {
+  .appverse-hub-apps-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* Keep the status badge + edit control from wrapping mid-scroll. */
+  .appverse-hub-apps-table th,
+  .appverse-hub-apps-table td { white-space: nowrap; }
+  /* Tags can still wrap within their cell — they're the one flexible column. */
+  .appverse-hub-apps-table__tags { white-space: normal; }
+}
 .appverse-hub-apps-table th,
 .appverse-hub-apps-table td {
   padding: 0.4rem 0.6rem;
@@ -272,8 +289,56 @@ header:has(> .appverse-hub-add-repo) {
 @media (max-width: 768px) {
   .appverse-hub-card__header {
     grid-template-columns: 1fr;
+    row-gap: 0.75rem;
   }
   .appverse-hub-card__cell--actions { justify-content: flex-start; }
+
+  /* Stacked, the cells lose the column-position that gave them meaning: a lone
+     badge or timestamp reads as unlabeled. Prefix each data cell with its label
+     so status, sync time, owner, etc. are identifiable on a phone. The title
+     needs no label; the desktop layout (grid columns) is unaffected. */
+  .appverse-hub-card__cell--sync::before,
+  .appverse-hub-card__cell--github::before,
+  .appverse-hub-card__cell--owner::before,
+  .appverse-hub-card__cell--status::before,
+  .appverse-hub-card__cell--actions::before {
+    flex: 0 0 5.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #57606a;
+  }
+  .appverse-hub-card__cell--status::before  { content: 'Status'; }
+  .appverse-hub-card__cell--github::before  { content: 'Source'; }
+  .appverse-hub-card__cell--owner::before   { content: 'Maintainer'; }
+  .appverse-hub-card__cell--actions::before { content: 'Actions'; }
+
+  /* The sync cell already reads "Last sync <ts>" in its span, so it needs no
+     label — but keep the same label-column indent (empty) so its content lines
+     up with the labeled rows instead of floating at the card's left edge. */
+  .appverse-hub-card__cell--sync::before {
+    content: '';
+    flex: 0 0 5.5rem;
+  }
+  .appverse-hub-card__last-synced { white-space: normal; }
+
+  /* Empty cells (e.g. owner on your own hub, or an absent github link) would
+     otherwise render a stray label with no value. Hide any data cell that has
+     no rendered content. :has() is supported on all current mobile engines;
+     the desktop grid keeps empty cells for alignment above this breakpoint. */
+  .appverse-hub-card__cell--github:not(:has(a)),
+  .appverse-hub-card__cell--owner:not(:has(a)),
+  .appverse-hub-card__cell--actions:not(:has(a, button)) {
+    display: none;
+  }
+
+  /* Bigger tap targets on touch-sized screens: the 2rem icon buttons are below
+     the ~44px comfortable-touch minimum. */
+  .appverse-hub-card__icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
 }
 .appverse-hub-card__owner {
   font-weight: 600;
