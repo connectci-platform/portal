@@ -896,7 +896,38 @@ class GitHubService {
       if ($skipped > 0) {
         $this->logger->notice('Skipped @n appverse.yml apps[] entry/entries without a non-empty path.', ['@n' => $skipped]);
       }
+
+      // SHAPE 1: a declared single-app repo. The root appverse.yml has no
+      // apps[] list and instead declares one app's metadata at the top level
+      // (software, app_type, etc.) — the repo IS the app. RepoSyncService
+      // already registers this shape; the preview must recognise it too, or a
+      // valid single-app repo reports "0 apps". Build one record from the root
+      // appverse layer, sitting at the repo root (empty subpath).
       if (empty($subpaths)) {
+        if (!empty($appverse['software'])) {
+          $repoReadme = $this->readme;
+          $softwareInfo = $this->resolveSoftwareForApp($appverse['software'] ?? NULL);
+          $declaredTags = $appverse['implementation_tags'] ?? NULL;
+          $tagsInfo = $this->resolveTaxonomyTermsFromAppverseYml('appverse_implementation_tags', is_array($declaredTags) ? $declaredTags : NULL);
+          return [
+            [
+              'subpath' => '',
+              'name' => $appverse['name'] ?? $appverse['title'] ?? NULL,
+              'category' => $appverse['category'] ?? NULL,
+              'subcategory' => $appverse['subcategory'] ?? NULL,
+              'role' => $appverse['role'] ?? NULL,
+              'description' => $appverse['description'] ?? NULL,
+              'license' => $appverse['license'] ?? $this->license,
+              'clusters' => [],
+              'formFields' => [],
+              'attributes' => [],
+              'readmePresent' => $repoReadme !== NULL,
+              'readmeBytes' => $repoReadme !== NULL ? strlen($repoReadme) : 0,
+              'software' => $softwareInfo,
+              'tags' => $tagsInfo,
+            ],
+          ];
+        }
         return [];
       }
       // fetchAppSubpaths() throws on a transport/GraphQL failure. This is a
