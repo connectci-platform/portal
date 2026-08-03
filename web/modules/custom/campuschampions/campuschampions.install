@@ -1382,3 +1382,81 @@ function campuschampions_update_10008(&$sandbox) {
     '@rem' => $removed,
   ]);
 }
+
+/**
+ * Clean up non-numeric Carnegie codes on legacy Join Campus Champions rows.
+ *
+ * Some older submissions stored a Carnegie *classification* string (e.g. "R1",
+ * "R2:Doctoral Universities…", or free text like "UCLA") in the numeric
+ * carnegie_classification field, from before the field became org-derived.
+ * Re-derive the real code from the submitter account's ACCESS Organization
+ * where possible; blank it when the account has no organization. Also delete a
+ * known test submission from a sweetandfizzy tester.
+ */
+function campuschampions_update_10009() {
+  $db = \Drupal::database();
+  $storage = \Drupal::entityTypeManager()->getStorage('webform_submission');
+
+  // Delete the known test submission (guarded by both sid and email so it can
+  // never match anything else).
+  $test_sid = 5980;
+  $test = $storage->load($test_sid);
+  $deleted = 0;
+  if ($test && $test->getWebform()->id() === 'join_campus_champions') {
+    $email = $test->getElementData('user_email');
+    if (is_string($email) && strtolower($email) === 'sdepaula@sweetandfizzy.com') {
+      $test->delete();
+      $deleted = 1;
+    }
+  }
+
+  // Find join submissions whose carnegie value is non-empty and non-numeric.
+  $sids = $db->select('webform_submission_data', 'd')
+    ->fields('d', ['sid'])
+    ->condition('d.name', 'carnegie_classification')
+    ->condition('d.value', '', '<>')
+    ->where("d.value NOT REGEXP '^[0-9]+$'")
+    ->execute()->fetchCol();
+
+  $fixed = 0;
+  $blanked = 0;
+  foreach ($storage->loadMultiple($sids) as $submission) {
+    if ($submission->getWebform()->id() !== 'join_campus_champions') {
+      continue;
+    }
+    // Resolve the submitter account: email first, then username (matches how
+    // the approval action reconciles identity elsewhere).
+    $data = $submission->getData();
+    $account = FALSE;
+    if (!empty($data['user_email'])) {
+      $account = user_load_by_mail($data['user_email']);
+    }
+    if (!$account && !empty($data['username'])) {
+      $account = user_load_by_name($data['username']);
+    }
+
+    $code = '';
+    if ($account && $account->hasField('field_access_organization')
+      && !$account->get('field_access_organization')->isEmpty()) {
+      $org = $account->get('field_access_organization')->entity;
+      if ($org && $org->hasField('field_carnegie_code')) {
+        $code = (string) $org->get('field_carnegie_code')->value;
+      }
+    }
+
+    $submission->setElementData('carnegie_classification', $code);
+    $submission->resave();
+    if ($code === '') {
+      $blanked++;
+    }
+    else {
+      $fixed++;
+    }
+  }
+
+  return t('Deleted @del test submission; re-derived Carnegie code on @fixed rows; blanked @blank with no resolvable organization.', [
+    '@del' => $deleted,
+    '@fixed' => $fixed,
+    '@blank' => $blanked,
+  ]);
+}
