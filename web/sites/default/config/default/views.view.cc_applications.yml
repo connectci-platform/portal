@@ -98,6 +98,11 @@ display:
               preconfiguration:
                 add_confirmation: false
                 label_override: Approve
+            -
+              action_id: campuschampions_supersede
+              preconfiguration:
+                add_confirmation: true
+                label_override: 'Mark as superseded'
           force_selection_info: false
         webform_submission_value_3:
           id: webform_submission_value_3
