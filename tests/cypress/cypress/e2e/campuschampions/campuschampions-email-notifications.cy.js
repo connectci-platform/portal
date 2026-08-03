@@ -36,7 +36,9 @@ describe('Campus Champions Email Notifications', () => {
       cy.get('#edit-champion-user-type-user-champion').check();
       cy.get('input[name="supervisor_name"]').type('Dr. Email Supervisor');
       cy.get('input[name="supervisor_email"]').type('email-supervisor@no-reply.com');
-      cy.get('input[name="carnegie_classification"]').type('166683');
+      cy.get('input[name="field_access_organization"]').type('Arkansas for Medical');
+      cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+        .contains('University of Arkansas for Medical Sciences').click();
 
       // Submit the form
       cy.get('#webform-submission-join-campus-champions-add-form > #edit-actions > #edit-submit')
@@ -48,10 +50,10 @@ describe('Campus Champions Email Notifications', () => {
       // Wait for and verify the welcome email
       cy.waitForEmail({
         to: testEmail,
-        subject: 'Welcome to the Campus Champions Portal'
+        subject: 'Welcome to the Campus Champions Portal!'
       }).then((message) => {
         cy.assertEmailContent(message, {
-          subject: 'Welcome to the Campus Champions Portal',
+          subject: 'Welcome to the Campus Champions Portal!',
           to: testEmail,
           htmlContains: [
             'Campus Champions',
@@ -83,7 +85,9 @@ describe('Campus Champions Email Notifications', () => {
       cy.get('#edit-champion-user-type-user-champion').check();
       cy.get('input[name="supervisor_name"]').type('Dr. Approval Supervisor');
       cy.get('input[name="supervisor_email"]').type('approval-supervisor@no-reply.com');
-      cy.get('input[name="carnegie_classification"]').type('166683');
+      cy.get('input[name="field_access_organization"]').type('Arkansas for Medical');
+      cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+        .contains('University of Arkansas for Medical Sciences').click();
 
       cy.get('#webform-submission-join-campus-champions-add-form > #edit-actions > #edit-submit')
         .contains('Submit').click();
@@ -149,7 +153,9 @@ describe('Campus Champions Email Notifications', () => {
       cy.get('#edit-champion-user-type-user-champion').check();
       cy.get('input[name="supervisor_name"]').type('Dr. Link Supervisor');
       cy.get('input[name="supervisor_email"]').type('link-supervisor@no-reply.com');
-      cy.get('input[name="carnegie_classification"]').type('166683');
+      cy.get('input[name="field_access_organization"]').type('Arkansas for Medical');
+      cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+        .contains('University of Arkansas for Medical Sciences').click();
 
       cy.get('#webform-submission-join-campus-champions-add-form > #edit-actions > #edit-submit')
         .contains('Submit').click();
@@ -159,7 +165,7 @@ describe('Campus Champions Email Notifications', () => {
       // Verify the email contains the password reset link
       cy.waitForEmail({
         to: linkTestEmail,
-        subject: 'Welcome'
+        subject: 'Welcome to the Campus Champions Portal!'
       }).then((message) => {
         cy.getMailpitMessage(message.ID).then((fullMessage) => {
           const html = fullMessage.HTML || '';
