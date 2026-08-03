@@ -92,21 +92,31 @@ class JoinFormRedirectSubscriber implements EventSubscriberInterface {
       return;
     }
 
+    // Redirect only when they have a submission still awaiting review, so a
+    // second application cannot stack while one is pending. An approved
+    // champion may start a fresh application (e.g. to change organizations),
+    // which then goes through normal approval.
     $sids = $this->entityTypeManager->getStorage('webform_submission')->getQuery()
       ->accessCheck(FALSE)
       ->condition('webform_id', self::WEBFORM_ID)
       ->condition('uid', $this->currentUser->id())
       ->sort('sid', 'DESC')
-      ->range(0, 1)
       ->execute();
-    if (empty($sids)) {
-      // No previous submission: let them fill out a new form.
+    $pending_sid = NULL;
+    foreach ($this->entityTypeManager->getStorage('webform_submission')->loadMultiple($sids) as $submission) {
+      if (($submission->getElementData('status') ?? 'new') === 'new') {
+        $pending_sid = $submission->id();
+        break;
+      }
+    }
+    if ($pending_sid === NULL) {
+      // No pending submission: let them fill out a new form.
       return;
     }
 
     $url = Url::fromRoute('entity.webform.user.submission.edit', [
       'webform' => self::WEBFORM_ID,
-      'webform_submission' => reset($sids),
+      'webform_submission' => $pending_sid,
     ]);
     $event->setResponse(new RedirectResponse($url->toString()));
   }

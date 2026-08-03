@@ -85,7 +85,7 @@ elements: |-
   field_access_organization:
     '#type': entity_autocomplete
     '#title': 'ACCESS Organization'
-    '#description': 'Select your institution. If it is not listed, choose "Other" and enter it below.'
+    '#description': 'Select your institution. If it is not listed, choose "Other" and enter it below. If you are changing institutions, select your new one here and submit a new application with a Letter of Collaboration from that institution. Your organization will update once the application is approved.'
     '#target_type': node
     '#selection_handler': 'default:node'
     '#selection_settings':
