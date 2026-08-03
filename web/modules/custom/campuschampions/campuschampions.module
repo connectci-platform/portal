@@ -48,6 +48,20 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
       $form['elements']['user_first_name']['#attributes'] = ['readonly' => 'readonly'];
       $form['elements']['user_last_name']['#attributes'] = ['readonly' => 'readonly'];
       $form['elements']['user_email']['#attributes'] = ['readonly' => 'readonly'];
+
+      // A returning champion (already approved) is updating their membership,
+      // not joining. Retitle the form and add a short explainer. Pending
+      // applicants never reach this form — they are redirected to edit their
+      // in-review submission — so only new vs. approved apply here.
+      $is_champion = $account->hasField('field_is_cc') && (bool) $account->get('field_is_cc')->value;
+      if ($is_champion) {
+        $form['#title'] = t('Update Your Campus Champions Membership');
+        $form['elements']['returning_champion_intro'] = [
+          '#type' => 'webform_markup',
+          '#markup' => '<p>' . t("You're already a Campus Champion. Use this form to update your membership, for example if you've changed institutions. Select your new organization below and submit a new Letter of Collaboration from that institution. Your information will update once your new application is approved.") . '</p>',
+          '#weight' => -100,
+        ];
+      }
     }
 
     $form['elements']['carnegie_classification']['#autocomplete_route_name'] = 'campuschampions.autocomplete';
