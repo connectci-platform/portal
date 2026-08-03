@@ -16,6 +16,8 @@ use Drupal\node\NodeInterface;
 use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
 use Drupal\views\ResultRow;
+use Drupal\webform\Entity\WebformSubmission;
+use Drupal\webform\WebformSubmissionInterface;
 use Drupal\views\ViewExecutable;
 
 /**
@@ -50,10 +52,8 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
 
     $form['elements']['carnegie_classification']['#autocomplete_route_name'] = 'campuschampions.autocomplete';
 
-    // Reorder form.
-    $user_institution = $form['elements']['user_institution'];
-    unset($form['elements']['user_institution']);
-    $form['elements']['user_institution'] = $user_institution;
+    // Reveal institution + Carnegie fields when "Other" org is selected.
+    $form['#attached']['library'][] = 'campuschampions/join-org-toggle';
 
     if ($form['#validate'] != 'validate_form') {
       $form['#validate'][] = 'validate_form';
@@ -136,6 +136,73 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
       . '</div>';
     unset($element);
   }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave() for webform_submission.
+ *
+ * On the Join Campus Champions form the applicant selects their ACCESS
+ * Organization directly. When that organization is a real one (not "Other"),
+ * copy its Carnegie code onto the submission's carnegie_classification value
+ * so downstream consumers (the applications export, reporting) keep reading a
+ * populated code without a lossy name-to-org lookup. When "Other" is chosen
+ * the applicant enters the code by hand, so it is left as submitted.
+ */
+function campuschampions_webform_submission_presave(WebformSubmissionInterface $submission) {
+  if ($submission->getWebform()->id() !== 'join_campus_champions') {
+    return;
+  }
+  $org_id = $submission->getElementData('field_access_organization');
+  // "Other" (node 3695) has no real code; keep the hand-entered value.
+  if (empty($org_id) || (string) $org_id === '3695') {
+    return;
+  }
+  $org = Node::load($org_id);
+  if ($org instanceof NodeInterface && $org->hasField('field_carnegie_code')) {
+    $code = $org->get('field_carnegie_code')->value;
+    // A "0" placeholder means the org has no applicable Carnegie code (a
+    // company or a non-US institution); store it as-is, matching the field.
+    $submission->setElementData('carnegie_classification', (string) $code);
+  }
+}
+
+/**
+ * Sets the status of a champion's approved Join Campus Champions submissions.
+ *
+ * The submission owner (uid) is the authoritative link to the champion's
+ * account — the approval action reconciles it, and update 9001 backfilled it
+ * for historical rows — so this keys on uid rather than the mutable email or
+ * username stored in the submission data.
+ *
+ * @param int $uid
+ *   The champion's account id.
+ * @param string $new_status
+ *   The status to set (e.g. 'superseded', 'removed').
+ * @param int|null $exclude_sid
+ *   A submission id to leave untouched (the just-approved one when
+ *   superseding its predecessors).
+ *
+ * @return int
+ *   The number of submissions updated.
+ */
+function _campuschampions_set_champion_submission_status(int $uid, string $new_status, ?int $exclude_sid = NULL): int {
+  $query = \Drupal::entityTypeManager()->getStorage('webform_submission')->getQuery()
+    ->condition('webform_id', 'join_campus_champions')
+    ->condition('uid', $uid)
+    ->accessCheck(FALSE);
+  if ($exclude_sid !== NULL) {
+    $query->condition('sid', $exclude_sid, '<>');
+  }
+  $sids = $query->execute();
+  $count = 0;
+  foreach (WebformSubmission::loadMultiple($sids) as $submission) {
+    if ($submission->getElementData('status') === 'approved') {
+      $submission->setElementData('status', $new_status);
+      $submission->resave();
+      $count++;
+    }
+  }
+  return $count;
 }
 
 if (!function_exists('validate_form')) {

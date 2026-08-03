@@ -154,6 +154,16 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
     $user->set('field_carnegie_code', $data['carnegie_classification']);
     $user->set('field_is_cc', 1);
 
+    // Set the organization from the application. This is what makes an
+    // approved change-of-institution application actually move the champion
+    // to their new organization. Only set it when the application names a
+    // real organization; leave the existing one untouched otherwise so a
+    // blank or "Other" submission never clears a good value.
+    $org_id = $data['field_access_organization'] ?? NULL;
+    if (!empty($org_id) && (string) $org_id !== '3695') {
+      $user->set('field_access_organization', $org_id);
+    }
+
     // Campus Champions Program ID.
     $cc_id = 572;
 
@@ -179,6 +189,20 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
     }
 
     $user->save();
+
+    // Reconcile the submission to the resolved account. The applicant may have
+    // submitted anonymously or under a different account, so anchor this
+    // submission to the champion we just approved. Every later operation
+    // (supersede, removal, the join-form redirect) can then trust the uid.
+    if ((int) $webform_submission->getOwnerId() !== (int) $user->id()) {
+      $webform_submission->setOwnerId($user->id());
+      $webform_submission->resave();
+    }
+
+    // Supersede the champion's earlier approved applications so the current
+    // organization is unambiguous — the account holds the live org, and only
+    // this newly approved submission stays 'approved'.
+    _campuschampions_set_champion_submission_status((int) $user->id(), 'superseded', (int) $sid);
 
     $this->emailAccountNotification($user);
 
