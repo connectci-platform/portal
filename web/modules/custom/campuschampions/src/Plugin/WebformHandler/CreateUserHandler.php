@@ -100,11 +100,19 @@ class CreateUserHandler extends WebformHandlerBase {
   public function preSave(WebformSubmissionInterface $webformSubmission, $update = TRUE) {
     $data = $webformSubmission->getData();
 
-    // Create a new user if they don't exist already.
-    $ids = $this->entityTypeManager->getStorage('user')->getQuery()
+    // Create a new user only if one does not already exist. The
+    // users_field_data table enforces uniqueness on both the email ('mail')
+    // and the username ('name'), so we must check both: an applicant may enter
+    // a username (e.g. an ACCESS-CI ID) that already belongs to an account
+    // created under a different email. Checking email alone lets that slip
+    // through and the INSERT then throws an EntityStorageException that aborts
+    // the whole approval batch (500 error).
+    $query = $this->entityTypeManager->getStorage('user')->getQuery()
+      ->accessCheck(FALSE);
+    $query->condition($query->orConditionGroup()
       ->condition('mail', $data['user_email'])
-      ->accessCheck(FALSE)
-      ->execute();
+      ->condition('name', $data['username'] ?? ''));
+    $ids = $query->execute();
     if (empty($ids)) {
       $user = $this->createUser($data);
       $webformSubmission->convert($user);

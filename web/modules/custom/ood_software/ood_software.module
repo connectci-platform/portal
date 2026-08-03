@@ -195,7 +195,7 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
     $add_tags = \Drupal::service('access_misc.addtags');
     $output = $add_tags->getView();
     $tag_label = t('Tags');
-    $tag_description = t('Select up to 6 tags that relate to your engagement. Tags will help us find people with related expertise.');
+    $tag_description = t('Select up to 6 tags that relate to this software. Tags will help us find people with related expertise.');
     $tag_summary = t('Select Tags');
 
     $form['node_add_tags'] = [
