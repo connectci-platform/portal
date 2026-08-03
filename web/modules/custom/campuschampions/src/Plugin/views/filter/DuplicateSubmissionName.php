@@ -87,25 +87,20 @@ class DuplicateSubmissionName extends BooleanOperator {
     $first = ':cc_dup_first_' . $suffix;
     $last = ':cc_dup_last_' . $suffix;
 
-    // Collapse repeated whitespace as well as trimming, so "Bathiya" and
-    // "Bathiya " (or a double space) count as the same applicant.
+    // Lowercase and trim so trailing/leading whitespace and case don't split a
+    // match, e.g. "Bathiya" and "Bathiya ".
     $name_expression = "CONCAT(LOWER(TRIM(f.value)), '|', LOWER(TRIM(l.value)))";
     $inner_expression = "CONCAT(LOWER(TRIM(f2.value)), '|', LOWER(TRIM(l2.value)))";
 
-    // A duplicate that matters is the same name approved more than once — the
-    // supersede lifecycle already handles a normal reapply (old approved rows
-    // become superseded). Only count approved submissions on both sides so the
-    // view surfaces the genuine anomaly rather than every historical reapply.
-    $status_join = "INNER JOIN {webform_submission_data} st ON st.sid = s.sid AND st.name = 'status' AND st.value = 'approved'";
-    $inner_status_join = "INNER JOIN {webform_submission_data} st2 ON st2.sid = s2.sid AND st2.name = 'status' AND st2.value = 'approved'";
-
+    // Status-agnostic: a duplicate is any name appearing on more than one
+    // submission. Narrow to a specific status (e.g. approved) with the view's
+    // separate "Filter by Status" exposed filter rather than baking it in here.
     $sql = <<<SQL
 {$this->tableAlias}.sid $operator (
   SELECT s.sid
   FROM {webform_submission} s
   INNER JOIN {webform_submission_data} f ON f.sid = s.sid AND f.name = $first
   INNER JOIN {webform_submission_data} l ON l.sid = s.sid AND l.name = $last
-  $status_join
   WHERE s.webform_id = $wid
     AND $name_expression IN (
       SELECT dupes.cc_dup_name FROM (
@@ -113,7 +108,6 @@ class DuplicateSubmissionName extends BooleanOperator {
         FROM {webform_submission} s2
         INNER JOIN {webform_submission_data} f2 ON f2.sid = s2.sid AND f2.name = $first
         INNER JOIN {webform_submission_data} l2 ON l2.sid = s2.sid AND l2.name = $last
-        $inner_status_join
         WHERE s2.webform_id = $wid
         GROUP BY $inner_expression
         HAVING COUNT(DISTINCT s2.sid) > 1
