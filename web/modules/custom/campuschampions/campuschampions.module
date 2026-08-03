@@ -49,6 +49,17 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
       $form['elements']['user_last_name']['#attributes'] = ['readonly' => 'readonly'];
       $form['elements']['user_email']['#attributes'] = ['readonly' => 'readonly'];
 
+      // Prefill the organization from the account when one is set, so a
+      // returning user starts from their current organization (and can change
+      // it). Left editable, unlike the locked identity fields above.
+      if ($account->hasField('field_access_organization')
+        && !$account->get('field_access_organization')->isEmpty()) {
+        $org = $account->get('field_access_organization')->entity;
+        if ($org) {
+          $form['elements']['field_access_organization']['#default_value'] = $org;
+        }
+      }
+
       // A returning champion (already approved) is updating their membership,
       // not joining. Retitle the form and add a short explainer. Pending
       // applicants never reach this form — they are redirected to edit their

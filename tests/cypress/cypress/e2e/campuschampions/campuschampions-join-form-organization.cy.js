@@ -32,6 +32,17 @@ describe('Join Campus Champions Form - ACCESS Organization', () => {
     });
   });
 
+  describe('Prefill for a logged-in user with an organization', () => {
+    it('prefills the organization field from the account', () => {
+      // pecan@pie.org is a fixture account that has an organization set. Assert
+      // the field is prefilled with an entity-reference value (Label (nid))
+      // rather than a specific institution, since the fixture's org may change.
+      cy.loginUser('pecan@pie.org', 'Pecan');
+      cy.visit('/form/join-campus-champions');
+      cy.get(ORG_FIELD).invoke('val').should('match', /\(\d+\)\s*$/);
+    });
+  });
+
   describe('Selecting a real organization', () => {
     it('keeps institution and Carnegie hidden', () => {
       cy.get(ORG_FIELD).type('Arkansas for Medical');
