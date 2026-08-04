@@ -2,6 +2,7 @@
 
 /**
  * @file
+ * Hooks and helpers for the Campus Champions module.
  */
 
 use Drupal\campuschampions\Plugin\CarnegieCodesLookup;
@@ -21,13 +22,13 @@ use Drupal\webform\WebformSubmissionInterface;
 use Drupal\views\ViewExecutable;
 
 /**
- *
+ * Implements hook_form_alter().
  */
 function campuschampions_form_alter(&$form, &$form_state, $form_id) {
   if ($form_id == 'user_form') {
     $form['field_carnegie_code']['widget'][0]['value']['#autocomplete_route_name'] = 'campuschampions.autocomplete';
 
-    // Add validation for Carnegie code field
+    // Add validation for Carnegie code field.
     $form['#validate'][] = 'campuschampions_user_form_validate';
   }
   global $user;
@@ -101,7 +102,8 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
       $form['field_is_cc']['widget']['#access'] = FALSE;
     }
 
-    // Don't allow people to join Campus Champions field unless the is_cc field is checked.
+    // Don't allow people to join the Campus Champions field unless the is_cc
+    // field is checked.
     if ($form['#validate'] != 'validate_user_form') {
       $form['#validate'][] = 'validate_user_form';
     }
@@ -233,7 +235,7 @@ function _campuschampions_set_champion_submission_status(int $uid, string $new_s
 if (!function_exists('validate_form')) {
 
   /**
-   *
+   * Validates the Campus Champions join form for duplicate email/username.
    */
   function validate_form(array &$form, FormStateInterface $form_state) {
     $user_email = $form_state->getValue('user_email');
@@ -270,7 +272,7 @@ if (!function_exists('validate_form')) {
 if (!function_exists('validate_user_form')) {
 
   /**
-   *
+   * Requires the is_cc field before assigning the Campus Champions program.
    */
   function validate_user_form(array &$form, FormStateInterface $form_state) {
     $programs = $form_state->getValue('field_region');
@@ -310,9 +312,6 @@ function campuschampions_theme() {
  * Send mail to approved campus champions.
  */
 function campuschampions_mail($key, &$message, $params) {
-  $options = [
-    'langcode' => $message['langcode'],
-  ];
   switch ($key) {
     case 'approve_campuschampion':
       $message['from'] = 'leadership@campuschampions.org';
@@ -323,7 +322,6 @@ function campuschampions_mail($key, &$message, $params) {
     case 'join-cc':
       $message['from'] = 'leadership@campuschampions.org';
       $message['subject'] = $params['title'];
-      ;
       $message['body'][] = $params['body'];
       break;
   }
@@ -349,7 +347,7 @@ function campuschampions_mail_alter(&$message) {
       // case 'status_canceled':
     case 'approve_campuschampion':
       $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed; delsp=yes';
-      foreach ($message['body'] as $key => &$body) {
+      foreach ($message['body'] as &$body) {
         $body = new FormattableMarkup($body, []);
       }
       break;
@@ -382,12 +380,12 @@ function campuschampions_redirect_to_profile_page_form_submit($form, &$form_stat
 }
 
 /**
- * Implements HOOK_views_data_export_row_alter().
+ * Implements hook_views_data_export_row_alter().
  *
- * Fill out data about the associated intstitution (Carnegie code).
+ * Fill out data about the associated institution (Carnegie code).
  */
 function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, ViewExecutable $view) {
-  // Static cache for the Carnegie lookup instance and lat/lon data
+  // Static cache for the Carnegie lookup instance and lat/lon data.
   static $carnegie_db = NULL;
   static $org_locations = NULL;
 
@@ -395,7 +393,7 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
 
     $cc = (string) $row['field_carnegie_code'];
 
-    $row['field_carnegie_code'] = t('');
+    $row['field_carnegie_code'] = '';
     $row['field_carnegie_code_location'] = '';
     $row['field_carnegie_code_classification'] = '';
     $row['field_carnegie_code_hbcu'] = '';
@@ -413,9 +411,10 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
     $row['field_carnegie_code_lat'] = '';
     $row['field_carnegie_code_lon'] = '';
 
-    // Only get Carnegie data if a code exists - don't try to populate missing ones.
+    // Only get Carnegie data if a code exists - don't try to populate missing
+    // ones.
     if (!empty($cc)) {
-      // Initialize static caches
+      // Initialize static caches.
       if ($carnegie_db === NULL) {
         $carnegie_db = new CarnegieCodesLookup(\Drupal::database());
       }
@@ -473,13 +472,15 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
         );
         $row['field_carnegie_code_type'] = CarnegieCodesLookup::type($row['field_carnegie_code_type_id']);
 
-        // Try to retrieve the LAT and LON from the ACCESS organization (with caching)
+        // Try to retrieve the LAT and LON from the ACCESS organization (with
+        // caching).
         if (isset($org_locations[$cc])) {
-          // Use cached values
+          // Use cached values.
           $row['field_carnegie_code_lat'] = $org_locations[$cc]['lat'];
           $row['field_carnegie_code_lon'] = $org_locations[$cc]['lon'];
-        } else {
-          // Look it up and cache it
+        }
+        else {
+          // Look it up and cache it.
           $nids = \Drupal::entityQuery('node')
             ->condition('type', 'access_organization')
             ->condition('field_carnegie_code', $cc, '=')
@@ -494,11 +495,12 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
               $lon = $org->field_longitude ? $org->field_longitude->value : NULL;
               $row['field_carnegie_code_lat'] = $lat;
               $row['field_carnegie_code_lon'] = $lon;
-              // Cache for future rows
+              // Cache for future rows.
               $org_locations[$cc] = ['lat' => $lat, 'lon' => $lon];
             }
-          } else {
-            // Cache that we found nothing for this code
+          }
+          else {
+            // Cache that we found nothing for this code.
             $org_locations[$cc] = ['lat' => NULL, 'lon' => NULL];
           }
         }
@@ -523,7 +525,7 @@ function campuschampions_views_pre_view(ViewExecutable $view, $display_id, array
     $view_filters['field_domain_access_target_id']['value'] = [];
     $view_filters['field_domain_access_target_id']['value'][$domain] = $domain;
 
-    //field_domain_access_target_id
+    // field_domain_access_target_id.
     $view->display_handler->setOption('filters', $view_filters);
   }
 }
@@ -543,13 +545,13 @@ function campuschampions_preprocess_views_view(array &$variables) {
 /**
  * Validate Carnegie code field on user forms.
  */
-function campuschampions_user_form_validate(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+function campuschampions_user_form_validate(array &$form, FormStateInterface $form_state) {
   $carnegie_code = $form_state->getValue('field_carnegie_code');
 
   if (!empty($carnegie_code) && !empty($carnegie_code[0]['value'])) {
     $code = $carnegie_code[0]['value'];
 
-    // Validate that the Carnegie code exists in the database
+    // Validate that the Carnegie code exists in the database.
     $query = \Drupal::database()
       ->select('carnegie_codes', 'cc')
       ->fields('cc', ['unitid'])
@@ -572,9 +574,10 @@ function campuschampions_cron() {
   $currentTime = \Drupal::time()->getCurrentTime();
   $lastRun = \Drupal::state()->get('cc_stats_last_update', 0);
 
-  // Run if it's been more than 24 hours since last update
+  // Run if it's been more than 24 hours since last update.
   $secondsSinceLastRun = $currentTime - $lastRun;
-  $hoursInterval = 24; // Update every 24 hours
+  // Update every 24 hours.
+  $hoursInterval = 24;
 
   if ($secondsSinceLastRun >= ($hoursInterval * 3600)) {
     \Drupal::logger('campuschampions')->info('Updating Campus Champions stats via cron');
