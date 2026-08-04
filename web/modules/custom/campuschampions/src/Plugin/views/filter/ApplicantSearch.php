@@ -17,6 +17,13 @@ use Drupal\views\Plugin\views\filter\FilterPluginBase;
  * elements at once, so a single exposed box finds the applicant by first name,
  * last name, or email.
  *
+ * Each term becomes a `sid IN (SELECT ... value LIKE '%term%')` subquery. The
+ * leading-wildcard LIKE cannot use an index, so it scans the submission-data
+ * rows for this one webform. That is fine here: the Campus Champions
+ * application set is a few hundred submissions (about 600 searched data rows),
+ * an admin-only listing that grows slowly. If this ever backs a large form,
+ * revisit with a starts-with option or a search_api index.
+ *
  * @ingroup views_filter_handlers
  */
 #[ViewsFilter('campuschampions_applicant_search')]
