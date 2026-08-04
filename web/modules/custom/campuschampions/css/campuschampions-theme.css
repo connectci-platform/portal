@@ -45,20 +45,40 @@
 
 /*
  * Compact the cc-applications exposed filters: lay Search, Status, and
- * Duplicate on one wrapping row with the submit/reset buttons, instead of
- * stacking each filter full-width. Scoped to this view's exposed form (id is
- * view-id + display-id) so other exposed forms are untouched.
+ * Duplicate on one wrapping row instead of stacking each full-width. Scoped to
+ * this view's exposed form (id is view-id + display-id) so other exposed forms
+ * are untouched.
  */
 #views-exposed-form-cc-applications-page-1 {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.75rem 1rem;
-}
-#views-exposed-form-cc-applications-page-1 .form-item,
-#views-exposed-form-cc-applications-page-1 .form-actions {
-    margin: 0;
+    /* Align rows by the top so the labels line up regardless of how many lines
+       each filter's help text runs to. */
+    align-items: flex-start;
+    gap: 0.5rem 1.5rem;
 }
 #views-exposed-form-cc-applications-page-1 .form-item {
-    flex: 0 1 auto;
+    /* Consistent column width so the inputs align in a tidy grid; each still
+       shrinks on narrow viewports. */
+    flex: 0 1 20rem;
+    margin: 0;
+}
+/* The Apply button carries no label/help, so nudge it down to sit level with
+   the inputs rather than the labels. */
+#views-exposed-form-cc-applications-page-1 .form-actions {
+    margin: 0;
+    align-self: flex-end;
+}
+/* Tame the per-filter help text so it doesn't dominate the compact row. */
+#views-exposed-form-cc-applications-page-1 .form-item .description {
+    font-size: 0.85em;
+    margin-top: 0.15rem;
+}
+
+/*
+ * The VBO action select lives in the results form (not the exposed form) and
+ * renders full-width by default. Constrain it to match the filter columns.
+ */
+#views-form-cc-applications-page-1 .form-item-action {
+    max-width: 24rem;
 }
