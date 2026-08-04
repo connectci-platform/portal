@@ -100,8 +100,12 @@ describe('Campus Champions Applications Search', () => {
 
   it('returns no rows for a term that matches nobody', () => {
     cy.visit('/cc-applications?search=zzqx_nobody_9999');
-    cy.get('tbody').should('not.contain', alpha.last);
-    cy.get('tbody').should('not.contain', beta.last);
+    // A term matching nobody yields an empty result set — the view renders no
+    // results table at all, so assert against the page body rather than tbody
+    // (which does not exist when there are zero rows).
+    cy.get('.view-cc-applications, .views-element-container, main').should('exist');
+    cy.get('body').should('not.contain', alpha.last);
+    cy.get('body').should('not.contain', beta.last);
   });
 
   it('returns the full result set when the search box is empty', () => {
