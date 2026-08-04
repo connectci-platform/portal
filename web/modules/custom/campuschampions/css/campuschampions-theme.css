@@ -42,3 +42,23 @@
 .cc-num {
     font-size: 36px;
 }
+
+/*
+ * Compact the cc-applications exposed filters: lay Search, Status, and
+ * Duplicate on one wrapping row with the submit/reset buttons, instead of
+ * stacking each filter full-width. Scoped to this view's exposed form (id is
+ * view-id + display-id) so other exposed forms are untouched.
+ */
+#views-exposed-form-cc-applications-page-1 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+}
+#views-exposed-form-cc-applications-page-1 .form-item,
+#views-exposed-form-cc-applications-page-1 .form-actions {
+    margin: 0;
+}
+#views-exposed-form-cc-applications-page-1 .form-item {
+    flex: 0 1 auto;
+}

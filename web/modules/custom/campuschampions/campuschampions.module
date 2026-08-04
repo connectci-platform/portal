@@ -529,6 +529,18 @@ function campuschampions_views_pre_view(ViewExecutable $view, $display_id, array
 }
 
 /**
+ * Implements hook_preprocess_views_view().
+ *
+ * Attach the module CSS to the applications admin view so its exposed filters
+ * render on one compact row.
+ */
+function campuschampions_preprocess_views_view(array &$variables) {
+  if (($variables['view']->id() ?? NULL) === 'cc_applications') {
+    $variables['#attached']['library'][] = 'campuschampions/assets';
+  }
+}
+
+/**
  * Validate Carnegie code field on user forms.
  */
 function campuschampions_user_form_validate(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
