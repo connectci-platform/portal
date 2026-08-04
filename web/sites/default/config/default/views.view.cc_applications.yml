@@ -629,6 +629,46 @@ display:
           expose:
             operator_limit_selection: false
             operator_list: {  }
+        cc_applicant_search:
+          id: cc_applicant_search
+          table: webform_submission
+          field: cc_applicant_search
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: campuschampions_applicant_search
+          operator: '='
+          value: ''
+          group: 1
+          exposed: true
+          expose:
+            operator_id: ''
+            label: Search
+            description: 'Search by applicant first name, last name, or email.'
+            use_operator: false
+            operator: cc_applicant_search_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: search
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+          webform_id: join_campus_champions
+          search_elements: 'user_first_name,user_last_name,user_email'
         webform_submission_value:
           id: webform_submission_value
           table: webform_submission_field_join_campus_champions_status
