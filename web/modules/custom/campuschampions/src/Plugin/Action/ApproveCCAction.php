@@ -151,7 +151,13 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       $user->addRole('research_computing_facilitator');
     }
 
-    $user->set('field_carnegie_code', $data['carnegie_classification'] ?? NULL);
+    // Only write the Carnegie code when the application actually carries one.
+    // The webform only collects it for "Other" organizations; for every other
+    // org the key is absent, and blindly assigning NULL would blank a value the
+    // account may already hold. Mirrors the organization write below.
+    if (array_key_exists('carnegie_classification', $data)) {
+      $user->set('field_carnegie_code', $data['carnegie_classification']);
+    }
     $user->set('field_is_cc', 1);
 
     // Set the organization from the application. This is what makes an
@@ -188,21 +194,36 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       }
     }
 
-    $user->save();
+    // These writes are not atomic: the account, the submission owner, and the
+    // superseding of prior applications each commit separately. If one throws
+    // partway, the record is left half-approved. Re-running the approval
+    // converges (every step is idempotent), but only if someone knows to do it
+    // — so on failure tell the admin on screen, not just the log.
+    try {
+      $user->save();
 
-    // Reconcile the submission to the resolved account. The applicant may have
-    // submitted anonymously or under a different account, so anchor this
-    // submission to the champion we just approved. Every later operation
-    // (supersede, removal, the join-form redirect) can then trust the uid.
-    if ((int) $webform_submission->getOwnerId() !== (int) $user->id()) {
-      $webform_submission->setOwnerId($user->id());
-      $webform_submission->resave();
+      // Reconcile the submission to the resolved account. The applicant may
+      // have submitted anonymously or under a different account, so anchor
+      // this submission to the champion we just approved. Every later
+      // operation (supersede, removal, the join-form redirect) trusts the uid.
+      if ((int) $webform_submission->getOwnerId() !== (int) $user->id()) {
+        $webform_submission->setOwnerId($user->id());
+        $webform_submission->resave();
+      }
+
+      // Supersede the champion's earlier approved applications so the current
+      // organization is unambiguous — the account holds the live org, and only
+      // this newly approved submission stays 'approved'.
+      _campuschampions_set_champion_submission_status((int) $user->id(), 'superseded', (int) $sid);
     }
-
-    // Supersede the champion's earlier approved applications so the current
-    // organization is unambiguous — the account holds the live org, and only
-    // this newly approved submission stays 'approved'.
-    _campuschampions_set_champion_submission_status((int) $user->id(), 'superseded', (int) $sid);
+    catch (\Exception $e) {
+      $this->loggerFactory->get('campuschampions')->error(
+        'Approval partially failed for submission @sid (user @uid): @message',
+        ['@sid' => $sid, '@uid' => $user->id(), '@message' => $e->getMessage()]
+      );
+      $this->messenger->addError($this->t('Approving @email did not fully complete and the record may be in a partial state. Please approve this application again — it is safe to re-run.', ['@email' => $user_email]));
+      return $this->t('Error: approval of @email did not complete. Re-run the approval.', ['@email' => $user_email]);
+    }
 
     $this->emailAccountNotification($user);
 
