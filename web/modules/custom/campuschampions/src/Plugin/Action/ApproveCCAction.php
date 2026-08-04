@@ -66,7 +66,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
     $plugin_definition,
     LoggerChannelFactoryInterface $logger_factory,
     MailManagerInterface $mail_manager,
-    MessengerInterface $messenger
+    MessengerInterface $messenger,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->loggerFactory = $logger_factory;
@@ -151,7 +151,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       $user->addRole('research_computing_facilitator');
     }
 
-    $user->set('field_carnegie_code', $data['carnegie_classification']);
+    $user->set('field_carnegie_code', $data['carnegie_classification'] ?? NULL);
     $user->set('field_is_cc', 1);
 
     // Set the organization from the application. This is what makes an
@@ -275,7 +275,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       return;
     }
 
-    $message = $this->t('An email notification has been sent to @email ', ['@email' => $to]);
+    $message = $this->t('An email notification has been sent to @email', ['@email' => $to]);
     $this->messenger->addMessage($message);
     $this->loggerFactory->get('mail-log')->notice($message);
   }
