@@ -13,6 +13,15 @@ use Drupal\views\Plugin\views\filter\BooleanOperator;
  * and last name elements — lowercased and trimmed — appears on at least one
  * other submission of the same webform, regardless of submission status.
  *
+ * The filter has two faces. When configured in the Views UI (non-exposed) it
+ * behaves like the parent BooleanOperator: a 0/1/'All' value with the options
+ * from getValueOptions(). When exposed on the page it renders as a single
+ * checkbox whose value is only ever 1 (checked, show duplicates) or 'All'
+ * (unchecked, no filter) — the "Non-duplicates only" (0) state is unreachable.
+ * valueForm() branches on $form_state->get('exposed') to build each face, and
+ * adminSummary() only runs for the non-exposed one; keep those two branch
+ * conditions in sync if you touch either.
+ *
  * @ingroup views_filter_handlers
  */
 #[ViewsFilter('campuschampions_duplicate_submission_name')]
@@ -31,6 +40,11 @@ class DuplicateSubmissionName extends BooleanOperator {
 
   /**
    * {@inheritdoc}
+   *
+   * These options back the non-exposed (Views UI config) radios only. The
+   * exposed checkbox uses its own hardcoded label in valueForm() and never
+   * yields the 0 ("Non-duplicates only") state, so relabelling the exposed
+   * filter means editing valueForm(), not this list.
    */
   public function getValueOptions() {
     $this->valueOptions = [
@@ -70,15 +84,57 @@ class DuplicateSubmissionName extends BooleanOperator {
   /**
    * {@inheritdoc}
    */
+  protected function valueForm(&$form, FormStateInterface $form_state) {
+    // The only useful state is "show duplicates", so expose a single checkbox
+    // (checked = duplicates only, unchecked = no filter) rather than core's
+    // three-option select.
+    //
+    // Do NOT call parent::valueForm() on the exposed path: BooleanOperator
+    // back-fills $form_state user input from $this->value, which forces the
+    // checkbox to render checked. Build the checkbox from the actual request
+    // instead so its state matches acceptExposedInput().
+    if ($form_state->get('exposed')) {
+      $identifier = $this->options['expose']['identifier'];
+      $form['value'] = [
+        '#type' => 'checkbox',
+        '#title' => $this->t('Duplicate names only'),
+        '#default_value' => (bool) \Drupal::request()->query->get($identifier),
+        '#return_value' => 1,
+      ];
+      return;
+    }
+    parent::valueForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function acceptExposedInput($input) {
+    if (empty($this->options['exposed'])) {
+      return parent::acceptExposedInput($input);
+    }
+    // An unchecked checkbox submits nothing, but Views back-fills the exposed
+    // input from the stored default, so $input can carry a stale "on" value.
+    // Read the real submitted request parameter instead: it is present and
+    // truthy only when the box was actually checked. Absent (whether unchecked
+    // on submit or a fresh page load) always means "no filter".
+    $identifier = $this->options['expose']['identifier'];
+    $this->value = \Drupal::request()->query->get($identifier) ? 1 : 'All';
+    return $this->value === 1;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function query() {
-    // '- Any -' never reaches query(); core skips the handler entirely. Only
-    // an explicit yes/no choice gets here.
-    if ($this->value === NULL || $this->value === '' || $this->value === []) {
+    // Unchecked box (or '- Any -') means no filtering — show everything.
+    if (empty($this->value) || $this->value === 'All') {
       return;
     }
 
     $this->ensureMyTable();
-    $operator = empty($this->value) ? 'NOT IN' : 'IN';
+    // A checked box shows only duplicates.
+    $operator = 'IN';
 
     // Placeholders are namespaced by handler id so the filter can appear more
     // than once in a single view without colliding.
