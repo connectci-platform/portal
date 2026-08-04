@@ -81,8 +81,8 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
     // Reveal institution + Carnegie fields when "Other" org is selected.
     $form['#attached']['library'][] = 'campuschampions/join-org-toggle';
 
-    if ($form['#validate'] != 'validate_form') {
-      $form['#validate'][] = 'validate_form';
+    if ($form['#validate'] != 'campuschampions_join_form_validate') {
+      $form['#validate'][] = 'campuschampions_join_form_validate';
     }
   }
 
@@ -104,8 +104,8 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
 
     // Don't allow people to join the Campus Champions field unless the is_cc
     // field is checked.
-    if ($form['#validate'] != 'validate_user_form') {
-      $form['#validate'][] = 'validate_user_form';
+    if ($form['#validate'] != 'campuschampions_user_region_validate') {
+      $form['#validate'][] = 'campuschampions_user_region_validate';
     }
   }
 
@@ -232,12 +232,12 @@ function _campuschampions_set_champion_submission_status(int $uid, string $new_s
   return $count;
 }
 
-if (!function_exists('validate_form')) {
+if (!function_exists('campuschampions_join_form_validate')) {
 
   /**
    * Validates the Campus Champions join form for duplicate email/username.
    */
-  function validate_form(array &$form, FormStateInterface $form_state) {
+  function campuschampions_join_form_validate(array &$form, FormStateInterface $form_state) {
     $user_email = $form_state->getValue('user_email');
     $username = $form_state->getValue('username');
 
@@ -264,17 +264,12 @@ if (!function_exists('validate_form')) {
 
 }
 
-/**
- * Implements validate_user_form().
- *
- * Require is_cc field to assign Campus Champions Program.
- */
-if (!function_exists('validate_user_form')) {
+if (!function_exists('campuschampions_user_region_validate')) {
 
   /**
    * Requires the is_cc field before assigning the Campus Champions program.
    */
-  function validate_user_form(array &$form, FormStateInterface $form_state) {
+  function campuschampions_user_region_validate(array &$form, FormStateInterface $form_state) {
     $programs = $form_state->getValue('field_region');
     $is_cc = $form_state->getValue('field_is_cc');
     // 572 is Campus Champions
