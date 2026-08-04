@@ -92,13 +92,23 @@ class ApplicantSearch extends FilterPluginBase {
    */
   public function query() {
     // An empty exposed box must not filter anything out.
-    $term = is_array($this->value) ? reset($this->value) : $this->value;
-    $term = trim((string) $term);
-    if ($term === '') {
+    $raw = is_array($this->value) ? reset($this->value) : $this->value;
+    $raw = trim((string) $raw);
+    if ($raw === '') {
       return;
     }
     $elements = $this->getSearchElements();
     if (!$elements) {
+      return;
+    }
+
+    // Split on whitespace so a "First Last" query matches an applicant whose
+    // first and last name live in separate submission-data rows. Each term must
+    // match somewhere across the searched elements (term ORs over elements) and
+    // all terms must match (terms AND together), so "kanin bender" finds the
+    // Kanin / Bender applicant and order does not matter.
+    $terms = preg_split('/\s+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+    if (!$terms) {
       return;
     }
 
@@ -108,13 +118,11 @@ class ApplicantSearch extends FilterPluginBase {
     // than once in one view without colliding.
     $suffix = preg_replace('/[^a-z0-9_]/', '_', strtolower($this->options['id']));
     $wid = ':cc_search_wid_' . $suffix;
-    $pat = ':cc_search_pat_' . $suffix;
+    $connection = Database::getConnection();
 
-    $like = '%' . Database::getConnection()->escapeLike($term) . '%';
-    $args = [
-      $wid => $this->options['webform_id'],
-      $pat => $like,
-    ];
+    $args = [$wid => $this->options['webform_id']];
+
+    // Element-name placeholders are shared across every term's subquery.
     $name_placeholders = [];
     foreach ($elements as $i => $element) {
       $ph = ':cc_search_el_' . $suffix . '_' . $i;
@@ -123,8 +131,12 @@ class ApplicantSearch extends FilterPluginBase {
     }
     $name_in = implode(', ', $name_placeholders);
 
-    // A submission matches when any searched element contains the term.
-    $sql = <<<SQL
+    // One correlated subquery per term; AND them so all terms must be found.
+    $term_clauses = [];
+    foreach ($terms as $ti => $term) {
+      $pat = ':cc_search_pat_' . $suffix . '_' . $ti;
+      $args[$pat] = '%' . $connection->escapeLike($term) . '%';
+      $term_clauses[] = <<<SQL
 {$this->tableAlias}.sid IN (
   SELECT d.sid
   FROM {webform_submission_data} d
@@ -134,7 +146,9 @@ class ApplicantSearch extends FilterPluginBase {
     AND LOWER(d.value) LIKE LOWER($pat)
 )
 SQL;
+    }
 
+    $sql = '(' . implode(' AND ', $term_clauses) . ')';
     $this->query->addWhereExpression($this->options['group'], $sql, $args);
   }
 
