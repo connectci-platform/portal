@@ -16,14 +16,12 @@ describe('Authenticated user requests to join campus champions', () => {
       cy.get('#edit-study-field').type('math');
       cy.get('#edit-mentor-name').type('Pecan Pie (201)');
       cy.get('#edit-mentor-email').type('pecan@pie.com');
-      // Select an ACCESS Organization (now required). The test fixture user has
-      // no organization on their account, so select one explicitly rather than
-      // relying on the logged-in prefill. Choosing a real org keeps the Carnegie
-      // and Institution fields hidden (they only show for "Other"), which is why
-      // the old carnegie_classification entry is gone.
-      cy.get('input[name="field_access_organization"]').clear().type('Arkansas for Medical');
-      cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
-        .contains('University of Arkansas for Medical Sciences').click();
+      // The ACCESS Organization is required. This authenticated fixture user has
+      // an organization on their account (set in amp_dev), so it is prefilled
+      // and no selection is needed. Carnegie/Institution stay hidden (they only
+      // show for "Other"), which is why the old carnegie_classification entry is
+      // gone.
+      cy.get('input[name="field_access_organization"]').should('not.have.value', '');
       cy.get('#edit-submit').click();
       cy.contains('Your application to the Campus Champions program was successfully submitted. You should hear from us soon. Thank you!')
     });

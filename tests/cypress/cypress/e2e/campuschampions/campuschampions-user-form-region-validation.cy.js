@@ -11,26 +11,29 @@
  * disables this check.
  *
  * Edits an existing regular user as an administrator:
- * - administrator@amptesting.com edits authenticated_test_user (uid 68170)
+ * - administrator@amptesting.com edits authenticated_test_user
  */
 describe('User form - Campus Champions program membership guard', () => {
-  const TEST_UID = 68170;
   const CC_OPTION = '572';
 
-  // Seed the identity fields this user is missing so the form can POST and
-  // reach the server-side validate handler (an empty required First/Last name
-  // otherwise blocks submission client-side, never running our validation).
+  // Resolve the fixture user's uid by name — it is assigned at fixture-build
+  // time and is not stable across DB builds, so it must not be hardcoded.
   before(() => {
     cy.exec(
-      `ddev drush php:eval "\\$u=\\Drupal\\user\\Entity\\User::load(${TEST_UID}); if(\\$u){\\$u->set('field_user_first_name','Region'); \\$u->set('field_user_last_name','Tester'); \\$u->save();}"`,
-      { failOnNonZeroExit: false }
-    );
+      `ddev drush php:eval "\\$u = user_load_by_name('authenticated_test_user'); print \\$u ? \\$u->id() : 0;"`
+    ).then((res) => {
+      const uid = parseInt(res.stdout.trim(), 10);
+      expect(uid, 'authenticated_test_user uid').to.be.greaterThan(0);
+      Cypress.env('testUid', uid);
+    });
   });
 
-  // Fill the remaining required fields on the user form, overriding is_cc per
-  // test. Assumes First/Last name are already seeded (see before()).
+  // Toggle is_cc and select the Campus Champions program, then submit. The
+  // authenticated_test_user fixture already has a name and organization (set in
+  // amp_dev), so the form's required identity/org fields are satisfied without
+  // this spec mutating the shared user.
   const prepareForm = ({ isCc }) => {
-    cy.visit(`/user/${TEST_UID}/edit`);
+    cy.visit(`/user/${Cypress.env('testUid')}/edit`);
     if (isCc) {
       cy.get('#edit-field-is-cc-value').check({ force: true });
     }
@@ -39,12 +42,6 @@ describe('User form - Campus Champions program membership guard', () => {
     }
     // Select Campus Champions in the multi-select Programs list.
     cy.get('select[name="field_region[]"]').select(CC_OPTION);
-    // field_access_organization is a required entity autocomplete on this domain.
-    cy.get('input[name="field_access_organization[0][target_id]"]')
-      .clear()
-      .type('Arkansas for Medical');
-    cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
-      .contains('University of Arkansas for Medical Sciences').click();
   };
 
   beforeEach(() => {
@@ -55,7 +52,7 @@ describe('User form - Campus Champions program membership guard', () => {
   // fixture stays clean regardless of which assertions ran.
   afterEach(() => {
     cy.exec(
-      `ddev drush php:eval "\\$u=\\Drupal\\user\\Entity\\User::load(${TEST_UID}); if(\\$u){\\$u->set('field_is_cc',0); \\$u->set('field_region',[]); \\$u->save();}"`,
+      `ddev drush php:eval "\\$u=user_load_by_name('authenticated_test_user'); if(\\$u){\\$u->set('field_is_cc',0); \\$u->set('field_region',[]); \\$u->save();}"`,
       { failOnNonZeroExit: false }
     );
   });
