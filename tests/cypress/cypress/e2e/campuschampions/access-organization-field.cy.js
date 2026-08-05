@@ -19,61 +19,46 @@ describe("ACCESS Organization field - Campus Champions", () => {
         .should('have.attr', 'type', 'text');
     });
 
-    it("Should show/hide Institution field when Other is selected on edit form", () => {
+    it("Should reveal the Institution field when Other is selected on edit form", () => {
       // Log in as an administrator: the org field is read-only for a non-admin
       // who already has an organization (the D8-2789 change-institution guard),
       // so editing it to 'Other' to test the Institution reveal requires admin.
       cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
-
-      // Visit user edit page
       cy.visit('/user/edit');
-      
-      // Test Other functionality
-      cy.get('#edit-field-access-organization-0-target-id')
-        .should('exist')
-        .should('be.visible')
-        .then(($input) => {
-          const currentValue = $input.val();
-          
-          // Clear and type 'Other'
-          cy.expectAjax('orgAjax', '**/entity_reference_autocomplete/**');
-          cy.get('#edit-field-access-organization-0-target-id')
-            .clear()
-            .type('Other');
-          cy.waitForAjax('orgAjax');
 
-          // Click 'Other' if the dropdown rendered, else accept the typed value.
-          cy.get('body').then(($body) => {
-            if ($body.find('.ui-autocomplete:visible').length > 0) {
-              cy.get('.ui-autocomplete li').contains('Other').click();
-            } else {
-              cy.log('No autocomplete suggestions appeared for Other');
-              cy.get('#edit-field-access-organization-0-target-id').type('{enter}');
-            }
-          });
-          
-          // Check if Institution field becomes visible
-          cy.get('body').then(($body) => {
-            const institutionField = $body.find('input[name*="institution"], textarea[name*="institution"]');
-            if (institutionField.length > 0) {
-              cy.get('input[name*="institution"], textarea[name*="institution"]')
-                .should('be.visible')
-                .should('not.be.disabled')
-                .clear()
-                .type('Test Edit University Campus Champions')
-                .should('have.value', 'Test Edit University Campus Champions');
-            } else {
-              cy.log('Institution field not found on user edit form');
-            }
-          });
-          
-          // Revert back to original value if it exists
-          if (currentValue) {
-            cy.get('#edit-field-access-organization-0-target-id')
-              .clear()
-              .type(currentValue);
-          }
-        });
+      // Institution is hidden until the org resolves to "Other" (node 3695) —
+      // the #states condition is field_access_organization target_id == 3695.
+      cy.get('input[name="field_institution[0][value]"]').should('not.be.visible');
+
+      // Select the "Other" organization from the autocomplete so the field's
+      // value is the real entity reference (3695), which drives the #states
+      // reveal. Assert we actually picked it rather than accepting typed text.
+      cy.get('#edit-field-access-organization-0-target-id').clear().type('Other');
+      cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+        .contains(/^Other/).click();
+      cy.get('#edit-field-access-organization-0-target-id')
+        .should('have.value', 'Other (3695)');
+
+      // The Institution field must now be revealed and editable — a hard
+      // assertion, not a conditional that passes when the field is absent.
+      cy.get('input[name="field_institution[0][value]"]')
+        .should('be.visible')
+        .should('not.be.disabled')
+        .clear()
+        .type('Test Edit University Campus Champions')
+        .should('have.value', 'Test Edit University Campus Champions');
+    });
+
+    it("Should keep the organization field read-only for a non-admin who has one", () => {
+      // The D8-2789 change-institution guard makes field_access_organization
+      // read-only/disabled on the campus champions domain for a non-admin who
+      // already has an organization. authenticated_test_user has one (fixture),
+      // so the field must be locked for them.
+      cy.loginUser('authenticated@amptesting.com', '6%l7iF}6(4tI');
+      cy.visit('/user/edit');
+      cy.get('#edit-field-access-organization-0-target-id').should('exist');
+      cy.get('#edit-field-access-organization-0-target-id').should('have.attr', 'readonly', 'readonly');
+      cy.get('#edit-field-access-organization-0-target-id').should('be.disabled');
     });
   });
 });
