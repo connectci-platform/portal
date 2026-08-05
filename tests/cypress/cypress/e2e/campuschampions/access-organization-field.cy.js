@@ -20,9 +20,11 @@ describe("ACCESS Organization field - Campus Champions", () => {
     });
 
     it("Should show/hide Institution field when Other is selected on edit form", () => {
-      // Login as authenticated user
-      cy.loginUser('authenticated@amptesting.com', '6%l7iF}6(4tI');
-      
+      // Log in as an administrator: the org field is read-only for a non-admin
+      // who already has an organization (the D8-2789 change-institution guard),
+      // so editing it to 'Other' to test the Institution reveal requires admin.
+      cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
+
       // Visit user edit page
       cy.visit('/user/edit');
       
