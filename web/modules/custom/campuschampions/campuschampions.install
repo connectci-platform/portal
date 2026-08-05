@@ -1297,8 +1297,13 @@ function campuschampions_update_10007() {
  *    'superseded' (prior organizations).
  * 3. Mark approved submissions whose account is no longer a champion
  *    (field_is_cc = 0) as 'removed'.
+ *
+ * Runs in a single pass — the join submission set is small (a few hundred rows),
+ * so no batching is needed. Ownership is resolved against the current account
+ * matching each submission's email/username, which is the intended behaviour for
+ * this one-time historical backfill.
  */
-function campuschampions_update_10008(&$sandbox) {
+function campuschampions_update_10008() {
   $storage = \Drupal::entityTypeManager()->getStorage('webform_submission');
 
   // Group all join submissions by resolved champion account.
