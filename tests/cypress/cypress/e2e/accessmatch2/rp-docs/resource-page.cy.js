@@ -366,3 +366,42 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
   });
 
 });
+
+describe("Resource Documentation Page — expandable intro", () => {
+
+  it("clamps Alpha's long multi-block intro with a working toggle", () => {
+    cy.visit("/documentation/resources/alpha");
+    cy.get(".rp-description .expandable-text").should("exist");
+    cy.get(".rp-description .expandable-text.is-collapsed").should("exist");
+    cy.get(".rp-description .expandable-text__toggle")
+      .should("have.attr", "aria-expanded", "false")
+      .and("contain.text", "More");
+    // The trailing paragraph is present but clipped via the content wrapper's
+    // inline max-height + overflow:hidden (set by expandable-text.js) while
+    // collapsed. The clipped paragraph can still report a nonzero
+    // offsetHeight/Width to jQuery's :visible check (it's clipped by an
+    // ancestor's max-height, not its own display/visibility), so assert on
+    // the DOM state the JS actually toggles instead: the inline max-height
+    // and the is-collapsed class.
+    cy.contains(".rp-description p", "Consult the scheduler notes").should("exist");
+    cy.get(".rp-description .expandable-text__content")
+      .should("have.attr", "style")
+      .and("match", /max-height/);
+    cy.get(".rp-description .expandable-text__toggle").click();
+    cy.get(".rp-description .expandable-text").should("not.have.class", "is-collapsed");
+    cy.get(".rp-description .expandable-text__toggle")
+      .should("have.attr", "aria-expanded", "true")
+      .and("contain.text", "Less");
+    cy.get(".rp-description .expandable-text__content")
+      .invoke("attr", "style")
+      .should("satisfy", (style) => !style || !/max-height/.test(style));
+    cy.contains(".rp-description p", "Consult the scheduler notes").should("be.visible");
+  });
+
+  it("shows no toggle for Beta's short intro", () => {
+    cy.visit("/documentation/resources/beta");
+    // Beta's description is a single short paragraph (< 4 lines).
+    cy.get(".rp-description .expandable-text__toggle").should("not.exist");
+  });
+
+});
