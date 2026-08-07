@@ -675,6 +675,7 @@ display:
         relationships: false
         filters: false
         filter_groups: false
+        header: false
         path: false
       relationships:
         reverse__node__field_appverse_repo:
@@ -687,6 +688,18 @@ display:
           entity_type: node
           plugin_id: entity_reverse
           required: false
+      header:
+        area_text_custom:
+          id: area_text_custom
+          table: views
+          field: area_text_custom
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: text_custom
+          empty: false
+          content: '<p class="appverse-manage-intro">Reviewing a submission? Follow the <a href="/appverse-reviewer-checklist">Reviewer Checklist</a>.</p>'
+          tokenize: false
       display_extenders: {  }
       path: appverse/manage-repos
     cache_metadata:

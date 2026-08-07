@@ -2,7 +2,9 @@
 
 namespace Drupal\ood_software\Plugin\QueueWorker;
 
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueWorkerBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -43,9 +45,23 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
   protected $repoSync;
 
   /**
+   * The logger channel.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
+   */
+  protected $logger;
+
+  /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * Constructs a new AppverseAppUpdater object.
    *
-   * @param array $configuration
+   * @param array<string, mixed> $configuration
    *   A configuration array containing information about the plugin instance.
    * @param string $plugin_id
    *   The plugin_id for the plugin instance.
@@ -57,16 +73,25 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
    *   The GitHub service.
    * @param \Drupal\ood_software\Service\RepoSyncService $repo_sync
    *   The Repo sync service.
+   * @param \Drupal\Core\Logger\LoggerChannelInterface $logger
+   *   The ood_software logger channel.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, GitHubService $github_service, RepoSyncService $repo_sync) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, GitHubService $github_service, RepoSyncService $repo_sync, LoggerChannelInterface $logger, TimeInterface $time) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->entityTypeManager = $entity_type_manager;
     $this->githubService = $github_service;
     $this->repoSync = $repo_sync;
+    $this->logger = $logger;
+    $this->time = $time;
   }
 
   /**
    * {@inheritdoc}
+   *
+   * @param array<string, mixed> $configuration
+   *   A configuration array containing information about the plugin instance.
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static(
@@ -75,14 +100,16 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       $plugin_definition,
       $container->get('entity_type.manager'),
       $container->get('ood_software.gh'),
-      $container->get('ood_software.repo_sync')
+      $container->get('ood_software.repo_sync'),
+      $container->get('logger.factory')->get('ood_software'),
+      $container->get('datetime.time')
     );
   }
 
   /**
    * {@inheritdoc}
    */
-  public function processItem($data) {
+  public function processItem($data): void {
     $nid = $data['nid'];
     $node = $this->entityTypeManager->getStorage('node')->load($nid);
 
@@ -90,13 +117,33 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       return;
     }
 
-    $github_url = $node->get('field_appverse_github_url')->uri;
+    $github_url = $node->get('field_appverse_github_url')->first()?->getValue()['uri'] ?? NULL;
 
     $validUrl = $this->githubService->parseUrl($github_url);
     if ($validUrl) {
       $this->githubService->getData();
       $lastupdated = $node->get('field_appverse_lastupdated')->value;
       $needsSave = FALSE;
+
+      // Auto-archive when the app's own GitHub repo is archived. RepoSyncService
+      // cascades archive from a Repo to its member apps, but that only covers
+      // apps synced under a declared Repo. A standalone/legacy app node (its own
+      // field_appverse_github_url, not a member under a synced declared Repo)
+      // is never visited by that cascade, so an archived-upstream app would stay
+      // published indefinitely. This worker runs on every app node, so enforce
+      // the same one-way archive contract here: archived on GitHub → archived in
+      // the catalog. One-way — a later un-archive on GitHub does NOT auto-restore;
+      // re-submit is the recovery path (mirrors RepoSyncService).
+      if ($this->githubService->getIsArchived()
+        && $node->hasField('moderation_state')
+        && $node->get('moderation_state')->value !== 'archived') {
+        $node->set('moderation_state', 'archived');
+        $needsSave = TRUE;
+        $this->logger->info('Auto-archiving App @nid — repo @url is archived on GitHub.', [
+          '@nid' => $nid,
+          '@url' => $github_url,
+        ]);
+      }
 
       $appverseYmlText = $this->githubService->getAppverseYmlText();
       $repoMetadata = [
@@ -218,7 +265,7 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       // the fact that a catalogued app's upstream is unreachable. Log it so
       // it's visible; leave the node untouched (a transient rate-limit
       // shouldn't mutate catalog state).
-      \Drupal::logger('ood_software')->warning('Cron app update skipped: could not fetch @url for app @nid (repo deleted, private, rate-limited, or invalid URL).', [
+      $this->logger->warning('Cron app update skipped: could not fetch @url for app @nid (repo deleted, private, rate-limited, or invalid URL).', [
         '@url' => $github_url,
         '@nid' => $nid,
       ]);
@@ -259,9 +306,9 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
     $repo->set('field_repo_validation_er', $existing);
     // Match every other validation-state write in the codebase, which stamps
     // last_synced so the hub reflects when the state was last evaluated.
-    $repo->set('field_repo_last_synced', \Drupal::time()->getCurrentTime());
+    $repo->set('field_repo_last_synced', $this->time->getCurrentTime());
     $repo->save();
-    \Drupal::logger('ood_software')->notice('Repo @nid appverse.yml shape changed since registration; flagged degraded for attended Resync.', ['@nid' => $repo->id()]);
+    $this->logger->notice('Repo @nid appverse.yml shape changed since registration; flagged degraded for attended Resync.', ['@nid' => $repo->id()]);
   }
 
 }

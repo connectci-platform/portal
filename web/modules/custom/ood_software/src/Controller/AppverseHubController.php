@@ -169,7 +169,27 @@ final class AppverseHubController extends ControllerBase {
         return batch_process($this->hubRedirectUrl());
       }
 
-      // Single-app / inferred repo: resolveRepo already synced the one app.
+      // Declared single-app repo. resolveRepo()/applyDeclared() wrote only
+      // repo-level fields; the member app's declared metadata is applied ONLY
+      // by applyDeclaredSingleApp(). Mirrors AddRepoForm::submitDeclared().
+      if ($appverseYml !== NULL && $this->rootDeclaresSingleApp($parsedRootYml)) {
+        $fresh = $fresh ?? $node;
+        $this->repoSync->applyDeclaredSingleApp(
+          $fresh,
+          $parsedRootYml,
+          [
+            'manifestYml' => NULL,
+            'appverseYml' => NULL,
+            'readme' => $this->github->getReadme() ?? '',
+          ],
+          $repoUrl,
+          $repoMetadata,
+        );
+        $this->messenger()->addStatus($this->t('Re-synced @title.', ['@title' => $title]));
+        return $this->redirectToHub();
+      }
+
+      // Inferred repo: resolveRepo already synced the one app (applyInferred).
       $this->messenger()->addStatus($this->t('Re-synced @title.', ['@title' => $title]));
     }
     catch (\Throwable $e) {
@@ -546,6 +566,27 @@ final class AppverseHubController extends ControllerBase {
    */
   protected function redirectToHub(): RedirectResponse {
     return new RedirectResponse($this->hubRedirectUrl());
+  }
+
+  /**
+   * Whether a parsed root appverse.yml (with no apps[]) describes one app.
+   *
+   * SHAPE 1 single-app repos declare top-level app metadata instead of an
+   * apps[] list. Any of software / app_type / title / description at the root
+   * is the signal that the contributor meant to register one app here.
+   * Mirrors AddRepoForm::rootDeclaresSingleApp() so resync and submit agree on
+   * what a single-app declared repo looks like.
+   *
+   * @param array $parsedRootYml
+   *   The decoded root appverse.yml mapping.
+   */
+  private function rootDeclaresSingleApp(array $parsedRootYml): bool {
+    foreach (['software', 'app_type', 'title', 'description'] as $key) {
+      if (isset($parsedRootYml[$key]) && $parsedRootYml[$key] !== '' && $parsedRootYml[$key] !== []) {
+        return TRUE;
+      }
+    }
+    return FALSE;
   }
 
   /**

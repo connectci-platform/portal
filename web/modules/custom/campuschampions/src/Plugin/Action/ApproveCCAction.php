@@ -66,7 +66,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
     $plugin_definition,
     LoggerChannelFactoryInterface $logger_factory,
     MailManagerInterface $mail_manager,
-    MessengerInterface $messenger
+    MessengerInterface $messenger,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->loggerFactory = $logger_factory;
@@ -115,6 +115,30 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
 
     $user = user_load_by_mail($user_email);
     if (!$user) {
+      // The applicant may already have an account under a different email
+      // whose username matches the one they entered (e.g. an ACCESS-CI ID).
+      // Fall back to a username lookup so we update that existing account
+      // rather than failing the approval.
+      $username = $data['username'] ?? NULL;
+      if ($username) {
+        $user = user_load_by_name($username);
+        if ($user) {
+          // Audit trail: the approval is adopting an account whose email
+          // differs from the application's. The welcome email goes to the
+          // account's registered address, not the one on the application.
+          $this->loggerFactory->get('campuschampions')->notice(
+            'Approval for @app_email adopted existing account @name (uid @uid, account email @acct_email).',
+            [
+              '@app_email' => $user_email,
+              '@name' => $username,
+              '@uid' => $user->id(),
+              '@acct_email' => $user->getEmail(),
+            ]
+          );
+        }
+      }
+    }
+    if (!$user) {
       $this->loggerFactory->get('campuschampions')->error('Could not find user with email @email for approval.', ['@email' => $user_email]);
       return $this->t('Error: User not found for email @email.', ['@email' => $user_email]);
     }
@@ -127,8 +151,24 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       $user->addRole('research_computing_facilitator');
     }
 
-    $user->set('field_carnegie_code', $data['carnegie_classification']);
+    // Only write the Carnegie code when the application actually carries one.
+    // The webform only collects it for "Other" organizations; for every other
+    // org the key is absent, and blindly assigning NULL would blank a value the
+    // account may already hold. Mirrors the organization write below.
+    if (array_key_exists('carnegie_classification', $data)) {
+      $user->set('field_carnegie_code', $data['carnegie_classification']);
+    }
     $user->set('field_is_cc', 1);
+
+    // Set the organization from the application. This is what makes an
+    // approved change-of-institution application actually move the champion
+    // to their new organization. Only set it when the application names a
+    // real organization; leave the existing one untouched otherwise so a
+    // blank or "Other" submission never clears a good value.
+    $org_id = $data['field_access_organization'] ?? NULL;
+    if (!empty($org_id) && (string) $org_id !== '3695') {
+      $user->set('field_access_organization', $org_id);
+    }
 
     // Campus Champions Program ID.
     $cc_id = 572;
@@ -154,7 +194,36 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       }
     }
 
-    $user->save();
+    // These writes are not atomic: the account, the submission owner, and the
+    // superseding of prior applications each commit separately. If one throws
+    // partway, the record is left half-approved. Re-running the approval
+    // converges (every step is idempotent), but only if someone knows to do it
+    // — so on failure tell the admin on screen, not just the log.
+    try {
+      $user->save();
+
+      // Reconcile the submission to the resolved account. The applicant may
+      // have submitted anonymously or under a different account, so anchor
+      // this submission to the champion we just approved. Every later
+      // operation (supersede, removal, the join-form redirect) trusts the uid.
+      if ((int) $webform_submission->getOwnerId() !== (int) $user->id()) {
+        $webform_submission->setOwnerId($user->id());
+        $webform_submission->resave();
+      }
+
+      // Supersede the champion's earlier approved applications so the current
+      // organization is unambiguous — the account holds the live org, and only
+      // this newly approved submission stays 'approved'.
+      _campuschampions_set_champion_submission_status((int) $user->id(), 'superseded', (int) $sid);
+    }
+    catch (\Exception $e) {
+      $this->loggerFactory->get('campuschampions')->error(
+        'Approval partially failed for submission @sid (user @uid): @message',
+        ['@sid' => $sid, '@uid' => $user->id(), '@message' => $e->getMessage()]
+      );
+      $this->messenger->addError($this->t('Approving @email did not fully complete and the record may be in a partial state. Please approve this application again — it is safe to re-run.', ['@email' => $user_email]));
+      return $this->t('Error: approval of @email did not complete. Re-run the approval.', ['@email' => $user_email]);
+    }
 
     $this->emailAccountNotification($user);
 
@@ -227,7 +296,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
       return;
     }
 
-    $message = $this->t('An email notification has been sent to @email ', ['@email' => $to]);
+    $message = $this->t('An email notification has been sent to @email', ['@email' => $to]);
     $this->messenger->addMessage($message);
     $this->loggerFactory->get('mail-log')->notice($message);
   }

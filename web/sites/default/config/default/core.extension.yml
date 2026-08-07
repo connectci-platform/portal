@@ -56,6 +56,8 @@ module:
   domain_alias: 0
   domain_config: 0
   domain_entity: 0
+  domain_menu_access: 0
+  domain_menu_system_block: 0
   domain_simple_sitemap: 0
   domain_source: 0
   domain_theme_switch: 0
@@ -118,7 +120,6 @@ module:
   media: 0
   media_library: 0
   menu_block: 0
-  menu_item_extras: 0
   menu_item_role_access: 0
   menu_link_attributes: 0
   menu_ui: 0

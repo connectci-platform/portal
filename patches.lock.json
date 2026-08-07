@@ -1,5 +1,5 @@
 {
-    "_hash": "55cca132e229fb934d451c0ec48ac8529d6d0259bf3c74d817195d10a4b736a5",
+    "_hash": "0d1f0ad6de3a99e4a844aa4b919769712f1868651d406845b5e3846c981f9ac0",
     "patches": {
         "drupal/core": [
             {
@@ -119,6 +119,18 @@
                 "description": "Undefined array key #access in form_alter",
                 "url": "patches/multiple_registration-undefined-access-key.patch",
                 "sha256": "c2c2db46bf70e0dff2a4422680b17f68480fb976868ba53cc99717801daf7684",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/menu_item_role_access": [
+            {
+                "package": "drupal/menu_item_role_access",
+                "description": "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803",
+                "url": "patches/3005803-15.patch",
+                "sha256": "ba75d287e1e6144e11b5eeb0d5029b34851f14d1f6e21d932ed97972f75e1d8e",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

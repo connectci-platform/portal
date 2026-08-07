@@ -57,6 +57,9 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
    * @param \Drupal\Core\File\FileUrlGeneratorInterface $file_url_generator
    *   The file URL generator.
    */
+  /**
+   * @param array<string, mixed> $configuration
+   */
   public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager, FileUrlGeneratorInterface $file_url_generator) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->database = $database;
@@ -67,8 +70,14 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
   /**
    * {@inheritdoc}
    */
+  /**
+   * @param array<string, mixed> $configuration
+   */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    return new self(
+    // new static() is safe here: block plugins are only instantiated via the
+    // plugin manager, never subclassed with an incompatible constructor.
+    // @phpstan-ignore-next-line new.static
+    return new static(
       $configuration,
       $plugin_id,
       $plugin_definition,
@@ -80,6 +89,8 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
 
   /**
    * {@inheritdoc}
+   *
+   * @return array<string, mixed>
    */
   public function build() {
     $contributors = $this->getContributors();
@@ -96,14 +107,20 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
   /**
    * Get list of contributors from the database.
    *
-   * @return array
+   * @return array<int, array<string, mixed>>
    *   Array of contributor data.
    */
   protected function getContributors() {
+    // Order contributors by their most recent commit (newest first) so the
+    // most-recently-active people lead the grid. Group by uid and sort on
+    // MAX(commit_date); loadMultiple() ignores the id order it's given, so we
+    // re-apply the query order when building the list below.
     $query = $this->database->select('ood_user_commits', 'ouc');
-    $query->fields('ouc', ['uid']);
-    $query->distinct();
+    $query->addField('ouc', 'uid');
+    $query->addExpression('MAX(ouc.commit_date)', 'last_commit');
     $query->condition('ouc.uid', 0, '>');
+    $query->groupBy('ouc.uid');
+    $query->orderBy('last_commit', 'DESC');
     $uids = $query->execute()->fetchCol();
 
     if (empty($uids)) {
@@ -113,12 +130,17 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
     $users = $this->entityTypeManager->getStorage('user')->loadMultiple($uids);
     $contributors = [];
 
-    foreach ($users as $user) {
+    // Iterate the ordered uids (not $users) to preserve the most-recent sort.
+    foreach ($uids as $uid) {
+      if (empty($users[$uid])) {
+        continue;
+      }
+      $user = $users[$uid];
       $photo_url = NULL;
 
       if ($user->hasField('user_picture') && !$user->get('user_picture')->isEmpty()) {
         $file = $user->get('user_picture')->entity;
-        if ($file) {
+        if ($file instanceof \Drupal\file\FileInterface) {
           $photo_url = $this->fileUrlGenerator->generateAbsoluteString($file->getFileUri());
         }
       }
