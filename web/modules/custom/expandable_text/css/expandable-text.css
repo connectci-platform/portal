@@ -2,6 +2,16 @@
   overflow: hidden;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .expandable-text__content {
+    transition: max-height 250ms ease;
+  }
+
+  .expandable-text.is-collapsed .expandable-text__content::after {
+    transition: opacity 250ms ease;
+  }
+}
+
 /* Fade over the last visible line while collapsed. The fade resolves to the
    page background via --expandable-fade-color (default #fff); override it to
    match a non-white background. The top stop is `transparent` (not a

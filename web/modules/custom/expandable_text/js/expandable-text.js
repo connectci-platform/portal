@@ -45,16 +45,62 @@
     return btn;
   }
 
-  function collapse(wrapper, content, height) {
-    content.style.maxHeight = height + 'px';
-    content.setAttribute('inert', '');
-    wrapper.classList.add('is-collapsed');
+  // No-preference CSS transition is gated by prefers-reduced-motion; when the
+  // user prefers reduced motion the max-height transition rule does not
+  // apply, so `transitionend` never fires. Detect that case so animated
+  // collapse/expand can run their cleanup synchronously instead of waiting
+  // on an event that will never come.
+  function hasMaxHeightTransition(content) {
+    return parseFloat(getComputedStyle(content).transitionDuration) > 0;
   }
 
-  function expand(wrapper, content) {
-    content.style.maxHeight = '';
+  function collapse(wrapper, content, height, animate) {
+    wrapper.classList.add('is-collapsed');
+    if (!animate) {
+      content.style.maxHeight = height + 'px';
+      content.setAttribute('inert', '');
+      return;
+    }
+    if (!hasMaxHeightTransition(content)) {
+      content.style.maxHeight = height + 'px';
+      content.setAttribute('inert', '');
+      return;
+    }
+    // Pin current full height, force reflow, then transition to collapsed height.
+    content.style.maxHeight = content.scrollHeight + 'px';
+    // eslint-disable-next-line no-unused-expressions
+    content.offsetHeight; // force reflow so the browser has a start value
+    content.style.maxHeight = height + 'px';
+    // Make it inert only once it has finished collapsing (still interactive while animating shut).
+    var onEnd = function (e) {
+      if (e.propertyName !== 'max-height') { return; }
+      content.setAttribute('inert', '');
+      content.removeEventListener('transitionend', onEnd);
+    };
+    content.addEventListener('transitionend', onEnd);
+  }
+
+  function expand(wrapper, content, animate) {
     content.removeAttribute('inert');
     wrapper.classList.remove('is-collapsed');
+    if (!animate) {
+      content.style.maxHeight = '';
+      return;
+    }
+    if (!hasMaxHeightTransition(content)) {
+      content.style.maxHeight = '';
+      return;
+    }
+    // Transition from the current collapsed px up to the full content height.
+    var target = content.scrollHeight;
+    content.style.maxHeight = target + 'px';
+    var onEnd = function (e) {
+      if (e.propertyName !== 'max-height') { return; }
+      // Release to auto so later reflow (resize, font swap) isn't pinned to a stale px.
+      content.style.maxHeight = '';
+      content.removeEventListener('transitionend', onEnd);
+    };
+    content.addEventListener('transitionend', onEnd);
   }
 
   function apply(wrapper) {
@@ -97,12 +143,12 @@
       wrapper.appendChild(btn);
       btn.addEventListener('click', function () {
         if (wrapper.classList.contains('is-collapsed')) {
-          expand(wrapper, content);
+          expand(wrapper, content, true);
           btn.setAttribute('aria-expanded', 'true');
           btn.textContent = Drupal.t('Less');
         }
         else {
-          collapse(wrapper, content, measure(content, n).height);
+          collapse(wrapper, content, measure(content, n).height, true);
           btn.setAttribute('aria-expanded', 'false');
           btn.textContent = Drupal.t('More');
         }
