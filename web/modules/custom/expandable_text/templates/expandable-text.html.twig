@@ -1,0 +1,16 @@
+{#
+/**
+ * @file
+ * Expandable text wrapper. The toggle button is added by JS only when the
+ * content actually overflows {{ lines }} rendered lines.
+ *
+ * Available variables:
+ * - content: the already-rendered body (render array or safe markup).
+ * - lines: collapse target in rendered lines.
+ */
+#}
+<div class="expandable-text" data-lines="{{ lines }}">
+  <div class="expandable-text__content" id="expandable-text-content-{{ random() }}">
+    {{ content }}
+  </div>
+</div>
