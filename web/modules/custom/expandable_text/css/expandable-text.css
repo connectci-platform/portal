@@ -2,8 +2,10 @@
   overflow: hidden;
 }
 
-/* Fade over the last visible line while collapsed. Fades to the page
-   background; override --expandable-fade-color on non-white backgrounds. */
+/* Fade over the last visible line while collapsed. The fade resolves to the
+   page background via --expandable-fade-color (default #fff); override it to
+   match a non-white background. The top stop is `transparent` (not a
+   hardcoded white) so the override produces a clean fade with no white seam. */
 .expandable-text.is-collapsed .expandable-text__content {
   position: relative;
 }
@@ -18,7 +20,7 @@
   pointer-events: none;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0),
+    transparent,
     var(--expandable-fade-color, #fff)
   );
 }
