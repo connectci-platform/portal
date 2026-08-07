@@ -1,0 +1,31 @@
+name: (A) Weekly sitemap health check
+on:
+  schedule:
+    - cron: '0 12 * * 1'
+  workflow_dispatch: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl all 13 sitemaps
+        run: |
+          fail=0
+          # mines.cyberinfrastructure.org excluded: DNS points at a dead
+          # host (D8-2780); re-add if the domain is ever revived.
+          for h in campuschampions.cyberinfrastructure.org careers-ct.cyberinfrastructure.org \
+            ccmnet.org coco.cyberinfrastructure.org connect.cyberinfrastructure.org \
+            greatplains.cyberinfrastructure.org kycyberteam.cyberinfrastructure.org \
+            necyberteam.org openondemand.connectci.org \
+            pasciencedmz.connectci.org support.access-ci.org usrse.cyberinfrastructure.org; do
+            code=$(curl -sk -o /tmp/sm.xml -w '%{http_code}' "https://$h/sitemap.xml")
+            locs=$(grep -c "<loc>" /tmp/sm.xml || true)
+            newest=$(grep -oE "<lastmod>[^<]+" /tmp/sm.xml | sort | tail -1 | sed 's/<lastmod>//')
+            echo "$h -> $code ($locs URLs, newest lastmod $newest)"
+            if [ "$code" != "200" ] || [ "$locs" = "0" ]; then fail=1; fi
+            # A jammed generation queue serves stale sitemaps forever with no
+            # error anywhere; flag if nothing changed in 8 days.
+            if [ -n "$newest" ] && [ "$(date -d "$newest" +%s 2>/dev/null || echo 0)" -lt "$(date -d '8 days ago' +%s)" ]; then
+              echo "::warning::$h sitemap stale (newest lastmod $newest)"; fail=1
+            fi
+          done
+          exit $fail
