@@ -1,4 +1,34 @@
-/* Real styles land in Task 4. */
 .expandable-text__content {
   overflow: hidden;
+}
+
+/* Fade over the last visible line while collapsed. Fades to the page
+   background; override --expandable-fade-color on non-white backgrounds. */
+.expandable-text.is-collapsed .expandable-text__content {
+  position: relative;
+}
+
+.expandable-text.is-collapsed .expandable-text__content::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.75rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    var(--expandable-fade-color, #fff)
+  );
+}
+
+.expandable-text__toggle {
+  margin-top: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem 0;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
 }
