@@ -15,11 +15,8 @@ weight: -1
 is_admin: true
 permissions:
   - 'administer appverse content'
-  - 'create field_appverse_readme'
   - 'create field_github_graph'
-  - 'edit field_appverse_readme'
   - 'edit field_github_graph'
-  - 'edit own field_appverse_readme'
   - 'edit own field_github_graph'
   - 'use appverse_editorial transition archive'
   - 'use appverse_editorial transition archived_draft'
@@ -30,7 +27,5 @@ permissions:
   - 'use appverse_editorial transition review_to_review'
   - 'use appverse_editorial transition send_for_review'
   - 'use appverse_editorial transition unpublish'
-  - 'view field_appverse_readme'
   - 'view field_github_graph'
-  - 'view own field_appverse_readme'
   - 'view own field_github_graph'

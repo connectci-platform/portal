@@ -9,3 +9,4 @@ name: 'Connect CI'
 scheme: https
 weight: 10
 is_default: false
+path_prefix: ''

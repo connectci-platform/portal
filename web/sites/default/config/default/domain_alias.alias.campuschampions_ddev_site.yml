@@ -7,3 +7,4 @@ domain_id: campuschampions_cyberinfrastructure_org
 pattern: campuschampions.ddev.site
 redirect: 0
 environment: default
+weight: 5

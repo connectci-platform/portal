@@ -19,6 +19,6 @@ translatable: false
 default_value: {  }
 default_value_callback: ''
 settings:
-  handler: 'domain:domain'
+  handler: domain_admin
   handler_settings: {  }
 field_type: entity_reference

@@ -7,3 +7,4 @@ domain_id: openondemand_cyberinfrastructure_org
 pattern: ondemand.ddev.site
 redirect: 0
 environment: default
+weight: 52

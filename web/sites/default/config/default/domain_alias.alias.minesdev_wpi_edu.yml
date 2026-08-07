@@ -7,3 +7,4 @@ domain_id: mines_cyberinfrastructure_org
 pattern: minesdev.wpi.edu
 redirect: 0
 environment: development
+weight: 43

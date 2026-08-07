@@ -7,3 +7,4 @@ domain_id: pasciencedmz_connectci_org
 pattern: pasciencedmz.ddev.site
 redirect: 0
 environment: local
+weight: 53

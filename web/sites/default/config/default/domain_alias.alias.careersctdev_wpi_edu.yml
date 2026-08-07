@@ -7,3 +7,4 @@ domain_id: careersct_cyberinfrastucture_org
 pattern: careersctdev.wpi.edu
 redirect: 0
 environment: development
+weight: 9

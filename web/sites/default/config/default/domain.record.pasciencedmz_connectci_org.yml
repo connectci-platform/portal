@@ -9,3 +9,4 @@ name: 'PA Science'
 scheme: https
 weight: 13
 is_default: false
+path_prefix: ''

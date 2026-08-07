@@ -7,3 +7,4 @@ domain_id: careersct_cyberinfrastucture_org
 pattern: crct-dev.cnct.ci
 redirect: 0
 environment: default
+weight: 22

@@ -7,3 +7,4 @@ domain_id: nectd8_wpi_edu
 pattern: northeast.cyberinfrastructure.org
 redirect: 0
 environment: default
+weight: 50
