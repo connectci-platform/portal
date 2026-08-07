@@ -1,5 +1,5 @@
 {
-    "_hash": "a3923d75b4cae56808ecc2e8cb9e3bdc9a925bf5bfd02e1ca3736e29a86a87b5",
+    "_hash": "b4d229aa7437f9bead1ec0fbc7e8dab1e8405a4ea799b9f78e8aab4301ce9c4e",
     "patches": {
         "drupal/core": [
             {
@@ -107,6 +107,30 @@
                 "description": "Undefined array key #access in form_alter",
                 "url": "patches/multiple_registration-undefined-access-key.patch",
                 "sha256": "c2c2db46bf70e0dff2a4422680b17f68480fb976868ba53cc99717801daf7684",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/menu_item_role_access": [
+            {
+                "package": "drupal/menu_item_role_access",
+                "description": "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803",
+                "url": "patches/3005803-15.patch",
+                "sha256": "ba75d287e1e6144e11b5eeb0d5029b34851f14d1f6e21d932ed97972f75e1d8e",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/domain_simple_sitemap": [
+            {
+                "package": "drupal/domain_simple_sitemap",
+                "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
+                "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
+                "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

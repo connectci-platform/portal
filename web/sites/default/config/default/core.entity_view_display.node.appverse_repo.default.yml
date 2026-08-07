@@ -1,17 +1,25 @@
-uuid: 93d301d7-c97a-40b8-9f8a-2b98fee7cbd7
+uuid: 86c1c0d9-5d44-44e0-9f7f-104653e664d0
 langcode: en
 status: true
 dependencies:
   config:
     - field.field.node.appverse_repo.field_repo_description
     - field.field.node.appverse_repo.field_repo_docs_url
+    - field.field.node.appverse_repo.field_repo_last_commit
     - field.field.node.appverse_repo.field_repo_last_synced
     - field.field.node.appverse_repo.field_repo_maintainer_name
     - field.field.node.appverse_repo.field_repo_maintainer_url
     - field.field.node.appverse_repo.field_repo_organization
     - field.field.node.appverse_repo.field_repo_readme
-    - field.field.node.appverse_repo.field_repo_url
+    - field.field.node.appverse_repo.field_repo_related
+    - field.field.node.appverse_repo.field_repo_shape
+    - field.field.node.appverse_repo.field_repo_shared_paths
+    - field.field.node.appverse_repo.field_repo_stars
     - field.field.node.appverse_repo.field_repo_tags
+    - field.field.node.appverse_repo.field_repo_unresolved_tags
+    - field.field.node.appverse_repo.field_repo_url
+    - field.field.node.appverse_repo.field_repo_validation_er
+    - field.field.node.appverse_repo.field_repo_validation_st
     - field.field.node.appverse_repo.field_repo_www_url
     - node.type.appverse_repo
   module:
@@ -135,6 +143,7 @@ hidden:
   field_repo_shape: true
   field_repo_shared_paths: true
   field_repo_stars: true
+  field_repo_unresolved_tags: true
   field_repo_validation_er: true
   field_repo_validation_st: true
   langcode: true

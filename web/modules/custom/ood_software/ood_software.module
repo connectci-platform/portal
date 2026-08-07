@@ -1477,18 +1477,28 @@ function ood_software_node_view(array &$build, EntityInterface $entity, EntityVi
       ],
     ];
 
-    $github_url = 'https://github.com/sweet-and-fizzy/ood-appverse/edit/main/docs/' . $doc_map[$nid];
-    $build['github_edit_link'] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['appverse-docs-github-link']],
-      '#weight' => -100,
-      'link' => [
-        '#type' => 'link',
-        '#title' => 'Suggest an edit on GitHub',
-        '#url' => \Drupal\Core\Url::fromUri($github_url),
-        '#attributes' => ['target' => '_blank', 'rel' => 'noopener'],
-      ],
-    ];
+    // Derive the GitHub edit URL from the doc's raw source URL, since docs come
+    // from two repos (ood-appverse/docs and appverse-review/references).
+    $source_url = $doc_map[$nid];
+    $github_url = preg_replace(
+      '#^https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+)$#',
+      'https://github.com/$1/$2/edit/$3/$4',
+      $source_url
+    );
+    // Only render the link when the transform matched a raw URL.
+    if ($github_url && $github_url !== $source_url) {
+      $build['github_edit_link'] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-docs-github-link']],
+        '#weight' => -100,
+        'link' => [
+          '#type' => 'link',
+          '#title' => 'Suggest an edit on GitHub',
+          '#url' => \Drupal\Core\Url::fromUri($github_url),
+          '#attributes' => ['target' => '_blank', 'rel' => 'noopener'],
+        ],
+      ];
+    }
   }
 
   // Appverse SPA redirects for software and app nodes.
@@ -2056,17 +2066,17 @@ function ood_software_views_pre_render(\Drupal\views\ViewExecutable $view): void
 /**
  * Implements hook_preprocess_views_view().
  *
- * Adds an "Add a repo" button to the top of the my_appverse hub (both the
- * user "My Apps" and admin "Manage repos" displays), linking to the existing
- * /appverse/add-repo submission form. No permission gate: 'submit appverse
- * repo' is granted to all authenticated users, and the page itself only needs
- * 'access content', so everyone who can reach the hub can submit. If submit is
- * ever restricted to specific roles, gate this on that permission then.
+ * Adds an "Add a repo" button to the user hub (page_user), linking to
+ * /appverse/add-repo. Not on the admin manage-repos display — adding a repo is
+ * a contributor action, not a reviewer one.
  *
  * @param array<string, mixed> $variables
  */
 function ood_software_preprocess_views_view(array &$variables): void {
   if (($variables['view'] ?? NULL) === NULL || $variables['view']->id() !== 'my_appverse') {
+    return;
+  }
+  if (($variables['view']->current_display ?? NULL) !== 'page_user') {
     return;
   }
   $button = [
