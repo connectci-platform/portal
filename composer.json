@@ -57,7 +57,7 @@
     "require": {
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "1.0.x-dev",
-        "connectci/access": "3.0.x-dev",
+        "connectci/access": "dev-feat/event-crud",
         "connectci/asp-theme": "main-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
