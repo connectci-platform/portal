@@ -13,7 +13,7 @@ jobs:
           # mines.cyberinfrastructure.org excluded: DNS points at a dead
           # host (D8-2780); re-add if the domain is ever revived.
           for h in campuschampions.cyberinfrastructure.org careers-ct.cyberinfrastructure.org \
-            ccmnet.org coco.cyberinfrastructure.org connect.cyberinfrastructure.org \
+            ccmnet.org coco.cyberinfrastructure.org connectci.org \
             greatplains.cyberinfrastructure.org kycyberteam.cyberinfrastructure.org \
             necyberteam.org openondemand.connectci.org \
             pasciencedmz.connectci.org support.access-ci.org usrse.cyberinfrastructure.org; do
