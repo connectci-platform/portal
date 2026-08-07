@@ -1,5 +1,5 @@
 {
-    "_hash": "accdce61f01177a186e886d1f1bcc479411a71e8e1cbbbe3652c65df7d0fb761",
+    "_hash": "0d1f0ad6de3a99e4a844aa4b919769712f1868651d406845b5e3846c981f9ac0",
     "patches": {
         "drupal/core": [
             {
@@ -131,6 +131,18 @@
                 "description": "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803",
                 "url": "patches/3005803-15.patch",
                 "sha256": "ba75d287e1e6144e11b5eeb0d5029b34851f14d1f6e21d932ed97972f75e1d8e",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/domain_simple_sitemap": [
+            {
+                "package": "drupal/domain_simple_sitemap",
+                "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
+                "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
+                "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

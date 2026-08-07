@@ -58,6 +58,7 @@ module:
   domain_entity: 0
   domain_menu_access: 0
   domain_menu_system_block: 0
+  domain_simple_sitemap: 0
   domain_source: 0
   domain_theme_switch: 0
   dynamic_page_cache: 0
@@ -172,6 +173,7 @@ module:
   serialization: 0
   shortcode: 0
   shortcut: 0
+  simple_sitemap: 0
   social_api: 0
   social_auth: 0
   social_auth_google: 0

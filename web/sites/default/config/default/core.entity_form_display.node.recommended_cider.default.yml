@@ -43,6 +43,11 @@ content:
     settings:
       include_locked: true
     third_party_settings: {  }
+  simple_sitemap:
+    weight: 10
+    region: content
+    settings: {  }
+    third_party_settings: {  }
 hidden:
   created: true
   field_domain_access: true

@@ -1,0 +1,18 @@
+uuid: 1c4f5e17-866a-4ff1-ae51-1a747796ba75
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: mines_cyberinfrastructure_org
+id: mines_cyberinfrastructure_org
+label: 'MINES Cyberteam sitemap'
+description: 'Sitemap type for domain: MINES Cyberteam'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

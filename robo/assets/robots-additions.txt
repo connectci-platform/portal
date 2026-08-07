@@ -1,11 +1,26 @@
 # Facets pages
-Disallow: /affinity-groups
-Disallow: /events
-Disallow: /events/past
-Disallow: /mentorships
-Disallow: /members
-Disallow: /community/cssn/directory
-Disallow: /people
-Disallow: /knowledge-base/resources
-Disallow: /support/knowledge-base/nairr-pilot-webinars
+Disallow: /affinity-groups?
+Disallow: /events?
+Disallow: /events/past?
+Disallow: /mentorships?
+Disallow: /members?
+Disallow: /community/cssn/directory?
+Disallow: /people?
+Disallow: /knowledge-base/resources?
+Disallow: /support/knowledge-base/nairr-pilot-webinars?
+Disallow: /knowledge-base/nairr-pilot-webinars?
 
+# Sitemaps
+Sitemap: https://campuschampions.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://careers-ct.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://ccmnet.org/sitemap.xml
+Sitemap: https://coco.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://connect.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://greatplains.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://kycyberteam.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://mines.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://necyberteam.org/sitemap.xml
+Sitemap: https://openondemand.connectci.org/sitemap.xml
+Sitemap: https://pasciencedmz.connectci.org/sitemap.xml
+Sitemap: https://support.access-ci.org/sitemap.xml
+Sitemap: https://usrse.cyberinfrastructure.org/sitemap.xml
