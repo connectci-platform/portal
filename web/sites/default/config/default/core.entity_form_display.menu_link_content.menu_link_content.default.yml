@@ -1,15 +1,31 @@
-uuid: b2574702-0a0b-4a97-9383-675f670b42a9
+uuid: 8f1912e8-6411-41ff-bb9c-7777a0e21787
 langcode: en
 status: true
 dependencies:
+  config:
+    - field.field.menu_link_content.menu_link_content.field_domain_access
+    - field.field.menu_link_content.menu_link_content.field_domain_all_affiliates
   module:
     - link
     - menu_link_content
-id: menu_link_content.main.default
+id: menu_link_content.menu_link_content.default
 targetEntityType: menu_link_content
-bundle: main
+bundle: menu_link_content
 mode: default
 content:
+  field_domain_access:
+    type: options_buttons
+    weight: 40
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_domain_all_affiliates:
+    type: boolean_checkbox
+    weight: 41
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
   langcode:
     type: language_select
     weight: 2
@@ -30,28 +46,9 @@ content:
     region: content
     settings: {  }
     third_party_settings: {  }
-  path:
-    type: path
-    weight: 30
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  simple_sitemap:
-    weight: 10
-    region: content
-    settings: {  }
-    third_party_settings: {  }
   title:
     type: string_textfield
-    weight: 0
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  view_mode:
-    type: string_textfield
-    weight: 31
+    weight: -5
     region: content
     settings:
       size: 60

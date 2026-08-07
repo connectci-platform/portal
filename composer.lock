@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f725e6f5634e8e1f3f378b0b946e1f4",
+    "content-hash": "b486704610217a808c7078c64ad22f4d",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -3874,6 +3874,77 @@
             "support": {
                 "source": "https://git.drupalcode.org/project/domain_entity.git",
                 "issues": "https://www.drupal.org/project/issues/domain_entity"
+            }
+        },
+        {
+            "name": "drupal/domain_menu_access",
+            "version": "2.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/domain_menu_access.git",
+                "reference": "2.0.1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/domain_menu_access-2.0.1.zip",
+                "reference": "2.0.1",
+                "shasum": "d2b94e6fbd4657b604ac15866d5b798fc40700b7"
+            },
+            "require": {
+                "drupal/core": "^10.2 || ^11",
+                "drupal/domain": "^1.0 || ^2.0",
+                "drupal/domain_access": "*"
+            },
+            "require-dev": {
+                "drupal/menu_block": "^1.0",
+                "phpstan/phpstan-deprecation-rules": "^1.1",
+                "phpstan/phpstan-strict-rules": "^1.5"
+            },
+            "suggest": {
+                "drupal/menu_block": "Provides configurable blocks of menu links and is needed to allow to install the submodule domain_menu_access_menu_block"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "2.0.1",
+                    "datestamp": "1744139145",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "maciej.zgadzaj",
+                    "homepage": "https://www.drupal.org/u/maciejzgadzaj",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "Oleksandr Dekhteruk (pifagor)",
+                    "homepage": "https://www.drupal.org/u/pifagor",
+                    "role": "Co-maintainer"
+                },
+                {
+                    "name": "Sebastien MALOT (Sebastien M.)",
+                    "homepage": "https://www.drupal.org/u/sebastien-m",
+                    "role": "Co-maintainer"
+                },
+                {
+                    "name": "Tim Diels (tim-diels)",
+                    "homepage": "https://www.drupal.org/u/tim-diels",
+                    "role": "Co-maintainer"
+                }
+            ],
+            "description": "Domain-based access control for menu link.",
+            "homepage": "https://www.drupal.org/project/domain_menu_access",
+            "support": {
+                "source": "https://git.drupalcode.org/project/domain_menu_access",
+                "issues": "https://drupal.org/project/issues/domain_menu_access"
             }
         },
         {
