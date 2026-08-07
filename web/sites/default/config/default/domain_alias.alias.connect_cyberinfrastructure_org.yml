@@ -1,0 +1,9 @@
+uuid: a49e5afd-aa92-4752-a0e5-fbef056ebd06
+langcode: en
+status: true
+dependencies: {  }
+id: connect_cyberinfrastructure_org
+domain_id: connectcidev_wpi_edu
+pattern: connect.cyberinfrastructure.org
+redirect: 301
+environment: default

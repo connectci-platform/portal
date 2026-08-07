@@ -15,10 +15,9 @@ Sitemap: https://campuschampions.cyberinfrastructure.org/sitemap.xml
 Sitemap: https://careers-ct.cyberinfrastructure.org/sitemap.xml
 Sitemap: https://ccmnet.org/sitemap.xml
 Sitemap: https://coco.cyberinfrastructure.org/sitemap.xml
-Sitemap: https://connect.cyberinfrastructure.org/sitemap.xml
+Sitemap: https://connectci.org/sitemap.xml
 Sitemap: https://greatplains.cyberinfrastructure.org/sitemap.xml
 Sitemap: https://kycyberteam.cyberinfrastructure.org/sitemap.xml
-Sitemap: https://mines.cyberinfrastructure.org/sitemap.xml
 Sitemap: https://necyberteam.org/sitemap.xml
 Sitemap: https://openondemand.connectci.org/sitemap.xml
 Sitemap: https://pasciencedmz.connectci.org/sitemap.xml

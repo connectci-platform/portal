@@ -1,6 +1,6 @@
 uuid: ed0d79a8-a048-4d4b-a1e3-dcf45218d0b0
 langcode: en
-status: true
+status: false
 dependencies:
   config:
     - simple_sitemap.type.mines_cyberinfrastructure_org
