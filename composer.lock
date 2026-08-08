@@ -13782,10 +13782,10 @@
         },
         {
             "name": "npm-asset/select2",
-            "version": "4.0.13",
+            "version": "4.1.0",
             "dist": {
                 "type": "tar",
-                "url": "https://registry.npmjs.org/select2/-/select2-4.0.13.tgz"
+                "url": "https://registry.npmjs.org/select2/-/select2-4.1.0.tgz"
             },
             "type": "npm-asset",
             "license": [
