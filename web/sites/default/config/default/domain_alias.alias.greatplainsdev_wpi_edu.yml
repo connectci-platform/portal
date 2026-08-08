@@ -1,9 +1,0 @@
-uuid: f17229e0-6b48-47e6-9dc0-2eee334769d9
-langcode: en
-status: true
-dependencies: {  }
-id: greatplainsdev_wpi_edu
-domain_id: greatplains_wpi_edu
-pattern: greatplainsdev.wpi.edu
-redirect: 0
-environment: development

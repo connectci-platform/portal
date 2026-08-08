@@ -1,9 +1,0 @@
-uuid: d466d043-03d5-4220-b329-9d88e128419a
-langcode: en
-status: true
-dependencies: {  }
-id: crct_wpi_edu
-domain_id: careersct_cyberinfrastucture_org
-pattern: crct.wpi.edu
-redirect: 0
-environment: staging

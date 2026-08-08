@@ -1,9 +1,0 @@
-uuid: a3dcd11a-b686-47aa-ac01-b891637f3858
-langcode: en
-status: true
-dependencies: {  }
-id: careersctdev_wpi_edu
-domain_id: careersct_cyberinfrastucture_org
-pattern: careersctdev.wpi.edu
-redirect: 0
-environment: development
