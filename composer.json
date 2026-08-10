@@ -203,7 +203,7 @@
         "swagger-api/swagger-ui": "^3.52"
     },
     "require-dev": {
-        "connectci/amp_dev": "dev-md-2796",
+        "connectci/amp_dev": "main-dev",
         "doctrine/instantiator": "~2.0.0",
         "drupal/core-dev": "^10.6.1",
         "drupal/devel": "^5.4",
