@@ -112,6 +112,7 @@
         "drupal/domain_config": "^3.0",
         "drupal/domain_entity": "^2.0",
         "drupal/domain_menu_access": "^2.0",
+        "drupal/domain_simple_sitemap": "^3.0@RC",
         "drupal/domain_source": "^3.0",
         "drupal/domain_theme_switch": "^3.0",
         "drupal/easy_breadcrumb": "^2.0",

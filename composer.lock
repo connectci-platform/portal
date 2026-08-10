@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0beca99fa7e24e482ba2f31f5081012c",
+    "content-hash": "c8f616ce2638b79982c14fe6fad579a4",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -3894,6 +3894,81 @@
                 "drupal/domain": "^1.0 || ^2.0 || ^3.0"
             },
             "type": "drupal-module"
+        },
+        {
+            "name": "drupal/domain_simple_sitemap",
+            "version": "3.0.0-rc3",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/domain_simple_sitemap.git",
+                "reference": "3.0.0-rc3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/domain_simple_sitemap-3.0.0-rc3.zip",
+                "reference": "3.0.0-rc3",
+                "shasum": "791254b45dec3670af7c67aa69f5a617fec8b444"
+            },
+            "require": {
+                "drupal/core": "^9 || ^10 || ^11",
+                "drupal/domain_access": "*",
+                "drupal/simple_sitemap": "*"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "3.0.0-rc3",
+                    "datestamp": "1751635848",
+                    "security-coverage": {
+                        "status": "not-covered",
+                        "message": "Project has not opted into security advisory coverage!"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0+"
+            ],
+            "authors": [
+                {
+                    "name": "Mladen Stankovic a.k.a euphoric_mv",
+                    "homepage": "https://www.drupal.org/user/172527",
+                    "email": "mstankovic@adyax.com"
+                },
+                {
+                    "name": "Ruben Egiguren a.k.a keopx",
+                    "homepage": "https://www.drupal.org/user/1571216",
+                    "email": "keopx@keopx.net"
+                },
+                {
+                    "name": "Ambroise Nicolas a.k.a nambroise",
+                    "homepage": "https://www.drupal.org/user/3204205",
+                    "email": "info@nicolasambroise.com"
+                },
+                {
+                    "name": "i-trokhanenko",
+                    "homepage": "https://www.drupal.org/user/3546872"
+                },
+                {
+                    "name": "keopx",
+                    "homepage": "https://www.drupal.org/user/377362"
+                },
+                {
+                    "name": "nicolasambroise",
+                    "homepage": "https://www.drupal.org/user/3441721"
+                }
+            ],
+            "description": "Domain Access Sitemap module generates sitemaps for active domains. It requires Domain Access and Simple Sitemap modules.",
+            "homepage": "https://www.drupal.org/project/domain_simple_sitemap",
+            "keywords": [
+                "Drupal",
+                "SEO",
+                "Utility"
+            ],
+            "support": {
+                "source": "http://cgit.drupalcode.org/domain_simple_sitemap",
+                "issues": "https://www.drupal.org/project/issues/domain_simple_sitemap"
+            }
         },
         {
             "name": "drupal/domain_source",
@@ -24528,6 +24603,7 @@
         "drupal/auditfiles": 10,
         "drupal/crawler_rate_limit": 10,
         "drupal/datalayer": 5,
+        "drupal/domain_simple_sitemap": 5,
         "drupal/email_change_verification": 10,
         "drupal/inline_entity_form": 5,
         "drupal/label_help": 10,
