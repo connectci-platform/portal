@@ -1,0 +1,18 @@
+uuid: 107f0dc5-920c-4d65-a4ba-43333f70210d
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: connectcidev_wpi_edu
+id: connectcidev_wpi_edu
+label: 'Connect CI sitemap'
+description: 'Sitemap type for domain: Connect CI'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

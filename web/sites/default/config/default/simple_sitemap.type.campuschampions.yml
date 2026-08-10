@@ -1,0 +1,18 @@
+uuid: c0bba577-3ead-4502-b249-bf92ac401175
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: campuschampions_cyberinfrastructure_org
+id: campuschampions
+label: 'Campus Champions sitemap'
+description: 'Sitemap type for domain: Campus Champions'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

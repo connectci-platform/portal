@@ -1,9 +1,0 @@
-uuid: 40ec5361-1374-4c2f-9f1e-6e40863a4e9c
-langcode: en
-status: true
-dependencies: {  }
-id: minesdev_wpi_edu
-domain_id: mines_cyberinfrastructure_org
-pattern: minesdev.wpi.edu
-redirect: 0
-environment: development

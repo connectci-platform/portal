@@ -1,0 +1,18 @@
+uuid: 03f658d3-406f-416b-b281-1e0c911a898f
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: openondemand_cyberinfrastructure_org
+id: openondemand
+label: 'Open OnDemand sitemap'
+description: 'Sitemap type for domain: Open OnDemand'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

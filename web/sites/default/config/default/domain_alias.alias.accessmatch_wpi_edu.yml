@@ -1,9 +1,0 @@
-uuid: a6feb88f-4e94-419c-8d54-6f7670909bfc
-langcode: en
-status: true
-dependencies: {  }
-id: accessmatch_wpi_edu
-domain_id: amp_cyberinfrastructure_org
-pattern: accessmatch.wpi.edu
-redirect: 0
-environment: default

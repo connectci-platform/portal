@@ -844,6 +844,8 @@ display:
       display_extenders:
         jsonapi_views:
           enabled: true
+        simple_sitemap_display_extender:
+          variants: {  }
       path: affinity-groups
     cache_metadata:
       max-age: -1

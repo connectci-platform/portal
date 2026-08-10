@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b486704610217a808c7078c64ad22f4d",
+    "content-hash": "5cd071a4e27d46db32d9fe390bf3d690",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "3793d4259869b90a060a02d85133950bd749efea"
+                "reference": "093ad60048e32f184b141e1f3a45a8c6c14c1c68"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -702,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-08-04T16:21:54+00:00"
+            "time": "2026-08-07T20:36:05+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -736,7 +736,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "81e76eb69356265fd21bda0e37862e7c9e0eef3e"
+                "reference": "d552d0402ba3bbb9e7a184e6ba98a3ff08d3d92c"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -754,7 +754,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-07-13T01:29:15+00:00"
+            "time": "2026-08-08T11:22:22+00:00"
         },
         {
             "name": "connectci/operations_cider",
@@ -3945,6 +3945,81 @@
             "support": {
                 "source": "https://git.drupalcode.org/project/domain_menu_access",
                 "issues": "https://drupal.org/project/issues/domain_menu_access"
+            }
+        },
+        {
+            "name": "drupal/domain_simple_sitemap",
+            "version": "3.0.0-rc3",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/domain_simple_sitemap.git",
+                "reference": "3.0.0-rc3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/domain_simple_sitemap-3.0.0-rc3.zip",
+                "reference": "3.0.0-rc3",
+                "shasum": "791254b45dec3670af7c67aa69f5a617fec8b444"
+            },
+            "require": {
+                "drupal/core": "^9 || ^10 || ^11",
+                "drupal/domain_access": "*",
+                "drupal/simple_sitemap": "*"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "3.0.0-rc3",
+                    "datestamp": "1751635848",
+                    "security-coverage": {
+                        "status": "not-covered",
+                        "message": "Project has not opted into security advisory coverage!"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0+"
+            ],
+            "authors": [
+                {
+                    "name": "Mladen Stankovic a.k.a euphoric_mv",
+                    "homepage": "https://www.drupal.org/user/172527",
+                    "email": "mstankovic@adyax.com"
+                },
+                {
+                    "name": "Ruben Egiguren a.k.a keopx",
+                    "homepage": "https://www.drupal.org/user/1571216",
+                    "email": "keopx@keopx.net"
+                },
+                {
+                    "name": "Ambroise Nicolas a.k.a nambroise",
+                    "homepage": "https://www.drupal.org/user/3204205",
+                    "email": "info@nicolasambroise.com"
+                },
+                {
+                    "name": "i-trokhanenko",
+                    "homepage": "https://www.drupal.org/user/3546872"
+                },
+                {
+                    "name": "keopx",
+                    "homepage": "https://www.drupal.org/user/377362"
+                },
+                {
+                    "name": "nicolasambroise",
+                    "homepage": "https://www.drupal.org/user/3441721"
+                }
+            ],
+            "description": "Domain Access Sitemap module generates sitemaps for active domains. It requires Domain Access and Simple Sitemap modules.",
+            "homepage": "https://www.drupal.org/project/domain_simple_sitemap",
+            "keywords": [
+                "Drupal",
+                "SEO",
+                "Utility"
+            ],
+            "support": {
+                "source": "http://cgit.drupalcode.org/domain_simple_sitemap",
+                "issues": "https://www.drupal.org/project/issues/domain_simple_sitemap"
             }
         },
         {
@@ -9267,6 +9342,64 @@
             }
         },
         {
+            "name": "drupal/simple_sitemap",
+            "version": "4.2.3",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/simple_sitemap.git",
+                "reference": "4.2.3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/simple_sitemap-4.2.3.zip",
+                "reference": "4.2.3",
+                "shasum": "08e87178a35fe2a89202d2423f3de1656e1e814a"
+            },
+            "require": {
+                "drupal/core": "^10.3 || ^11",
+                "ext-xmlwriter": "*"
+            },
+            "conflict": {
+                "drush/drush": "<12.5.1"
+            },
+            "require-dev": {
+                "drupal/paragraphs": "^1.18"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "4.2.3",
+                    "datestamp": "1764147268",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Pawel Ginalski (gbyte)",
+                    "homepage": "https://www.drupal.org/u/gbyte",
+                    "email": "contact@gbyte.dev",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "walkingdexter",
+                    "homepage": "https://www.drupal.org/user/3251330"
+                }
+            ],
+            "description": "Creates a standard conform hreflang XML sitemap of the site content and provides a framework for developing other sitemap types.",
+            "homepage": "https://drupal.org/project/simple_sitemap",
+            "support": {
+                "source": "https://cgit.drupalcode.org/simple_sitemap",
+                "issues": "https://drupal.org/project/issues/simple_sitemap"
+            }
+        },
+        {
             "name": "drupal/social_api",
             "version": "4.0.2",
             "source": {
@@ -12625,16 +12758,16 @@
         },
         {
             "name": "league/commonmark",
-            "version": "2.8.2",
+            "version": "2.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/commonmark.git",
-                "reference": "59fb075d2101740c337c7216e3f32b36c204218b"
+                "reference": "5703d83ba3da3b2e356a5fedc848ed6d8ffb6529"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/59fb075d2101740c337c7216e3f32b36c204218b",
-                "reference": "59fb075d2101740c337c7216e3f32b36c204218b",
+                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/5703d83ba3da3b2e356a5fedc848ed6d8ffb6529",
+                "reference": "5703d83ba3da3b2e356a5fedc848ed6d8ffb6529",
                 "shasum": ""
             },
             "require": {
@@ -12656,8 +12789,8 @@
                 "github/gfm": "0.29.0",
                 "michelf/php-markdown": "^1.4 || ^2.0",
                 "nyholm/psr7": "^1.5",
-                "phpstan/phpstan": "^1.8.2",
-                "phpunit/phpunit": "^9.5.21 || ^10.5.9 || ^11.0.0",
+                "phpstan/phpstan": "^2.0.0",
+                "phpunit/phpunit": "^9.5.21 || ^10.5.9 || ^11.0.0 || ^12.0.0 || ^13.0.0",
                 "scrutinizer/ocular": "^1.8.1",
                 "symfony/finder": "^5.3 | ^6.0 | ^7.0 || ^8.0",
                 "symfony/process": "^5.4 | ^6.0 | ^7.0 || ^8.0",
@@ -12671,7 +12804,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "2.9-dev"
+                    "dev-main": "2.10-dev"
                 }
             },
             "autoload": {
@@ -12728,7 +12861,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-03-19T13:16:38+00:00"
+            "time": "2026-08-03T13:42:31+00:00"
         },
         {
             "name": "league/config",
@@ -23673,16 +23806,16 @@
         },
         {
             "name": "squizlabs/php_codesniffer",
-            "version": "3.13.5",
+            "version": "3.13.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHP_CodeSniffer.git",
-                "reference": "0ca86845ce43291e8f5692c7356fccf3bcf02bf4"
+                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/0ca86845ce43291e8f5692c7356fccf3bcf02bf4",
-                "reference": "0ca86845ce43291e8f5692c7356fccf3bcf02bf4",
+                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
+                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
                 "shasum": ""
             },
             "require": {
@@ -23748,7 +23881,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-11-04T16:30:35+00:00"
+            "time": "2026-08-06T00:17:32+00:00"
         },
         {
             "name": "symfony/browser-kit",
@@ -24539,6 +24672,7 @@
         "drupal/domain_alias": 10,
         "drupal/domain_config": 10,
         "drupal/domain_entity": 5,
+        "drupal/domain_simple_sitemap": 5,
         "drupal/domain_source": 10,
         "drupal/email_change_verification": 10,
         "drupal/inline_entity_form": 5,
@@ -24556,5 +24690,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
