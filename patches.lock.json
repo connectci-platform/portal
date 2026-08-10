@@ -1,5 +1,5 @@
 {
-    "_hash": "0d1f0ad6de3a99e4a844aa4b919769712f1868651d406845b5e3846c981f9ac0",
+    "_hash": "22dea1fda3e33869754443861c691bcad12b37bd738cd5d3fa0d3c713dbe3eec",
     "patches": {
         "drupal/core": [
             {
@@ -143,6 +143,18 @@
                 "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
                 "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
                 "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/domain_menu_access": [
+            {
+                "package": "drupal/domain_menu_access",
+                "description": "Domain 3.x compatibility (constraint + presave hook) — d.o issue 3557310 MR!21",
+                "url": "patches/domain_menu_access-domain3-compat.patch",
+                "sha256": "4b30594a1c4b90968274f970c7da6796dc712ce659aefb28e82ec70cffbc6f47",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
