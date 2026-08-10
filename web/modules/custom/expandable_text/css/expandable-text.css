@@ -7,35 +7,37 @@
     transition: max-height 250ms ease;
   }
 
-  .expandable-text.is-collapsed .expandable-text__content::after {
-    transition: opacity 250ms ease;
+  .expandable-text__chevron {
+    transition: transform 250ms ease;
   }
 }
 
-/* Fade over the last visible line while collapsed. The fade resolves to the
-   page background via --expandable-fade-color (default #fff); override it to
-   match a non-white background. The top stop is `transparent` (not a
-   hardcoded white) so the override produces a clean fade with no white seam. */
+/* Fade the last visible line to true transparency while collapsed, using a
+   gradient MASK on the content itself (not a background-colored overlay). This
+   masks the actual text pixels, so it fades correctly over ANY background —
+   solid, tinted panel, gradient, or image — with no background-color to match.
+   Removed when expanded (mask-image: none). --expandable-fade-height ties the
+   fade band to the line-height so it scales with font-size. */
 .expandable-text.is-collapsed .expandable-text__content {
-  position: relative;
-}
-
-.expandable-text.is-collapsed .expandable-text__content::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1.75rem;
-  pointer-events: none;
-  background: linear-gradient(
+  --expandable-fade-height: 1.5em;
+  -webkit-mask-image: linear-gradient(
     to bottom,
-    transparent,
-    var(--expandable-fade-color, #fff)
+    #000 0%,
+    #000 calc(100% - var(--expandable-fade-height)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 calc(100% - var(--expandable-fade-height)),
+    transparent 100%
   );
 }
 
 .expandable-text__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
   margin-top: 0.5rem;
   border: 0;
   background: transparent;
@@ -43,4 +45,14 @@
   font-weight: 700;
   color: inherit;
   cursor: pointer;
+}
+
+.expandable-text__chevron {
+  flex: none;
+  transform: rotate(0deg);
+}
+
+/* Point the chevron up when the region is expanded. */
+.expandable-text__toggle[aria-expanded="true"] .expandable-text__chevron {
+  transform: rotate(180deg);
 }

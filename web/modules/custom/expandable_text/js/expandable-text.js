@@ -41,8 +41,29 @@
     btn.className = 'expandable-text__toggle';
     btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-controls', contentId);
-    btn.textContent = Drupal.t('More');
+    // Label lives in its own span so setLabel() can update the text without
+    // wiping the sibling chevron. The chevron is an inline SVG (no icon-font
+    // dependency, so the component stays portable) that CSS rotates on expand.
+    var label = document.createElement('span');
+    label.className = 'expandable-text__toggle-label';
+    label.textContent = Drupal.t('More');
+    btn.appendChild(label);
+    btn.insertAdjacentHTML(
+      'beforeend',
+      '<svg class="expandable-text__chevron" width="14" height="14" viewBox="0 0 16 16" ' +
+      'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+      'stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      '<polyline points="4 6 8 10 12 6"></polyline></svg>'
+    );
     return btn;
+  }
+
+  // Update a toggle button's visible label without disturbing the chevron.
+  function setLabel(btn, text) {
+    var label = btn.querySelector('.expandable-text__toggle-label');
+    if (label) {
+      label.textContent = text;
+    }
   }
 
   // No-preference CSS transition is gated by prefers-reduced-motion; when the
@@ -145,19 +166,19 @@
         if (wrapper.classList.contains('is-collapsed')) {
           expand(wrapper, content, true);
           btn.setAttribute('aria-expanded', 'true');
-          btn.textContent = Drupal.t('Less');
+          setLabel(btn, Drupal.t('Less'));
         }
         else {
           collapse(wrapper, content, measure(content, n).height, true);
           btn.setAttribute('aria-expanded', 'false');
-          btn.textContent = Drupal.t('More');
+          setLabel(btn, Drupal.t('More'));
         }
       });
     }
     // A re-clamp (e.g. after a resize) may reuse an existing toggle that was
     // left in the expanded label state; force it back to the collapsed label.
     btn.setAttribute('aria-expanded', 'false');
-    btn.textContent = Drupal.t('More');
+    setLabel(btn, Drupal.t('More'));
     collapse(wrapper, content, result.height);
   }
 
