@@ -21,6 +21,9 @@
     },
     "drupal/multiple_registration": {
       "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
+    },
+    "drupal/domain_menu_access": {
+      "Domain 3.x compatibility (constraint + presave hook) \u2014 d.o issue 3557310 MR!21": "patches/domain_menu_access-domain3-compat.patch"
     }
   }
 }

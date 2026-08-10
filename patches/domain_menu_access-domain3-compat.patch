@@ -1,0 +1,30 @@
+--- a/domain_menu_access.module
++++ b/domain_menu_access.module
+@@ -16,7 +16,15 @@
+  * link content to domains.
+  */
+ function domain_menu_access_menu_link_content_presave(EntityInterface $node) {
+-  domain_access_presave_generate($node);
++  // Domain 2.x exposed a procedural helper (domain_access_presave_generate);
++  // Domain 3.x moved it to an OOP hook class. Support both so this module keeps
++  // working across the Domain 2.x -> 3.x upgrade.
++  if (function_exists('domain_access_presave_generate')) {
++    domain_access_presave_generate($node);
++  }
++  elseif (class_exists('Drupal\domain_access\Hook\DomainAccessEntityHooks')) {
++    \Drupal::service('Drupal\domain_access\Hook\DomainAccessEntityHooks')->nodePresave($node);
++  }
+ }
+ 
+ /**
+--- a/composer.json
++++ b/composer.json
+@@ -31,7 +31,7 @@
+         "source": "https://git.drupalcode.org/project/domain_menu_access"
+     },
+     "require": {
+-        "drupal/domain": "^1.0 || ^2.0"
++        "drupal/domain": "^1.0 || ^2.0 || ^3.0"
+     },
+     "require-dev": {
+         "drupal/menu_block": "^1.0",

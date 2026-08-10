@@ -11,7 +11,10 @@
     "repositories": {
         "drupal": {
             "type": "composer",
-            "url": "https://packages.drupal.org/8"
+            "url": "https://packages.drupal.org/8",
+            "exclude": [
+                "drupal/domain_menu_access"
+            ]
         },
         "asset-packagist": {
             "type": "composer",
@@ -52,17 +55,34 @@
         "webform_submission_search_api": {
             "type": "git",
             "url": "https://github.com/connectci-platform/webform_submission_search_api.git"
+        },
+        "domain_menu_access_domain3": {
+            "type": "package",
+            "package": {
+                "name": "drupal/domain_menu_access",
+                "version": "2.0.1",
+                "type": "drupal-module",
+                "source": {
+                    "url": "https://git.drupalcode.org/project/domain_menu_access.git",
+                    "type": "git",
+                    "reference": "2.0.1"
+                },
+                "require": {
+                    "drupal/domain": "^1.0 || ^2.0 || ^3.0",
+                    "drupal/core": "^10.2 || ^11"
+                }
+            }
         }
     },
     "require": {
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "1.0.x-dev",
+        "composer/installers": "^2.3.0",
         "connectci/access": "d8-2770-dev",
         "connectci/asp-theme": "main-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
         "connectci/webform_submission_search_api": "main-dev",
-        "composer/installers": "^2.3.0",
         "cweagans/composer-patches": "^2.0",
         "drupal/access_by_ref": "^4.0.0",
         "drupal/advanced_cors": "^1.5",
@@ -91,6 +111,7 @@
         "drupal/domain_alias": "^3.0",
         "drupal/domain_config": "^3.0",
         "drupal/domain_entity": "^2.0",
+        "drupal/domain_menu_access": "^2.0",
         "drupal/domain_source": "^3.0",
         "drupal/domain_theme_switch": "^3.0",
         "drupal/easy_breadcrumb": "^2.0",
