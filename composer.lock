@@ -19200,7 +19200,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "56f2ca05f895289384bce40953c1dfa282e28897"
+                "reference": "587d174248fd498ee0e764c5e04848eddbce333a"
             },
             "type": "drupal-custom-module",
             "license": [
@@ -19211,7 +19211,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-08-10T18:08:58+00:00"
+            "time": "2026-08-10T19:03:23+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
