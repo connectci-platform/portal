@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "72eb540118c1fb626e5ecfd4d5364da8",
+    "content-hash": "8952f5166d62832963107c5653317c19",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -19196,13 +19196,12 @@
         },
         {
             "name": "connectci/amp_dev",
-            "version": "dev-main",
+            "version": "dev-md-2796",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "93db315613ef120ba34d0a172061a7252c844138"
+                "reference": "56f2ca05f895289384bce40953c1dfa282e28897"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0-or-later"
@@ -19212,7 +19211,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-08-05T19:04:31+00:00"
+            "time": "2026-08-10T18:08:58+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
