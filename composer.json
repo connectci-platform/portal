@@ -11,7 +11,10 @@
     "repositories": {
         "drupal": {
             "type": "composer",
-            "url": "https://packages.drupal.org/8"
+            "url": "https://packages.drupal.org/8",
+            "exclude": [
+                "drupal/domain_menu_access"
+            ]
         },
         "asset-packagist": {
             "type": "composer",
@@ -52,6 +55,23 @@
         "webform_submission_search_api": {
             "type": "git",
             "url": "https://github.com/connectci-platform/webform_submission_search_api.git"
+        },
+        "domain_menu_access_domain3": {
+            "type": "package",
+            "package": {
+                "name": "drupal/domain_menu_access",
+                "version": "2.0.1",
+                "type": "drupal-module",
+                "source": {
+                    "url": "https://git.drupalcode.org/project/domain_menu_access.git",
+                    "type": "git",
+                    "reference": "2.0.1"
+                },
+                "require": {
+                    "drupal/domain": "^1.0 || ^2.0 || ^3.0",
+                    "drupal/core": "^10.2 || ^11"
+                }
+            }
         }
     },
     "require": {
@@ -86,16 +106,15 @@
         "drupal/ctools_views": "^4.1.0",
         "drupal/datalayer": "^2.0@RC",
         "drupal/devel_kint_extras": "^1.1",
-        "drupal/domain": "^2.0@beta",
-        "drupal/domain_access": "^2.0@beta",
-        "drupal/domain_alias": "^2.0@beta",
-        "drupal/domain_config": "^2.0@beta",
-        "drupal/domain_entity": "^1.0@RC",
+        "drupal/domain": "^3.0",
+        "drupal/domain_access": "^3.0",
+        "drupal/domain_alias": "^3.0",
+        "drupal/domain_config": "^3.0",
+        "drupal/domain_entity": "^2.0",
         "drupal/domain_menu_access": "^2.0",
         "drupal/domain_simple_sitemap": "^3.0@RC",
-        "drupal/domain_site_settings": "^1.5",
-        "drupal/domain_source": "^2.0@beta",
-        "drupal/domain_theme_switch": "^2.0",
+        "drupal/domain_source": "^3.0",
+        "drupal/domain_theme_switch": "^3.0",
         "drupal/easy_breadcrumb": "^2.0",
         "drupal/email_change_verification": "^1.0@beta",
         "drupal/environment_indicator": "^4.0",
