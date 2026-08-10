@@ -1,0 +1,19 @@
+--- a/src/EventCreationService.php
++++ b/src/EventCreationService.php
+@@ -550,7 +550,7 @@ public function createEventInstance(EventSeries $event, DrupalDateTime $start_da
+       'uid' => $event->getOwnerId(),
+     ];
+
+-    $this->moduleHandler->alter('recurring_events_event_instance', $data);
++    $this->moduleHandler->alter('recurring_events_event_instance', $data, $event);
+
+     $storage = $this->entityTypeManager->getStorage('eventinstance');
+     if ($event->isDefaultTranslation()) {
+@@ -577,6 +577,7 @@ public function createEventInstance(EventSeries $event, DrupalDateTime $start_da
+         $entity = $storage->load(reset($entity_ids));
+         // Only add a translation if we do not already have one.
+         if (!$entity->hasTranslation($event->language()->getId())) {
++          unset($data['moderation_state']);
+           $entity->addTranslation($event->language()->getId(), $data);
+         }
+       }

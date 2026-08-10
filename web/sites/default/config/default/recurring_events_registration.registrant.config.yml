@@ -51,7 +51,7 @@ notifications:
   event_reinstated_notification:
     enabled: true
     subject: 'Event Reinstated: [eventinstance:title]'
-    body: "The [eventinstance:title] [eventinstance:reg_type] is back on. It had been cancelled but has now been reinstated. You do not need to take any action, and your registration has been kept."
+    body: "The [eventinstance:title] [eventinstance:reg_type] is back on. It had been cancelled but has now been reinstated, scheduled for [eventinstance:date]. You do not need to take any action, and your registration has been kept."
   registration_reminder:
     enabled: true
     subject: 'Reminder for Event [registrant:eventinstance:title]'
