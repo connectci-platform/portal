@@ -182,6 +182,7 @@
         "drupal/search_exclude": "^3.0@beta",
         "drupal/select2": "^2.0.0",
         "drupal/shortcode": "^2.0",
+        "drupal/simple_sitemap": "^4.2",
         "drupal/social_api": "^4.0",
         "drupal/social_auth": "^4.0",
         "drupal/social_auth_google": "^4.0",

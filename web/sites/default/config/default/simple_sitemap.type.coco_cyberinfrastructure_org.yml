@@ -1,0 +1,18 @@
+uuid: 62389bfc-0f53-4f18-b713-db6e0dfead8f
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: coco_cyberinfrastructure_org
+id: coco_cyberinfrastructure_org
+label: 'CoCo sitemap'
+description: 'Sitemap type for domain: CoCo'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

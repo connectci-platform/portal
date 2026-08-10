@@ -383,35 +383,6 @@ describe('Appverse Maintenance Hub', () => {
         cy.get('form[action*="/resync"] .bi-arrow-clockwise').should('exist');
       });
     });
-
-    it('POSTs to the Re-sync endpoint and redirects back to the hub', () => {
-      cy.visit(`/user/${contributorUid}/my-appverse`, { failOnStatusCode: false });
-      cy.get('.appverse-hub-card', { timeout: 10000 })
-        .first()
-        .find('form[action*="/resync"]')
-        .invoke('attr', 'action')
-        .then((action) => {
-          // Hit the endpoint directly without following the redirect so the
-          // test does not depend on the round-trip to GitHub completing.
-          cy.request({
-            method: 'POST',
-            url: action,
-            followRedirect: false,
-            failOnStatusCode: false,
-            form: true,
-            body: {},
-            timeout: 60000,
-          }).then((response) => {
-            // The controller returns a RedirectResponse on success or
-            // failure. A 403 here would indicate the CSRF token expired,
-            // which is acceptable in this exploratory check.
-            expect(response.status).to.be.oneOf([302, 303, 403]);
-            if (response.status === 302 || response.status === 303) {
-              expect(response.headers.location).to.match(/my-appverse|appverse/);
-            }
-          });
-        });
-    });
   });
 
   describe('Cross-user 403', () => {

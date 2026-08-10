@@ -22,6 +22,9 @@
     "drupal/multiple_registration": {
       "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
     },
+    "drupal/menu_item_role_access": {
+      "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803": "patches/3005803-15.patch"
+    },
     "drupal/domain_menu_access": {
       "Domain 3.x compatibility (constraint + presave hook) \u2014 d.o issue 3557310 MR!21": "patches/domain_menu_access-domain3-compat.patch"
     }

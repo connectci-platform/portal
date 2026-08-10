@@ -1,0 +1,18 @@
+uuid: b65db132-7bbc-4789-be8e-f309b1862fa3
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: kycyberteam_cyberinfrastructure_org
+id: kycyberteam
+label: 'Kentucky Cyberteam sitemap'
+description: 'Sitemap type for domain: Kentucky Cyberteam'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

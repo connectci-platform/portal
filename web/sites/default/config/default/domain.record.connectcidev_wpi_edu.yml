@@ -4,7 +4,7 @@ status: true
 dependencies: {  }
 id: connectcidev_wpi_edu
 domain_id: 9916859
-hostname: connect.cyberinfrastructure.org
+hostname: connectci.org
 name: 'Connect CI'
 scheme: https
 weight: 10

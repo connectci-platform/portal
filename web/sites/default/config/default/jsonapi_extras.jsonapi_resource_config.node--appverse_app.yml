@@ -90,3 +90,45 @@ resourceFields:
     publicName: field_appverse_stars
     enhancer:
       id: ''
+  field_appverse_unresolved_tags:
+    disabled: false
+    fieldName: field_appverse_unresolved_tags
+    publicName: field_appverse_unresolved_tags
+    enhancer:
+      id: ''
+  body:
+    disabled: false
+    fieldName: body
+    publicName: body
+    enhancer:
+      id: ''
+  field_license:
+    disabled: false
+    fieldName: field_license
+    publicName: field_license
+    enhancer:
+      id: ''
+  field_add_implementation_tags:
+    disabled: false
+    fieldName: field_add_implementation_tags
+    publicName: field_add_implementation_tags
+    enhancer:
+      id: ''
+  field_domain_access:
+    disabled: false
+    fieldName: field_domain_access
+    publicName: field_domain_access
+    enhancer:
+      id: ''
+  field_domain_all_affiliates:
+    disabled: false
+    fieldName: field_domain_all_affiliates
+    publicName: field_domain_all_affiliates
+    enhancer:
+      id: ''
+  field_domain_source:
+    disabled: false
+    fieldName: field_domain_source
+    publicName: field_domain_source
+    enhancer:
+      id: ''

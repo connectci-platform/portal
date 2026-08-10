@@ -161,6 +161,10 @@ class RemoveChampionForm extends FormBase {
 
       $user->save();
 
+      // Mark their approved Join Campus Champions submissions as removed so the
+      // applications list reflects that they are no longer in the program.
+      _campuschampions_set_champion_submission_status((int) $user->id(), 'removed');
+
       $this->messenger->addMessage($this->t('Removed @name from Campus Champions.', [
         '@name' => $user->getAccountName(),
       ]));

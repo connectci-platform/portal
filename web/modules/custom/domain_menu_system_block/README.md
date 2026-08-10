@@ -116,6 +116,15 @@ disappear from every domain rather than appearing on all of them.
 `overwrite_internal_link_target_access` is TRUE. Expect some links to become
 hidden from people who previously saw them and got an access-denied page.
 
+Turning that flag on requires the `menu_item_role_access` patch in
+`composer.patches.json` (drupal.org/i/3005803). Once routed links are checked,
+the module walks up to each link's parent, and it assumes every parent id is
+`entity_type:uuid`. Menu links parented to a view have ids like
+`views_view:views.tags.page_1`, so it asks for a `views_view` entity type,
+which does not exist, and the page becomes a 500. The patch restricts that
+lookup to `menu_link_content`. Nothing is lost: a views-provided link has no
+`menu_item_roles` field, so there was never a parent setting to inherit.
+
 Links whose bundle no longer exists have no domain fields attached; `10003b`
 skips those and reports their ids rather than failing.
 

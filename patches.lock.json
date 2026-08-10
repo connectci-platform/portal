@@ -1,5 +1,5 @@
 {
-    "_hash": "a3923d75b4cae56808ecc2e8cb9e3bdc9a925bf5bfd02e1ca3736e29a86a87b5",
+    "_hash": "140a8c3d72526540e78428d0a2009faf29fd24c7984c3ab122e1815ee194c490",
     "patches": {
         "drupal/core": [
             {
@@ -107,6 +107,30 @@
                 "description": "Undefined array key #access in form_alter",
                 "url": "patches/multiple_registration-undefined-access-key.patch",
                 "sha256": "c2c2db46bf70e0dff2a4422680b17f68480fb976868ba53cc99717801daf7684",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/menu_item_role_access": [
+            {
+                "package": "drupal/menu_item_role_access",
+                "description": "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803",
+                "url": "patches/3005803-15.patch",
+                "sha256": "ba75d287e1e6144e11b5eeb0d5029b34851f14d1f6e21d932ed97972f75e1d8e",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/domain_menu_access": [
+            {
+                "package": "drupal/domain_menu_access",
+                "description": "Domain 3.x compatibility (constraint + presave hook) — d.o issue 3557310 MR!21",
+                "url": "patches/domain_menu_access-domain3-compat.patch",
+                "sha256": "4b30594a1c4b90968274f970c7da6796dc712ce659aefb28e82ec70cffbc6f47",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
