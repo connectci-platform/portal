@@ -69,6 +69,7 @@ module:
   encrypt: 0
   entity_reference_revisions: 0
   environment_indicator: 0
+  expandable_text: 0
   facet_bot_blocker: 0
   facets: 0
   facets_honeypot: 0

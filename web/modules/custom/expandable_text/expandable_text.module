@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file
+ * Expandable Text module: a reusable clamp + More/Less component.
+ */
+
+/**
+ * Implements hook_theme().
+ *
+ * @return array<string, array<string, mixed>>
+ *   The theme hook definitions.
+ */
+function expandable_text_theme(): array {
+  return [
+    'expandable_text' => [
+      'variables' => [
+        'content' => NULL,
+        'lines' => 4,
+      ],
+      'template' => 'expandable-text',
+    ],
+  ];
+}
+
+/**
+ * Implements template_preprocess_HOOK() for expandable_text.
+ *
+ * Attaches the library on EVERY render of the theme hook, regardless of
+ * whether the consumer reached it via the Twig function or a direct #theme
+ * render array. This is what makes the library impossible to drop.
+ *
+ * @param array<string, mixed> $variables
+ *   The theme variables, passed by reference.
+ */
+function expandable_text_preprocess_expandable_text(array &$variables): void {
+  $variables['#attached']['library'][] = 'expandable_text/expandable_text';
+}
