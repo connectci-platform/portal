@@ -1,0 +1,15 @@
+diff --git a/src/MenuItemRoleAccessLinkTreeManipulator.php b/src/MenuItemRoleAccessLinkTreeManipulator.php
+index 94a03f0..ca7572b 100755
+--- a/src/MenuItemRoleAccessLinkTreeManipulator.php
++++ b/src/MenuItemRoleAccessLinkTreeManipulator.php
+@@ -187,7 +187,9 @@ class MenuItemRoleAccessLinkTreeManipulator extends DefaultMenuLinkTreeManipulat
+   protected function loadByUuid($uuid) {
+     $uuid_fragments = explode(':', $uuid);
+     // Make sure we have a valid UUID.
+-    if (strpos($uuid, ':') !== FALSE && count($uuid_fragments) == 2) {
++    if (strpos($uuid, ':') !== FALSE
++      && count($uuid_fragments) == 2
++      && $uuid_fragments[0] === 'menu_link_content') {
+       return $this->entityRepository->loadEntityByUuid($uuid_fragments[0], $uuid_fragments[1]);
+     }
+     return FALSE;

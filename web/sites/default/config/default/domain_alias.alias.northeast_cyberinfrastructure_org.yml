@@ -1,9 +1,0 @@
-uuid: 306bbad6-d998-47ae-a148-7a60e7bdc545
-langcode: en
-status: true
-dependencies: {  }
-id: northeast_cyberinfrastructure_org
-domain_id: nectd8_wpi_edu
-pattern: northeast.cyberinfrastructure.org
-redirect: 0
-environment: default

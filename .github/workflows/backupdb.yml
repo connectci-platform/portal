@@ -48,10 +48,10 @@ jobs:
           ddev drush cim -y
           ddev drush pmu drupal_seamless_cilogon cilogon_auth -y 2>/dev/null || true
           ddev drush cr
-          ddev drush user-create authenticated_test_user --mail="authenticated@amptesting.com" --password="6%l7iF}6(4tI"
-          ddev drush user-create administrator_test_user --mail="administrator@amptesting.com" --password="b8QW]X9h7#5n"
-          ddev drush user-add-role "administrator" administrator_test_user
           ddev drush sql-query "TRUNCATE TABLE node__field_domain_source"
+          # authenticated_test_user / administrator_test_user are created by
+          # amp_dev's install hook (amp_dev_install_create_test_users) with a
+          # name + organization, so they are no longer created bare here.
           ddev drush en amp_dev
           ddev drush pmu amp_dev
           ddev drush pmu symfony_mailer

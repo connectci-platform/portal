@@ -195,15 +195,14 @@
 
   function buildSearchIndex(headings) {
     return headings.map(function (h, i) {
-      var level = parseInt(h.tagName.charAt(1), 10);
       var parts = [];
       var node = h.nextElementSibling;
       while (node) {
-        // Stop at the next heading of equal-or-higher level.
-        if (/^H[1-6]$/.test(node.tagName)) {
-          var nl = parseInt(node.tagName.charAt(1), 10);
-          if (nl <= level) { break; }
-        }
+        // Stop at the NEXT heading of any level, so each section indexes only
+        // its own prose. Collecting past a deeper (child) heading would make a
+        // parent section's entry swallow its subsections' text, producing
+        // duplicate search results that share the same match snippet.
+        if (/^H[1-6]$/.test(node.tagName)) { break; }
         parts.push(node.textContent);
         node = node.nextElementSibling;
       }
@@ -249,17 +248,18 @@
     });
   }
 
-  // Highlight query occurrences within one section element (heading..next peer).
+  // Highlight query occurrences within one section (heading..next heading).
   function highlightDestination(root, anchorId, query) {
     clearDestinationMarks(root);
     if (!query) { return; }
     var h = document.getElementById(anchorId);
     if (!h) { return; }
-    var level = parseInt(h.tagName.charAt(1), 10);
     var re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     var node = h.nextElementSibling;
     while (node) {
-      if (/^H[1-6]$/.test(node.tagName) && parseInt(node.tagName.charAt(1), 10) <= level) { break; }
+      // Stop at the next heading of any level, so highlighting stays within the
+      // destination section's own content (mirrors buildSearchIndex's scoping).
+      if (/^H[1-6]$/.test(node.tagName)) { break; }
       // Wrap matches in text nodes only (skip existing markup walking).
       var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
       var textNodes = [];
