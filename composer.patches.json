@@ -17,7 +17,8 @@
     "drupal/recurring_events": {
       "Blank plugin ID error when resaving new dates": "patches/eventinstancecreatorpluginmanager.patch",
       "Registration contact page custom permissions": "patches/recurring_events-registration-route-perm.patch",
-      "Debug logging for duplicate event instance investigation": "patches/recurring_events-debug-duplicate-instances.patch"
+      "Debug logging for duplicate event instance investigation": "patches/recurring_events-debug-duplicate-instances.patch",
+      "Pass $event as context to hook_recurring_events_event_instance_alter() and drop moderation_state before adding a translation": "patches/recurring_events-instance-alter-context.patch"
     },
     "drupal/domain": {
       "Fix TypeError when domain source field is not present": "patches/domain_source-null-check-3482951.patch"

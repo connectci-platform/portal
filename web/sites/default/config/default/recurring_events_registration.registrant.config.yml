@@ -32,18 +32,26 @@ notifications:
     enabled: false
     subject: 'An Event Has Been Deleted'
     body: 'Unfortunately, the [eventinstance:title] [eventinstance:reg_type] has been deleted. Your registration has been deleted.'
+  event_cancelled_notification:
+    enabled: true
+    subject: 'Event Cancelled: [eventinstance:title]'
+    body: "The [eventinstance:title] [eventinstance:reg_type] has been cancelled. You do not need to take any action, and your registration has been kept. If it is rescheduled you will be notified."
   series_deletion_notification:
     enabled: false
     subject: 'An Event Series Has Been Deleted'
     body: 'Unfortunately, the [eventinstance:title] [eventinstance:reg_type] has been deleted. Your registration has been deleted.'
   instance_modification_notification:
-    enabled: false
-    subject: 'An Event Has Been Modified'
-    body: "The [eventinstance:title] [eventinstance:reg_type] has been modified, please check back for details.\r\n\r\nModify your registration: [registrant:edit_url]\r\nDelete your registration: [registrant:delete_url]"
+    enabled: true
+    subject: 'Event Rescheduled: [eventinstance:title]'
+    body: "The [eventinstance:title] [eventinstance:reg_type] has been rescheduled to [eventinstance:date]. Your registration remains valid; you do not need to take any action. If you can no longer attend, you can cancel your registration here: [registrant:delete_url]"
   series_modification_notification:
     enabled: false
     subject: 'An Event Series Has Been Modified'
     body: 'The [eventinstance:title] [eventinstance:reg_type] has been modified, and all instances have been removed, and your registration has been deleted.'
+  event_reinstated_notification:
+    enabled: true
+    subject: 'Event Reinstated: [eventinstance:title]'
+    body: "The [eventinstance:title] [eventinstance:reg_type] is back on. It had been cancelled but has now been reinstated, scheduled for [eventinstance:date]. You do not need to take any action, and your registration has been kept."
   registration_reminder:
     enabled: true
     subject: 'Reminder for Event [registrant:eventinstance:title]'
