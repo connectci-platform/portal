@@ -12,6 +12,11 @@ const ADMIN = ['administrator@amptesting.com', 'b8QW]X9h7#5n'];
 const WALNUT = ['walnut@pie.org', 'Walnut'];
 const SERIES_TITLE = 'cypress-notification-test-event';
 
+// NOTE: the supersede and past-gating tests assert exact email COUNTS / absence
+// over the whole Mailpit store (there is no per-test namespacing), relying on
+// clearMailpit having emptied it. This is only sound with retries disabled — a
+// retried happy-path test would re-run beforeEach and re-drain, breaking the
+// count logic. The project sets no `retries` (default 0); keep it that way.
 describe('Event registrant notification emails', () => {
   let seriesId;
   let instanceId;
@@ -91,17 +96,24 @@ describe('Event registrant notification emails', () => {
   });
 
   after(() => {
-    // Idempotency + no cross-spec pollution: delete the whole series (cascades to
-    // its occurrences + registrant rows) so a re-run doesn't create a second
-    // same-titled series and the accumulated/2020-dated occurrences don't linger
-    // in the shared accessmatch3 CI run's /events index.
-    if (seriesId) {
-      cy.exec(
-        `ddev drush php:eval "\\$s = \\Drupal::entityTypeManager()->getStorage('eventseries')->load(${seriesId}); if (\\$s) { \\$s->delete(); }"`,
-        { failOnNonZeroExit: false, timeout: 60000 },
-      );
-      cy.exec('ddev drush search-api:index events --batch-size=50', { failOnNonZeroExit: false, timeout: 60000 });
-    }
+    // Idempotency + no cross-spec pollution: delete every series this spec created
+    // (matched by title, so prior orphaned runs are also swept), so re-runs don't
+    // accumulate same-titled series and the 2020-dated occurrence does not linger in
+    // the shared accessmatch3 CI run's /events index. Registrants MUST be deleted
+    // FIRST — EventDeleteGuard refuses to delete a series that still has registrations
+    // (by design: cancel-not-delete). So this deletes registrant rows on each
+    // occurrence, THEN the series.
+    cy.exec(
+      `ddev drush php:eval "` +
+        `\\$series = \\Drupal::entityTypeManager()->getStorage('eventseries')->loadByProperties(['title' => '${SERIES_TITLE}']); ` +
+        `\\$rs = \\Drupal::entityTypeManager()->getStorage('registrant'); ` +
+        `foreach (\\$series as \\$s) { ` +
+        `foreach (\\$s->get('event_instances')->referencedEntities() as \\$inst) { ` +
+        `foreach (\\$rs->loadByProperties(['eventinstance_id' => \\$inst->id()]) as \\$r) { \\$r->delete(); } } ` +
+        `\\$s->delete(); }"`,
+      { failOnNonZeroExit: false, timeout: 120000 },
+    );
+    cy.exec('ddev drush search-api:index events --batch-size=50', { failOnNonZeroExit: false, timeout: 120000 });
   });
 
   it('sends an Event Cancelled email when an occurrence is archived', () => {
@@ -181,6 +193,26 @@ describe('Event registrant notification emails', () => {
     // full expected sequence, not a coincidental single match.
     cy.searchMailpitMessages({ to: WALNUT[0], subject: 'Event Cancelled:' }).then((messages) => {
       expect(messages.length, 'two Event Cancelled emails (never superseded)').to.equal(2);
+    });
+  });
+
+  it('does not email when a verifiably-past occurrence is cancelled', () => {
+    // Set the occurrence end to the past via SQL BEFORE loading the edit form
+    // (loading the form first would rewrite the future date on submit).
+    const past = '2020-01-01';
+    cy.exec(`ddev drush sqlq "UPDATE eventinstance_field_data SET date__value = '${past}T10:00:00', date__end_value = '${past}T11:00:00' WHERE id = ${instanceId}"`, { failOnNonZeroExit: false, timeout: 120000 });
+    cy.exec(`ddev drush sqlq "UPDATE eventinstance_field_revision SET date__value = '${past}T10:00:00', date__end_value = '${past}T11:00:00' WHERE id = ${instanceId}"`, { failOnNonZeroExit: false, timeout: 120000 });
+    cy.exec('ddev drush cr', { failOnNonZeroExit: false, timeout: 120000 });
+    cy.clearMailpit();
+    // Cancel it — the archive still happens, but the past gate enqueues 0 notices.
+    cy.loginAs(...ADMIN);
+    cy.visit(`/events/${instanceId}/edit`);
+    cy.get('#edit-moderation-state-0-state').select('Archived');
+    cy.get('#edit-submit').click();
+    cy.exec(DRAIN, { failOnNonZeroExit: false, timeout: 120000 });
+    // Assert ABSENCE — searchMailpitMessages, NOT waitForEmail (which throws on timeout).
+    cy.searchMailpitMessages({ to: WALNUT[0], subject: 'Event Cancelled:' }).then((messages) => {
+      expect(messages.length, 'no Event Cancelled email for a past occurrence').to.equal(0);
     });
   });
 });
