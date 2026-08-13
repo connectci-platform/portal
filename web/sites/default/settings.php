@@ -81,7 +81,19 @@ if (isset($env)) {
       $config['system.logging']['error_level'] = 'verbose';
       $config['system.performance']['css']['preprocess'] = FALSE;
       $config['system.performance']['js']['preprocess'] = FALSE;
-      $settings['container_yamls'][] = __DIR__ . '/../development.services.yml';
+      // development.services.yml turns Twig theme-debug ON (and disables render
+      // caching). In CI we must NOT load it: theme-debug injects HTML comments —
+      // and any stray PHP warning — into rendered output, which corrupts AJAX
+      // JSON responses (ajax.js then throws a parsererror and silently drops the
+      // interaction). Skipping the file leaves services.yml's committed
+      // debug: FALSE in force, matching production. CI is signalled by the
+      // CI=true web_environment set in .github/actions/ddev-base. NOTE: a second,
+      // git-ignored append of this same file lives in
+      // sites/default/settings/local.settings.php — that path is absent in CI, so
+      // this is the only append that matters here; edit BOTH if you change intent.
+      if (getenv('CI') !== 'true') {
+        $settings['container_yamls'][] = __DIR__ . '/../development.services.yml';
+      }
 
       $config['environment_indicator.indicator']['bg_color'] = '#005A70';
       $config['environment_indicator.indicator']['fg_color'] = '#000000';
