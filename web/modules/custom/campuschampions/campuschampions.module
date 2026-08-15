@@ -513,6 +513,9 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
  * Implements hook_views_pre_view().
  */
 function campuschampions_views_pre_view(ViewExecutable $view, $display_id, array &$args) {
+  if ($view->id() == 'cc_applications') {
+    _campuschampions_scrub_carried_duplicate_filter($view);
+  }
   if ($view->id() == 'access_news' && $display_id === 'block_1') {
     $view_filters = $view->display_handler->getOption('filters');
     $domain = \Drupal::service('access_misc.sitetools')->getDomainId();
@@ -522,6 +525,63 @@ function campuschampions_views_pre_view(ViewExecutable $view, $display_id, array
 
     // field_domain_access_target_id.
     $view->display_handler->setOption('filters', $view_filters);
+  }
+}
+
+/**
+ * Drops a carried "Duplicate names only" filter that the user never submitted.
+ *
+ * The cc_applications exposed filter is a GET form, so once cc_duplicate_name=1
+ * lands in the URL it rides along on every subsequent request that reconstructs
+ * the query: the Views Bulk Operations redirect after an approve/decline
+ * (ViewsBulkOperationsBulkForm rebuilds the redirect from the current request
+ * query, so the checkbox value survives the action), the VBO form's own action
+ * attribute, the mini-pager links, and any bookmark of a filtered URL. The
+ * DuplicateSubmissionName filter faithfully honours whatever cc_duplicate_name
+ * it sees in \Drupal::request()->query, so a carried value silently re-checks
+ * the box and hides every uniquely-named applicant — e.g. an approved champion
+ * vanishes from the approved list. Vanessa hit exactly this.
+ *
+ * There is no request-level flag that separates a genuine "user checked the box
+ * and clicked Apply" GET from a carried one: the exposed submit button is
+ * #name='' (it never reaches the query) and a GET form carries no form_id,
+ * build id, or token, so the genuine URL and a bookmark of it are byte-for-byte
+ * identical. The one signal that still partitions the paths cleanly is the
+ * Referer: the two LEGITIMATE carriers (the user's own Apply submit and the
+ * pager links) are navigations from the applications page itself, while the
+ * illegitimate carriers arrive from elsewhere — the VBO redirect refers from
+ * /batch, and a bookmark or typed URL sends no Referer at all.
+ *
+ * So: when cc_duplicate_name is present but the request did not originate from
+ * this view's own page, remove it from the live request query before the filter
+ * reads it. The filter (valueForm() #default_value and acceptExposedInput())
+ * reads \Drupal::request()->query directly, so scrubbing it here turns the box
+ * off and renders it unchecked. Genuine submits and pager clicks keep their
+ * Referer and are untouched. The failure mode — a genuine submit whose Referer
+ * a privacy tool stripped — degrades to the unfiltered default view (the user
+ * simply re-checks the box), never to hidden or altered data.
+ */
+function _campuschampions_scrub_carried_duplicate_filter(ViewExecutable $view): void {
+  $request = \Drupal::request();
+  if (!$request->query->has('cc_duplicate_name')) {
+    return;
+  }
+
+  // The applications page lives at /cc-applications; a legitimate submit or
+  // pager click refers from that same path on this same host. getPath() can
+  // return FALSE when no page display is resolved, so fall back to the known
+  // route path. A referer from another host never counts as legitimate even
+  // if its path matches, so require the host to match before trusting the path
+  // (query string and scheme are irrelevant and ignored).
+  $path = $view->getPath();
+  $view_path = '/' . ltrim($path ?: 'cc-applications', '/');
+  $referer = $request->headers->get('referer', '');
+  $referer_host = $referer !== '' ? parse_url($referer, PHP_URL_HOST) : NULL;
+  $referer_path = $referer !== '' ? parse_url($referer, PHP_URL_PATH) : NULL;
+  $from_view_page = $referer_host === $request->getHost() && $referer_path === $view_path;
+
+  if (!$from_view_page) {
+    $request->query->remove('cc_duplicate_name');
   }
 }
 
