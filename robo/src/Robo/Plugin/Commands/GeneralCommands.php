@@ -141,6 +141,8 @@ GITHUB_TOKEN=$token'>.env");
 
     $this->say("❗️ Environment vars setup, now starting DDEV. ❗️");
     $this->_exec("ddev start");
+    // Often mutegen takes a while and this needs to be restarted.
+    $this->_exec("ddev restart");
 
     // Setup GitHub auth in DDEV.
     $this->_exec("echo \"$token\" | ddev exec gh auth login --with-token");
