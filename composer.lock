@@ -5000,17 +5000,17 @@
         },
         {
             "name": "drupal/fieldblock",
-            "version": "2.3.0",
+            "version": "2.4.0",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/fieldblock.git",
-                "reference": "8.x-2.3"
+                "reference": "8.x-2.4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/fieldblock-8.x-2.3.zip",
-                "reference": "8.x-2.3",
-                "shasum": "1db97e62c67b429ee6c574830c599707ff6e4587"
+                "url": "https://ftp.drupal.org/files/projects/fieldblock-8.x-2.4.zip",
+                "reference": "8.x-2.4",
+                "shasum": "98f1f2b3e5b5f29934d551f8e5bd55effe364d26"
             },
             "require": {
                 "drupal/core": "^9 || ^10 || ^11"
@@ -5018,8 +5018,8 @@
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "8.x-2.3",
-                    "datestamp": "1735309014",
+                    "version": "8.x-2.4",
+                    "datestamp": "1786424429",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -5032,16 +5032,20 @@
             ],
             "authors": [
                 {
+                    "name": "joelpittet",
+                    "homepage": "https://www.drupal.org/user/160302"
+                },
+                {
                     "name": "joycelam",
                     "homepage": "https://www.drupal.org/user/3543385"
                 },
                 {
-                    "name": "manishvaity",
-                    "homepage": "https://www.drupal.org/user/697256"
-                },
-                {
                     "name": "marcvangend",
                     "homepage": "https://www.drupal.org/user/158153"
+                },
+                {
+                    "name": "mattbloomfield",
+                    "homepage": "https://www.drupal.org/user/3620586"
                 },
                 {
                     "name": "sutharsan",
