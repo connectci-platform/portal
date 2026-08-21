@@ -23,6 +23,35 @@ class ExpandableTextTwigTest extends KernelTestBase {
     $this->assertStringContainsString('<p>alpha</p>', $html);
   }
 
+  /**
+   * The rows argument surfaces as data-rows for the row-boundary clamp.
+   */
+  public function testRowsVariableEmitsDataRows(): void {
+    $build = [
+      '#type' => 'inline_template',
+      '#template' => '{{ expandable_text(content, 3, 5) }}',
+      '#context' => ['content' => ['#markup' => '<p>alpha</p>']],
+    ];
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($build);
+    // Both attributes ride along: data-rows drives the row clamp, data-lines
+    // stays as the fallback for content that turns out to hold no table rows.
+    $this->assertStringContainsString('data-rows="5"', $html);
+    $this->assertStringContainsString('data-lines="3"', $html);
+  }
+
+  /**
+   * Callers that ask for no rows get no attribute, so line mode stays default.
+   */
+  public function testRowsOmittedWhenNotRequested(): void {
+    $build = [
+      '#type' => 'inline_template',
+      '#template' => '{{ expandable_text(content, 3) }}',
+      '#context' => ['content' => ['#markup' => '<p>alpha</p>']],
+    ];
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($build);
+    $this->assertStringNotContainsString('data-rows', $html);
+  }
+
   public function testThemeHookAttachesLibraryViaPreprocess(): void {
     // The library must attach for BOTH entry points; assert on the #theme
     // render array directly (the bio consumer's path), which exercises the

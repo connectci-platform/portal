@@ -56,3 +56,11 @@
 .expandable-text__toggle[aria-expanded="true"] .expandable-text__chevron {
   transform: rotate(180deg);
 }
+
+/* Row mode clamps exactly on a row boundary, so there is no half-line to fade
+   out — and the gradient would instead wash out the bottom of the last fully
+   visible row (its sparkline, its numbers). Drop the mask there. */
+.expandable-text.is-collapsed[data-rows] .expandable-text__content {
+  -webkit-mask-image: none;
+  mask-image: none;
+}

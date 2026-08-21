@@ -6,7 +6,7 @@
    * Returns { overflow: false } when content is <= N lines, else
    * { overflow: true, height: <px from content-box top to Nth line bottom> }.
    */
-  function measure(content, n) {
+  function measureLines(content, n) {
     var walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
     var tops = {};
     var rects = [];
@@ -33,6 +33,80 @@
     }
     var contentTop = content.getBoundingClientRect().top;
     return { overflow: true, height: rects[n - 1].bottom - contentTop };
+  }
+
+  /**
+   * Measure the collapsed height for N table body rows.
+   *
+   * Text-line measurement is wrong for a data table: cells in one row start at
+   * different tops (top-aligned cells of unequal height, header sub-labels),
+   * and graphics-only cells contribute no text rects at all, so a line count
+   * neither matches the row count nor lands on a row boundary. Measuring rows
+   * directly clamps below the Nth row, whatever is inside it.
+   *
+   * Returns null when the content holds no body rows, so the caller can fall
+   * back to line measurement.
+   */
+  function measureRows(content, n) {
+    var rows = content.querySelectorAll('table > tbody > tr');
+    if (!rows.length) {
+      return null;
+    }
+    if (rows.length <= n) {
+      return { overflow: false, rows: rows };
+    }
+    var contentTop = content.getBoundingClientRect().top;
+    return {
+      overflow: true,
+      // Everything above the body (heading, thead) sits between contentTop and
+      // this row's bottom, so it is included without measuring it separately.
+      height: rows[n - 1].getBoundingClientRect().bottom - contentTop,
+      rows: rows,
+      cut: n
+    };
+  }
+
+  /**
+   * Measure a wrapper by whichever mode it declares: data-rows clamps on a
+   * table row boundary, data-lines (the default) on a rendered text line.
+   */
+  function measure(wrapper, content) {
+    var rowsN = parseInt(wrapper.getAttribute('data-rows'), 10);
+    if (rowsN > 0) {
+      var byRows = measureRows(content, rowsN);
+      if (byRows) {
+        return byRows;
+      }
+    }
+    return measureLines(content, parseInt(wrapper.getAttribute('data-lines'), 10) || 4);
+  }
+
+  /**
+   * Hide the clipped-away part from keyboard and assistive tech.
+   *
+   * Line mode makes the whole content inert. Row mode cannot: the table sits
+   * in a horizontal scroller, and an inert content box would leave the visible
+   * rows unscrollable and unreadable while collapsed. So row mode marks only
+   * the rows below the clamp, which are fully hidden because the clamp lands
+   * on a row boundary.
+   */
+  function hideTruncated(content, result) {
+    if (!result.rows) {
+      content.setAttribute('inert', '');
+      return;
+    }
+    for (var i = result.cut; i < result.rows.length; i++) {
+      result.rows[i].setAttribute('inert', '');
+    }
+  }
+
+  // Reverse hideTruncated() for both modes, including a wrapper that switched
+  // modes or is being un-clamped after a resize.
+  function showTruncated(content) {
+    content.removeAttribute('inert');
+    content.querySelectorAll('tr[inert]').forEach(function (row) {
+      row.removeAttribute('inert');
+    });
   }
 
   function makeToggle(contentId) {
@@ -75,16 +149,17 @@
     return parseFloat(getComputedStyle(content).transitionDuration) > 0;
   }
 
-  function collapse(wrapper, content, height, animate) {
+  function collapse(wrapper, content, result, animate) {
+    var height = result.height;
     wrapper.classList.add('is-collapsed');
     if (!animate) {
       content.style.maxHeight = height + 'px';
-      content.setAttribute('inert', '');
+      hideTruncated(content, result);
       return;
     }
     if (!hasMaxHeightTransition(content)) {
       content.style.maxHeight = height + 'px';
-      content.setAttribute('inert', '');
+      hideTruncated(content, result);
       return;
     }
     // Pin current full height, force reflow, then transition to collapsed height.
@@ -95,14 +170,14 @@
     // Make it inert only once it has finished collapsing (still interactive while animating shut).
     var onEnd = function (e) {
       if (e.propertyName !== 'max-height') { return; }
-      content.setAttribute('inert', '');
+      hideTruncated(content, result);
       content.removeEventListener('transitionend', onEnd);
     };
     content.addEventListener('transitionend', onEnd);
   }
 
   function expand(wrapper, content, animate) {
-    content.removeAttribute('inert');
+    showTruncated(content);
     wrapper.classList.remove('is-collapsed');
     if (!animate) {
       content.style.maxHeight = '';
@@ -143,8 +218,7 @@
       return;
     }
 
-    var n = parseInt(wrapper.getAttribute('data-lines'), 10) || 4;
-    var result = measure(content, n);
+    var result = measure(wrapper, content);
     if (!result.overflow) {
       // Content fits in N lines. If this wrapper was previously clamped
       // (collapsed) or still carries a toggle from an earlier overflow state,
@@ -169,7 +243,7 @@
           setLabel(btn, Drupal.t('Less'));
         }
         else {
-          collapse(wrapper, content, measure(content, n).height, true);
+          collapse(wrapper, content, measure(wrapper, content), true);
           btn.setAttribute('aria-expanded', 'false');
           setLabel(btn, Drupal.t('More'));
         }
@@ -179,7 +253,7 @@
     // left in the expanded label state; force it back to the collapsed label.
     btn.setAttribute('aria-expanded', 'false');
     setLabel(btn, Drupal.t('More'));
-    collapse(wrapper, content, result.height);
+    collapse(wrapper, content, result);
   }
 
   Drupal.behaviors.expandableText = {
