@@ -4,6 +4,7 @@ status: true
 dependencies:
   config:
     - field.storage.node.field_access_org_name
+    - field.storage.node.field_cider_short_name
     - node.type.access_active_resources_from_cid
   module:
     - better_exposed_filters
@@ -184,14 +185,17 @@ display:
           field: field_access_org_name_value
           plugin_id: standard
           order: ASC
-        title:
-          id: title
-          table: node_field_data
-          field: title
-          entity_type: node
-          entity_field: title
+        field_cider_short_name_value:
+          id: field_cider_short_name_value
+          table: node__field_cider_short_name
+          field: field_cider_short_name_value
+          relationship: none
+          group_type: group
+          admin_label: ''
           plugin_id: standard
           order: ASC
+          expose: {  }
+          exposed: false
       arguments: {  }
       filters:
         status:
