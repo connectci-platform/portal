@@ -1,0 +1,43 @@
+{#
+/**
+ * @file
+ * ood theme override for the Recommended Resource (CiDeR) bundle.
+ *
+ * Same markup as the default node.html.twig, but the teaser/embedded title
+ * ({{ label }}, used when a resource is referenced from another entity, e.g.
+ * an affinity group's field_cider_resources) resolves through
+ * resource_display_name so it shows the short name rather than the longer
+ * descriptive title. See operations_cider_preprocess_node().
+ *
+ * Available variables: see node.html.twig.
+ *
+ * @see template_preprocess_node()
+ *
+ * @ingroup themeable
+ */
+#}
+<article{{ attributes.addClass('mb-5') }}>
+
+  {{ title_prefix }}
+  {% if label and not page %}
+    <h2{{ title_attributes }}>
+      <a href="{{ url }}" rel="bookmark">{{ resource_display_name }}</a>
+    </h2>
+  {% endif %}
+  {{ title_suffix }}
+
+  {% if display_submitted %}
+    <footer>
+      {{ author_picture }}
+      <div{{ author_attributes }}>
+        {% trans %}Submitted by {{ author_name }} on {{ date }}{% endtrans %}
+        {{ metadata }}
+      </div>
+    </footer>
+  {% endif %}
+
+  <div{{ content_attributes }}>
+    {{ content }}
+  </div>
+
+</article>
