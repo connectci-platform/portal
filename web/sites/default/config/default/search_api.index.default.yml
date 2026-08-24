@@ -120,6 +120,7 @@ processor_settings:
     all_fields: false
     fields:
       - body
+      - field_rp_display_name
       - title
   language_with_fallback: {  }
   rendered_item: {  }
