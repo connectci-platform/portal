@@ -48,6 +48,7 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
     - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
     - field.field.node.access_active_resources_from_cid.field_rp_queue_specs
+    - field.field.node.access_active_resources_from_cid.field_rp_sds_software
     - field.field.node.access_active_resources_from_cid.field_rp_software_link
     - field.field.node.access_active_resources_from_cid.field_rp_software_list_url
     - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_link
@@ -127,6 +128,7 @@ hidden:
   field_rp_queue_metrics: true
   field_rp_queue_spec_link: true
   field_rp_queue_specs: true
+  field_rp_sds_software: true
   field_rp_software_link: true
   field_rp_software_list_url: true
   field_rp_ssh_login_link: true
