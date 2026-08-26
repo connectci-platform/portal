@@ -8,7 +8,6 @@ use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\views_bulk_operations\Action\ViewsBulkOperationsActionBase;
-use Drupal\webform\WebformSubmissionForm;
 use Drupal\webform\Entity\WebformSubmission;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -21,7 +20,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   type = ""
  * )
  */
-class ApproveCCAction extends ViewsBulkOperationsActionBase implements ContainerFactoryPluginInterface {
+final class ApproveCCAction extends ViewsBulkOperationsActionBase implements ContainerFactoryPluginInterface {
 
   /**
    * The logger factory.
@@ -47,7 +46,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
   /**
    * Constructs an ApproveCCAction object.
    *
-   * @param array $configuration
+   * @param array<string, mixed> $configuration
    *   A configuration array containing information about the plugin instance.
    * @param string $plugin_id
    *   The plugin_id for the plugin instance.
@@ -76,9 +75,12 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
 
   /**
    * {@inheritdoc}
+   *
+   * @param array<string, mixed> $configuration
+   *   A configuration array containing information about the plugin instance.
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    return new self(
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): static {
+    return new static(
       $configuration,
       $plugin_id,
       $plugin_definition,
@@ -90,6 +92,9 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
 
   /**
    * {@inheritdoc}
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   *   The result message shown by VBO.
    */
   public function execute(?WebformSubmission $entity = NULL) {
     // Update the status of the submission to 'approved'.
@@ -102,8 +107,21 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
 
     $submission_data = $webform_submission->getData();
     $champion_user_type = $submission_data['champion_user_type'] ?? NULL;
+    // Persist the status flip with a direct entity save — NEVER through
+    // WebformSubmissionForm::submitWebformSubmission(). That path re-validates
+    // the stored data against the CURRENT form, and its error return was
+    // silently discarded here — so when the form gained a required
+    // organization element, every pre-migration application stopped being
+    // approvable: the save aborted while VBO still reported success. A status
+    // change on an already-accepted application must not depend on historical
+    // data satisfying today's form. Handler behavior is unchanged versus the
+    // old path's SUCCESSFUL saves: the form's email_cc_admin handler fires on
+    // 'completed' only (a re-save is 'updated'), and its create_user handler
+    // runs on every storage save either way — note that means a status change
+    // on a legacy submission whose account no longer exists will create one
+    // and send the welcome email, as any successful save always did.
     $webform_submission->setElementData('status', 'approved');
-    WebformSubmissionForm::submitWebformSubmission($webform_submission);
+    $webform_submission->save();
 
     // Update user to campus champion.
     $data = $entity->getData();
@@ -244,7 +262,7 @@ class ApproveCCAction extends ViewsBulkOperationsActionBase implements Container
    * @param \Drupal\user\UserInterface $user
    *   The user entity.
    */
-  protected function emailAccountNotification($user) {
+  protected function emailAccountNotification($user): void {
     $module = 'campuschampions';
     $key = 'approve_campuschampion';
     $to = $user->getEmail();
