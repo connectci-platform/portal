@@ -190,7 +190,7 @@
         "drupal/yaml_editor": "^1.0",
         "drush/drush": "^13.6.2",
         "connectci/asp-theme": "main-dev",
-        "connectci/campus-champions-theme": "d8-2576-dev",
+        "connectci/campus-champions-theme": "main-dev",
         "connectci/webform_submission_search_api": "main-dev",
         "npm-asset/select2": "^4.0",
         "oit/facets_honeypot": "^1.0",

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4d44a88835b40cf00c4c4df02b9db583",
+    "content-hash": "4e5847a37b78089b6a02b8bd1ea8fd18",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -732,12 +732,13 @@
         },
         {
             "name": "connectci/campus-champions-theme",
-            "version": "dev-d8-2576",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "124d4f721cc6bb9482e05726f93ca48ed8c30038"
+                "reference": "d552d0402ba3bbb9e7a184e6ba98a3ff08d3d92c"
             },
+            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "Apache License, Version 2.0"
@@ -750,10 +751,10 @@
             ],
             "description": "A custom theme for the Campus Champions site.",
             "support": {
-                "issues": "https://github.com/necyberteam/campus-champions-theme/issues",
-                "source": "https://github.com/necyberteam/campus-champions-theme"
+                "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
+                "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-06-30T17:49:49+00:00"
+            "time": "2026-08-08T11:22:22+00:00"
         },
         {
             "name": "connectci/operations_cider",
