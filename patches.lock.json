@@ -1,5 +1,5 @@
 {
-    "_hash": "4ec0d880de81cea18d2e169e9753f8d1d31314787e1e4464f7aede5f86639f56",
+    "_hash": "f5afdd579405637e860d1e01885ddd9e063c0c4bd3822a70a6509cfc3c0566ab",
     "patches": {
         "drupal/core": [
             {
@@ -99,6 +99,26 @@
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
                 }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "Pass $event as context to hook_recurring_events_event_instance_alter() and drop moderation_state before adding a translation",
+                "url": "patches/recurring_events-instance-alter-context.patch",
+                "sha256": "41e8cc74fb800fdec9f26bff5d5a24f2196f4804ba8d8020f8e19a07564cef9a",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "Guard undefined value/end_value keys in pre_create_alter exclude/include loops (fixes AJAX parsererror on event edit form; upstream in 3.0.0)",
+                "url": "patches/recurring_events-pre-create-alter-undefined-key.patch",
+                "sha256": "01d1a87ff6aad183698e1138fdf0ef2186b1c5e0fe25310530ec1cf04f3df8ae",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
             }
         ],
         "drupal/domain": [
@@ -119,6 +139,30 @@
                 "description": "Undefined array key #access in form_alter",
                 "url": "patches/multiple_registration-undefined-access-key.patch",
                 "sha256": "c2c2db46bf70e0dff2a4422680b17f68480fb976868ba53cc99717801daf7684",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/menu_item_role_access": [
+            {
+                "package": "drupal/menu_item_role_access",
+                "description": "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803",
+                "url": "patches/3005803-15.patch",
+                "sha256": "ba75d287e1e6144e11b5eeb0d5029b34851f14d1f6e21d932ed97972f75e1d8e",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/domain_simple_sitemap": [
+            {
+                "package": "drupal/domain_simple_sitemap",
+                "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
+                "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
+                "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

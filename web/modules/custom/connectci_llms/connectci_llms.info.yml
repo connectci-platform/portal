@@ -1,0 +1,7 @@
+name: ConnectCI llms.txt
+type: module
+description: 'Serves a per-domain /llms.txt pointing AI crawlers at sitemaps and curated APIs.'
+package: ConnectCI
+core_version_requirement: ^10 || ^11
+dependencies:
+  - domain:domain

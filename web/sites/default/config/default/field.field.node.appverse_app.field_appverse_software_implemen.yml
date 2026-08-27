@@ -11,7 +11,7 @@ field_name: field_appverse_software_implemen
 entity_type: node
 bundle: appverse_app
 label: 'Which software (e.g. MatLab, Jupyter, Gaussian)?'
-description: '<a href="/node/add/appverse_software?destination=/node/add/appverse_app">Add new software</a>'
+description: '<a href="/node/add/appverse_software?destination=/appverse/add-repo">Add new software</a>'
 required: false
 translatable: false
 default_value: {  }

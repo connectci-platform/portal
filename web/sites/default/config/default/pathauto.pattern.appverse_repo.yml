@@ -1,0 +1,22 @@
+uuid: d495a757-3a70-4cd5-8979-3f255c1d4113
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: appverse_repo
+label: 'Appverse Repo'
+type: 'canonical_entities:node'
+pattern: '/repo/[node:title]'
+selection_criteria:
+  0d526d53-ccae-4d7c-a38c-47a0ea2162ce:
+    id: 'entity_bundle:node'
+    negate: false
+    uuid: 0d526d53-ccae-4d7c-a38c-47a0ea2162ce
+    context_mapping:
+      node: node
+    bundles:
+      appverse_repo: appverse_repo
+selection_logic: and
+weight: -5
+relationships: {  }

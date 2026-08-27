@@ -348,3 +348,4 @@ hidden:
   field_domain_all_affiliates: true
   field_xdusage_person_id: true
   field_xdusage_person_synced: true
+  langcode: true

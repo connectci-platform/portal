@@ -376,4 +376,5 @@ hidden:
   field_rp_queue_metrics: true
   field_rp_software_list_url: true
   field_rp_xdmod_resource_id: true
+  langcode: true
   search_api_excerpt: true

@@ -18,8 +18,8 @@ dependencies:
     - field.field.node.organization.field_website
     - node.type.organization
   module:
-    - image
     - link
+    - svg_image
     - text
     - user
 id: node.organization.default
@@ -115,4 +115,6 @@ hidden:
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true
+  langcode: true
   links: true
+  search_api_excerpt: true

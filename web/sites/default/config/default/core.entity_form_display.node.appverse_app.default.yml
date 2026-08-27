@@ -5,19 +5,25 @@ dependencies:
   config:
     - field.field.node.appverse_app.body
     - field.field.node.appverse_app.field_add_implementation_tags
+    - field.field.node.appverse_app.field_appverse_app_subpath
     - field.field.node.appverse_app.field_appverse_app_type
+    - field.field.node.appverse_app.field_appverse_app_validation_er
+    - field.field.node.appverse_app.field_appverse_app_validation_st
     - field.field.node.appverse_app.field_appverse_github_url
     - field.field.node.appverse_app.field_appverse_lastupdated
     - field.field.node.appverse_app.field_appverse_license_link
+    - field.field.node.appverse_app.field_appverse_maintainer_name
     - field.field.node.appverse_app.field_appverse_organization
     - field.field.node.appverse_app.field_appverse_readme
+    - field.field.node.appverse_app.field_appverse_repo
     - field.field.node.appverse_app.field_appverse_software_implemen
+    - field.field.node.appverse_app.field_appverse_stars
+    - field.field.node.appverse_app.field_appverse_unresolved_tags
     - field.field.node.appverse_app.field_domain_access
     - field.field.node.appverse_app.field_domain_all_affiliates
     - field.field.node.appverse_app.field_domain_source
     - field.field.node.appverse_app.field_license
     - node.type.appverse_app
-    - workflows.workflow.appverse_editorial
   module:
     - content_moderation
     - field_group
@@ -30,6 +36,7 @@ third_party_settings:
       children:
         - title
         - field_appverse_github_url
+        - field_appverse_repo
         - body
         - field_appverse_readme
         - field_appverse_lastupdated
@@ -124,9 +131,19 @@ content:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_appverse_repo:
+    type: entity_reference_autocomplete
+    weight: 16
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
   field_appverse_software_implemen:
     type: entity_reference_autocomplete
-    weight: 8
+    weight: 10
     region: content
     settings:
       match_operator: CONTAINS
@@ -143,6 +160,13 @@ content:
       match_limit: 10
       size: 60
       placeholder: ''
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default
@@ -162,6 +186,11 @@ content:
     region: content
     settings:
       display_label: true
+    third_party_settings: {  }
+  simple_sitemap:
+    weight: 10
+    region: content
+    settings: {  }
     third_party_settings: {  }
   status:
     type: boolean_checkbox
@@ -201,7 +230,12 @@ content:
     settings: {  }
     third_party_settings: {  }
 hidden:
+  field_appverse_app_subpath: true
+  field_appverse_app_validation_er: true
+  field_appverse_app_validation_st: true
+  field_appverse_maintainer_name: true
   field_appverse_stars: true
+  field_appverse_unresolved_tags: true
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true

@@ -66,5 +66,7 @@ salt.txt
 node_modules
 docs/local/
 .worktrees/
+.superpowers/
 .claude
 CLAUDE.personal.md
+docs/superpowers/

@@ -17,6 +17,7 @@ dependencies:
     - access_news
     - ccmnet
     - cssn
+    - node
     - user
     - webform_submission_search_api
 id: cssn_directory
@@ -45,6 +46,14 @@ field_settings:
     datasource_id: 'entity:user'
     property_path: field_current_occupation
     type: string
+    dependencies:
+      config:
+        - field.storage.user.field_current_occupation
+  field_current_occupation_1:
+    label: 'Current Occupation'
+    datasource_id: 'entity:user'
+    property_path: field_current_occupation
+    type: text
     dependencies:
       config:
         - field.storage.user.field_current_occupation
@@ -148,6 +157,16 @@ field_settings:
     label: 'User Interest'
     property_path: search_api_user_interest
     type: string
+  user_organization:
+    label: 'User Organization'
+    datasource_id: 'entity:user'
+    property_path: 'field_access_organization:entity:title'
+    type: text
+    dependencies:
+      config:
+        - field.storage.user.field_access_organization
+      module:
+        - node
   user_skills:
     label: 'User Skills'
     property_path: search_api_user_skills
@@ -168,6 +187,7 @@ processor_settings:
   custom_announcement_affinity_group: {  }
   custom_event_affiliation: {  }
   custom_event_affinity_group: {  }
+  custom_event_registration: {  }
   custom_event_skill_level: {  }
   custom_event_title: {  }
   custom_event_type: {  }
@@ -183,30 +203,36 @@ processor_settings:
       preprocess_query: -15
     all_fields: false
     fields:
+      - field_access_organization_1
+      - field_current_occupation
+      - field_current_occupation_1
+      - field_institution
+      - field_institution_1
       - field_user_bio
       - field_user_first_name
       - field_user_first_name_1
       - field_user_last_name
       - field_user_last_name_1
       - name
-      - roles
-      - user_skills
     title: true
     alt: true
     tags:
       b: 2.0
-      em: 1.0
       h1: 5.0
       h2: 3.0
       h3: 2.0
       strong: 2.0
-      u: 1.0
   ignorecase:
     weights:
       preprocess_index: -20
       preprocess_query: -20
     all_fields: false
     fields:
+      - field_access_organization_1
+      - field_current_occupation
+      - field_current_occupation_1
+      - field_institution
+      - field_institution_1
       - field_user_bio
       - field_user_first_name
       - field_user_first_name_1
@@ -214,7 +240,12 @@ processor_settings:
       - field_user_last_name_1
       - name
       - roles
+      - user_affinity_groups
+      - user_badges
+      - user_interest
+      - user_organization
       - user_skills
+      - user_skills_id
   language_with_fallback: {  }
   mentee_name: {  }
   rendered_item: {  }
@@ -224,6 +255,9 @@ processor_settings:
       preprocess_query: 0
     all_fields: false
     fields:
+      - field_access_organization_1
+      - field_current_occupation_1
+      - field_institution_1
       - field_user_bio
       - field_user_first_name_1
       - field_user_last_name_1
@@ -236,6 +270,8 @@ processor_settings:
       preprocess_query: -2
     all_fields: false
     fields:
+      - field_access_organization_1
+      - field_current_occupation_1
       - field_user_bio
       - field_user_first_name_1
       - field_user_last_name_1

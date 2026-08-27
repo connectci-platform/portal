@@ -1,0 +1,19 @@
+uuid: bcd075ed-ffda-4f38-8d02-980a8b212dc1
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_validation_er
+    - node.type.appverse_repo
+id: node.appverse_repo.field_repo_validation_er
+field_name: field_repo_validation_er
+entity_type: node
+bundle: appverse_repo
+label: 'Validation errors'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

@@ -5,12 +5,13 @@
  * Install, update, and uninstall functions for the ood_software module.
  */
 
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\taxonomy\Entity\Term;
 
 /**
  * Create batch_connect taxonomy term if it doesn't exist.
  */
-function ood_software_update_10001() {
+function ood_software_update_10001(): TranslatableMarkup {
   $existing = \Drupal::entityTypeManager()
     ->getStorage('taxonomy_term')
     ->loadByProperties([
@@ -37,7 +38,7 @@ function ood_software_update_10001() {
  * which corrupted HTML attributes like href in anchor tags. This update
  * clears the last updated timestamp and queues all apps for re-fetching.
  */
-function ood_software_update_10002() {
+function ood_software_update_10002(): TranslatableMarkup {
   $nids = \Drupal::entityQuery('node')
     ->condition('type', 'appverse_app')
     ->accessCheck(FALSE)
@@ -60,13 +61,18 @@ function ood_software_update_10002() {
 
   // Process the queue immediately.
   $queue_worker = \Drupal::service('plugin.manager.queue_worker')->createInstance('appverse_app_updater');
+  // PHPStan reads QueueInterface::claimItem() as returning object|true from
+  // core's stub; it actually returns an item object or FALSE, so $item is an
+  // object inside this loop and $item->data is valid. Hence the ignores below.
   while ($item = $queue->claimItem()) {
     try {
+      // @phpstan-ignore-next-line
       $queue_worker->processItem($item->data);
       $queue->deleteItem($item);
     }
     catch (\Exception $e) {
       \Drupal::logger('ood_software')->error('Failed to update app @nid: @message', [
+        // @phpstan-ignore-next-line
         '@nid' => $item->data['nid'],
         '@message' => $e->getMessage(),
       ]);
@@ -75,4 +81,381 @@ function ood_software_update_10002() {
   }
 
   return t('Re-fetched @count Appverse apps from GitHub with corrected HTML sanitization.', ['@count' => $count]);
+}
+
+/**
+ * Install field_repo_shape on appverse_repo.
+ *
+ * Adds the shape discriminator field that distinguishes declared
+ * (multi-app via appverse.yml) from inferred (single-app via
+ * manifest.yml) repos. Consumers branch on this value to render
+ * appropriate layouts.
+ *
+ * Configuration in config/install/ only runs on fresh module installs,
+ * so existing sites need this programmatic field creation. The hook
+ * is idempotent: re-running on a site that already has the field is
+ * a no-op (loadByName returns the existing entity and we skip).
+ *
+ * Sequence: runs before 10502 (workflow attach) and 10503 (inferred-repo
+ * backfill).
+ */
+function ood_software_update_10501(): void {
+  $source = new \Drupal\Core\Config\FileStorage(
+    \Drupal::service('extension.list.module')->getPath('ood_software') . '/config/install'
+  );
+
+  // Create the appverse_repo content type if it doesn't exist.
+  if (!\Drupal\node\Entity\NodeType::load('appverse_repo')) {
+    \Drupal\node\Entity\NodeType::create($source->read('node.type.appverse_repo'))->save();
+  }
+
+  // Create field_repo_shape storage.
+  //
+  // FieldStorageConfig::create() expects allowed_values in the runtime
+  // (flat) format [value => label]; ListItemBase::storageSettingsToConfigData
+  // restructures it into the on-disk format [{value, label}, ...] during
+  // save. Flatten before passing in.
+  if (!\Drupal\field\Entity\FieldStorageConfig::loadByName('node', 'field_repo_shape')) {
+    $storage_data = $source->read('field.storage.node.field_repo_shape');
+    $flat = [];
+    foreach ($storage_data['settings']['allowed_values'] as $item) {
+      $flat[$item['value']] = $item['label'];
+    }
+    $storage_data['settings']['allowed_values'] = $flat;
+    \Drupal\field\Entity\FieldStorageConfig::create($storage_data)->save();
+  }
+
+  // Attach the field to appverse_repo.
+  if (!\Drupal\field\Entity\FieldConfig::loadByName('node', 'appverse_repo', 'field_repo_shape')) {
+    \Drupal\field\Entity\FieldConfig::create(
+      $source->read('field.field.node.appverse_repo.field_repo_shape')
+    )->save();
+  }
+
+  // Make the field editable in the default form display.
+  $form_display = \Drupal::service('entity_display.repository')->getFormDisplay('node', 'appverse_repo', 'default');
+  if (!$form_display->getComponent('field_repo_shape')) {
+    $form_display->setComponent('field_repo_shape', [
+      'type' => 'options_select',
+      'weight' => 50,
+    ])->save();
+  }
+}
+
+/**
+ * Backfill content_moderation_state on existing appverse_repo nodes.
+ *
+ * The appverse_editorial workflow is attached to appverse_repo. Existing
+ * repos need an initial moderation state set, derived from node.status:
+ *   - status=1 -> published
+ *   - status=0 -> draft
+ *
+ * Sequence: runs after 10501 (field_repo_shape) and before 10503
+ * (inferred-repo backfill).
+ */
+function ood_software_update_10502(): TranslatableMarkup {
+  $entityTypeManager = \Drupal::entityTypeManager();
+  $logger = \Drupal::logger('ood_software');
+  $source = new \Drupal\Core\Config\FileStorage(
+    \Drupal::service('extension.list.module')->getPath('ood_software') . '/config/install'
+  );
+
+  // Ensure appverse_editorial exists and includes appverse_repo in its
+  // bundle binding. Without this content_moderation never attaches
+  // moderation_state to repo nodes and the backfill below no-ops.
+  $workflowStorage = $entityTypeManager->getStorage('workflow');
+  $workflow = $workflowStorage->load('appverse_editorial');
+  if (!$workflow) {
+    $workflow = $workflowStorage->create($source->read('workflows.workflow.appverse_editorial'));
+    $workflow->save();
+  }
+  // getTypePlugin() is typed WorkflowTypeInterface; the content_moderation
+  // plugin implements ContentModerationInterface, which adds these methods.
+  // @phpstan-ignore-next-line
+  elseif (!in_array('appverse_repo', $workflow->getTypePlugin()->getBundlesForEntityType('node'), TRUE)) {
+    // @phpstan-ignore-next-line
+    $workflow->getTypePlugin()->addEntityTypeAndBundle('node', 'appverse_repo');
+    $workflow->save();
+  }
+
+  // Backfill moderation_state on existing repo nodes. We can't
+  // use $node->get('moderation_state')->isEmpty() because
+  // content_moderation lazily computes that field from node.status when
+  // no row exists, so existing nodes report 'published' even when no
+  // row has been written.
+  $repoIds = $entityTypeManager->getStorage('node')->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_repo')
+    ->execute();
+  $stateStorage = $entityTypeManager->getStorage('content_moderation_state');
+  $count = 0;
+  foreach ($entityTypeManager->getStorage('node')->loadMultiple($repoIds) as $repo) {
+    $existing = $stateStorage->loadByProperties([
+      'content_entity_type_id' => 'node',
+      'content_entity_id' => $repo->id(),
+    ]);
+    if ($existing) {
+      continue;
+    }
+    $state = $repo->isPublished() ? 'published' : 'draft';
+    $repo->set('moderation_state', $state);
+    $repo->save();
+    $count++;
+    $logger->info('Set moderation_state=@state on repo @nid.', ['@state' => $state, '@nid' => $repo->id()]);
+  }
+
+  return t('Backfilled moderation_state on @count repos.', ['@count' => $count]);
+}
+
+/**
+ * Backfill inferred repos for legacy Apps (moved to a deploy hook).
+ *
+ * The inferred-repo backfill used to run here, during updb. That is too
+ * early: the backfill creates appverse_repo nodes and writes the full
+ * field_repo_* family (field_repo_url, field_repo_description,
+ * field_repo_organization, …), and those fields exist only in config/default
+ * — i.e. they are created by config import, which in `drush deploy` runs
+ * AFTER the database-update phase. Querying/writing them here failed with
+ * "Call to a member function getColumns() on false" for every App because the
+ * field storage did not exist yet. (Note: hook_post_update_N is no help — it
+ * also runs in the update phase, before config import.)
+ *
+ * The backfill now lives in ood_software_deploy_10014_backfill_inferred_repos()
+ * in ood_software.deploy.php. Drush runs deploy hooks in the final
+ * `deploy:hook` step, after config:import, so every field_repo_* field exists.
+ * This hook is intentionally a no-op so its schema number stays consumed on
+ * sites that already ran the old version.
+ */
+function ood_software_update_10503(): TranslatableMarkup {
+  return t('Inferred-repo backfill moved to a deploy hook (runs after config import).');
+}
+
+/**
+ * Drop the old appverse_collection bundle + fields ahead of the Repo rename.
+ *
+ * On environments that already ran 10501-10503 against the pre-rename
+ * (appverse_collection) names, this hook deletes every Collection node,
+ * the bundle, the field configs, the field storages, and lingering
+ * bundle-scoped config entities (entity_view_display, entity_form_display,
+ * pathauto pattern, jsonapi_extras resource). After this runs,
+ * `drush cim` can import the renamed appverse_repo configs from
+ * sites/default/config/default/ without name collisions.
+ *
+ * No data preserved. This is intentional: the rename lands before
+ * Collections reach production, so there is no real content to migrate.
+ * Local test envs (md-2724) will wipe their test Collections.
+ *
+ * Sequence: highest schema number. On fresh installs there is no old
+ * bundle to clean up, so the hook is a near no-op.
+ */
+function ood_software_update_10504(): TranslatableMarkup {
+  $entityTypeManager = \Drupal::entityTypeManager();
+  $configFactory = \Drupal::configFactory();
+
+  $storage = $entityTypeManager->getStorage('node');
+
+  // 1. Delete every appverse_collection node (cascades to revisions +
+  // moderation_state rows via entity-system delete semantics).
+  // Guard: on an environment that came up AFTER the rename, the
+  // appverse_collection bundle never existed — querying a non-existent
+  // bundle/field throws, so skip the node + back-reference cleanup entirely
+  // when the old bundle is absent. (Steps 3-5 are already loadByName-guarded
+  // and no-op safely on their own.)
+  if (\Drupal\node\Entity\NodeType::load('appverse_collection')) {
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_collection')
+      ->execute();
+    if ($ids) {
+      $storage->delete($storage->loadMultiple($ids));
+    }
+  }
+
+  // 2. Unset field_appverse_collection on every appverse_app node so the
+  // field can be deleted without orphaning row data.
+  // Guard: an entity query with ->exists() on a field that was never defined
+  // throws "'field_appverse_collection' not found". Only run when the field
+  // storage actually exists.
+  if (\Drupal\field\Entity\FieldStorageConfig::loadByName('node', 'field_appverse_collection')) {
+    $appIds = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_app')
+      ->exists('field_appverse_collection')
+      ->execute();
+    foreach ($storage->loadMultiple($appIds) as $app) {
+      $app->set('field_appverse_collection', NULL);
+      $app->setNewRevision(FALSE);
+      $app->save();
+    }
+  }
+
+  // 3. Delete every field.field instance on the appverse_collection bundle.
+  // Each field.field.node.appverse_collection.field_collection_* config
+  // must be deleted explicitly — deleting the bundle does NOT cascade.
+  $oldFieldConfigs = $configFactory->listAll('field.field.node.appverse_collection.');
+  foreach ($oldFieldConfigs as $name) {
+    $parts = explode('.', $name);
+    $fieldName = end($parts);
+    $fieldConfig = \Drupal\field\Entity\FieldConfig::loadByName('node', 'appverse_collection', $fieldName);
+    if ($fieldConfig) {
+      $fieldConfig->delete();
+    }
+  }
+
+  // 4. Delete the appverse_app-side back-reference field.
+  $appField = \Drupal\field\Entity\FieldConfig::loadByName('node', 'appverse_app', 'field_appverse_collection');
+  if ($appField) {
+    $appField->delete();
+  }
+
+  // 5. Delete every field.storage config whose name starts with
+  // field_collection_ or equals field_appverse_collection. Storages
+  // must have zero remaining usage to delete — steps 3 + 4 cleared usage.
+  $oldStorages = $configFactory->listAll('field.storage.node.field_collection_');
+  $oldStorages[] = 'field.storage.node.field_appverse_collection';
+  foreach ($oldStorages as $name) {
+    $parts = explode('.', $name);
+    $fieldName = end($parts);
+    $storageEntity = \Drupal\field\Entity\FieldStorageConfig::loadByName('node', $fieldName);
+    if ($storageEntity) {
+      $storageEntity->delete();
+    }
+  }
+
+  // 6. Detach appverse_collection from the workflow.
+  $workflow = $entityTypeManager->getStorage('workflow')->load('appverse_editorial');
+  if ($workflow) {
+    // As above: the content_moderation plugin implements
+    // ContentModerationInterface, which adds these methods.
+    // @phpstan-ignore-next-line
+    $bundles = $workflow->getTypePlugin()->getBundlesForEntityType('node');
+    if (in_array('appverse_collection', $bundles, TRUE)) {
+      // @phpstan-ignore-next-line
+      $workflow->getTypePlugin()->removeEntityTypeAndBundle('node', 'appverse_collection');
+      $workflow->save();
+    }
+  }
+
+  // 7. Delete the bundle itself.
+  $bundle = \Drupal\node\Entity\NodeType::load('appverse_collection');
+  if ($bundle) {
+    $bundle->delete();
+  }
+
+  // 7B. Delete lingering bundle-scoped config entities that don't cascade
+  // from the bundle delete. Without these explicit deletes, cim reports
+  // drift and may refuse the import:
+  //   core.entity_view_display.node.appverse_collection.*
+  //   core.entity_form_display.node.appverse_collection.*
+  //   pathauto.pattern.appverse_collection
+  //   jsonapi_extras.jsonapi_resource_config.node--appverse_collection
+  $lingeringPrefixes = [
+    'core.entity_view_display.node.appverse_collection.',
+    'core.entity_form_display.node.appverse_collection.',
+  ];
+  $lingeringExact = [
+    'pathauto.pattern.appverse_collection',
+    'jsonapi_extras.jsonapi_resource_config.node--appverse_collection',
+  ];
+  foreach ($lingeringPrefixes as $prefix) {
+    foreach ($configFactory->listAll($prefix) as $configName) {
+      $configFactory->getEditable($configName)->delete();
+    }
+  }
+  foreach ($lingeringExact as $configName) {
+    $config = $configFactory->getEditable($configName);
+    if (!$config->isNew()) {
+      $config->delete();
+    }
+  }
+
+  // After updb finishes, drush deploy proceeds to drush cim which imports
+  // the renamed appverse_repo bundle + every field_repo_* config from
+  // sites/default/config/default/. We do NOT recreate anything new here.
+  return t('Dropped legacy appverse_collection bundle + fields. Run drush cim to import the renamed appverse_repo configs.');
+}
+
+/**
+ * Install the unresolved-tags fields on existing sites.
+ *
+ * field_appverse_unresolved_tags (appverse_app) and field_repo_unresolved_tags
+ * (appverse_repo) are defined only in this module's config/install/, which runs
+ * at module-install time only. Existing sites (md, prod) never received them on
+ * deploy — drush cim imports from the config sync dir, not config/install — so
+ * the reviewer-tag-handling sync threw "Field field_appverse_unresolved_tags is
+ * unknown" at runtime. This hook installs both fields from config/install.
+ *
+ * Idempotent: re-running on a site that already has a field is a no-op
+ * (loadByName returns the existing entity and we skip). Both fields are plain
+ * `string` (no allowed_values), so no flatten is needed (cf. 10501).
+ */
+function ood_software_update_10505(): TranslatableMarkup {
+  $source = new \Drupal\Core\Config\FileStorage(
+    \Drupal::service('extension.list.module')->getPath('ood_software') . '/config/install'
+  );
+
+  $fields = [
+    // [storage config name, field config name, entity bundle, field name].
+    [
+      'field.storage.node.field_appverse_unresolved_tags',
+      'field.field.node.appverse_app.field_appverse_unresolved_tags',
+      'appverse_app',
+      'field_appverse_unresolved_tags',
+    ],
+    [
+      'field.storage.node.field_repo_unresolved_tags',
+      'field.field.node.appverse_repo.field_repo_unresolved_tags',
+      'appverse_repo',
+      'field_repo_unresolved_tags',
+    ],
+  ];
+
+  foreach ($fields as [$storageName, $fieldName, $bundle, $field]) {
+    if (!\Drupal\field\Entity\FieldStorageConfig::loadByName('node', $field)) {
+      \Drupal\field\Entity\FieldStorageConfig::create($source->read($storageName))->save();
+    }
+    if (!\Drupal\field\Entity\FieldConfig::loadByName('node', $bundle, $field)) {
+      \Drupal\field\Entity\FieldConfig::create($source->read($fieldName))->save();
+    }
+  }
+
+  return t('Installed field_appverse_unresolved_tags and field_repo_unresolved_tags.');
+}
+
+/**
+ * Clear menu_item_extras view_mode so config import can uninstall it (D8-2795).
+ *
+ * D8-2795 removes menu_item_extras — it makes every menu its own
+ * menu_link_content bundle, which stops domain_menu_access installing, and
+ * nothing on this site uses the custom fields it exists to provide.
+ *
+ * The uninstall is expressed in core.extension.yml, so `drush deploy` performs
+ * it during config:import. That fails while any link has a non-NULL view_mode,
+ * because menu_item_extras' own uninstall validator refuses:
+ *
+ *   Unable to uninstall Menu Item Extras because: There are extra data for
+ *   menus.
+ *
+ * config:import runs before deploy:hook, so domain_menu_system_block's hooks
+ * cannot clear this in time — and that module is not installed yet at this
+ * point either. It has to happen in updatedb, from a module that is already
+ * installed. Hence here.
+ *
+ * Every row holds the module's own default ('default'), so this discards no
+ * site content. Verified before writing: no menu link on this site has a
+ * populated menu_item_extras field.
+ */
+function ood_software_update_10506(): TranslatableMarkup {
+  if (!\Drupal::moduleHandler()->moduleExists('menu_item_extras')) {
+    return t('menu_item_extras is not installed, nothing to clear.');
+  }
+
+  $cleared = \Drupal::database()->update('menu_link_content_data')
+    ->fields(['view_mode' => NULL])
+    ->isNotNull('view_mode')
+    ->execute();
+
+  return t('Cleared view_mode on @count menu links so menu_item_extras can be uninstalled.', [
+    '@count' => $cleared,
+  ]);
 }

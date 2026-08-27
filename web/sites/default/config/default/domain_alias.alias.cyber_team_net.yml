@@ -1,9 +1,0 @@
-uuid: 8bad762b-9b38-4e4d-9c7c-98abfaf2c537
-langcode: en
-status: true
-dependencies: {  }
-id: cyber_team_net
-domain_id: greatplains_wpi_edu
-pattern: cyber-team.net
-redirect: 0
-environment: default

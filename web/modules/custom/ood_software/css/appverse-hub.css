@@ -1,0 +1,483 @@
+/* Appverse Maintenance Hub */
+
+/* Breathing room so the management page doesn't end flush against the footer /
+   viewport bottom. The view renders inside a generic `.views-element-container`
+   with no `.view-my-appverse` class on the page, so scope to a container that
+   actually holds a hub card (`:has()`), and also pad the legacy wrapper class
+   for any display that does carry it. Covers both the admin (page_admin) and
+   user (page_user) displays regardless of the surrounding region markup. */
+.view-my-appverse,
+.views-element-container:has(.appverse-hub-card) {
+  padding-bottom: 3rem;
+}
+/* Extra space below the pagination itself when present. */
+.view-my-appverse .pager,
+.views-element-container:has(.appverse-hub-card) .pager {
+  margin-bottom: 3rem;
+}
+/* Fallback for engines without :has() — pad the row list's container. */
+@supports not (selector(:has(*))) {
+  .views-element-container { padding-bottom: 3rem; }
+}
+
+/* "Add a repo" button in the view header (links to /appverse/add-repo).
+   Inherits .btn.btn-primary brand styling. The header render-array renders
+   into a plain <header> element (no .view-header class), so target the
+   <header> that actually contains our button via :has() and right-align it. */
+.appverse-hub-add-repo {
+  display: inline-block;
+  text-decoration: none;
+}
+header:has(> .appverse-hub-add-repo) {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+/* Wrapper around all rows. The view's html_list style would wrap each
+   row in <li>, but our row template returns a self-contained <article>;
+   we just need the outer list to look like a vertical stack. */
+.view-my-appverse .view-content > ul,
+.view-my-appverse .view-content > div {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.view-my-appverse .view-content > ul > li {
+  display: block;
+}
+
+/* Each Repo card. */
+.appverse-hub-card {
+  background: #fff;
+  padding: 1rem 0;
+}
+/* Separate cards with a horizontal rule rather than boxing each one. The rule
+   lives on the Views row that wraps a hub card (the actual repeating boundary,
+   independent of the outer view wrapper class); the last such row gets none.
+   `:has()` keeps it from touching unrelated rows. */
+.views-row:has(> .appverse-hub-card) {
+  border-bottom: 1px solid #c6c6c6;
+}
+.views-row:has(> .appverse-hub-card):last-child {
+  border-bottom: none;
+}
+/* Fallback for engines without :has() — style the card directly, accepting a
+   rule under the final card too. */
+@supports not (selector(:has(*))) {
+  .appverse-hub-card { border-bottom: 1px solid #c6c6c6; }
+}
+
+.appverse-hub-card__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.appverse-hub-card__title a { text-decoration: none; color: #232323; }
+.appverse-hub-card__title a:hover { text-decoration: underline; }
+
+.appverse-hub-apps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin-top: 0.5rem;
+}
+/* On narrow screens the 5-column table can't fit; rather than let it blow out
+   the page width (and push the Status column off-screen), let the table scroll
+   horizontally within the card. `display: block` makes the <table> itself the
+   scroll container without needing a wrapper element in the template. */
+@media (max-width: 768px) {
+  .appverse-hub-apps-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* Keep the status badge + edit control from wrapping mid-scroll. */
+  .appverse-hub-apps-table th,
+  .appverse-hub-apps-table td { white-space: nowrap; }
+  /* Tags can still wrap within their cell — they're the one flexible column. */
+  .appverse-hub-apps-table__tags { white-space: normal; }
+}
+.appverse-hub-apps-table th,
+.appverse-hub-apps-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #eaecef;
+  text-align: left;
+}
+.appverse-hub-apps-table th { background: #f6f8fa; font-weight: 600; }
+/* Subpath column renders inside <code>. Drupal/Bootstrap default <code> is
+   bright pink (#e83e8c); mute it to the same secondary gray the preview
+   card's subpath uses so it reads as quiet metadata, not an alert. */
+.appverse-hub-apps-table td code {
+  color: #57606a;
+  background: transparent;
+  /* Pin to the cell's own size. The site theme inflates bare <code>, and
+     monospace glyphs read larger than the surrounding sans at the same px, so
+     match the table body text rather than leaving it em-relative. */
+  font-size: 0.875rem;
+}
+
+/* Admin's needs_adjustment feedback block. */
+.appverse-hub-card__moderation-comment {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: #fff8c5;
+  border-left: 4px solid #d4a72c;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.appverse-hub-card__moderation-comment p { margin: 0.25rem 0 0 0; }
+
+/* Status badges. */
+.badge {
+  display: inline-block;
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: #f6f8fa;
+  color: #57606a;
+}
+.badge-success { background: #dafbe1; color: #1a7f37; }
+.badge-warning { background: #fff8c5; color: #9a6700; }
+.badge-error { background: #ffebe9; color: #cf222e; }
+
+/* ---------------------------------------------------------------------------
+   Exposed-filter grid for the my_appverse view (manage-repos admin display).
+   The default Drupal/Bootstrap render stacks each form-item full-width, which
+   for 7 filters takes up most of the viewport before any results show.
+   Lay them out in a responsive grid instead.
+   --------------------------------------------------------------------------- */
+.views-exposed-form[data-drupal-selector*="my-appverse"] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f6f8fa;
+  border-radius: 6px;
+}
+
+/* Each filter is a normal form-item — let the grid place them. Override
+   Drupal/Bootstrap's full-width form-item width. */
+.views-exposed-form[data-drupal-selector*="my-appverse"] .form-item,
+.views-exposed-form[data-drupal-selector*="my-appverse"] .form-actions {
+  margin: 0;
+  min-width: 0;
+}
+
+/* Labels: tight, uppercase, secondary color so the inputs read first.
+   The date filter is a fieldset, so normalize its legend to match the
+   plain <label> the other filters use. */
+.views-exposed-form[data-drupal-selector*="my-appverse"] .form-item label,
+.views-exposed-form[data-drupal-selector*="my-appverse"] .appverse-date-filter > legend,
+.views-exposed-form[data-drupal-selector*="my-appverse"] .appverse-date-filter > .fieldset-legend {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #57606a;
+  margin-bottom: 0.2rem;
+  padding: 0;
+  border: 0;
+}
+
+/* Inputs + selects: span their grid cell width. */
+.views-exposed-form[data-drupal-selector*="my-appverse"] input[type="text"],
+.views-exposed-form[data-drupal-selector*="my-appverse"] input[type="search"],
+.views-exposed-form[data-drupal-selector*="my-appverse"] input[type="date"],
+.views-exposed-form[data-drupal-selector*="my-appverse"] select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* The HTML5 date input doesn't pick up the theme's .form-control chrome the
+   way text/select inputs do, so it looks unstyled next to them. Match the
+   border, padding, and height of the sibling inputs. */
+.views-exposed-form[data-drupal-selector*="my-appverse"] input[type="date"] {
+  height: calc(1.5em + 0.75rem + 2px);
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #495057;
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+}
+
+/* Action row (Apply + Reset) — keep buttons inline, right-aligned. */
+.views-exposed-form[data-drupal-selector*="my-appverse"] .form-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+/* Tablet: 2 columns. */
+@media (max-width: 900px) {
+  .views-exposed-form[data-drupal-selector*="my-appverse"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile: 1 column, restore the default stacked layout. */
+@media (max-width: 600px) {
+  .views-exposed-form[data-drupal-selector*="my-appverse"] {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Date filter (Last synced): operator select + date input on one line. */
+.views-exposed-form .appverse-date-filter > .fieldset-wrapper,
+.views-exposed-form fieldset.appverse-date-filter > .fieldset-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+.views-exposed-form .appverse-date-filter .form-item {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Redesigned hub card header: a CSS grid with SHARED column tracks so the
+   fields line up vertically across every card. Title flexes; the data columns
+   have fixed widths so column N is the same x-position on every row.
+   Columns: title | status | last-sync+resync | github | owner | actions. */
+.appverse-hub-card__header {
+  display: grid;
+  /* FIXED column widths (no `auto`). Each card header is its own grid
+     container, so `auto`/content-sized tracks would size per-card and the
+     columns wouldn't line up between cards. Fixed tracks make every card's
+     grid identical, so e.g. the status badge starts at the same x on every
+     row regardless of label length ("Draft" vs "Published"). */
+  grid-template-columns:
+    minmax(12rem, 1fr)   /* title (the only flexible track) */
+    11rem                /* last sync + resync */
+    2.5rem               /* github */
+    12rem                /* owner (blank on own hub) */
+    9rem                 /* status */
+    9rem;                /* edit pencil + lifecycle actions */
+  align-items: center;
+  column-gap: 1.25rem;
+  row-gap: 0.5rem;
+}
+.appverse-hub-card__cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+/* Keep the sync cell's content (timestamp + resync icon) packed to the LEFT of
+   its track so the resync icon doesn't ride the column's right edge up against
+   the GitHub icon in the next column. This makes the refresh/github spacing read
+   the same on monorepo and single-app cards. */
+.appverse-hub-card__cell--sync { justify-content: flex-start; }
+.appverse-hub-card__cell--actions { justify-content: flex-end; }
+.appverse-hub-card__last-synced {
+  font-size: 0.875rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* Below the md breakpoint the grid would crush; stack into a single column. */
+@media (max-width: 768px) {
+  .appverse-hub-card__header {
+    grid-template-columns: 1fr;
+    row-gap: 0.75rem;
+  }
+  .appverse-hub-card__cell--actions { justify-content: flex-start; }
+
+  /* Stacked, the cells lose the column-position that gave them meaning: a lone
+     badge or timestamp reads as unlabeled. Prefix each data cell with its label
+     so status, sync time, owner, etc. are identifiable on a phone. The title
+     needs no label; the desktop layout (grid columns) is unaffected. */
+  .appverse-hub-card__cell--sync::before,
+  .appverse-hub-card__cell--github::before,
+  .appverse-hub-card__cell--owner::before,
+  .appverse-hub-card__cell--status::before,
+  .appverse-hub-card__cell--actions::before {
+    flex: 0 0 5.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #57606a;
+  }
+  .appverse-hub-card__cell--status::before  { content: 'Status'; }
+  .appverse-hub-card__cell--github::before  { content: 'Source'; }
+  .appverse-hub-card__cell--owner::before   { content: 'Maintainer'; }
+  .appverse-hub-card__cell--actions::before { content: 'Actions'; }
+
+  /* The sync cell already reads "Last sync <ts>" in its span, so it needs no
+     label — but keep the same label-column indent (empty) so its content lines
+     up with the labeled rows instead of floating at the card's left edge. */
+  .appverse-hub-card__cell--sync::before {
+    content: '';
+    flex: 0 0 5.5rem;
+  }
+  .appverse-hub-card__last-synced { white-space: normal; }
+
+  /* Empty cells (e.g. owner on your own hub, or an absent github link) would
+     otherwise render a stray label with no value. Hide any data cell that has
+     no rendered content. :has() is supported on all current mobile engines;
+     the desktop grid keeps empty cells for alignment above this breakpoint. */
+  .appverse-hub-card__cell--github:not(:has(a)),
+  .appverse-hub-card__cell--owner:not(:has(a)),
+  .appverse-hub-card__cell--actions:not(:has(a, button)) {
+    display: none;
+  }
+
+  /* Bigger tap targets on touch-sized screens: the 2rem icon buttons are below
+     the ~44px comfortable-touch minimum. */
+  .appverse-hub-card__icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+.appverse-hub-card__owner {
+  font-weight: 600;
+  color: #c91235; /* appverse-red — brand link color */
+  text-decoration: none;
+  /* Truncate a long owner name so it stays within the fixed owner track
+     instead of overflowing into the status column and colliding with the
+     badge. The envelope icon that follows keeps its space. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appverse-hub-card__owner:hover { text-decoration: underline; }
+/* The email icon must not shrink when the name truncates. */
+.appverse-hub-card__cell--owner .appverse-hub-card__icon-btn {
+  flex-shrink: 0;
+}
+
+/* Icon buttons (links and form submits share one look). */
+.appverse-hub-card__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #232323;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.appverse-hub-card__icon-btn:hover { background: #f0f0f0; }
+/* Icon-only controls carry no text, so a visible focus ring is required for
+   keyboard users (Bootstrap suppresses the UA default outline). */
+.appverse-hub-card__icon-btn:focus-visible,
+.appverse-hub-card__owner:focus-visible,
+.appverse-hub-card__title a:focus-visible {
+  outline: 2px solid #0076af;
+  outline-offset: 2px;
+}
+.appverse-hub-card__icon-btn--primary { color: #0076af; }
+.appverse-hub-card__icon-btn--danger { color: #c91235; }
+.appverse-hub-card__action-form { display: inline; margin: 0; }
+
+/* Draft/archived badge. */
+.badge-muted { background: #e9e9e9; color: #555; }
+
+/* Member-apps disclosure. */
+.appverse-hub-card__apps { margin-top: 0.75rem; }
+.appverse-hub-card__apps > summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+/* Hide the native disclosure triangle (Safari/WebKit + standard). */
+.appverse-hub-card__apps > summary::-webkit-details-marker { display: none; }
+/* Chevron points right when closed, rotates down when open. */
+.appverse-hub-card__apps-chevron { transition: transform 0.15s ease; }
+.appverse-hub-card__apps[open] > summary .appverse-hub-card__apps-chevron {
+  transform: rotate(90deg);
+}
+
+/* -----------------------------------------------------------------------------
+   Tag chips. Shared by the repo-level discovery-tags row (.appverse-hub-card__tags)
+   and the per-app implementation tags in the apps table
+   (.appverse-hub-apps-table__tags). Quiet neutral chips in the same GitHub-muted
+   palette as the rest of the hub; unresolved tags read as a warning.
+   ----------------------------------------------------------------------------- */
+
+/* Discovery-tag row: full-width, wraps freely below the header grid. */
+.appverse-hub-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+/* Row label ("Tags:" / "Implementation:") distinguishing the two vocabularies. */
+.appverse-hub-card__tags-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #57606a;
+  margin-right: 0.125rem;
+}
+
+/* The apps-table tags cell also lays its chips out as a wrapping row. */
+.appverse-hub-apps-table__tags {
+  white-space: normal;
+}
+.appverse-hub-apps-table__tags .appverse-tag {
+  margin: 0.125rem 0.25rem 0.125rem 0;
+}
+
+.appverse-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Resolved: quiet neutral chip (matches the muted card palette). */
+.appverse-tag--resolved {
+  background: #f6f8fa;
+  color: #57606a;
+  border: 1px solid #eaecef;
+}
+
+/* Unresolved: warning chip (same colors as .badge-warning). */
+.appverse-tag--unresolved {
+  background: #fff8c5;
+  color: #9a6700;
+  border: 1px solid #eac54f;
+}
+.appverse-tag--unresolved .bi { font-size: 0.7rem; }
+
+/* "+N more" count: subtle, no border, reads as secondary. */
+.appverse-tag--more {
+  background: transparent;
+  color: #57606a;
+  font-weight: 600;
+  padding-inline: 0.25rem;
+}
+
+/* Create-term link inside an unresolved app tag stays inline + inherits warning color. */
+.appverse-tag--unresolved a {
+  color: inherit;
+  text-decoration: underline;
+}

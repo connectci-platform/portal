@@ -27,9 +27,12 @@ vendor/bin/robo cypress <folder>    # Run Cypress E2E tests on folder: accessmat
 # Run PHPCS on a specific module
 vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,inc,install,test,profile,theme,info,txt,md,yml docroot/modules/custom/access
 # Run PHPStan on a specific module
-vendor/bin/phpstan analyse -l 0 docroot/modules/custom/<module>
+vendor/bin/phpstan analyse --memory-limit=1G -l 6 docroot/modules/custom/<module>
 # Run PHPUnit for a specific module
 cd docroot/modules/custom/<module> && ../../../../vendor/bin/phpunit
+
+# Interacting with Jira
+acli
 
 # When changing composer patches, be sure to run:
 composer patches-relock

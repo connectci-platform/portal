@@ -1,0 +1,19 @@
+uuid: 094a287b-217a-40e8-87ce-e4c2cbee6d22
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_maintainer_name
+    - node.type.appverse_app
+id: node.appverse_app.field_appverse_maintainer_name
+field_name: field_appverse_maintainer_name
+entity_type: node
+bundle: appverse_app
+label: 'Maintainer name'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

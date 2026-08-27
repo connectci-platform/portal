@@ -53,7 +53,9 @@ describe('Campus Champions Decline Action', () => {
       cy.get('input[name="mentor_email"]').type('pecan@pie.org');
     }
 
-    cy.get('input[name="carnegie_classification"]').type(carnegieCode);
+    cy.get('input[name="field_access_organization"]').type('Arkansas for Medical');
+    cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+      .contains('University of Arkansas for Medical Sciences').click();
 
     cy.get('#webform-submission-join-campus-champions-add-form > #edit-actions > #edit-submit')
       .contains('Submit').click();

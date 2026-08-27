@@ -5,9 +5,19 @@ dependencies:
   config:
     - core.entity_view_mode.node.text
     - field.field.node.page.body
+    - field.field.node.page.comment_node_page
+    - field.field.node.page.field_domain_access
+    - field.field.node.page.field_domain_all_affiliates
+    - field.field.node.page.field_domain_source
+    - field.field.node.page.field_image
+    - field.field.node.page.field_metatag
+    - field.field.node.page.field_region
+    - field.field.node.page.field_subtitle
+    - field.field.node.page.layout_builder__layout
     - node.type.page
   module:
     - text
+    - user
 id: node.page.text
 targetEntityType: node
 bundle: page
@@ -29,6 +39,7 @@ hidden:
   field_metatag: true
   field_region: true
   field_subtitle: true
+  langcode: true
   layout_builder__layout: true
   links: true
   search_api_excerpt: true

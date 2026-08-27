@@ -25,6 +25,7 @@ dependencies:
     - field.field.node.affinity_group.field_image
     - field.field.node.affinity_group.field_list_id
     - field.field.node.affinity_group.field_mailing_list
+    - field.field.node.affinity_group.field_meeting_notes_link
     - field.field.node.affinity_group.field_metatag
     - field.field.node.affinity_group.field_persona_source
     - field.field.node.affinity_group.field_recommended_access_res
@@ -559,4 +560,5 @@ hidden:
   field_slack: true
   field_tags: true
   field_use_ext_email_list: true
+  langcode: true
   search_api_excerpt: true

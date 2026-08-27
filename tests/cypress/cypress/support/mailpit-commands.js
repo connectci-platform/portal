@@ -155,15 +155,18 @@ Cypress.Commands.add('assertEmailContent', (message, expectations) => {
         expect(replyToAddresses).to.include(expectations.replyTo);
       }
       if (expectations.bodyContains) {
-        const text = fullMessage.Text || '';
-        // Support both string and array of strings
-        if (Array.isArray(expectations.bodyContains)) {
-          expectations.bodyContains.forEach(str => {
-            expect(text).to.contain(str);
-          });
-        } else {
-          expect(text).to.contain(expectations.bodyContains);
-        }
+        // Collapse whitespace so plaintext line-wrapping (emails hard-wrap at
+        // ~78 cols, which can split a title or URL across lines) does not break
+        // a substring match. Both the body and each expected string are
+        // normalized to single spaces before comparing.
+        const collapse = (s) => s.replace(/\s+/g, ' ');
+        const text = collapse(fullMessage.Text || '');
+        const expected = Array.isArray(expectations.bodyContains)
+          ? expectations.bodyContains
+          : [expectations.bodyContains];
+        expected.forEach((str) => {
+          expect(text).to.contain(collapse(str));
+        });
       }
       
       if (expectations.htmlContains) {

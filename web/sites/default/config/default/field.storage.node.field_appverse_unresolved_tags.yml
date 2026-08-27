@@ -1,0 +1,21 @@
+uuid: 62639de0-b5b6-4b1f-9899-829454b5b5e7
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_appverse_unresolved_tags
+field_name: field_appverse_unresolved_tags
+entity_type: node
+type: string
+settings:
+  max_length: 255
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: -1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

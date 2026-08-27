@@ -1,0 +1,27 @@
+uuid: 0f300596-83f9-4b80-9d40-cbdfac1295c0
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_tags
+    - node.type.appverse_repo
+    - taxonomy.vocabulary.tags
+  module:
+    - node
+id: node.appverse_repo.field_repo_tags
+field_name: field_repo_tags
+entity_type: node
+bundle: appverse_repo
+label: Tags
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:taxonomy_term'
+  handler_settings:
+    target_bundles:
+      tags: tags
+    auto_create: false
+field_type: entity_reference

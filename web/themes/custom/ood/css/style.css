@@ -165,47 +165,6 @@ body {
     transform: translateY(3px);
   }
 
-  .progress[data-drupal-progress],
-  .progress[data-drupal-progress] .progress {
-    display: block;
-    height: auto;
-    overflow: visible;
-    font-size: inherit;
-    background-color: transparent;
-    border-radius: 0;
-  }
-
-  .progress[data-drupal-progress] {
-    max-width: 500px;
-    margin: 2rem auto;
-    padding: 1.5rem;
-    text-align: center;
-  }
-
-  .progress__track {
-    height: 16px;
-    background: #e9ecef;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 0.75rem 0;
-  }
-
-  .progress__bar {
-    height: 100%;
-    background: #0473bd;
-    transition: width 0.3s ease;
-  }
-
-  .progress__label {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-  }
-
-  .progress__percentage {
-    font-weight: 600;
-  }
-
   .user-register-form {
     max-width: 32rem;
     margin: 0 auto;
@@ -963,31 +922,6 @@ body.page-node-type-affinity-group {
     }
   }
 
-  fieldset[data-drupal-selector="edit-group-github"] {
-    position: relative;
-  }
-
-  [data-drupal-selector="edit-field-appverse-github-url-wrapper"] {
-    width: 75%;
-    label {
-      display: block;
-    }
-    input {
-      width: -moz-available;
-      width: -webkit-fill-available;
-      width: fill-available;
-      width: fill-content;
-    }
-  }
-  [data-drupal-selector="edit-lookup-button"] {
-    position: absolute;
-    top: 180px;
-    right: 1rem;
-  }
-  .gh-url-suffix {
-    margin-top: -1.9rem;
-  }
-
   label.option {
     font-weight: normal;
   }
@@ -1344,6 +1278,76 @@ main a.border[href*="/taxonomy/term"],
 main a.border[href*="/tags"],
 main a:focus:not(.btn) {
   text-decoration: none;
+}
+
+/* Batch progress page (Drupal core renders it in a stripped-down layout
+   WITHOUT the .open-ondemand wrapper class, so progress styling scoped under
+   .open-ondemand never applied — the page looked unstyled and full-bleed).
+   These rules live at the top level so they apply on the bare batch page,
+   centering the progress card in the content area. The selectors are
+   batch-specific (.progress[data-drupal-progress] / .progress__*), so they
+   don't affect anything else. */
+.progress[data-drupal-progress],
+.progress[data-drupal-progress] .progress {
+  display: block;
+  height: auto;
+  overflow: visible;
+  font-size: inherit;
+  background-color: transparent;
+  border-radius: 0;
+}
+.progress[data-drupal-progress] {
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  text-align: center;
+}
+/* Scope the child element rules to the batch progress card too — .progress__*
+   are Drupal core classes shared by every progress bar (AJAX throbbers, file
+   uploads), so leaving them top-level would restyle progress bars sitewide. */
+.progress[data-drupal-progress] .progress__track {
+  height: 16px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+}
+.progress[data-drupal-progress] .progress__bar {
+  height: 100%;
+  background: #0473bd;
+  transition: width 0.3s ease;
+}
+.progress[data-drupal-progress] .progress__label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.progress[data-drupal-progress] .progress__percentage {
+  font-weight: 600;
+}
+
+/* Batch page (route /batch → body.page-batch). BatchController injects the
+   title as $page['header'], which the theme's page template renders inside
+   <div role="banner"> ABOVE and OUTSIDE the <main class="container-md">
+   content wrapper — so it has no width constraint and sits flush-left.
+   (Verified in templates/default/page.html.twig lines 229-232.) Constrain
+   that banner to the same centered column as the progress card below it. */
+body.page-batch [role="banner"] {
+  max-width: 500px;
+  margin: 2rem auto 0;
+  padding: 2rem 1.5rem 0;
+  text-align: center;
+}
+
+#appverse-reach-front {
+  background-color: #d2e5f3;
+  padding-left: 50%;
+  padding-right: 50%;
+  margin-left: -50%;
+  margin-right: -50%;
+  padding-top: 2rem;
+  margin-bottom: -45px;
+  padding-bottom: 4rem;
 }
 
 .page-tags main {

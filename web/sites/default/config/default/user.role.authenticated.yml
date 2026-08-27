@@ -13,6 +13,7 @@ dependencies:
     - node.type.access_news
     - node.type.affinity_group
     - node.type.appverse_app
+    - node.type.appverse_repo
     - node.type.appverse_software
     - node.type.article
     - node.type.blog_post
@@ -41,6 +42,7 @@ dependencies:
     - login_disable
     - media
     - node
+    - ood_software
     - recurring_events
     - recurring_events_registration
     - search
@@ -70,6 +72,8 @@ permissions:
   - 'create access_news content'
   - 'create appverse_app content'
   - 'create appverse_app content on assigned domains'
+  - 'create appverse_repo content'
+  - 'create appverse_repo content on assigned domains'
   - 'create appverse_software content'
   - 'create appverse_software content on assigned domains'
   - 'create blog_post content'
@@ -102,6 +106,7 @@ permissions:
   - 'edit own access_news content'
   - 'edit own affinity_group content'
   - 'edit own appverse_app content'
+  - 'edit own appverse_repo content'
   - 'edit own appverse_software content'
   - 'edit own article content'
   - 'edit own blog_post content'
@@ -136,6 +141,7 @@ permissions:
   - 'search content'
   - 'setup own tfa'
   - 'skip comment approval'
+  - 'submit appverse repo'
   - 'unflag affinity_group'
   - 'unflag completed'
   - 'unflag inaccurate'
@@ -149,6 +155,7 @@ permissions:
   - 'use appverse_editorial transition create_new_draft'
   - 'use appverse_editorial transition review_to_review'
   - 'use appverse_editorial transition send_for_review'
+  - 'use appverse_editorial transition unpublish'
   - 'use domain nav block'
   - 'use domain switcher block'
   - 'use editorial transition archived_draft'

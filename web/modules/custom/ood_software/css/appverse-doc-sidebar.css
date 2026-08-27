@@ -1,0 +1,172 @@
+/* Appverse doc sidebar: left-rail TOC + in-page search.
+   All rules scoped to .appverse-doc-node so they never affect other pages. */
+
+/* Layout note: this content type renders through Layout Builder, which wraps
+   the body in a `.layout--onecol` region. The node's direct content child is a
+   single wrapper <div> that contains the GitHub-edit link, the rail
+   (.appverse-doc-sidebar), and that .layout--onecol body — so the grid must
+   live on THAT wrapper, with the rail and the .layout--onecol as its columns.
+   (Putting the grid on .appverse-doc-node itself fails: the wrapper is its only
+   content child, so there is nothing to split into two columns.) */
+.appverse-doc-node > div:has(> .appverse-doc-sidebar) {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+/* Rail sticky in column 1; the Layout Builder content region in column 2.
+   The github-edit link sits above, spanning both columns. */
+.appverse-doc-node .appverse-doc-sidebar {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  /* Flex column: search stays fixed at the top, only the TOC scrolls.
+     The rail itself does NOT scroll — that keeps the scrollbar off the
+     search box (a single scroll container would run its bar over the
+     search input's right edge). */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2rem);
+  font-size: 0.875rem;
+  grid-column: 1;
+  grid-row: 2;
+}
+/* Search region: fixed height at the top of the rail, never scrolls away. */
+.appverse-doc-node .appverse-doc-sidebar > .appverse-doc-search {
+  flex: 0 0 auto;
+}
+/* Only the TOC list scrolls; its scrollbar is confined below the search box. */
+.appverse-doc-node .appverse-doc-toc {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0; /* allow the flex child to actually shrink + scroll */
+}
+.appverse-doc-node > div:has(> .appverse-doc-sidebar) > .layout--onecol {
+  grid-column: 2;
+  grid-row: 1 / 99;
+}
+.appverse-doc-node .appverse-docs-github-link {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.appverse-doc-search { margin-bottom: 0.75rem; position: relative; }
+.appverse-doc-search__input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #DDDEDF;
+  border-radius: 8px;
+}
+.appverse-doc-search__results {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  border: 1px solid #DDDEDF;
+  border-radius: 8px;
+  background: #fff;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+.appverse-doc-search__result {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+}
+.appverse-doc-search__result[aria-selected="true"],
+.appverse-doc-search__result:hover { background: #F2E2E5; }
+.appverse-doc-search__result-heading { display: block; font-weight: 600; }
+.appverse-doc-search__result-snippet { display: block; color: #57606a; font-size: 0.8rem; }
+.appverse-doc-search__empty { padding: 0.4rem 0.6rem; color: #57606a; }
+.appverse-doc-search mark,
+.appverse-doc-node mark[data-appverse-search] { background: #fff3cd; padding: 0 1px; }
+
+.appverse-doc-toc__list,
+.appverse-doc-toc__sublist { list-style: none; margin: 0; padding: 0; }
+.appverse-doc-toc__sublist { margin-left: 0.75rem; }
+.appverse-doc-toc__link {
+  display: block;
+  padding: 0.15rem 0.5rem;
+  color: #232323;
+  text-decoration: none;
+  border-left: 2px solid transparent;
+}
+.appverse-doc-toc__item--h2 > .appverse-doc-toc__link { font-weight: 600; }
+.appverse-doc-toc__item--h3 .appverse-doc-toc__link { padding-left: 1rem; }
+.appverse-doc-toc__item--h4 .appverse-doc-toc__link { padding-left: 1.5rem; font-size: 0.8rem; }
+.appverse-doc-toc__link:hover { color: #C91235; }
+.appverse-doc-toc__link[aria-current="true"] {
+  color: #C91235;
+  border-left-color: #C91235;
+  font-weight: 600;
+}
+
+/* Mobile: content first. Rail collapses into a tap-to-open disclosure. */
+.appverse-doc-sidebar__toggle { display: none; }
+
+@media (max-width: 60rem) {
+  /* Collapse the grid (it lives on the inner wrapper, not .appverse-doc-node)
+     back to a single column; content first. */
+  .appverse-doc-node > div:has(> .appverse-doc-sidebar) {
+    display: block;
+  }
+  .appverse-doc-node .appverse-doc-sidebar {
+    position: static;
+    max-height: none;
+    margin-bottom: 1rem;
+    border: 1px solid #DDDEDF;
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
+  /* On mobile the disclosure expands fully — no inner TOC scroll region. */
+  .appverse-doc-node .appverse-doc-toc {
+    overflow-y: visible;
+    flex: none;
+  }
+  /* Collapse the rail body; show only the toggle until opened.
+     Flex row so the label sits left and the chevron icon is right-aligned. */
+  .appverse-doc-sidebar__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    font-weight: 600;
+    padding: 0.25rem;
+    cursor: pointer;
+  }
+  /* Right-aligned chevron: a CSS-drawn caret that points down when collapsed
+     and flips up when the disclosure is open. No icon-font dependency. */
+  .appverse-doc-sidebar__toggle-icon {
+    flex: 0 0 auto;
+    margin-left: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+  }
+  .appverse-doc-sidebar--mobile-open .appverse-doc-sidebar__toggle-icon {
+    transform: rotate(-135deg);
+  }
+  .appverse-doc-sidebar .appverse-doc-search,
+  .appverse-doc-sidebar .appverse-doc-toc { display: none; }
+  .appverse-doc-sidebar--mobile-open .appverse-doc-search,
+  .appverse-doc-sidebar--mobile-open .appverse-doc-toc { display: block; }
+  /* When open, separate the toggle (which keeps a focus outline after the
+     tap) from the revealed search box so the outline doesn't butt against
+     the input. */
+  .appverse-doc-sidebar--mobile-open .appverse-doc-sidebar__toggle {
+    margin-bottom: 0.75rem;
+  }
+  /* Keep the toggle's focus ring tidy and inset so it never overlaps the
+     content below it. */
+  .appverse-doc-sidebar__toggle:focus-visible {
+    outline: 2px solid #0076af;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}

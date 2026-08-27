@@ -15,8 +15,9 @@ dependencies:
     - node.type.blog_post
   module:
     - comment
-    - image
+    - content_moderation
     - path
+    - svg_image
     - text
 id: node.blog_post.default
 targetEntityType: node
@@ -94,6 +95,13 @@ content:
     weight: 2
     region: content
     settings: {  }
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default

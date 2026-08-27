@@ -11,4 +11,124 @@ id: node--appverse_app
 disabled: false
 path: node/appverse_app
 resourceType: node--appverse_app
-resourceFields: {  }
+resourceFields:
+  field_appverse_repo:
+    disabled: false
+    fieldName: field_appverse_repo
+    publicName: field_appverse_repo
+    enhancer:
+      id: ''
+  field_appverse_app_subpath:
+    disabled: false
+    fieldName: field_appverse_app_subpath
+    publicName: field_appverse_app_subpath
+    enhancer:
+      id: ''
+  field_appverse_app_validation_st:
+    disabled: false
+    fieldName: field_appverse_app_validation_st
+    publicName: field_appverse_app_validation_st
+    enhancer:
+      id: ''
+  field_appverse_app_validation_er:
+    disabled: false
+    fieldName: field_appverse_app_validation_er
+    publicName: field_appverse_app_validation_er
+    enhancer:
+      id: ''
+  field_appverse_github_url:
+    disabled: false
+    fieldName: field_appverse_github_url
+    publicName: field_appverse_github_url
+    enhancer:
+      id: ''
+  field_appverse_maintainer_name:
+    disabled: false
+    fieldName: field_appverse_maintainer_name
+    publicName: field_appverse_maintainer_name
+    enhancer:
+      id: ''
+  field_appverse_organization:
+    disabled: false
+    fieldName: field_appverse_organization
+    publicName: field_appverse_organization
+    enhancer:
+      id: ''
+  field_appverse_software_implemen:
+    disabled: false
+    fieldName: field_appverse_software_implemen
+    publicName: field_appverse_software_implemen
+    enhancer:
+      id: ''
+  field_appverse_app_type:
+    disabled: false
+    fieldName: field_appverse_app_type
+    publicName: field_appverse_app_type
+    enhancer:
+      id: ''
+  field_appverse_lastupdated:
+    disabled: false
+    fieldName: field_appverse_lastupdated
+    publicName: field_appverse_lastupdated
+    enhancer:
+      id: ''
+  field_appverse_license_link:
+    disabled: false
+    fieldName: field_appverse_license_link
+    publicName: field_appverse_license_link
+    enhancer:
+      id: ''
+  field_appverse_readme:
+    disabled: false
+    fieldName: field_appverse_readme
+    publicName: field_appverse_readme
+    enhancer:
+      id: ''
+  field_appverse_stars:
+    disabled: false
+    fieldName: field_appverse_stars
+    publicName: field_appverse_stars
+    enhancer:
+      id: ''
+  field_appverse_unresolved_tags:
+    disabled: false
+    fieldName: field_appverse_unresolved_tags
+    publicName: field_appverse_unresolved_tags
+    enhancer:
+      id: ''
+  body:
+    disabled: false
+    fieldName: body
+    publicName: body
+    enhancer:
+      id: ''
+  field_license:
+    disabled: false
+    fieldName: field_license
+    publicName: field_license
+    enhancer:
+      id: ''
+  field_add_implementation_tags:
+    disabled: false
+    fieldName: field_add_implementation_tags
+    publicName: field_add_implementation_tags
+    enhancer:
+      id: ''
+  field_domain_access:
+    disabled: false
+    fieldName: field_domain_access
+    publicName: field_domain_access
+    enhancer:
+      id: ''
+  field_domain_all_affiliates:
+    disabled: false
+    fieldName: field_domain_all_affiliates
+    publicName: field_domain_all_affiliates
+    enhancer:
+      id: ''
+  field_domain_source:
+    disabled: false
+    fieldName: field_domain_source
+    publicName: field_domain_source
+    enhancer:
+      id: ''

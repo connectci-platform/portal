@@ -8,6 +8,7 @@ dependencies:
     - field.field.paragraph.rp_queue_spec.field_rp_gpu_count
     - field.field.paragraph.rp_queue_spec.field_rp_gpu_vram
     - field.field.paragraph.rp_queue_spec.field_rp_gpus
+    - field.field.paragraph.rp_queue_spec.field_rp_max_wall_time
     - field.field.paragraph.rp_queue_spec.field_rp_node_count
     - field.field.paragraph.rp_queue_spec.field_rp_queue_name
     - field.field.paragraph.rp_queue_spec.field_rp_queue_purpose
@@ -96,5 +97,6 @@ content:
     weight: 8
     region: content
 hidden:
+  field_rp_max_wall_time: true
   field_rp_node_count: true
   search_api_excerpt: true

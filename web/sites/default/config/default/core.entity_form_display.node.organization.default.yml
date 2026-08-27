@@ -19,9 +19,10 @@ dependencies:
     - image.style.thumbnail
     - node.type.organization
   module:
-    - image
+    - content_moderation
     - link
     - path
+    - svg_image
     - text
 id: node.organization.default
 targetEntityType: node
@@ -114,6 +115,13 @@ content:
     settings:
       placeholder_url: ''
       placeholder_title: ''
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default

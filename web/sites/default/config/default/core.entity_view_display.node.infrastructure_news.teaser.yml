@@ -56,4 +56,5 @@ hidden:
   field_infrastructure_news_start: true
   field_infrastructure_news_type: true
   field_infrastructure_news_urn: true
+  langcode: true
   search_api_excerpt: true

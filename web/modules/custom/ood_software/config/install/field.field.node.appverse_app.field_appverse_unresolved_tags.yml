@@ -1,0 +1,18 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_unresolved_tags
+    - node.type.appverse_app
+id: node.appverse_app.field_appverse_unresolved_tags
+field_name: field_appverse_unresolved_tags
+entity_type: node
+bundle: appverse_app
+label: 'Unresolved implementation tags'
+description: 'Declared implementation_tags that did not resolve to a term and were dropped. Reviewer-actionable in the hub. Set by RepoSyncService.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

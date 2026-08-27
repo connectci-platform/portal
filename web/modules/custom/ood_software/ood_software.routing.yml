@@ -5,3 +5,159 @@ ood_software.my_apps_redirect:
     _title: 'My Apps'
   requirements:
     _role: 'authenticated'
+
+ood_software.repo_resync:
+  path: '/appverse/repo/{node}/resync'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::resync'
+    _title: 'Re-sync Repo'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.repo_toggle_publish:
+  path: '/appverse/repo/{node}/unpublish'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::toggleRepoPublish'
+    _title: 'Toggle Repo Publish'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.app_toggle_publish:
+  path: '/appverse/app/{node}/unpublish'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::toggleAppPublish'
+    _title: 'Toggle App Publish'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.user_my_apps_legacy_redirect:
+  path: '/user/{user}/my-apps'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::redirectFromLegacy'
+  requirements:
+    _access: 'TRUE'
+
+ood_software.manage_apps_redirect:
+  path: '/appverse/manage-apps'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::redirectFromLegacyManageApps'
+  requirements:
+    _access: 'TRUE'
+
+# --- Contributor-accessible transitions ---
+
+ood_software.repo_send_for_review:
+  path: '/appverse/repo/{node}/send-for-review'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::sendForReview'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.app_send_for_review:
+  path: '/appverse/app/{node}/send-for-review'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::sendForReview'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+# --- Admin-only transitions ---
+
+ood_software.repo_request_changes:
+  path: '/appverse/repo/{node}/request-changes'
+  defaults:
+    _form: '\Drupal\ood_software\Form\AppverseHubRequestChangesForm'
+    _title: 'Request changes'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+
+ood_software.create_implementation_tag:
+  path: '/appverse/app/{node}/create-implementation-tag'
+  defaults:
+    _form: '\Drupal\ood_software\Form\AppverseHubCreateTagForm'
+    _title: 'Create implementation tag'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+
+ood_software.repo_publish:
+  path: '/appverse/repo/{node}/publish'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::adminPublish'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.app_publish:
+  path: '/appverse/app/{node}/publish'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::adminPublish'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.repo_delete_confirm:
+  path: '/appverse/repo/{node}/delete'
+  defaults:
+    _form: '\Drupal\ood_software\Form\AppverseHubDeleteForm'
+    _title: 'Delete Repo'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+
+ood_software.add_repo:
+  path: '/appverse/add-repo'
+  defaults:
+    _form: '\Drupal\ood_software\Form\AddRepoForm'
+    _title: 'Add an Appverse repo'
+  requirements:
+    _permission: 'submit appverse repo'

@@ -105,4 +105,5 @@ hidden:
   field_tags: true
   field_wrap_presentation: true
   field_wrap_presentation_date: true
+  langcode: true
   search_api_excerpt: true

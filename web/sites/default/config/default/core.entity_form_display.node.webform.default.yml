@@ -10,6 +10,7 @@ dependencies:
     - field.field.node.webform.webform
     - node.type.webform
   module:
+    - content_moderation
     - path
     - text
     - webform
@@ -61,6 +62,13 @@ content:
     weight: 42
     region: content
     settings: {  }
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default

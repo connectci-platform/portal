@@ -4,6 +4,9 @@ namespace Drupal\ood_software\Commands;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\key\KeyRepositoryInterface;
+use Drupal\ood_software\Plugin\GitHubService;
+use Drupal\ood_software\Service\AppverseCacheService;
+use Drupal\ood_software\Service\RepoSyncService;
 use Drush\Commands\DrushCommands;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
@@ -35,6 +38,27 @@ class OodSoftwareCommands extends DrushCommands {
   protected $httpClient;
 
   /**
+   * The Repo sync service.
+   *
+   * @var \Drupal\ood_software\Service\RepoSyncService
+   */
+  protected $repoSync;
+
+  /**
+   * The GitHub service.
+   *
+   * @var \Drupal\ood_software\Plugin\GitHubService
+   */
+  protected $githubService;
+
+  /**
+   * The Appverse cache service.
+   *
+   * @var \Drupal\ood_software\Service\AppverseCacheService
+   */
+  protected $appverseCache;
+
+  /**
    * Constructs an OodSoftwareCommands object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -43,12 +67,134 @@ class OodSoftwareCommands extends DrushCommands {
    *   The key repository.
    * @param \GuzzleHttp\ClientInterface $http_client
    *   The HTTP client.
+   * @param \Drupal\ood_software\Service\RepoSyncService $repo_sync
+   *   The Repo sync service.
+   * @param \Drupal\ood_software\Plugin\GitHubService $github_service
+   *   The GitHub service.
+   * @param \Drupal\ood_software\Service\AppverseCacheService $appverse_cache
+   *   The Appverse cache service.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, KeyRepositoryInterface $key_repository, ClientInterface $http_client) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, KeyRepositoryInterface $key_repository, ClientInterface $http_client, RepoSyncService $repo_sync, GitHubService $github_service, AppverseCacheService $appverse_cache) {
     parent::__construct();
     $this->entityTypeManager = $entity_type_manager;
     $this->keyRepository = $key_repository;
     $this->httpClient = $http_client;
+    $this->repoSync = $repo_sync;
+    $this->githubService = $github_service;
+    $this->appverseCache = $appverse_cache;
+  }
+
+  /**
+   * Sync the Repo for a single GitHub repo URL.
+   *
+   * @param string $repoUrl
+   *   GitHub repo URL (e.g., https://github.com/owner/name).
+   *
+   * @command appverse:sync-repo
+   * @aliases avsc
+   * @usage drush appverse:sync-repo https://github.com/owner/name
+   *   Refresh the Repo node for the given repo.
+   */
+  public function syncRepo(string $repoUrl): void {
+    if (!preg_match('@^https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$@', rtrim($repoUrl, '/'), $m)) {
+      throw new \InvalidArgumentException('Repo URL must be of the form https://github.com/owner/name');
+    }
+    $owner = $m[1];
+    $name = $m[2];
+
+    // Bypass parseUrl()'s manifest.yml requirement — declared repos are
+    // repo-based, not necessarily app-manifest-based.
+    $this->githubService->setOwnerAndName($owner, $name);
+    try {
+      $this->githubService->fetchRepoData();
+    }
+    catch (\Throwable $e) {
+      throw new \RuntimeException(sprintf(
+        'Failed to fetch repo data for %s/%s — check repo accessibility, token, or rate limits. (%s)',
+        $owner, $name, $e->getMessage()
+      ), 0, $e);
+    }
+
+    // Wrap the sync body in try/finally so the cache flush always runs — even
+    // when the subpath-fetch error path returns early. resolveRepo() below may
+    // already have saved (and dirtied) the Repo node; a one-shot drush command
+    // won't dispatch kernel.terminate, so without the finally a mid-sync
+    // failure would leave the cache dirty-but-unflushed until cron.
+    try {
+      $repoMetadata = [
+        'name' => $this->githubService->getRepoName() ?? $name,
+        'description' => $this->githubService->getRepoDescription(),
+        'organization' => $this->githubService->getOrganization(),
+        'stars' => $this->githubService->getStars(),
+        'lastCommittedDate' => $this->githubService->getLastComittedDate(),
+        'readme' => $this->githubService->getReadme(),
+      ];
+      $repo = $this->repoSync->resolveRepo(
+        $this->githubService->getRepoUrl(),
+        $this->githubService->getAppverseYmlText(),
+        $repoMetadata
+      );
+
+      $this->logger()->success(sprintf(
+        'Repo synced: %s (nid: %d, status: %s, slug: %s)',
+        $repo->getTitle(),
+        $repo->id(),
+        $repo->get('field_repo_validation_st')->value,
+        basename($repo->toUrl()->toString())
+      ));
+
+      // Walk apps[] from the root appverse.yml (when declared) and create
+      // per-subpath app nodes. Per-app metadata is sourced from
+      // <path>/appverse.yml + <path>/manifest.yml.
+      $rootYml = $this->githubService->getAppverseYmlText();
+      if ($rootYml !== NULL) {
+        try {
+          $parsed = \Symfony\Component\Yaml\Yaml::parse($rootYml);
+        }
+        catch (\Throwable $e) {
+          $parsed = NULL;
+        }
+        $apps = is_array($parsed) ? ($parsed['apps'] ?? []) : [];
+        if (is_array($apps) && $apps) {
+          $subpaths = [];
+          foreach ($apps as $entry) {
+            if (is_array($entry) && !empty($entry['path'])) {
+              $cleanPath = trim((string) $entry['path'], '/');
+              if ($cleanPath !== '') {
+                $subpaths[] = $cleanPath;
+              }
+            }
+          }
+          if ($subpaths) {
+            try {
+              $subpathFiles = $this->githubService->fetchAppSubpaths($subpaths);
+            }
+            catch (\Throwable $e) {
+              $this->logger()->error(sprintf(
+                'Failed to fetch app subpaths for %s: %s',
+                $this->githubService->getRepoUrl(),
+                $e->getMessage()
+              ));
+              return;
+            }
+            $appNodes = $this->repoSync->applyDeclaredApps(
+              $repo,
+              $parsed,
+              $subpathFiles,
+              $this->githubService->getRepoUrl(),
+              $repoMetadata
+            );
+            $this->logger()->success(sprintf('Synced %d apps from declared apps[]', count($appNodes)));
+          }
+        }
+      }
+    }
+    finally {
+      // One-shot drush invocations may not dispatch kernel.terminate, so the
+      // hook-marked dirty flag could otherwise sit until cron. Flush now —
+      // in finally so the early-return error path above is also covered.
+      $this->appverseCache->flushIfDirty();
+    }
   }
 
   /**

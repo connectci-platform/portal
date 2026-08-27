@@ -90,9 +90,11 @@ describe("ACCESS Organization field - CCMNet", () => {
     });
 
     it("Should handle Other option on CCMNet user edit form", () => {
-      // Login as authenticated user
+      // Login as authenticated user. The read-only-org guard is scoped to the
+      // campuschampions domain only, so on CCMNet the org field stays editable
+      // for a non-admin even when they have an organization.
       cy.loginUser('authenticated@amptesting.com', '6%l7iF}6(4tI');
-      
+
       // Visit user edit page
       cy.visit('/user/edit');
       

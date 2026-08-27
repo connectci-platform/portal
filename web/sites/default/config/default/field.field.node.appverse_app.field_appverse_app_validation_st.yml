@@ -1,0 +1,23 @@
+uuid: 293c2e47-7e60-449f-8e42-a808a7316fa2
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_app_validation_st
+    - node.type.appverse_app
+  module:
+    - options
+id: node.appverse_app.field_appverse_app_validation_st
+field_name: field_appverse_app_validation_st
+entity_type: node
+bundle: appverse_app
+label: 'Validation status'
+description: 'Marks apps missing required per-app fields as rejected; otherwise valid.'
+required: false
+translatable: false
+default_value:
+  -
+    value: valid
+default_value_callback: ''
+settings: {  }
+field_type: list_string

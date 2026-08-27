@@ -6,8 +6,23 @@ dependencies:
     - field.field.node.resource_group.field_cider_resources
     - field.field.node.resource_group.field_domain_access
     - field.field.node.resource_group.field_domain_all_affiliates
+    - field.field.node.resource_group.field_rp_account_required
+    - field.field.node.resource_group.field_rp_account_setup_url
+    - field.field.node.resource_group.field_rp_datasets
     - field.field.node.resource_group.field_rp_description
+    - field.field.node.resource_group.field_rp_external_storage
+    - field.field.node.resource_group.field_rp_file_transfer
+    - field.field.node.resource_group.field_rp_file_transfer_text
     - field.field.node.resource_group.field_rp_listing
+    - field.field.node.resource_group.field_rp_login_help_links
+    - field.field.node.resource_group.field_rp_login_text
+    - field.field.node.resource_group.field_rp_mfa_required
+    - field.field.node.resource_group.field_rp_office_hours
+    - field.field.node.resource_group.field_rp_ondemand_url
+    - field.field.node.resource_group.field_rp_software_list_url
+    - field.field.node.resource_group.field_rp_ssh_login_nodes
+    - field.field.node.resource_group.field_rp_storage
+    - field.field.node.resource_group.field_rp_support_links
     - node.type.resource_group
   module:
     - text
@@ -53,5 +68,6 @@ hidden:
   field_rp_storage: true
   field_rp_storage_text: true
   field_rp_support_links: true
+  langcode: true
   links: true
   search_api_excerpt: true

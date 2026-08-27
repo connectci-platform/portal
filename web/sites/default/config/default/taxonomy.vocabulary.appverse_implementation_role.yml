@@ -1,9 +1,0 @@
-uuid: 35b5b581-7709-49a0-bcca-a0ee530adae4
-langcode: en
-status: true
-dependencies: {  }
-name: 'Appverse Implementation Role'
-vid: appverse_implementation_role
-description: null
-weight: 0
-new_revision: false

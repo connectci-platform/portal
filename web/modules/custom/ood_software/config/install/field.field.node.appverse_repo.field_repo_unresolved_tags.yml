@@ -1,0 +1,18 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_unresolved_tags
+    - node.type.appverse_repo
+id: node.appverse_repo.field_repo_unresolved_tags
+field_name: field_repo_unresolved_tags
+entity_type: node
+bundle: appverse_repo
+label: 'Unresolved discovery tags'
+description: 'Declared repo-level discovery tags that did not match an existing portal tag and were dropped. Read-only flag for reviewers; the shared tags vocabulary is never grown from here. Set by RepoSyncService.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

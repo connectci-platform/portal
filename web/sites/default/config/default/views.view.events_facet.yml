@@ -7,6 +7,8 @@ dependencies:
     - field.storage.eventinstance.field_video
     - search_api.index.events
   module:
+    - access_events
+    - access_misc
     - better_exposed_filters
     - datetime_range
     - rest
@@ -7599,6 +7601,33 @@ display:
           use_highlighting: false
           multi_type: separator
           multi_separator: ', '
+        registration_enabled:
+          id: registration_enabled
+          table: search_api_index_events
+          field: registration_enabled
+          relationship: none
+          group_type: group
+          plugin_id: search_api_field
+          label: registration_enabled
+          exclude: false
+        registration_capacity:
+          id: registration_capacity
+          table: search_api_index_events
+          field: registration_capacity
+          relationship: none
+          group_type: group
+          plugin_id: search_api_field
+          label: registration_capacity
+          exclude: false
+        registration_has_waitlist:
+          id: registration_has_waitlist
+          table: search_api_index_events
+          field: registration_has_waitlist
+          relationship: none
+          group_type: group
+          plugin_id: search_api_field
+          label: registration_has_waitlist
+          exclude: false
       pager:
         type: full
         options:
@@ -7615,7 +7644,7 @@ display:
           expose:
             items_per_page: true
             items_per_page_label: 'Items per page'
-            items_per_page_options: '25, 50, 100, 250, 500'
+            items_per_page_options: '1, 5, 10, 20, 25, 50, 100, 250, 500'
             items_per_page_options_all: true
             items_per_page_options_all_label: '- All -'
             offset: false
@@ -8167,6 +8196,8 @@ display:
       display_extenders:
         jsonapi_views:
           enabled: true
+        simple_sitemap_display_extender:
+          variants: {  }
       path: events
     cache_metadata:
       max-age: -1

@@ -84,4 +84,5 @@ hidden:
   field_slack: true
   field_tags: true
   field_use_ext_email_list: true
+  langcode: true
   search_api_excerpt: true

@@ -30,6 +30,7 @@ dependencies:
     - field.field.node.match_engagement.field_launch_presentation_date
     - field.field.node.match_engagement.field_lessons_learned
     - field.field.node.match_engagement.field_match_interested_users
+    - field.field.node.match_engagement.field_match_office_hours
     - field.field.node.match_engagement.field_match_steering_committee_m
     - field.field.node.match_engagement.field_mentor
     - field.field.node.match_engagement.field_milestone_actual_date
@@ -770,6 +771,7 @@ hidden:
   field_launch_presentation_date: true
   field_lessons_learned: true
   field_match_interested_users: true
+  field_match_office_hours: true
   field_match_steering_committee_m: true
   field_mentor: true
   field_milestone_actual_date: true
@@ -796,4 +798,6 @@ hidden:
   field_what_match_will_learn: true
   field_wrap_presentation: true
   field_wrap_presentation_date: true
+  langcode: true
   links: true
+  search_api_excerpt: true
