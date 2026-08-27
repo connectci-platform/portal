@@ -4,6 +4,9 @@ on:
     branches:
       - 'main'
       - 'md-*'
+  # Lets prdelete.yml rebuild md-dev after it recreates the branch. Branch
+  # pushes made with GH_TOKEN_REPO do not fire the push event above.
+  workflow_dispatch:
 jobs:
   deploy:
     name: Deploy site
@@ -24,7 +27,7 @@ jobs:
         env:
           runner: update
           PANTHEON_GIT_REPO: ${{ secrets.PANTHEON_GIT_REPO }}
-          message: ${{ github.event.head_commit.message }}
+          message: ${{ github.event.head_commit.message || format('Deploy {0}', github.ref_name) }}
           SSH_PRIVATE_KEY: ${{ secrets.PANTHEON_DEPLOY_KEY}}
           git_email: ${{ secrets.GIT_EMAIL }}
           git_name: ${{ secrets.GIT_USER }}
