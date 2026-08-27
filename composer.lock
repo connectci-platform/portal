@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c075750f3d8a799630c260101c667783",
+    "content-hash": "e555c13cf42fbb2978e5f078797a6644",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -757,11 +757,11 @@
         },
         {
             "name": "connectci/operations_cider",
-            "version": "dev-main",
+            "version": "dev-d8-2819",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "c54fdc9b5e01a7934cebcfaad46df81f600ea635"
+                "reference": "988c9fc7881993483a8a1c8e029080ea6e941336"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -770,7 +770,6 @@
             "replace": {
                 "access/operations_cider": "self.version"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -790,7 +789,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-07-13T14:40:10+00:00"
+            "time": "2026-08-27T13:47:31+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
