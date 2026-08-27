@@ -709,7 +709,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "86f2bd59c643dd8928e998d30f40343cb4ce6273"
+                "reference": "fc728dd030074d0270e4cfe3ee9961d289f9f4b3"
             },
             "type": "drupal-theme",
             "license": [
@@ -726,7 +726,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-08-20T18:36:24+00:00"
+            "time": "2026-08-27T15:23:30+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
