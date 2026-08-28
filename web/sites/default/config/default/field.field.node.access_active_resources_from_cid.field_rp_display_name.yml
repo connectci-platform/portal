@@ -1,0 +1,18 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_display_name
+    - node.type.access_active_resources_from_cid
+id: node.access_active_resources_from_cid.field_rp_display_name
+field_name: field_rp_display_name
+entity_type: node
+bundle: access_active_resources_from_cid
+label: 'Display Name'
+description: 'Overrides the name shown across the site for this resource. Leave blank to use the CiDeR Short Name shown alongside this field.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

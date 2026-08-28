@@ -28,6 +28,7 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_rp_datasets_link
     - field.field.node.access_active_resources_from_cid.field_rp_datasets_text
     - field.field.node.access_active_resources_from_cid.field_rp_description
+    - field.field.node.access_active_resources_from_cid.field_rp_display_name
     - field.field.node.access_active_resources_from_cid.field_rp_external_storage
     - field.field.node.access_active_resources_from_cid.field_rp_external_storage_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_system_link
@@ -180,6 +181,7 @@ third_party_settings:
         - field_rp_top_software
         - field_rp_sds_software
         - body
+        - title
         - field_cider_resource_id
         - field_access_global_resource_id
         - field_cider_resource_type
@@ -336,7 +338,7 @@ content:
     third_party_settings: {  }
   field_cider_short_name:
     type: string_textfield
-    weight: 30
+    weight: -9
     region: content
     settings:
       size: 60
@@ -421,6 +423,14 @@ content:
       summary_rows: 3
       placeholder: ''
       show_summary: false
+    third_party_settings: {  }
+  field_rp_display_name:
+    type: string_textfield
+    weight: -10
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
     third_party_settings: {  }
   field_rp_external_storage:
     type: text_textarea
@@ -719,7 +729,7 @@ content:
     third_party_settings: {  }
   title:
     type: string_textfield
-    weight: 0
+    weight: 50
     region: content
     settings:
       size: 60

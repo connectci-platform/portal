@@ -4,6 +4,7 @@ status: true
 dependencies:
   config:
     - field.storage.node.body
+    - field.storage.node.field_rp_display_name
     - search_api.server.default_server
   module:
     - node
@@ -22,6 +23,14 @@ field_settings:
     dependencies:
       config:
         - field.storage.node.body
+  field_rp_display_name:
+    label: 'Display Name'
+    datasource_id: 'entity:node'
+    property_path: field_rp_display_name
+    type: string
+    dependencies:
+      config:
+        - field.storage.node.field_rp_display_name
   node_grants:
     label: 'Node access information'
     property_path: search_api_node_grants
@@ -111,6 +120,7 @@ processor_settings:
     all_fields: false
     fields:
       - body
+      - field_rp_display_name
       - title
   language_with_fallback: {  }
   rendered_item: {  }

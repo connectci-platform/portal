@@ -5,6 +5,8 @@ dependencies:
   config:
     - field.storage.node.field_access_org_name
     - field.storage.node.field_cider_detail_view_url
+    - field.storage.node.field_cider_short_name
+    - field.storage.node.field_rp_display_name
     - node.type.access_active_resources_from_cid
   module:
     - link
@@ -91,6 +93,80 @@ display:
           multi_type: separator
           separator: ', '
           field_api_classes: false
+        field_rp_display_name:
+          id: field_rp_display_name
+          table: node__field_rp_display_name
+          field: field_rp_display_name
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: field
+          label: ''
+          exclude: true
+          alter:
+            alter_text: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: false
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          type: string
+          settings:
+            link_to_entity: false
+          group_column: value
+          group_columns: {  }
+          group_rows: true
+          delta_limit: 0
+          delta_offset: 0
+          delta_reversed: false
+          delta_first_last: false
+          multi_type: separator
+          separator: ', '
+          field_api_classes: false
+        field_cider_short_name:
+          id: field_cider_short_name
+          table: node__field_cider_short_name
+          field: field_cider_short_name
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: field
+          label: ''
+          exclude: true
+          alter:
+            alter_text: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: false
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          type: string
+          settings:
+            link_to_entity: false
+          group_column: value
+          group_columns: {  }
+          group_rows: true
+          delta_limit: 0
+          delta_offset: 0
+          delta_reversed: false
+          delta_first_last: false
+          multi_type: separator
+          separator: ', '
+          field_api_classes: false
         title:
           id: title
           table: node_field_data
@@ -104,8 +180,8 @@ display:
           label: ''
           exclude: false
           alter:
-            alter_text: false
-            text: ''
+            alter_text: true
+            text: '{% if field_rp_display_name %}{{ field_rp_display_name }}{% elseif field_cider_short_name %}{{ field_cider_short_name }}{% else %}{{ title }}{% endif %}'
             make_link: false
             path: ''
             absolute: false
@@ -260,20 +336,16 @@ display:
             label: ''
             field_identifier: ''
           exposed: false
-        title:
-          id: title
-          table: node_field_data
-          field: title
+        field_cider_short_name_value:
+          id: field_cider_short_name_value
+          table: node__field_cider_short_name
+          field: field_cider_short_name_value
           relationship: none
           group_type: group
           admin_label: ''
-          entity_type: node
-          entity_field: title
           plugin_id: standard
           order: ASC
-          expose:
-            label: ''
-            field_identifier: ''
+          expose: {  }
           exposed: false
       arguments: {  }
       filters:
