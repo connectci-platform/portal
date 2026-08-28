@@ -33,14 +33,6 @@ jobs:
           git_name: ${{ secrets.GIT_USER }}
           gh_token: ${{ secrets.GH_TOKEN_REPO }}
 
-      - name: Trigger Behat workflow
-        if: "contains(github.event.head_commit.message, '#behat')"
-        run: |
-          gh workflow run behat.yml -r "$drupal_update"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN_REPO }}
-          drupal_update: ${{ github.event.inputs.drupal_update }}
-
   md:
     name: Spin up Multidev environment
     runs-on: ubuntu-latest
