@@ -817,7 +817,7 @@ display:
               auto_submit_sort_only: false
               autosubmit_breakpoint: ''
               autosubmit_exclude_textfield: false
-              autosubmit_textfield_delay: 2000
+              autosubmit_textfield_delay: 1000
               autosubmit_textfield_minimum_length: 3
               autosubmit_hide: true
               input_required: false
@@ -1050,7 +1050,7 @@ display:
           contextual_filters_or: false
       relationships: {  }
       css_class: 'd-flex  flex-wrap justify-content-between'
-      use_ajax: false
+      use_ajax: true
       header: {  }
       footer: {  }
       display_extenders: {  }
