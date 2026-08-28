@@ -734,7 +734,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "d552d0402ba3bbb9e7a184e6ba98a3ff08d3d92c"
+                "reference": "e0d379f3a523230d9d72b8408c549cb3461cb6e9"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -752,7 +752,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-08-08T11:22:22+00:00"
+            "time": "2026-08-27T19:23:02+00:00"
         },
         {
             "name": "connectci/operations_cider",
@@ -760,7 +760,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "c54fdc9b5e01a7934cebcfaad46df81f600ea635"
+                "reference": "5aa581d3cc646da25d0772bfec2ade9cee35468f"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -789,7 +789,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-07-13T14:40:10+00:00"
+            "time": "2026-08-28T02:01:23+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",

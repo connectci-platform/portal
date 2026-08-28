@@ -26,11 +26,15 @@ class TwigExtension extends AbstractExtension {
    *   Already-rendered body: a render array or a safe markup string.
    * @param int $lines
    *   Collapse target in rendered lines.
+   * @param int|null $rows
+   *   Optional collapse target in table body rows. When set, content holding a
+   *   table clamps on a row boundary and this supersedes $lines; content with
+   *   no table rows still falls back to the $lines measurement.
    *
    * @return array<string, mixed>
    *   A render array for the expandable_text theme hook.
    */
-  public function build($content, int $lines = 4): array {
+  public function build($content, int $lines = 4, ?int $rows = NULL): array {
     // The library is attached by expandable_text_preprocess_expandable_text()
     // on every render of the theme hook, so it is NOT added here — one source
     // of truth, and consumers reaching the hook directly get it too.
@@ -38,6 +42,7 @@ class TwigExtension extends AbstractExtension {
       '#theme' => 'expandable_text',
       '#content' => is_array($content) ? $content : ['#markup' => $content],
       '#lines' => $lines,
+      '#rows' => $rows,
     ];
   }
 

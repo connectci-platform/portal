@@ -1,0 +1,30 @@
+uuid: a309a0b9-26a6-491a-923e-960bf604706c
+langcode: en
+status: true
+dependencies:
+  module:
+    - operations_cider
+title: 'Operations CiDeR: Top Software'
+id: operations_cider_top_software
+weight: 18
+module: operations_cider
+callback: '\Drupal\operations_cider\Plugin\CronManager::updateTopSoftware'
+scheduler:
+  id: crontab
+  configuration:
+    rules:
+      - '0 3 * * 0'
+    catch_up: 604800
+launcher:
+  id: serial
+  configuration:
+    timeouts:
+      lock_timeout: 3600
+    launcher:
+      thread: 0
+logger:
+  id: database
+  configuration:
+    method: '3'
+    expire: 1209600
+    retain: 1000

@@ -21,28 +21,42 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_domain_access
     - field.field.node.access_active_resources_from_cid.field_domain_all_affiliates
     - field.field.node.access_active_resources_from_cid.field_domain_source
+    - field.field.node.access_active_resources_from_cid.field_rp_access_ood_login_link
     - field.field.node.access_active_resources_from_cid.field_rp_account_required
     - field.field.node.access_active_resources_from_cid.field_rp_account_setup_url
     - field.field.node.access_active_resources_from_cid.field_rp_datasets
+    - field.field.node.access_active_resources_from_cid.field_rp_datasets_link
     - field.field.node.access_active_resources_from_cid.field_rp_datasets_text
     - field.field.node.access_active_resources_from_cid.field_rp_description
+    - field.field.node.access_active_resources_from_cid.field_rp_display_name
     - field.field.node.access_active_resources_from_cid.field_rp_external_storage
+    - field.field.node.access_active_resources_from_cid.field_rp_external_storage_link
+    - field.field.node.access_active_resources_from_cid.field_rp_file_system_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_transfer
+    - field.field.node.access_active_resources_from_cid.field_rp_file_transfer_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_transfer_text
+    - field.field.node.access_active_resources_from_cid.field_rp_freq_used_software_link
     - field.field.node.access_active_resources_from_cid.field_rp_jobs_info
     - field.field.node.access_active_resources_from_cid.field_rp_listing
     - field.field.node.access_active_resources_from_cid.field_rp_login_help_links
     - field.field.node.access_active_resources_from_cid.field_rp_login_text
+    - field.field.node.access_active_resources_from_cid.field_rp_login_to_anvil_gpu_link
     - field.field.node.access_active_resources_from_cid.field_rp_mfa_required
     - field.field.node.access_active_resources_from_cid.field_rp_office_hours
     - field.field.node.access_active_resources_from_cid.field_rp_ondemand_url
     - field.field.node.access_active_resources_from_cid.field_rp_ood_software
     - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
+    - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
     - field.field.node.access_active_resources_from_cid.field_rp_queue_specs
+    - field.field.node.access_active_resources_from_cid.field_rp_sds_software
+    - field.field.node.access_active_resources_from_cid.field_rp_software_link
     - field.field.node.access_active_resources_from_cid.field_rp_software_list_url
+    - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_link
     - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_nodes
     - field.field.node.access_active_resources_from_cid.field_rp_storage
+    - field.field.node.access_active_resources_from_cid.field_rp_storage_link
     - field.field.node.access_active_resources_from_cid.field_rp_storage_text
+    - field.field.node.access_active_resources_from_cid.field_rp_submitting_jobs
     - field.field.node.access_active_resources_from_cid.field_rp_support_links
     - field.field.node.access_active_resources_from_cid.field_rp_top_software
     - field.field.node.access_active_resources_from_cid.field_rp_xdmod_resource_id
@@ -58,72 +72,91 @@ third_party_settings:
   field_group:
     group_login_access:
       children:
+        - field_rp_login_to_anvil_gpu_link
         - field_rp_login_text
+        - field_rp_ssh_login_link
         - field_rp_ondemand_url
         - field_rp_mfa_required
         - field_rp_account_required
         - field_rp_account_setup_url
+        - field_rp_access_ood_login_link
         - field_rp_ssh_login_nodes
         - field_rp_login_help_links
-      label: 'Login & Access'
+      label: 'Login to Anvil CPU'
       region: content
       parent_name: ''
-      weight: 2
+      weight: 7
       format_type: details
       format_settings:
         classes: ''
+        show_empty_fields: false
         id: ''
-        open: true
+        label_as_html: false
+        open: false
         description: ''
         required_fields: false
     group_data_management:
       children:
+        - field_rp_storage_link
+        - field_rp_listing
+        - field_rp_file_system_link
+        - field_rp_file_transfer_link
         - field_rp_file_transfer_text
         - field_rp_file_transfer
         - field_rp_storage_text
         - field_rp_storage
+        - field_rp_external_storage_link
         - field_rp_external_storage
-      label: 'Data Management'
+      label: Storage
+      region: content
+      parent_name: ''
+      weight: 6
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_compute:
+      children:
+        - field_rp_submitting_jobs
+        - field_rp_jobs_info
+        - field_rp_queue_spec_link
+        - field_rp_queue_specs
+        - field_rp_xdmod_resource_id
+      label: 'Submitting Jobs'
+      region: content
+      parent_name: ''
+      weight: 3
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_software:
+      children:
+        - field_rp_datasets_link
+        - field_rp_datasets_text
+        - field_rp_datasets
+        - field_rp_software_list_url
+      label: Datasets
       region: content
       parent_name: ''
       weight: 10
       format_type: details
       format_settings:
         classes: ''
+        show_empty_fields: false
         id: ''
-        open: true
-        description: ''
-        required_fields: false
-    group_compute:
-      children:
-        - field_rp_jobs_info
-        - field_rp_queue_specs
-        - field_rp_xdmod_resource_id
-      label: Compute
-      region: content
-      parent_name: ''
-      weight: 14
-      format_type: details
-      format_settings:
-        classes: ''
-        id: ''
-        open: true
-        description: ''
-        required_fields: false
-    group_software:
-      children:
-        - field_rp_software_list_url
-        - field_rp_datasets_text
-        - field_rp_datasets
-      label: 'Software & Datasets'
-      region: content
-      parent_name: ''
-      weight: 18
-      format_type: details
-      format_settings:
-        classes: ''
-        id: ''
-        open: true
+        label_as_html: false
+        open: false
         description: ''
         required_fields: false
     group_sidebar_content:
@@ -133,21 +166,27 @@ third_party_settings:
       label: 'Sidebar Content'
       region: content
       parent_name: ''
-      weight: 20
+      weight: 9
       format_type: details
       format_settings:
         classes: ''
+        show_empty_fields: false
         id: ''
-        open: true
+        label_as_html: false
+        open: false
         description: ''
         required_fields: false
     group_cider_synced_data:
       children:
+        - field_rp_top_software
+        - field_rp_sds_software
+        - body
+        - title
         - field_cider_resource_id
         - field_access_global_resource_id
         - field_cider_resource_type
-        - field_cider_short_name
         - field_cider_project_affiliation
+        - field_cider_short_name
         - field_cider_latest_status
         - field_cider_latest_status_begin
         - field_cider_latest_status_end
@@ -156,12 +195,10 @@ third_party_settings:
         - field_access_org_logo_url
         - field_cider_detail_view_url
         - field_cider_raw_data_url
-        - field_rp_top_software
-        - body
       label: 'Auto-synced Data (CiDeR / Cron)'
       region: content
       parent_name: ''
-      weight: 50
+      weight: 12
       format_type: details
       format_settings:
         classes: ''
@@ -169,6 +206,23 @@ third_party_settings:
         open: false
         description: 'These fields are automatically synced from CiDeR or populated by cron jobs. Edit with caution.'
         required_fields: false
+    group_rp_freq_software:
+      children:
+        - field_rp_software_link
+        - field_rp_freq_used_software_link
+      label: Software
+      region: content
+      parent_name: ''
+      weight: 5
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: true
 id: node.access_active_resources_from_cid.default
 targetEntityType: node
 bundle: access_active_resources_from_cid
@@ -176,7 +230,7 @@ mode: default
 content:
   body:
     type: text_textarea_with_summary
-    weight: 50
+    weight: 24
     region: content
     settings:
       rows: 9
@@ -186,13 +240,13 @@ content:
     third_party_settings: {  }
   created:
     type: datetime_timestamp
-    weight: 70
+    weight: 13
     region: content
     settings: {  }
     third_party_settings: {  }
   field_access_global_resource_id:
     type: string_textfield
-    weight: 52
+    weight: 26
     region: content
     settings:
       size: 60
@@ -200,7 +254,7 @@ content:
     third_party_settings: {  }
   field_access_org_logo_url:
     type: link_default
-    weight: 60
+    weight: 36
     region: content
     settings:
       placeholder_url: ''
@@ -208,7 +262,7 @@ content:
     third_party_settings: {  }
   field_access_org_name:
     type: string_textfield
-    weight: 58
+    weight: 34
     region: content
     settings:
       size: 60
@@ -216,7 +270,7 @@ content:
     third_party_settings: {  }
   field_access_org_url:
     type: link_default
-    weight: 59
+    weight: 35
     region: content
     settings:
       placeholder_url: ''
@@ -224,7 +278,7 @@ content:
     third_party_settings: {  }
   field_cider_detail_view_url:
     type: link_default
-    weight: 61
+    weight: 37
     region: content
     settings:
       placeholder_url: ''
@@ -232,7 +286,7 @@ content:
     third_party_settings: {  }
   field_cider_latest_status:
     type: string_textfield
-    weight: 55
+    weight: 31
     region: content
     settings:
       size: 60
@@ -240,19 +294,19 @@ content:
     third_party_settings: {  }
   field_cider_latest_status_begin:
     type: datetime_default
-    weight: 56
+    weight: 32
     region: content
     settings: {  }
     third_party_settings: {  }
   field_cider_latest_status_end:
     type: datetime_default
-    weight: 57
+    weight: 33
     region: content
     settings: {  }
     third_party_settings: {  }
   field_cider_project_affiliation:
     type: string_textfield
-    weight: 54
+    weight: 29
     region: content
     settings:
       size: 60
@@ -260,7 +314,7 @@ content:
     third_party_settings: {  }
   field_cider_raw_data_url:
     type: link_default
-    weight: 62
+    weight: 38
     region: content
     settings:
       placeholder_url: ''
@@ -268,7 +322,7 @@ content:
     third_party_settings: {  }
   field_cider_resource_id:
     type: string_textfield
-    weight: 51
+    weight: 25
     region: content
     settings:
       size: 60
@@ -276,7 +330,7 @@ content:
     third_party_settings: {  }
   field_cider_resource_type:
     type: string_textfield
-    weight: 53
+    weight: 28
     region: content
     settings:
       size: 60
@@ -284,7 +338,7 @@ content:
     third_party_settings: {  }
   field_cider_short_name:
     type: string_textfield
-    weight: 54
+    weight: -9
     region: content
     settings:
       size: 60
@@ -292,27 +346,35 @@ content:
     third_party_settings: {  }
   field_domain_access:
     type: options_buttons
-    weight: 73
+    weight: 16
     region: content
     settings: {  }
     third_party_settings: {  }
   field_domain_all_affiliates:
     type: boolean_checkbox
-    weight: 74
+    weight: 17
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
+  field_rp_access_ood_login_link:
+    type: link_default
+    weight: 35
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_account_required:
     type: boolean_checkbox
-    weight: 4
+    weight: 33
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
   field_rp_account_setup_url:
     type: link_default
-    weight: 5
+    weight: 34
     region: content
     settings:
       placeholder_url: ''
@@ -320,7 +382,7 @@ content:
     third_party_settings: {  }
   field_rp_datasets:
     type: paragraphs
-    weight: 18
+    weight: 24
     region: content
     settings:
       title: Dataset
@@ -336,9 +398,17 @@ content:
         collapse_edit_all: collapse_edit_all
         duplicate: duplicate
     third_party_settings: {  }
+  field_rp_datasets_link:
+    type: link_default
+    weight: 22
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_datasets_text:
     type: text_textarea
-    weight: 17
+    weight: 23
     region: content
     settings:
       rows: 5
@@ -354,17 +424,41 @@ content:
       placeholder: ''
       show_summary: false
     third_party_settings: {  }
+  field_rp_display_name:
+    type: string_textfield
+    weight: -10
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
   field_rp_external_storage:
     type: text_textarea
-    weight: 13
+    weight: 15
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_rp_external_storage_link:
+    type: link_default
+    weight: 14
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_file_system_link:
+    type: link_default
+    weight: 7
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_file_transfer:
     type: paragraphs
-    weight: 10
+    weight: 11
     region: content
     settings:
       title: 'File Transfer Method'
@@ -380,17 +474,33 @@ content:
         collapse_edit_all: collapse_edit_all
         duplicate: duplicate
     third_party_settings: {  }
+  field_rp_file_transfer_link:
+    type: link_default
+    weight: 9
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_file_transfer_text:
     type: text_textarea
-    weight: 9
+    weight: 10
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_rp_freq_used_software_link:
+    type: link_default
+    weight: 19
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_jobs_info:
     type: text_textarea
-    weight: 14
+    weight: 18
     region: content
     settings:
       rows: 5
@@ -398,14 +508,14 @@ content:
     third_party_settings: {  }
   field_rp_listing:
     type: boolean_checkbox
-    weight: 69
+    weight: 6
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
   field_rp_login_help_links:
     type: link_default
-    weight: 7
+    weight: 37
     region: content
     settings:
       placeholder_url: ''
@@ -413,22 +523,30 @@ content:
     third_party_settings: {  }
   field_rp_login_text:
     type: text_textarea
-    weight: 1
+    weight: 29
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_rp_login_to_anvil_gpu_link:
+    type: link_default
+    weight: 28
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_mfa_required:
     type: boolean_checkbox
-    weight: 3
+    weight: 32
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
   field_rp_office_hours:
     type: link_default
-    weight: 22
+    weight: 28
     region: content
     settings:
       placeholder_url: ''
@@ -436,7 +554,7 @@ content:
     third_party_settings: {  }
   field_rp_ondemand_url:
     type: link_default
-    weight: 2
+    weight: 31
     region: content
     settings:
       placeholder_url: ''
@@ -444,15 +562,23 @@ content:
     third_party_settings: {  }
   field_rp_ood_software:
     type: text_textarea
-    weight: 40
+    weight: 11
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_rp_queue_spec_link:
+    type: link_default
+    weight: 19
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_queue_specs:
     type: paragraphs
-    weight: 15
+    weight: 20
     region: content
     settings:
       title: 'Queue Specification'
@@ -468,7 +594,15 @@ content:
         collapse_edit_all: collapse_edit_all
         duplicate: duplicate
     third_party_settings: {  }
-  field_rp_software_list_url:
+  field_rp_sds_software:
+    type: string_textarea
+    weight: 24
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_software_link:
     type: link_default
     weight: 18
     region: content
@@ -476,9 +610,25 @@ content:
       placeholder_url: ''
       placeholder_title: ''
     third_party_settings: {  }
+  field_rp_software_list_url:
+    type: link_default
+    weight: 25
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_ssh_login_link:
+    type: link_default
+    weight: 30
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_ssh_login_nodes:
     type: paragraphs
-    weight: 6
+    weight: 36
     region: content
     settings:
       title: 'SSH Login Node'
@@ -496,7 +646,7 @@ content:
     third_party_settings: {  }
   field_rp_storage:
     type: paragraphs
-    weight: 12
+    weight: 13
     region: content
     settings:
       title: 'Storage Filesystem'
@@ -512,17 +662,33 @@ content:
         collapse_edit_all: collapse_edit_all
         duplicate: duplicate
     third_party_settings: {  }
+  field_rp_storage_link:
+    type: link_default
+    weight: 5
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_storage_text:
     type: text_textarea
-    weight: 11
+    weight: 12
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
+  field_rp_submitting_jobs:
+    type: link_default
+    weight: 17
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
   field_rp_support_links:
     type: link_default
-    weight: 20
+    weight: 26
     region: content
     settings:
       placeholder_url: ''
@@ -530,7 +696,7 @@ content:
     third_party_settings: {  }
   field_rp_top_software:
     type: string_textarea
-    weight: 17
+    weight: 23
     region: content
     settings:
       rows: 5
@@ -538,7 +704,7 @@ content:
     third_party_settings: {  }
   field_rp_xdmod_resource_id:
     type: number
-    weight: 16
+    weight: 22
     region: content
     settings:
       placeholder: ''
@@ -552,25 +718,25 @@ content:
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default
-    weight: 72
+    weight: 15
     region: content
     settings: {  }
     third_party_settings: {  }
   simple_sitemap:
-    weight: 10
+    weight: 4
     region: content
     settings: {  }
     third_party_settings: {  }
   title:
     type: string_textfield
-    weight: 0
+    weight: 50
     region: content
     settings:
       size: 60
       placeholder: ''
     third_party_settings: {  }
   url_redirects:
-    weight: 71
+    weight: 14
     region: content
     settings: {  }
     third_party_settings: {  }
