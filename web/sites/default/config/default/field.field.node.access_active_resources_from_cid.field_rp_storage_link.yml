@@ -1,0 +1,23 @@
+uuid: 10634e04-d8c4-4f31-b317-1b7c5443413a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_storage_link
+    - node.type.access_active_resources_from_cid
+  module:
+    - link
+id: node.access_active_resources_from_cid.field_rp_storage_link
+field_name: field_rp_storage_link
+entity_type: node
+bundle: access_active_resources_from_cid
+label: 'RP source documentation for Storage'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  title: 0
+  link_type: 16
+field_type: link

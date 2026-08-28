@@ -7,9 +7,13 @@
  * Available variables:
  * - content: the already-rendered body (render array or safe markup).
  * - lines: collapse target in rendered lines.
+ * - rows: optional collapse target in table body rows. When set, the JS clamps
+ *   on a `tbody > tr` boundary instead of a text-line boundary, so a table is
+ *   never cut through the middle of a row. Falls back to `lines` when the
+ *   content holds no table rows.
  */
 #}
-<div class="expandable-text" data-lines="{{ lines }}">
+<div class="expandable-text" data-lines="{{ lines }}"{% if rows %} data-rows="{{ rows }}"{% endif %}>
   <div class="expandable-text__content" id="expandable-text-content-{{ random() }}">
     {{ content }}
   </div>

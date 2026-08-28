@@ -17,6 +17,7 @@ function expandable_text_theme(): array {
       'variables' => [
         'content' => NULL,
         'lines' => 4,
+        'rows' => NULL,
       ],
       'template' => 'expandable-text',
     ],
