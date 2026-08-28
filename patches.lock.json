@@ -1,5 +1,5 @@
 {
-    "_hash": "f5afdd579405637e860d1e01885ddd9e063c0c4bd3822a70a6509cfc3c0566ab",
+    "_hash": "10b7df6dcb6e981832f5405f46282e7cf61c2f54ba11e467680f796e9ffda970",
     "patches": {
         "drupal/core": [
             {
@@ -39,6 +39,16 @@
                 "description": "Creating requests causes failures on Drupal 10.3",
                 "url": "https://www.drupal.org/files/issues/2024-08-07/3466281-2--for-2.0.8.patch",
                 "sha256": "05427143e48282862434ee60519677a56ab83cdd15dd17dbc0d772d4d3e7ec5d",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/facets",
+                "description": "Missing Drupal\\Core\\Url import in WidgetPluginBase causes fatal on /facets-block-ajax",
+                "url": "patches/facets-widgetpluginbase-missing-url-import.patch",
+                "sha256": "e9aaa98dda581dff36cb1c3d096a2aca711ae5ba5d4245eadd7259e025293a36",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
