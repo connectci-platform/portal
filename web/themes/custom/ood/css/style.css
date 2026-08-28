@@ -1338,3 +1338,14 @@ body.page-batch [role="banner"] {
   padding: 2rem 1.5rem 0;
   text-align: center;
 }
+
+#appverse-reach-front {
+  background-color: #d2e5f3;
+  padding-left: 50%;
+  padding-right: 50%;
+  margin-left: -50%;
+  margin-right: -50%;
+  padding-top: 2rem;
+  margin-bottom: -45px;
+  padding-bottom: 4rem;
+}

@@ -17,6 +17,7 @@ dependencies:
     - access_news
     - ccmnet
     - cssn
+    - node
     - user
     - webform_submission_search_api
 id: cssn_directory
@@ -156,6 +157,16 @@ field_settings:
     label: 'User Interest'
     property_path: search_api_user_interest
     type: string
+  user_organization:
+    label: 'User Organization'
+    datasource_id: 'entity:user'
+    property_path: 'field_access_organization:entity:title'
+    type: text
+    dependencies:
+      config:
+        - field.storage.user.field_access_organization
+      module:
+        - node
   user_skills:
     label: 'User Skills'
     property_path: search_api_user_skills
@@ -232,6 +243,7 @@ processor_settings:
       - user_affinity_groups
       - user_badges
       - user_interest
+      - user_organization
       - user_skills
       - user_skills_id
   language_with_fallback: {  }

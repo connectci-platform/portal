@@ -2100,7 +2100,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups: {  }
