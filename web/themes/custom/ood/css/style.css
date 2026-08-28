@@ -1349,3 +1349,7 @@ body.page-batch [role="banner"] {
   margin-bottom: -45px;
   padding-bottom: 4rem;
 }
+
+.page-tags main {
+  margin-bottom: 4rem;
+}

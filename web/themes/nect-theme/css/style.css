@@ -2927,3 +2927,16 @@ details.vertical-tabs__pane > .details-wrapper {
     border-bottom: none;
   }
 }
+
+/* Sidebar on /tags page */
+.block-views-blocknode-add-tags-block-3 {
+  ul {
+    li {
+      margin-bottom: 0.5rem !important;
+    }
+    a {
+      font-size: 1rem;
+      color: var(--text);
+    }
+  }
+}
