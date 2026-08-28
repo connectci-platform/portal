@@ -27,6 +27,12 @@ resourceFields:
     publicName: field_ood_community_spotlight
     enhancer:
       id: ''
+  field_cider_resources:
+    disabled: true
+    fieldName: field_cider_resources
+    publicName: field_cider_resources
+    enhancer:
+      id: ''
   field_github_graph:
     disabled: true
     fieldName: field_github_graph
