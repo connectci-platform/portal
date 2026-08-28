@@ -6,5 +6,4 @@ id: mcp_service
 label: 'MCP Service'
 weight: 32
 is_admin: null
-permissions:
-  - 'use content assist api'
+permissions: {  }

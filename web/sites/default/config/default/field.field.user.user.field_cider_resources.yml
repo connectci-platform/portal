@@ -43,7 +43,7 @@ translatable: false
 default_value: {  }
 default_value_callback: ''
 settings:
-  handler: cider_resource
+  handler: 'default:node'
   handler_settings:
     target_bundles:
       access_active_resources_from_cid: access_active_resources_from_cid

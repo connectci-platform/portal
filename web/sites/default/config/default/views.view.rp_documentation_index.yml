@@ -7,7 +7,6 @@ dependencies:
     - field.storage.node.field_access_org_logo_url
     - field.storage.node.field_cider_short_name
     - field.storage.node.field_rp_description
-    - field.storage.node.field_rp_display_name
     - field.storage.node.field_rp_listing
     - node.type.access_active_resources_from_cid
     - node.type.resource_group
@@ -48,23 +47,6 @@ display:
           type: string
           settings:
             link_to_entity: false
-        field_rp_display_name:
-          id: field_rp_display_name
-          table: node__field_rp_display_name
-          field: field_rp_display_name
-          relationship: none
-          group_type: group
-          admin_label: ''
-          plugin_id: field
-          label: ''
-          exclude: true
-          alter:
-            alter_text: false
-          element_type: ''
-          element_class: ''
-          type: string
-          settings:
-            link_to_entity: false
         title:
           id: title
           table: node_field_data
@@ -79,7 +61,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: '{% if field_rp_display_name %}{{ field_rp_display_name }}{% elseif field_cider_short_name %}{{ field_cider_short_name }}{% else %}{{ title }}{% endif %}'
+            text: '{% if field_cider_short_name %}{{ field_cider_short_name }}{% else %}{{ title }}{% endif %}'
             make_link: true
             path: '{{ view_node }}'
           element_type: h2
@@ -157,17 +139,20 @@ display:
           plugin_id: text_custom
           content: 'No resource documentation pages are available yet.'
       sorts:
-        field_cider_short_name_value:
-          id: field_cider_short_name_value
-          table: node__field_cider_short_name
-          field: field_cider_short_name_value
+        title:
+          id: title
+          table: node_field_data
+          field: title
           relationship: none
           group_type: group
           admin_label: ''
+          entity_type: node
+          entity_field: title
           plugin_id: standard
           order: ASC
-          expose: {  }
-          exposed: false
+          expose:
+            label: ''
+            field_identifier: ''
       filters:
         status:
           id: status

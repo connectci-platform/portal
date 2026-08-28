@@ -1,0 +1,30 @@
+uuid: 6b9f6a08-e30a-43cc-b1df-e59a14593475
+langcode: en
+status: true
+dependencies:
+  config:
+    - views.view.tool_case_study_slideshow
+  module:
+    - system
+    - views
+  theme:
+    - aspTheme
+id: asptheme_views_block__tool_case_study_slideshow_block_1
+theme: aspTheme
+region: title_banner
+weight: 0
+provider: null
+plugin: 'views_block:tool_case_study_slideshow-block_1'
+settings:
+  id: 'views_block:tool_case_study_slideshow-block_1'
+  label: ''
+  label_display: '0'
+  provider: views
+  views_label: ''
+  items_per_page: none
+  exposed: {  }
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /tools/researcher-stories

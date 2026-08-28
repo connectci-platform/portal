@@ -22,41 +22,26 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_domain_access
     - field.field.node.access_active_resources_from_cid.field_domain_all_affiliates
     - field.field.node.access_active_resources_from_cid.field_domain_source
-    - field.field.node.access_active_resources_from_cid.field_rp_access_ood_login_link
     - field.field.node.access_active_resources_from_cid.field_rp_account_required
     - field.field.node.access_active_resources_from_cid.field_rp_account_setup_url
     - field.field.node.access_active_resources_from_cid.field_rp_datasets
-    - field.field.node.access_active_resources_from_cid.field_rp_datasets_link
-    - field.field.node.access_active_resources_from_cid.field_rp_datasets_text
     - field.field.node.access_active_resources_from_cid.field_rp_description
     - field.field.node.access_active_resources_from_cid.field_rp_external_storage
-    - field.field.node.access_active_resources_from_cid.field_rp_external_storage_link
-    - field.field.node.access_active_resources_from_cid.field_rp_file_system_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_transfer
-    - field.field.node.access_active_resources_from_cid.field_rp_file_transfer_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_transfer_text
-    - field.field.node.access_active_resources_from_cid.field_rp_freq_used_software_link
     - field.field.node.access_active_resources_from_cid.field_rp_jobs_info
     - field.field.node.access_active_resources_from_cid.field_rp_listing
     - field.field.node.access_active_resources_from_cid.field_rp_login_help_links
     - field.field.node.access_active_resources_from_cid.field_rp_login_text
-    - field.field.node.access_active_resources_from_cid.field_rp_login_to_anvil_gpu_link
     - field.field.node.access_active_resources_from_cid.field_rp_mfa_required
     - field.field.node.access_active_resources_from_cid.field_rp_office_hours
     - field.field.node.access_active_resources_from_cid.field_rp_ondemand_url
     - field.field.node.access_active_resources_from_cid.field_rp_ood_software
     - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
-    - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
     - field.field.node.access_active_resources_from_cid.field_rp_queue_specs
-    - field.field.node.access_active_resources_from_cid.field_rp_sds_software
-    - field.field.node.access_active_resources_from_cid.field_rp_software_link
     - field.field.node.access_active_resources_from_cid.field_rp_software_list_url
-    - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_link
     - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_nodes
     - field.field.node.access_active_resources_from_cid.field_rp_storage
-    - field.field.node.access_active_resources_from_cid.field_rp_storage_link
-    - field.field.node.access_active_resources_from_cid.field_rp_storage_text
-    - field.field.node.access_active_resources_from_cid.field_rp_submitting_jobs
     - field.field.node.access_active_resources_from_cid.field_rp_support_links
     - field.field.node.access_active_resources_from_cid.field_rp_top_software
     - field.field.node.access_active_resources_from_cid.field_rp_xdmod_resource_id
@@ -99,41 +84,28 @@ hidden:
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true
-  field_rp_access_ood_login_link: true
   field_rp_account_required: true
   field_rp_account_setup_url: true
   field_rp_datasets: true
-  field_rp_datasets_link: true
   field_rp_datasets_text: true
   field_rp_description: true
   field_rp_external_storage: true
-  field_rp_external_storage_link: true
-  field_rp_file_system_link: true
   field_rp_file_transfer: true
-  field_rp_file_transfer_link: true
   field_rp_file_transfer_text: true
-  field_rp_freq_used_software_link: true
   field_rp_jobs_info: true
   field_rp_listing: true
   field_rp_login_help_links: true
   field_rp_login_text: true
-  field_rp_login_to_anvil_gpu_link: true
   field_rp_mfa_required: true
   field_rp_office_hours: true
   field_rp_ondemand_url: true
   field_rp_ood_software: true
   field_rp_queue_metrics: true
-  field_rp_queue_spec_link: true
   field_rp_queue_specs: true
-  field_rp_sds_software: true
-  field_rp_software_link: true
   field_rp_software_list_url: true
-  field_rp_ssh_login_link: true
   field_rp_ssh_login_nodes: true
   field_rp_storage: true
-  field_rp_storage_link: true
   field_rp_storage_text: true
-  field_rp_submitting_jobs: true
   field_rp_support_links: true
   field_rp_top_software: true
   field_rp_xdmod_resource_id: true
