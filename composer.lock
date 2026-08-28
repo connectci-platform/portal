@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5cd071a4e27d46db32d9fe390bf3d690",
+    "content-hash": "af1cb4ade7824c68556b53fe6946ee15",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -706,13 +706,12 @@
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-main",
+            "version": "dev-d8-2827",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "871d7b15b43cf351ee4e9513df824d838fad7f5c"
+                "reference": "ddc7514f433d2c55ab8dcc783d3d0e4902c08348"
             },
-            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -728,7 +727,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-08-28T17:31:09+00:00"
+            "time": "2026-08-28T21:21:34+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",

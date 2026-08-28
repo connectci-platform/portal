@@ -59,7 +59,7 @@
         "access/infrastructure_news": "1.0.x-dev",
         "composer/installers": "^2.3.0",
         "connectci/access": "3.0.x-dev",
-        "connectci/asp-theme": "main-dev",
+        "connectci/asp-theme": "d8-2827-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
         "connectci/webform_submission_search_api": "main-dev",
