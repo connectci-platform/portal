@@ -3,6 +3,9 @@ description: 'Run PHPUnit tests using DDEV'
 author: 'connectci-platform'
 
 inputs:
+  paths:
+    description: 'Space-separated phpunit target paths for this matrix shard (relative to repo root).'
+    required: true
   database:
     description: 'Custom database URL (optional)'
     required: false
@@ -48,36 +51,42 @@ runs:
     - name: Run PHPUnit tests
       shell: bash
       run: |
-        # Run every custom module's tests, not just one. The path is the whole
-        # web/modules/custom/ tree and there is no --group filter, so a test is
-        # covered iff it lives under a custom module — no annotation required.
+        # Run the phpunit target paths for THIS matrix shard (inputs.paths).
+        # Coverage is by path, not by @group — a test is covered iff it lives
+        # under one of the shard's paths.
         #
-        # A JUnit log is the source of truth for pass/fail, NOT phpunit's exit
+        # The JUnit log is the source of truth for pass/fail, NOT phpunit's exit
         # code: some passing suites still exit non-zero on a Drupal deprecation
         # notice (e.g. installSchema()), which would otherwise turn a green run
-        # red. We capture the exit code, then fail the step only if the JUnit
-        # XML actually records failures or errors.
-        ddev exec 'SIMPLETEST_DB=mysql://db:db@db/db phpunit \
+        # red. We capture the exit code, then fail the step only if the JUnit XML
+        # actually records failures or errors.
+        #
+        # --log-junit MUST be an ABSOLUTE path: with `-c web/core`, phpunit's
+        # relative-path base is not the repo root, so a relative log path is
+        # silently written somewhere the outer shell can't find (or not at all).
+        junit="/tmp/phpunit-results.xml"
+        ddev exec "SIMPLETEST_DB=mysql://db:db@db/db phpunit \
           -c web/core \
           --testdox \
-          --log-junit web/sites/simpletest/phpunit-results.xml \
-          web/modules/custom/' && phpunit_rc=0 || phpunit_rc=$?
+          --log-junit $junit \
+          ${{ inputs.paths }}" && phpunit_rc=0 || phpunit_rc=$?
         echo "phpunit exited with $phpunit_rc"
 
-        results="web/sites/simpletest/phpunit-results.xml"
-        if [ ! -f "$results" ]; then
+        # ddev exec runs in the container; copy the log out to the runner.
+        ddev exec "cat $junit" > phpunit-results.xml 2>/dev/null || true
+        if [ ! -s phpunit-results.xml ]; then
           echo "::error::No JUnit results file was produced — the run did not complete."
           exit 1
         fi
         # Sum failures= and errors= across all <testsuite> entries.
-        fails=$(grep -oE 'failures="[0-9]+"' "$results" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
-        errs=$(grep -oE 'errors="[0-9]+"' "$results" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+        fails=$(grep -oE 'failures="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+        errs=$(grep -oE 'errors="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
         echo "JUnit totals — failures: $fails, errors: $errs"
         if [ "$fails" -gt 0 ] || [ "$errs" -gt 0 ]; then
           echo "::error::PHPUnit reported $fails failure(s) and $errs error(s)."
           exit 1
         fi
-        echo "All custom-module tests passed (phpunit exit $phpunit_rc ignored — no failures/errors in JUnit)."
+        echo "Shard passed (phpunit exit $phpunit_rc ignored — no failures/errors in JUnit)."
 
     - name: Show test results
       if: always()
