@@ -78,16 +78,16 @@ describe("RP Resources Admin View", () => {
 
     it("filters by resource name", () => {
       cy.visit(managePath);
-      // Filter matches DB title; rendered table cell shows short_name
-      // due to operations_cider_node_load() mutation.
+      // The Title exposed filter matches the DB title ("Test Resource Alpha");
+      // the rendered Resource cell shows that title, so it contains "Alpha".
       cy.get("#edit-title").type("Test Resource Alpha");
       cy.get("#edit-submit-rp-resources-admin").click();
-      // The exposed filter submits as a GET; wait for the URL to reflect the
-      // applied filter before asserting, otherwise the unfiltered (paginated)
-      // result can still be on screen and Alpha may be on a later page.
+      // The exposed filter submits as a GET reload, so wait for BOTH the URL to
+      // reflect the applied filter AND the filtered table to actually render the
+      // matching row before asserting — checking the URL alone can assert against
+      // the pre-reload (unfiltered) table that is still on screen.
       cy.url().should("include", "title=Test+Resource+Alpha");
-      cy.get("table tbody tr").should("have.length.greaterThan", 0);
-      cy.get("table tbody").contains("Alpha");
+      cy.get("table tbody").contains("tr", "Test Resource Alpha");
     });
 
     it("filters by organization name", () => {

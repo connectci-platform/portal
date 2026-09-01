@@ -173,16 +173,22 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
   });
 
   it("renders the per-partition Nodes column", () => {
-    cy.get(".rp-queue-specs").contains("th", "Nodes");
+    cy.get(".rp-queue-specs").contains("th", "Num nodes");
     // gpu-standard has field_rp_node_count = 100 in the fixture.
     cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-standard")
       .parent("tr").should("contain", "100");
     // cpu-shared has field_rp_node_count = 200.
     cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
       .parent("tr").should("contain", "200");
-    // gpu-cloud has an unknown node count: em-dash, not 0.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
-      .parent("tr").find("td").eq(2).should("contain", "—");
+    // gpu-cloud has an unknown node count: the cell reads "N/A", not 0.
+    // Resolve the Num nodes column index from the header so the assertion
+    // survives column reordering, then check that column in gpu-cloud's row.
+    cy.get(".rp-queue-specs table thead th").then(($ths) => {
+      const nodesCol = [...$ths].findIndex((th) => th.textContent.trim() === "Num nodes");
+      expect(nodesCol, "Num nodes column present").to.be.greaterThan(-1);
+      cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
+        .parent("tr").find("td").eq(nodesCol).should("contain", "N/A");
+    });
   });
 
   it("renders top software table", () => {
@@ -249,7 +255,7 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
 
   it("QA bot has resource group context", () => {
     cy.get(".embedded-qa-bot")
-      .should("have.attr", "data-resource-context", "test-resource-group");
+      .should("have.attr", "data-scope-slug", "test-resource-group");
   });
 
 });
@@ -275,8 +281,17 @@ describe("Resource Documentation Page — Beta (sparse data, in Test Resource Gr
     cy.get(".rp-login").should("not.exist");
   });
 
-  it("does not render the jump-to anchor nav when every section is empty", () => {
-    cy.get(".rp-jump-to").should("not.exist");
+  it("jump-to anchor nav lists only the sections Beta actually has", () => {
+    // Beta's only main-content section is Software (inherited software_list_url
+    // from the Group, per the section test above), so the nav renders with just
+    // that one link — not absent, and not listing the empty sections.
+    cy.get(".rp-jump-to").should("exist");
+    cy.get(".rp-jump-to").contains("Software");
+    cy.get(".rp-jump-to").should("not.contain.text", "Login");
+    cy.get(".rp-jump-to").should("not.contain.text", "File Transfer");
+    cy.get(".rp-jump-to").should("not.contain.text", "Storage");
+    cy.get(".rp-jump-to").should("not.contain.text", "Jobs");
+    cy.get(".rp-jump-to").should("not.contain.text", "Datasets");
   });
 
   it("does not show MFA or account badges", () => {
@@ -362,7 +377,7 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
 
   it("QA bot falls back to resource title (short_name post-load-hook) when not in a group", () => {
     cy.get(".embedded-qa-bot")
-      .should("have.attr", "data-resource-context", "gamma");
+      .should("have.attr", "data-scope-slug", "gamma");
   });
 
 });
