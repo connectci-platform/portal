@@ -170,11 +170,13 @@ runs:
         # actual failure at least once, so any real failure yields a positive sum.
         fails=$(grep -oE 'failures="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
         errs=$(grep -oE 'errors="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
-        # phpunit nests <testsuite> elements, so tests= appears on every level and
-        # summing would multiply-count. The ROOT <testsuites> element (if present)
-        # or the first <testsuite> carries the grand total — take the max single
-        # count, which is the top-level total, never the sum.
-        tests=$(grep -oE 'tests="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk 'BEGIN{m=0} {if($1>m)m=$1} END{print m+0}')
+        # Count executed test methods by counting <testcase> elements. This is
+        # structure-independent: phpunit emits exactly one <testcase> per method
+        # run, whether or not it wraps the per-file <testsuite> entries in a root
+        # <testsuites> aggregate. (Summing the tests= attributes double-counts
+        # when there is a rollup, and taking the max under-counts to a single
+        # file's total when there is not — this run proved the latter.)
+        tests=$(grep -oE '<testcase\b' phpunit-results.xml | wc -l | tr -d ' ')
         echo "JUnit totals — tests: $tests, failures: $fails, errors: $errs"
         # A shard that ran ZERO tests is a coverage hole masquerading as green
         # (a bad path, a filter that matched nothing, a broken split). Fail it.
