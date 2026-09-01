@@ -134,9 +134,9 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
         // CPU core count is parenthesized like the GPU vRAM.
         cy.contains("AMD EPYC 7763 (64 cores)");
       });
-    // CPU-only queue shows a dash for GPU, never "0 …".
+    // CPU-only queue shows the empty-cell placeholder "N/A" for GPU, never "0 …".
     cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
-      .parent("tr").should("contain", "—").and("not.contain", "0 NVIDIA");
+      .parent("tr").should("contain", "N/A").and("not.contain", "0 NVIDIA");
     // gpu-cloud has GPU type + vRAM but no per-node count: render type/vRAM
     // without a leading count, not an em-dash.
     cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")

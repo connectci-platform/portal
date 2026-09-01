@@ -78,16 +78,19 @@ describe("RP Resources Admin View", () => {
 
     it("filters by resource name", () => {
       cy.visit(managePath);
-      // The Title exposed filter matches the DB title ("Test Resource Alpha");
-      // the rendered Resource cell shows that title, so it contains "Alpha".
+      // The Title exposed filter does a CONTAINS match on the stored node title
+      // ("Test Resource Alpha"), but the Resource cell renders the display name
+      // (short_name "Alpha") via the CiderResourceNode label override — so the
+      // visible row text is "Alpha", not the raw title.
       cy.get("#edit-title").type("Test Resource Alpha");
       cy.get("#edit-submit-rp-resources-admin").click();
-      // The exposed filter submits as a GET reload, so wait for BOTH the URL to
-      // reflect the applied filter AND the filtered table to actually render the
-      // matching row before asserting — checking the URL alone can assert against
-      // the pre-reload (unfiltered) table that is still on screen.
+      // The exposed filter submits as a GET reload. Wait for the URL to reflect
+      // the applied filter AND for the filtered row to actually render before
+      // asserting — a bare "contains" can fire against the pre-reload unfiltered
+      // table still on screen. Scoping the wait to the row containing "Alpha"
+      // makes the retry wait for the real post-filter render.
       cy.url().should("include", "title=Test+Resource+Alpha");
-      cy.get("table tbody").contains("tr", "Test Resource Alpha");
+      cy.get("table tbody").contains("tr", "Alpha");
     });
 
     it("filters by organization name", () => {
