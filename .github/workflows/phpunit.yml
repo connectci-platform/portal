@@ -17,11 +17,18 @@ permissions:
 
 jobs:
   phpunit:
-    # Sharded so no single job exceeds the Cypress wall-clock. access_events is
-    # ~20 min of kernel tests on its own (measured), so it is split into three
-    # shards by file; every other custom module runs fast and shares one shard.
-    # Balance is by measured weight, not per-module — rebalance the file lists
-    # here if a shard drifts over ~15 min.
+    # The full custom-module suite ALWAYS runs on every PR and merge — there is
+    # no change-based selection (a mechanism whose failure mode is "silently skip
+    # a test that would have caught the regression" was rejected in design).
+    #
+    # Sharded only for wall-clock: access_events is ~20 min of kernel tests on its
+    # own (measured), so it is split into three, while every other custom module
+    # runs fast in one shard. The events split is BY ROUND-ROBIN FILE POSITION
+    # over the whole kernel directory (shard_dir/shard_index/shard_total), never
+    # an enumerated filename list: a new test file auto-enrolls into exactly one
+    # shard, so coverage can never silently drop, and the balance holds no matter
+    # how class names cluster. `other-modules` uses plain directory paths, so its
+    # new files auto-enroll too.
     name: PHPUnit (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
@@ -29,7 +36,6 @@ jobs:
       matrix:
         include:
           - name: other-modules
-            # Everything except access_events. Fast; one shard covers all of it.
             paths: >-
               web/modules/custom/access/modules/access_affinitygroup/tests/
               web/modules/custom/access/modules/access_content_api/tests/
@@ -43,55 +49,42 @@ jobs:
               web/modules/custom/ood_software/tests/
               web/modules/custom/operations_cider/tests/
           - name: events-1
-            # access_events shard 1 — heavy EventCrud create/update/delete + previews.
-            paths: >-
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudCreateTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudUpdateTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudDeleteTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudPreviewTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/PreviewValidatorTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudSendForReviewTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudRestoreTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/DomainGuardTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventStateMigrationTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventDetailApiControllerTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventRouteAccessTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/RegistrationApiTest.php
+            shard_index: '0'
           - name: events-2
-            # access_events shard 2 — occurrence edit/cancel/restore + guards.
-            paths: >-
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudOccurrenceEditTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudCancelOccurrenceTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventCrudRestoreOccurrenceTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/FormWarningsTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventDeleteGuardTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventDeleteGuardFormAlterTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventDeleteGuardHooksTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/InstanceReactionsTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/SeriesReactionsTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/InstanceBirthStateTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/ModificationEmailGateTest.php
+            shard_index: '1'
           - name: events-3
-            # access_events shard 3 — notifications, state, registration, misc.
-            paths: >-
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/CancellationNotifierTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventNotificationSupersedeTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventAccessHelperTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventDetailHttpCacheTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventDetailPublishedGateTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventSeriesPresaveBackstopTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/EventSeriesRescheduleBlockTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/IndividuallyCancelledFieldTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/PastPreservingRebuildTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/RegistrantCounterTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/RegistrationStateTest.php
-              web/modules/custom/access/modules/access_events/tests/src/Kernel/StateChangeCollectorTest.php
+            shard_index: '2'
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: ./.github/actions/ddev-phpunit
         with:
           paths: ${{ matrix.paths }}
+          # The events shards set shard_index; other-modules leaves it blank and
+          # uses paths. shard_dir/shard_total are constant for the events split.
+          shard_dir: ${{ matrix.shard_index != '' && 'web/modules/custom/access/modules/access_events/tests/src/Kernel/' || '' }}
+          shard_index: ${{ matrix.shard_index }}
+          shard_total: ${{ matrix.shard_index != '' && '3' || '' }}
           database: ${{ github.event.inputs.database }}
           database_branch: ${{ github.event.inputs.database_branch }}
           github_token: ${{ secrets.GH_TOKEN_REPO }}
           amp_uid: ${{ secrets.AMP_UID }}
+
+  # Single fixed required check: branch protection points HERE, not at the dynamic
+  # per-shard job names (which would leave a stale required context pending on a
+  # rename — finding F5). Passes iff every shard succeeded.
+  phpunit-gate:
+    name: PHPUnit
+    needs: phpunit
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all shards to have passed
+        shell: bash
+        run: |
+          result="${{ needs.phpunit.result }}"
+          echo "phpunit matrix result: $result"
+          if [ "$result" != "success" ]; then
+            echo "::error::One or more PHPUnit shards did not pass ($result)."
+            exit 1
+          fi
+          echo "All PHPUnit shards passed."
