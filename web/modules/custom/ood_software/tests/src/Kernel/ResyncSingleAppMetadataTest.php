@@ -232,45 +232,47 @@ YAML;
       public string $rootYml = '';
       public string $stubRepoUrl = '';
 
-      public function parseUrl($repo) {
+      public function parseUrl(string $repo): bool {
         return TRUE;
       }
 
-      public function getData() {}
+      public function getData(): ?array {
+        return NULL;
+      }
 
       public function getAppverseYmlText(): ?string {
         return $this->rootYml;
       }
 
-      public function getStars() {
+      public function getStars(): ?int {
         return 0;
       }
 
-      public function getLastComittedDate() {
-        return '2000000000';
+      public function getLastComittedDate(): ?int {
+        return 2000000000;
       }
 
-      public function getOrganization() {
+      public function getOrganization(): ?string {
         return 'OSC';
       }
 
-      public function getDescription() {
+      public function getDescription(): ?string {
         return 'RStudio Server on HPC via Open OnDemand.';
       }
 
-      public function getReadme() {
+      public function getReadme(): ?string {
         return '';
       }
 
-      public function getLicense() {
+      public function getLicense(): ?string {
         return NULL;
       }
 
-      public function getLicenseLink() {
+      public function getLicenseLink(): ?string {
         return NULL;
       }
 
-      public function getIsArchived() {
+      public function getIsArchived(): ?bool {
         return FALSE;
       }
 
