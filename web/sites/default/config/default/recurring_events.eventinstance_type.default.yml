@@ -7,3 +7,4 @@ _core:
 id: default
 label: Default
 description: 'A default event instance type.'
+new_revision: false

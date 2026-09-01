@@ -14,5 +14,5 @@ threshold_warning: 1
 threshold_count: 200
 threshold_message: 'Saving this series will create up to @total event instances. This could result in memory exhaustion or site instability.'
 threshold_prevent_save: 0
-creator_plugin: null
+creator_plugin: recurring_events_eventinstance_recreator
 ical_link_title: 'Download as iCal'
