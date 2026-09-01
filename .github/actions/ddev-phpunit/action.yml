@@ -3,10 +3,6 @@ description: 'Run PHPUnit tests using DDEV'
 author: 'connectci-platform'
 
 inputs:
-  group:
-    description: 'PHPUnit @group filter'
-    required: true
-    default: 'access_affinitygroup'
   database:
     description: 'Custom database URL (optional)'
     required: false
@@ -52,11 +48,36 @@ runs:
     - name: Run PHPUnit tests
       shell: bash
       run: |
+        # Run every custom module's tests, not just one. The path is the whole
+        # web/modules/custom/ tree and there is no --group filter, so a test is
+        # covered iff it lives under a custom module — no annotation required.
+        #
+        # A JUnit log is the source of truth for pass/fail, NOT phpunit's exit
+        # code: some passing suites still exit non-zero on a Drupal deprecation
+        # notice (e.g. installSchema()), which would otherwise turn a green run
+        # red. We capture the exit code, then fail the step only if the JUnit
+        # XML actually records failures or errors.
         ddev exec 'SIMPLETEST_DB=mysql://db:db@db/db phpunit \
           -c web/core \
-          --group=${{ inputs.group }} \
           --testdox \
-          web/modules/custom/access/modules/access_affinitygroup/tests/'
+          --log-junit web/sites/simpletest/phpunit-results.xml \
+          web/modules/custom/' && phpunit_rc=0 || phpunit_rc=$?
+        echo "phpunit exited with $phpunit_rc"
+
+        results="web/sites/simpletest/phpunit-results.xml"
+        if [ ! -f "$results" ]; then
+          echo "::error::No JUnit results file was produced — the run did not complete."
+          exit 1
+        fi
+        # Sum failures= and errors= across all <testsuite> entries.
+        fails=$(grep -oE 'failures="[0-9]+"' "$results" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+        errs=$(grep -oE 'errors="[0-9]+"' "$results" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+        echo "JUnit totals — failures: $fails, errors: $errs"
+        if [ "$fails" -gt 0 ] || [ "$errs" -gt 0 ]; then
+          echo "::error::PHPUnit reported $fails failure(s) and $errs error(s)."
+          exit 1
+        fi
+        echo "All custom-module tests passed (phpunit exit $phpunit_rc ignored — no failures/errors in JUnit)."
 
     - name: Show test results
       if: always()

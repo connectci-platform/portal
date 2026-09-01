@@ -9,9 +9,6 @@ on:
       database_branch:
         description: 'Branch to download database artifact from (default: main)'
         default: 'main'
-      group:
-        description: 'PHPUnit @group filter (default: access_affinitygroup)'
-        default: 'access_affinitygroup'
 
 permissions:
   contents: read
@@ -26,7 +23,6 @@ jobs:
       - uses: actions/checkout@v6.0.2
       - uses: ./.github/actions/ddev-phpunit
         with:
-          group: ${{ github.event.inputs.group || 'access_affinitygroup' }}
           database: ${{ github.event.inputs.database }}
           database_branch: ${{ github.event.inputs.database_branch }}
           github_token: ${{ secrets.GH_TOKEN_REPO }}
