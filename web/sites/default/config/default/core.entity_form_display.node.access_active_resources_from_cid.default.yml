@@ -149,7 +149,7 @@ third_party_settings:
       label: Datasets
       region: content
       parent_name: ''
-      weight: 10
+      weight: 8
       format_type: details
       format_settings:
         classes: ''
@@ -166,7 +166,14 @@ third_party_settings:
       label: 'Sidebar Content'
       region: content
       parent_name: ''
-      weight: 9
+group_sidebar_content:
+      children:
+        - field_rp_support_links
+        - field_rp_office_hours
+      label: 'Sidebar Content'
+      region: content
+      parent_name: ''
+      weight: 2
       format_type: details
       format_settings:
         classes: ''
