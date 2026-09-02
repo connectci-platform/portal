@@ -1,0 +1,136 @@
+uuid: b23b3a1a-016a-4316-9cac-ea6a6b25d848
+langcode: en
+status: true
+dependencies:
+  config:
+    - webform.webform.join_ccmnet
+  module:
+    - jsonapi_defaults
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 50
+id: webform_submission--join_ccmnet
+disabled: true
+path: webform_submission/join_ccmnet
+resourceType: webform_submission--join_ccmnet
+resourceFields:
+  serial:
+    disabled: false
+    fieldName: serial
+    publicName: serial
+    enhancer:
+      id: ''
+  sid:
+    disabled: false
+    fieldName: sid
+    publicName: sid
+    enhancer:
+      id: ''
+  uuid:
+    disabled: false
+    fieldName: uuid
+    publicName: uuid
+    enhancer:
+      id: ''
+  token:
+    disabled: false
+    fieldName: token
+    publicName: token
+    enhancer:
+      id: ''
+  uri:
+    disabled: false
+    fieldName: uri
+    publicName: uri
+    enhancer:
+      id: ''
+  created:
+    disabled: false
+    fieldName: created
+    publicName: created
+    enhancer:
+      id: ''
+  completed:
+    disabled: false
+    fieldName: completed
+    publicName: completed
+    enhancer:
+      id: ''
+  changed:
+    disabled: false
+    fieldName: changed
+    publicName: changed
+    enhancer:
+      id: ''
+  in_draft:
+    disabled: false
+    fieldName: in_draft
+    publicName: in_draft
+    enhancer:
+      id: ''
+  current_page:
+    disabled: false
+    fieldName: current_page
+    publicName: current_page
+    enhancer:
+      id: ''
+  remote_addr:
+    disabled: false
+    fieldName: remote_addr
+    publicName: remote_addr
+    enhancer:
+      id: ''
+  uid:
+    disabled: false
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''
+  langcode:
+    disabled: false
+    fieldName: langcode
+    publicName: langcode
+    enhancer:
+      id: ''
+  webform_id:
+    disabled: false
+    fieldName: webform_id
+    publicName: webform_id
+    enhancer:
+      id: ''
+  entity_type:
+    disabled: false
+    fieldName: entity_type
+    publicName: entity_type
+    enhancer:
+      id: ''
+  entity_id:
+    disabled: false
+    fieldName: entity_id
+    publicName: entity_id
+    enhancer:
+      id: ''
+  locked:
+    disabled: false
+    fieldName: locked
+    publicName: locked
+    enhancer:
+      id: ''
+  sticky:
+    disabled: false
+    fieldName: sticky
+    publicName: sticky
+    enhancer:
+      id: ''
+  notes:
+    disabled: false
+    fieldName: notes
+    publicName: notes
+    enhancer:
+      id: ''
+  metatag:
+    disabled: false
+    fieldName: metatag
+    publicName: metatag
+    enhancer:
+      id: ''

@@ -1,0 +1,87 @@
+uuid: a553e118-6b8a-46ca-ae7a-2e9db84598cc
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - paragraphs
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 50
+id: paragraphs_type--paragraphs_type
+disabled: true
+path: paragraphs_type/paragraphs_type
+resourceType: paragraphs_type--paragraphs_type
+resourceFields:
+  uuid:
+    disabled: false
+    fieldName: uuid
+    publicName: uuid
+    enhancer:
+      id: ''
+  langcode:
+    disabled: false
+    fieldName: langcode
+    publicName: langcode
+    enhancer:
+      id: ''
+  status:
+    disabled: false
+    fieldName: status
+    publicName: status
+    enhancer:
+      id: ''
+  dependencies:
+    disabled: false
+    fieldName: dependencies
+    publicName: dependencies
+    enhancer:
+      id: ''
+  third_party_settings:
+    disabled: false
+    fieldName: third_party_settings
+    publicName: third_party_settings
+    enhancer:
+      id: ''
+  _core:
+    disabled: false
+    fieldName: _core
+    publicName: _core
+    enhancer:
+      id: ''
+  id:
+    disabled: false
+    fieldName: id
+    publicName: id
+    enhancer:
+      id: ''
+  label:
+    disabled: false
+    fieldName: label
+    publicName: label
+    enhancer:
+      id: ''
+  icon_uuid:
+    disabled: false
+    fieldName: icon_uuid
+    publicName: icon_uuid
+    enhancer:
+      id: ''
+  icon_default:
+    disabled: false
+    fieldName: icon_default
+    publicName: icon_default
+    enhancer:
+      id: ''
+  description:
+    disabled: false
+    fieldName: description
+    publicName: description
+    enhancer:
+      id: ''
+  behavior_plugins:
+    disabled: false
+    fieldName: behavior_plugins
+    publicName: behavior_plugins
+    enhancer:
+      id: ''
