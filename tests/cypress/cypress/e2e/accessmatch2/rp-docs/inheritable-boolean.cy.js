@@ -30,7 +30,8 @@ describe("RP docs — inheritable boolean (account/MFA) control", { retries: { r
   const drushOnAlias = (alias, php, opts = {}) =>
     cy.exec(
       `ddev drush php:eval '$p=\\Drupal::service("path_alias.manager")->getPathByAlias("${alias}");` +
-        `$n=\\Drupal::entityTypeManager()->getStorage("node")->load((int) substr($p, 6));${php}'`,
+        `$n=\\Drupal::entityTypeManager()->getStorage("node")->load((int) substr($p, 6));` +
+        `if (!$n) { echo "NO NODE for ${alias}"; exit(1); }${php}'`,
       { timeout: 120000, ...opts }
     );
 
@@ -124,6 +125,14 @@ describe("RP docs — inheritable boolean (account/MFA) control", { retries: { r
     // Still inheriting -> badge still present from the group's Yes.
     cy.visit(BETA_ALIAS);
     cy.contains("RP account needed");
+    // The badge alone cannot distinguish inherited-Yes from a wrongly
+    // materialized explicit Yes — assert the stored field is genuinely empty.
+    drushOnAlias(
+      BETA_ALIAS,
+      'echo $n->get("field_rp_account_required")->isEmpty() ? "EMPTY" : "MATERIALIZED";'
+    ).then((r) => {
+      expect(r.stdout).to.contain("EMPTY");
+    });
   });
 
   it("keeps the account-setup-url validation working through the select", () => {
@@ -163,7 +172,9 @@ describe("RP docs — inheritable boolean (account/MFA) control", { retries: { r
     cy.visit(`/node/${betaNid}/edit`);
     // Leave account on Inherit (currently Yes) and save.
     cy.get("#edit-submit").click();
-    // No validation error, and we land on the saved node (not back on the form).
+    // Positive proof the save LANDED (otherwise the negative checks below
+    // would also pass while validation silently blocked the save).
+    cy.contains("has been updated");
     cy.contains("is required when RP Account Required is checked").should("not.exist");
 
     // Regression: the save must NOT materialize the inherited URL onto the
