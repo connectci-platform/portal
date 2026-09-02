@@ -26,6 +26,18 @@ dependencies:
     - field.field.node.resource_group.field_rp_storage_text
     - field.field.node.resource_group.field_rp_support_links
     - node.type.resource_group
+    - field.field.node.resource_group.field_rp_access_ood_login_link
+    - field.field.node.resource_group.field_rp_datasets_link
+    - field.field.node.resource_group.field_rp_external_storage_link
+    - field.field.node.resource_group.field_rp_file_system_link
+    - field.field.node.resource_group.field_rp_file_transfer_link
+    - field.field.node.resource_group.field_rp_freq_used_software_link
+    - field.field.node.resource_group.field_rp_login_to_anvil_gpu_link
+    - field.field.node.resource_group.field_rp_queue_spec_link
+    - field.field.node.resource_group.field_rp_software_link
+    - field.field.node.resource_group.field_rp_ssh_login_link
+    - field.field.node.resource_group.field_rp_storage_link
+    - field.field.node.resource_group.field_rp_submitting_jobs
   module:
     - content_moderation
     - field_group
@@ -314,6 +326,102 @@ content:
     weight: 50
     region: content
     settings: {  }
+    third_party_settings: {  }
+  field_rp_access_ood_login_link:
+    type: link_default
+    weight: 300
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_datasets_link:
+    type: link_default
+    weight: 301
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_external_storage_link:
+    type: link_default
+    weight: 302
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_file_system_link:
+    type: link_default
+    weight: 303
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_file_transfer_link:
+    type: link_default
+    weight: 304
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_freq_used_software_link:
+    type: link_default
+    weight: 305
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_login_to_anvil_gpu_link:
+    type: link_default
+    weight: 306
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_queue_spec_link:
+    type: link_default
+    weight: 307
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_software_link:
+    type: link_default
+    weight: 308
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_ssh_login_link:
+    type: link_default
+    weight: 309
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_storage_link:
+    type: link_default
+    weight: 310
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_submitting_jobs:
+    type: link_default
+    weight: 311
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
     third_party_settings: {  }
 hidden:
   created: true
