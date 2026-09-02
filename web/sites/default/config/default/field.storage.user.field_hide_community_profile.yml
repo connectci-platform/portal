@@ -1,0 +1,18 @@
+uuid: b00704cd-9570-4f6a-a317-2bab8f664a06
+langcode: en
+status: true
+dependencies:
+  module:
+    - user
+id: user.field_hide_community_profile
+field_name: field_hide_community_profile
+entity_type: user
+type: boolean
+settings: {  }
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

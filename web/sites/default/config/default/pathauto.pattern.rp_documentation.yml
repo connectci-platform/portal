@@ -7,7 +7,7 @@ dependencies:
 id: rp_documentation
 label: 'RP Documentation'
 type: 'canonical_entities:node'
-pattern: 'documentation/resources/[node:field_cider_short_name]'
+pattern: '/documentation/resources/[node:field_cider_short_name]'
 selection_criteria:
   ce05bee9-03da-4496-8e8a-99bba868fa6a:
     id: 'entity_bundle:node'

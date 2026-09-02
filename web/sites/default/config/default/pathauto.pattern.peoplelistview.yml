@@ -7,7 +7,7 @@ dependencies:
 id: peoplelistview
 label: PeopleListView
 type: 'canonical_entities:node'
-pattern: 'people/list/[node:field_region]'
+pattern: '/people/list/[node:field_region]'
 selection_criteria:
   9df21d1f-e5a1-477d-86cf-00d3a925ffae:
     id: 'entity_bundle:node'

@@ -60,7 +60,7 @@ class GhCommands extends Tasks {
     }
 
     // Download the artifact to explicit directory to work around gh CLI path traversal check
-    $result = $this->_exec("gh run download -R github.com/necyberteam/cyberteam_drupal -n amp-daily-backup -D $downloadDir");
+    $result = $this->_exec("gh run download -R github.com/connectci-platform/portal -n amp-daily-backup -D $downloadDir");
 
     // Ensure backups directory exists
     if (!file_exists('backups')) {
@@ -117,7 +117,9 @@ class GhCommands extends Tasks {
     $this->say("Downloading latest file backup from GitHub artifacts...");
 
     // List available workflows/runs to debug
-    $this->_exec("gh run list -R github.com/necyberteam/cyberteam_drupal -L 5");
+    $this->_exec("gh run list -R github.com/connectci-platform/portal -L 5");
+
+    $date = date('ymd-H.i');
 
     // Create a temporary directory for download to avoid path traversal issues
     // (GitHub CLI v2.63.1+ has stricter path validation that can cause false positives)
@@ -127,7 +129,7 @@ class GhCommands extends Tasks {
     }
 
     // Download the artifact to explicit directory to work around gh CLI path traversal check
-    $result = $this->_exec("gh run download -R github.com/necyberteam/cyberteam_drupal -n amp-file-backup -D $downloadDir");
+    $result = $this->_exec("gh run download -R github.com/connectci-platform/portal -n amp-file-backup -D $downloadDir");
 
     // Check what files were downloaded
     $this->say("Checking downloaded files...");
@@ -146,7 +148,14 @@ class GhCommands extends Tasks {
     // Remove existing files directory if it exists
     $prev_files = 'web/sites/default/files';
     if (file_exists($prev_files)) {
-      $this->_exec("rm -fR $prev_files");
+      $result = $this->_exec("mv $prev_files /tmp/files-$date 2>/dev/null || sudo mv $prev_files /tmp/files-$date");
+      if ($result->getExitCode() !== 0) {
+        $this->_exec("sudo rm -rf $prev_files");
+        $this->say("Old files removed (mv to /tmp failed).");
+      }
+      else {
+        $this->say("Old files moved to /tmp/files-$date");
+      }
     }
 
     // Extract and move files

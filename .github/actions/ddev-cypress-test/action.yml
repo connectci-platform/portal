@@ -1,6 +1,6 @@
 name: 'DDEV Cypress Test'
 description: 'Run Cypress tests using DDEV'
-author: 'necyberteam'
+author: 'connectci-platform'
 
 inputs:
   site:
@@ -186,9 +186,9 @@ runs:
       shell: bash
       if: ${{ hashFiles('tests/cypress/cypress-a11y-reports/*.html') != '' && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
       run: |
-        # Use github_token to clone git@github.com:necyberteam/cypress-a11y.git to /tmp/cypress-a11y
+        # Use github_token to clone git@github.com:connectci-platform/cypress-a11y.git to /tmp/cypress-a11y
         echo "Cloning cypress-a11y repo..."
-        git clone https://x-access-token:${{ inputs.github_token }}@github.com/necyberteam/cypress-a11y.git /tmp/cypress-a11y
+        git clone https://x-access-token:${{ inputs.github_token }}@github.com/connectci-platform/cypress-a11y.git /tmp/cypress-a11y
         mkdir -p /tmp/cypress-a11y/reports/$DATE/$CURRENT_BRANCH/$SUBDIR/${{ github.run_id }}
         cp -r tests/cypress/cypress-a11y-reports/* /tmp/cypress-a11y/reports/$DATE/$CURRENT_BRANCH/$SUBDIR/${{ github.run_id }}/
         cd /tmp/cypress-a11y
@@ -206,7 +206,7 @@ runs:
       shell: bash
       if: ${{ hashFiles('tests/cypress/cypress-a11y-reports/*.html') != '' && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
       run: |
-        echo "A11y Report $SUBDIR: https://necyberteam.github.io/cypress-a11y/reports/${{ env.DATE }}/${{ env.CURRENT_BRANCH }}/$SUBDIR/${{ github.run_id }}/summary.html" >> $GITHUB_STEP_SUMMARY
+        echo "A11y Report $SUBDIR: https://connectci-platform.github.io/cypress-a11y/reports/${{ env.DATE }}/${{ env.CURRENT_BRANCH }}/$SUBDIR/${{ github.run_id }}/summary.html" >> $GITHUB_STEP_SUMMARY
       env:
         SUBDIR: ${{ inputs.subdirectory }}
 
@@ -303,7 +303,7 @@ runs:
       uses: rtCamp/action-slack-notify@v2
       env:
         SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
-        SLACK_MESSAGE: '❗️❗️ Cypress A11y reports are here: https://necyberteam.github.io/cypress-a11y/reports/${{ env.DATE }}/${{ env.CURRENT_BRANCH }}/${{ env.SUBDIR }}/${{ github.run_id }}/summary.html The action ran is here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} ❗️❗️'
+        SLACK_MESSAGE: '❗️❗️ Cypress A11y reports are here: https://connectci-platform.github.io/cypress-a11y/reports/${{ env.DATE }}/${{ env.CURRENT_BRANCH }}/${{ env.SUBDIR }}/${{ github.run_id }}/summary.html The action ran is here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} ❗️❗️'
         SLACK_TITLE: "Cypress A11y Reports Available"
         SLACK_CHANNEL: cypress-git-notifications
 

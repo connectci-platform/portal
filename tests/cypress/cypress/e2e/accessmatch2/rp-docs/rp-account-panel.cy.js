@@ -55,10 +55,61 @@ describe("RP account panel", () => {
     cy.loginAs("walnut@pie.org", "Walnut");
     cy.visit(RP_PATH);
 
-    // Whether the SSR rendered a skeleton or the existing CTA, after JS runs
-    // the visible state should be the CTA (heading with "GET AN ACCOUNT").
-    // The wait is generous because JS has to fire and rewrite the DOM.
-    cy.contains("GET AN ACCOUNT ON", { timeout: 5000 }).should("be.visible");
+    // Wait for the account-status fetch to resolve, then assert the JS rewrote
+    // the panel to the CTA. Login + SSR + async render can take >15s locally,
+    // so wait on the request and give the DOM assertion a generous timeout.
+    cy.wait("@rpAccount");
+    cy.contains("GET AN ACCOUNT ON", { timeout: 20000 }).should("be.visible");
+  });
+
+  it("renders the account_setup link (not the generic allocations CTA) when the API returns one", () => {
+    cy.intercept("GET", "/api/1.0/rp-account/*", {
+      statusCode: 200,
+      body: {
+        rp_nid: 1,
+        rp_display_name: "Test Resource Alpha",
+        state: "no_rows_fresh",
+        has_account: false,
+        stale: false,
+        synced_at: 1746737000,
+        manage_url: "https://allocations.access-ci.org/",
+        account_setup: {
+          uri: "https://docs.example.edu/alpha/accounts",
+          title: "Alpha account setup",
+        },
+      },
+    }).as("rpAccount");
+
+    cy.loginAs("walnut@pie.org", "Walnut");
+    cy.visit(RP_PATH);
+
+    // Wait for the account-status fetch to resolve before asserting on the DOM
+    // the JS rewrites from its response; login + SSR + async render can take
+    // >15s locally, so also give the assertions a generous timeout.
+    cy.wait("@rpAccount");
+
+    // The no-account panel should surface the resource-specific setup link,
+    // using its title and href, rather than the generic allocations link.
+    cy.contains("GET AN ACCOUNT ON", { timeout: 20000 }).should("be.visible");
+    cy.contains("a", "Alpha account setup", { timeout: 20000 })
+      .should("be.visible")
+      .and("have.attr", "href", "https://docs.example.edu/alpha/accounts");
+  });
+
+  it("shows a neutral unavailable message after retries when the account fetch keeps failing", () => {
+    // Always fail the fetch; the JS retries a bounded number of times and then
+    // replaces the "Loading…" skeleton with a neutral message instead of
+    // spinning forever.
+    cy.intercept("GET", "/api/1.0/rp-account/*", { statusCode: 500, body: {} }).as("rpAccount");
+
+    cy.loginAs("walnut@pie.org", "Walnut");
+    cy.visit(RP_PATH);
+
+    // Wait for the first failing fetch, then allow for the retry backoff
+    // (~3s) plus login + SSR + render before the neutral message appears.
+    cy.wait("@rpAccount");
+    cy.contains("temporarily unavailable", { timeout: 25000 }).should("be.visible");
+    cy.contains("Loading account info").should("not.exist");
   });
 
   it("substitutes rp_username in the SSH placeholder", () => {

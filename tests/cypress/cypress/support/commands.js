@@ -35,23 +35,27 @@ Cypress.Commands.add("verifyImage", { prevSubject: true }, ($img) => {
     return cy.wrap($img);
   }
 
-  // Regular image URL - retry once on failure
-  return cy.request(url).then(
-    (response) => {
-      expect(response.status).to.eq(200);
-      expect(response.body.length).to.be.greaterThan(0);
-      return cy.wrap($img);
-    },
-    (error) => {
-      // Retry once on network/server errors
-      cy.task("log", `Image request failed, retrying: ${url}`);
-      return cy.request(url).then((response) => {
-        expect(response.status).to.eq(200);
-        expect(response.body.length).to.be.greaterThan(0);
+  // Regular image URL. The first hit to an image-style derivative triggers
+  // on-the-fly generation, which can briefly return 503 under CI load before
+  // the derivative is ready. Poll with backoff (not failing on non-2xx) until
+  // it builds, rather than a single immediate retry that races the generation.
+  const attempts = 4;
+  const verifyImageUrl = (remaining, delay) => {
+    return cy.request({ url, failOnStatusCode: false }).then((response) => {
+      if (response.status === 200 && response.body.length > 0) {
         return cy.wrap($img);
-      });
-    }
-  );
+      }
+      if (remaining <= 1) {
+        // Out of retries — assert so the failure message is meaningful.
+        expect(response.status, `image ${url} status`).to.eq(200);
+        expect(response.body.length, `image ${url} body length`).to.be.greaterThan(0);
+        return cy.wrap($img);
+      }
+      cy.task("log", `Image not ready (status ${response.status}), retrying: ${url}`);
+      return cy.wait(delay).then(() => verifyImageUrl(remaining - 1, delay * 2));
+    });
+  };
+  return verifyImageUrl(attempts, 500);
 });
 
 /**
@@ -92,15 +96,55 @@ Cypress.Commands.add("checkBreadcrumbs", (crumbs) => {
  * Logs out the user.
  */
 Cypress.Commands.add('drupalLogout', () => {
-  cy.visit('/user/logout');
+  cy.visit('/user/logout', { failOnStatusCode: false });
 
-  // Deal with logout confirmation form.
+  // Deal with logout confirmation form (Drupal 10 requires confirmation).
   cy.get('body').then(($body) => {
     if ($body.find('#user-logout-confirm #edit-submit').length) {
-      cy.get('#user-logout-confirm #edit-submit').click()
+      cy.get('#user-logout-confirm #edit-submit').click();
     }
-  })
+  });
+
+  // Guarantee the session is gone even if the confirmation flow raced or the
+  // page was already anonymous. Dropping the session cookie makes the browser
+  // anonymous so the login form is rendered on the next visit, instead of the
+  // current user's profile page.
+  cy.clearCookies();
 });
+
+/**
+ * Logs out, visits a login route, and submits the login form.
+ *
+ * Self-heals against a stale session: if a leftover session redirects the
+ * login route to the user profile page (where #edit-name is absent), it clears
+ * cookies and reloads so the anonymous login form renders before typing.
+ *
+ * @param {string} loginPath
+ *   The path of the login form to visit.
+ * @param {string} username
+ *   The username with which to log in.
+ * @param {string} password
+ *   The password for the user's account.
+ */
+const submitLoginForm = (loginPath, username, password) => {
+  cy.drupalLogout();
+  cy.visit(loginPath);
+
+  // If a stale session redirected us away from the login form, force the
+  // anonymous state and reload before interacting with the form.
+  cy.get('body').then(($body) => {
+    if (!$body.find('#edit-name').length) {
+      cy.clearCookies();
+      cy.visit(loginPath);
+    }
+  });
+
+  cy.get('#edit-name').should('be.visible').type(username);
+  cy.get('#edit-pass').type(password, {
+    log: false,
+  });
+  cy.get('.form-submit').contains('Log in').click();
+};
 
 /**
  * Basic user login command. Requires valid username and password.
@@ -111,13 +155,7 @@ Cypress.Commands.add('drupalLogout', () => {
  *   The password for the user's account.
  */
 Cypress.Commands.add("loginAs", (username, password) => {
-  cy.drupalLogout();
-  cy.visit("/f64816be-34ca-4d5b-975a-687cb374ddf7");
-  cy.get("#edit-name").type(username);
-  cy.get("#edit-pass").type(password, {
-    log: false,
-  });
-  cy.get(".form-submit").contains("Log in").click();
+  submitLoginForm("/f64816be-34ca-4d5b-975a-687cb374ddf7", username, password);
 });
 
 /**
@@ -129,13 +167,7 @@ Cypress.Commands.add("loginAs", (username, password) => {
  *   The password for the user's account.
  */
 Cypress.Commands.add("loginUser", (username, password) => {
-  cy.drupalLogout();
-  cy.visit("/user");
-  cy.get("#edit-name").type(username);
-  cy.get("#edit-pass").type(password, {
-    log: false,
-  });
-  cy.get(".form-submit").contains("Log in").click();
+  submitLoginForm("/user", username, password);
 });
 
 /**
@@ -149,24 +181,7 @@ Cypress.Commands.add("loginUser", (username, password) => {
  *   The password for the user's account.
  */
 Cypress.Commands.add("loginWith", (username, password) => {
-  cy.drupalLogout();
-  cy.visit("/user/login");
-  cy.get("#edit-name").type(username);
-  cy.get("#edit-pass").type(password, {
-    log: false,
-  });
-  cy.get(".form-submit").contains("Log in").click();
-});
-
-/**
- * Logs a user in by their uid via drush uli.
- */
-Cypress.Commands.add("loginUserByUid", (uid) => {
-  cy.drush("user-login", [], { uid, uri: Cypress.env("baseUrl") })
-    .its("stdout")
-    .then(function (url) {
-      cy.visit(url);
-    });
+  submitLoginForm("/user/login", username, password);
 });
 
 /**

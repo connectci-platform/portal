@@ -31,12 +31,12 @@ jobs:
           sudo apt-get update && sudo apt-get install -y ddev
           ddev config global --instrumentation-opt-in=false
           mkcert -install
-          ddev config --project-type=drupal10 --docroot=web --database=mysql:8.0 --php-version=8.2
+          ddev config --project-type=drupal10 --docroot=web --database=mysql:8.0 --php-version=8.3
           ddev start
 
       - name: Import live DB and export config (no deploy/cim)
         run: |
-          git remote set-url origin https://$username:$gh_token@github.com/necyberteam/cyberteam_drupal.git
+          git remote set-url origin https://$username:$gh_token@github.com/connectci-platform/portal.git
           git config --global user.email "$email"
           git config --global user.name "$username"
           git fetch
@@ -113,7 +113,7 @@ jobs:
         env:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           username: ${{ github.actor }}
-          email: github.actions@necyberteam.org
+          email: 41898282+github-actions[bot]@users.noreply.github.com
           gh_user: ${{ secrets.GH_USER }}
 
       - name: Create Pull Request

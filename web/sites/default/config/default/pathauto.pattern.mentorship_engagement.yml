@@ -7,7 +7,7 @@ dependencies:
 id: mentorship_engagement
 label: 'Mentorship Engagement'
 type: 'canonical_entities:node'
-pattern: 'mentorships/[node:title]'
+pattern: '/mentorships/[node:title]'
 selection_criteria:
   0f919e39-7728-4c83-9953-fc4db32055d5:
     id: 'entity_bundle:node'

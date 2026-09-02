@@ -1398,10 +1398,10 @@ display:
       path: api/1.0/events
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -1535,10 +1535,10 @@ display:
       path: api/1.0.0/events/affilliation
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -2787,10 +2787,10 @@ display:
       path: api/1.1/events
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -3957,10 +3957,10 @@ display:
       path: api/1.0/events/ag
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -5214,10 +5214,10 @@ display:
       path: api/1.1/events/affilliation
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -6447,10 +6447,10 @@ display:
       path: api/1.1/events/ag
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -7707,10 +7707,10 @@ display:
       path: api/1.0/events/affilliation
       filename: ''
       automatic_download: false
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:

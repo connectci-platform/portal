@@ -6,11 +6,8 @@ dependencies:
     - field.field.paragraph.rp_ssh_login.field_rp_recommended
     - field.field.paragraph.rp_ssh_login.field_rp_ssh_docs_url
     - field.field.paragraph.rp_ssh_login.field_rp_ssh_hostname
-    - field.field.paragraph.rp_ssh_login.field_rp_ssh_url
     - field.field.paragraph.rp_ssh_login.field_rp_ssh_user_placeholder
     - paragraphs.paragraphs_type.rp_ssh_login
-  module:
-    - link
 id: paragraph.rp_ssh_login.default
 targetEntityType: paragraph
 bundle: rp_ssh_login
@@ -25,18 +22,6 @@ content:
       format_custom_true: ''
     third_party_settings: {  }
     weight: 1
-    region: content
-  field_rp_ssh_url:
-    type: link
-    label: above
-    settings:
-      trim_length: 80
-      url_only: false
-      url_plain: false
-      rel: ''
-      target: ''
-    third_party_settings: {  }
-    weight: 0
     region: content
 hidden:
   field_rp_ssh_docs_url: true

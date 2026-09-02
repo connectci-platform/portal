@@ -59,7 +59,9 @@ describe("Verify a tag's page list of engagements", () => {
       // Send for Review
       cy.get('#edit-moderation-state-0-state').select('Submitted');
       cy.get('#edit-submit').click();
-      cy.contains('Thank you for sending your project for review.');
+      // The node save redirects and re-renders; under CI load this can exceed
+      // the default 4s, so give the confirmation message room before asserting.
+      cy.contains('Thank you for sending your project for review.', { timeout: 20000 });
 
       // update to In Progress
       cy.get('.tabs')
@@ -67,7 +69,7 @@ describe("Verify a tag's page list of engagements", () => {
         .click();
       cy.get('#edit-moderation-state-0-state').select('In Progress');
       cy.get('#edit-submit').click();
-      cy.contains('has been updated.');
+      cy.contains('has been updated.', { timeout: 20000 });
     }
 
   });

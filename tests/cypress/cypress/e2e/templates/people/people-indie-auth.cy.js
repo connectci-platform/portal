@@ -11,7 +11,7 @@ describe("Tested as an authenticated user the Individual Profile Page showcases"
 
     cy.contains('Julie').click();
     cy.contains('Julie Ma');
-    cy.contains('MGHPCC');
+    cy.contains('Massachusetts Green High Performance Computing Center');
     cy.contains('Skills');
     cy.contains('Affinity Groups');
     cy.contains('Contact');

@@ -79,14 +79,21 @@ describe("Authenticated user creates a Mentorship Engagement", () => {
     cy.loginWith("pecan@pie.org", "Pecan")
     cy.visit("/mentorships");
 
-    // check 'In Progress' filter (requires authentication).
-    cy.get('#state-829').should('exist').check();
+    // check 'In Progress' filter (requires authentication). Each toggle fires a
+    // Facets AJAX re-render that rebuilds the checkbox list, so wait for it to
+    // settle (and use force) before touching the next facet — otherwise the
+    // next checkbox can detach mid-action. Matches the affinity-groups facet
+    // specs' established cy.wait pattern.
+    cy.get('#state-829').should('exist').check({ force: true });
+    cy.wait(1000);
     cy.contains('In Progress Title');
     cy.contains('Recruiting Title').should('not.exist');
 
     // uncheck 'In Progress' filter and check 'Recruiting' filter.
-    cy.get('#state-829').uncheck();
-    cy.get('#state-827').should('exist').check();
+    cy.get('#state-829').uncheck({ force: true });
+    cy.wait(1000);
+    cy.get('#state-827').should('exist').check({ force: true });
+    cy.wait(1000);
     cy.contains('Recruiting Title');
     cy.contains('In Progress Title').should('not.exist');
   });

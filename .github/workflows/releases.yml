@@ -53,7 +53,7 @@ jobs:
           set_version: ${{ github.event.inputs.version }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           gh_user: ${{ secrets.GH_USER }}
-          gh_repo: necyberteam/cyberteam_drupal
+          gh_repo: connectci-platform/portal
 
       - uses: ./.github/actions/dingorunner
         env:

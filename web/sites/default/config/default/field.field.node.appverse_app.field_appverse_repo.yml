@@ -1,0 +1,29 @@
+uuid: 828555e8-c824-4c8c-96dc-38f7f30982f0
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_repo
+    - node.type.appverse_app
+    - node.type.appverse_repo
+id: node.appverse_app.field_appverse_repo
+field_name: field_appverse_repo
+entity_type: node
+bundle: appverse_app
+label: Repo
+description: 'The Repo this app belongs to. Set automatically by sync.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:node'
+  handler_settings:
+    target_bundles:
+      appverse_repo: appverse_repo
+    sort:
+      field: _none
+      direction: ASC
+    auto_create: false
+    auto_create_bundle: ''
+field_type: entity_reference

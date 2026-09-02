@@ -27,6 +27,12 @@ resourceFields:
     publicName: field_ood_community_spotlight
     enhancer:
       id: ''
+  field_cider_resources:
+    disabled: true
+    fieldName: field_cider_resources
+    publicName: field_cider_resources
+    enhancer:
+      id: ''
   field_github_graph:
     disabled: true
     fieldName: field_github_graph
@@ -61,5 +67,11 @@ resourceFields:
     disabled: true
     fieldName: field_xdusage_person_synced
     publicName: field_xdusage_person_synced
+    enhancer:
+      id: ''
+  field_hide_community_profile:
+    disabled: true
+    fieldName: field_hide_community_profile
+    publicName: field_hide_community_profile
     enhancer:
       id: ''

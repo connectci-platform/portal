@@ -7,7 +7,7 @@ dependencies:
 id: community_events
 label: 'Community Events'
 type: 'canonical_entities:node'
-pattern: 'event/[node:menu-link:parents:join-path]/[node:title]-[node:field_start_date:date:custom:Y]'
+pattern: '/event/[node:menu-link:parents:join-path]/[node:title]-[node:field_start_date:date:custom:Y]'
 selection_criteria:
   fb1d814e-6c38-435c-8b5a-dc50fccdff60:
     id: 'entity_bundle:node'

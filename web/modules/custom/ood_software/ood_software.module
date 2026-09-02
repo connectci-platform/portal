@@ -4,12 +4,16 @@
  * @file
  */
 
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
+use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
 use League\CommonMark\Environment\Environment;
@@ -18,8 +22,10 @@ use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
 
 /**
  * Implements hook_theme().
+ *
+ * @return array<string, mixed>
  */
-function ood_software_theme() {
+function ood_software_theme(): array {
   $people_grid = function ($block_class) {
     return [
       'variables' => [
@@ -39,13 +45,27 @@ function ood_software_theme() {
     'ag_coordinators_block' => $people_grid('ag-coordinators-block'),
     'good_conference_committee_block' => $people_grid('good-committee-block'),
     'tips_tricks_calls_block' => $people_grid('tips-tricks-block'),
+    'appverse_hub' => [
+      'variables' => ['hub' => []],
+      'template' => 'appverse-hub',
+    ],
+    // Module-registered suggestion for the my_appverse fields row. Modules do
+    // not get views-view-fields--<id> filename autodiscovery the way themes do,
+    // so the suggestion must be declared with its base hook to be picked up.
+    'views_view_fields__my_appverse' => [
+      'base hook' => 'views_view_fields',
+    ],
   ];
 }
 
 /**
  * Implements hook_entity_bundle_field_info().
+ *
+ * @param array<string, mixed> $base_field_definitions
+ *
+ * @return array<string, mixed>
  */
-function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type, $bundle, array $base_field_definitions) {
+function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type, string $bundle, array $base_field_definitions): array {
   $fields = [];
 
   if ($entity_type->id() === 'node' && $bundle === 'appverse_app') {
@@ -62,8 +82,65 @@ function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type,
 
 /**
  * Implements hook_form_alter().
+ *
+ * @param array<string, mixed> $form
  */
-function ood_software_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+function ood_software_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
+  // Exposed date filters render as plain textfields with no format hint.
+  // Upgrade their value/min/max inputs to HTML5 date pickers so the expected
+  // YYYY-MM-DD shape is obvious. Matches the 'date' filter plugin (timestamp
+  // fields are re-typed to it via ood_software_views_data_alter below).
+  if (str_starts_with($form_id, 'views_exposed_form')) {
+    $view = $form_state->getStorage()['view'] ?? NULL;
+    if ($view instanceof \Drupal\views\ViewExecutable) {
+      foreach ($view->filter as $filter) {
+        if (empty($filter->options['exposed'])
+          || $filter->getPluginId() !== 'date'
+          || empty($filter->options['expose']['identifier'])) {
+          continue;
+        }
+        $key = $filter->options['expose']['identifier'];
+        // When the operator is exposed, Views wraps value/min/max in a
+        // fieldset keyed "{identifier}_wrapper"; otherwise the inputs sit
+        // directly under the identifier. Resolve whichever container holds
+        // the leaf inputs.
+        $container = &$form;
+        if (isset($form[$key . '_wrapper'][$key])) {
+          $container = &$form[$key . '_wrapper'];
+        }
+        if (!isset($container[$key])) {
+          continue;
+        }
+        foreach (['value', 'min', 'max'] as $sub) {
+          if (isset($container[$key][$sub]['#type']) && $container[$key][$sub]['#type'] === 'textfield') {
+            $container[$key][$sub]['#type'] = 'date';
+          }
+        }
+        if (isset($container[$key]['#type']) && $container[$key]['#type'] === 'textfield') {
+          $container[$key]['#type'] = 'date';
+        }
+
+        // Relabel the operator options to plain date language. Core's date
+        // filter uses "Is less than" / "Is greater than" which read oddly
+        // against a date; before/after/on are clearer.
+        $op_key = $filter->options['expose']['operator_id'] ?? NULL;
+        if ($op_key && isset($container[$op_key]['#options'])) {
+          $relabel = ['<' => t('Before'), '>' => t('After'), '=' => t('On')];
+          foreach ($relabel as $op => $text) {
+            if (isset($container[$op_key]['#options'][$op])) {
+              $container[$op_key]['#options'][$op] = $text;
+            }
+          }
+        }
+
+        // Add a class so CSS can lay the operator + date input on one line.
+        $container['#attributes']['class'][] = 'appverse-date-filter';
+
+        unset($container);
+      }
+    }
+  }
+
   // Alter the node edit form for 'add software' content type.
   if ($form_id === 'node_appverse_software_edit_form' || $form_id === 'node_appverse_software_form') {
     $form['title']['widget'][0]['value']['#placeholder'] = t('Add title');
@@ -118,7 +195,7 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, $
     $add_tags = \Drupal::service('access_misc.addtags');
     $output = $add_tags->getView();
     $tag_label = t('Tags');
-    $tag_description = t('Select up to 6 tags that relate to your engagement. Tags will help us find people with related expertise.');
+    $tag_description = t('Select up to 6 tags that relate to this software. Tags will help us find people with related expertise.');
     $tag_summary = t('Select Tags');
 
     $form['node_add_tags'] = [
@@ -140,22 +217,75 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, $
     // Attach javascript.
     $form['#attached']['library'][] = 'access_misc/node_add_tags';
   }
-  // Alter the node edit form for 'add app' content type.
-  if ($form_id === 'node_appverse_app_edit_form' || $form_id === 'node_appverse_app_form') {
+  // Hide the right-sidebar "Revision information" section on appverse_app
+  // + appverse_repo node forms. Content for these bundles is
+  // sync'd from appverse.yml / manifest.yml; revisions get created
+  // automatically by content_moderation, and the request_adjustment
+  // flow's comment is stored on those auto-generated revisions —
+  // contributors never write revision log messages directly. On the
+  // add form especially, the section is the only thing visible in
+  // the sidebar and looks like noise.
+  // node_appverse_app_form is gone — AddRepoForm at /appverse/add-repo
+  // replaces the legacy node-add path, and the
+  // LegacyAppAddRedirectSubscriber 301s anyone who hits the old URL.
+  $appverseAddForms = [
+    'node_appverse_app_edit_form',
+    'node_appverse_repo_form',
+    'node_appverse_repo_edit_form',
+  ];
+  if (in_array($form_id, $appverseAddForms, TRUE)) {
+    if (isset($form['revision_information'])) {
+      $form['revision_information']['#access'] = FALSE;
+    }
+    // Hide the standalone revision_log textarea too — same rationale.
+    if (isset($form['revision_log'])) {
+      $form['revision_log']['#access'] = FALSE;
+    }
+    // Hide the new-revision checkbox.
+    if (isset($form['revision'])) {
+      $form['revision']['#access'] = FALSE;
+    }
+  }
+
+  // Edit-form-only alter. The node-add path is gone — AddRepoForm at
+  // /appverse/add-repo replaces it, and LegacyAppAddRedirectSubscriber 301s
+  // anyone who hits /node/add/appverse_app. The edit-form alter survives
+  // unchanged in spirit: library attach, field-access locks for non-admins,
+  // intro/footer markup, the read-only field_appverse_repo backref, and
+  // formnovalidate on Save.
+  if ($form_id === 'node_appverse_app_edit_form') {
+    // Attach the CSS library used by the field tweaks below.
+    $form['#attached']['library'][] = 'ood_software/appverse_app_form';
+
     // Get user roles.
     $user = \Drupal::currentUser();
     $roles = $user->getRoles();
 
-    // Hide fields controlled by repo.
+    // Hide fields controlled by sync (body, README, last-updated). Sync
+    // overwrites these on every refresh; only admins should edit them
+    // directly.
     if (!in_array('administrator', $roles)) {
       $form['body']['#access'] = FALSE;
       $form['field_appverse_readme']['#access'] = FALSE;
       $form['field_appverse_lastupdated']['#access'] = FALSE;
     }
+    else {
+      // Render the lastupdated unix int as a readable date for admins.
+      // The field is sync-managed, so an editable int widget isn't useful.
+      $form_object = $form_state->getFormObject();
+      $node = $form_object instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_object->getEntity() : NULL;
+      if ($node instanceof NodeInterface) {
+        $ts = (int) $node->get('field_appverse_lastupdated')->value;
+        if ($ts > 0) {
+          $form['field_appverse_lastupdated']['widget'][0]['value']['#field_suffix'] =
+            ' (' . \Drupal::service('date.formatter')->format($ts, 'medium') . ')';
+        }
+      }
+    }
 
     $form['intro_text'] = [
       '#type' => 'markup',
-      '#markup' => '<div class="mb-4">' . t('See the <strong><a href=":url">contributor documentation</a></strong> for best practices in app integration.', [':url' => '/appverse-contributor-documentation ']) . '</div>',
+      '#markup' => '<div class="mb-4">' . t('See the <strong><a href=":url">contributor documentation</a></strong> for best practices in app integration.', [':url' => '/appverse-contributor-documentation']) . '</div>',
       '#weight' => -10,
     ];
 
@@ -163,37 +293,33 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, $
     $form['field_appverse_github_url']['widget'][0]['uri']['#placeholder'] = t('Add the URL of your repo');
     unset($form['field_appverse_github_url']['widget'][0]['uri']['#description']);
 
-    // Add prefix/suffix to make the fieldset ajax-replaceable.
-    $form['group_github']['#prefix'] = '<div id="edit-group-github">';
-    $form['group_github']['#suffix'] = '</div>';
+    // Lock field_appverse_repo as a read-only autocomplete. The Repo
+    // is set automatically by RepoSyncService when the app is saved with
+    // a GitHub URL; manually editing it would be overwritten on the next sync.
+    if (isset($form['field_appverse_repo'])) {
+      $form['field_appverse_repo']['#disabled'] = TRUE;
+      $form['field_appverse_repo']['widget']['#disabled'] = TRUE;
+      if (isset($form['field_appverse_repo']['widget'][0])) {
+        $form['field_appverse_repo']['widget'][0]['#disabled'] = TRUE;
+      }
+      if (!isset($form['field_appverse_repo']['widget']['#description'])) {
+        $form['field_appverse_repo']['widget']['#description'] = t('Set automatically by sync based on the GitHub repo URL. To change the repo, change the repo URL.');
+      }
+    }
 
-    // Place the button right after the github url field.
-    $lookup_button_weight = $form['field_appverse_github_url']['#weight'] + 1;
-
-    $form['group_github']['lookup_button'] = [
-      '#type' => 'button',
-      '#value' => t('Fetch Repo'),
-      '#limit_validation_errors' => array(),
-      '#weight' => $lookup_button_weight,
-      '#attributes' => [
-        'class' => [
-          'ml-0'
-        ],
-      ],
-      '#ajax' => [
-        'callback' => 'ood_software_fetch_github_data',
-        'wrapper' => 'edit-group-github',
-      ],
-    ];
+    // Disable browser HTML5 validation on the Save button. Keeps parity with
+    // the legacy alter — Drupal #states[required] doesn't toggle the inner-
+    // input required attribute (see [[feedback-drupal-states-quirk]]), and
+    // server-side validation still runs.
+    if (isset($form['actions']['submit'])) {
+      $form['actions']['submit']['#attributes']['formnovalidate'] = 'formnovalidate';
+    }
 
     $form['footer_text'] = [
       '#type' => 'markup',
       '#markup' => '<div class="">' . t('<strong>Thank you for making this available to the community!</strong>') . '</div>',
       '#weight' => 10,
     ];
-
-    array_unshift($form['actions']['submit']['#submit'], 'ood_software__edit_submit');
-    $form['actions']['submit']['#submit'][] = 'ood_software__redirect_submit';
   }
 
   // Hide description for link.
@@ -201,9 +327,10 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, $
 
   if ($form_id === 'node_appverse_app_edit_form') {
     // Disable the 'field_appverse_github_url' field if the node is published.
-    $node = $form_state->getFormObject()->getEntity();
+    $form_object = $form_state->getFormObject();
+    $node = $form_object instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_object->getEntity() : NULL;
     $user_roles = \Drupal::currentUser()->getRoles();
-    if ($node->isPublished() && (!in_array('administrator', $user_roles) && !in_array('appverse_pm', $user_roles))) {
+    if ($node instanceof NodeInterface && $node->isPublished() && (!in_array('administrator', $user_roles) && !in_array('appverse_pm', $user_roles))) {
       $form['field_appverse_github_url']['#disabled'] = TRUE;
       $form['field_appverse_github_url']['widget'][0]['uri']['#attributes']['class'][] = 'form-control';
       $form['field_appverse_organization']['#disabled'] = TRUE;
@@ -213,93 +340,425 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, $
   }
 
 }
-
 /**
- * Ajax call to pull in Github data.
+ * Build the preview block for a declared repo.
+ *
+ * Per-App form fields (Title/Body/AppType/etc.) are hidden client-side
+ * via Drupal #states wired in form_alter (watching the
+ * appverse_shape_state hidden field). The sync sources those fields
+ * from each subpath's manifest.yml at submit time.
+ *
+ * Returns a Drupal render array — structure carried by #type containers
+ * with class hooks, content carried by #markup with escaping applied at
+ * the call site. All visual styling lives in css/appverse-app-form.css.
+ * No inline style="" anywhere (Drupal's filter system strips style= from
+ * #markup, which broke the previous HTML-as-string implementation).
+ *
+ * The pass-by-reference $form parameter is retained for symmetry with
+ * _ood_software_build_single_app_preview, which still mutates $form to
+ * pre-populate per-field values.
+ *
+ * @param array<string, mixed> $form
+ *
+ * @return array<string, mixed>
  */
-function ood_software_fetch_github_data(array &$form, FormStateInterface $form_state) {
-  $gh = \Drupal::service('ood_software.gh');
-  $validUrl = $gh->parseUrl($form_state->getValue('field_appverse_github_url')[0]['uri']);
-  $suffix = '<div class="gh-url-suffix bg-header-gray p-3 mb-3" style="margin-top:-1.9rem;">';
-  if ($validUrl) {
-    $data = $gh->getData();
-
-    $readme = $gh->getReadme();
-    $license_link = $gh->getLicenseLink();
-    $license = $gh->getLicense();
-    $manifest = $gh->getManifestData();
-    $organization = $gh->getOrganization();
-
-    if ($readme) {
-      $suffix .= '<i class="bi bi-check-lg text-success"></i> ' . t('README') . '<br/>';
-    } else {
-      $suffix .= '<i class="bi bi-exclamation-triangle-fill text-warning"></i> ' . t('No README detected.') . '<br/>';
-    }
-
-    if ($manifest) {
-      $suffix .= '<i class="bi bi-check-lg text-success"></i> ' . t('manifest.yml file') . '<br/>';
-    } else {
-      $suffix .= '<i class="bi bi-exclamation-triangle-fill text-warning"></i> ' . t('No manifest.yml detected.') . '<br/>';
-    }
-
-    if ($license) {
-      $suffix .= '<i class="bi bi-check-lg text-success"></i> ' . t('LICENSE') . '<br/>';
-    } else {
-      $suffix .= '<i class="bi bi-exclamation-triangle-fill text-warning"></i> ' . t('No license detected.') . '<br/>';
-    }
-
-    if ($manifest) {
-      $apptype = $gh->getAppType();
-      $suffix .= "<p class='pt-3'><strong>" . t("We've detected the following and pre-populated below:") . "</strong></p>";
-      $suffix .= "<p><strong>" . t('Organization:') . " </strong>$organization</p>";
-      if ($apptype) {
-        $suffix .= "<p><strong>" . t('App type:') . " </strong>$apptype</p>";
-      }
-    }
-
-    // Also update the form element to reflect the change.
-    $form['body']['widget'][0]['value']['#value'] = $gh->getDescription();
-    $form['field_appverse_readme']['widget'][0]['value']['#value'] = $readme;
-    $form['title']['widget'][0]['value']['#value'] = $gh->getRepoName();
-    $form['field_appverse_lastupdated']['widget'][0]['value']['#value'] = $gh->getLastComittedDate();
-    $form['field_appverse_organization']['widget'][0]['target_id']['#value'] = $organization;
-
-    if ($license_link) {
-      $form['field_appverse_license_link']['widget'][0]['uri']['#value'] = $license_link;
-    }
-
-    if ($license) {
-      $form['field_license']['widget'][0]['target_id']['#value'] = $license;
-    }
-
-    // Set the app type checkboxes as checked.
-    // After form processing, individual checkboxes exist as sub-elements of the
-    // widget keyed by term ID. Set #checked for the pre-render step and #value
-    // to match #return_value so the checkbox renders as checked in the AJAX response.
-    $apptype_ids = $gh->getAppTypeIds();
-    foreach ($apptype_ids as $apptype_id) {
-      if (isset($form['field_appverse_app_type']['widget'][$apptype_id])) {
-        $form['field_appverse_app_type']['widget'][$apptype_id]['#checked'] = TRUE;
-        $form['field_appverse_app_type']['widget'][$apptype_id]['#value'] = $apptype_id;
-      }
-    }
-
-  } else {
-    $suffix .= '<i class="bi bi-x-lg text-danger"></i> Invalid GitHub URL provided.';
+function _ood_software_build_declared_preview(\Drupal\ood_software\Plugin\GitHubService $gh, array &$form): array {
+  $records = $gh->getAppPreviewData();
+  $appCount = count($records);
+  // Repo-level appverse.yml data. Guard against parse failure —
+  // getAppPreviewData() already caught it and returned [], so by the
+  // time we get here we know the YAML parses cleanly. Wrap defensively
+  // anyway: a corrupted blob between getAppPreviewData and this helper
+  // (theoretically impossible in one request) shouldn't WSOD the AJAX.
+  try {
+    $appverse = Yaml::decode($gh->getAppverseYmlText());
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('ood_software')->warning('Repo preview: appverse.yml parse failed unexpectedly — @msg', ['@msg' => $e->getMessage()]);
+    $appverse = [];
+  }
+  if (!is_array($appverse)) {
+    $appverse = [];
   }
 
-  $suffix .= '</div>';
-  $form['field_appverse_github_url']['widget'][0]['uri']['#suffix'] = $suffix;
+  // repo-level metadata list. Each entry is a small HTML fragment
+  // with user-supplied values escaped at interpolation. We assemble the
+  // <ul> as a single #markup string because all items are internally
+  // built — no element of $rows comes from outside this function without
+  // having been escaped just above.
+  $rows = [];
+  if (!empty($appverse['maintainer']['name'])) {
+    $rows[] = '<strong>' . t('Maintainer:') . '</strong> ' . htmlspecialchars($appverse['maintainer']['name']);
+  }
+  if (!empty($appverse['maintainer']['support_url'])) {
+    $link = _ood_software_safe_link($appverse['maintainer']['support_url']);
+    if ($link !== '') {
+      $rows[] = '<strong>' . t('Support:') . '</strong> ' . $link;
+    }
+  }
+  if (!empty($appverse['website'])) {
+    $link = _ood_software_safe_link($appverse['website']);
+    if ($link !== '') {
+      $rows[] = '<strong>' . t('Website:') . '</strong> ' . $link;
+    }
+  }
+  if (!empty($appverse['docs'])) {
+    $link = _ood_software_safe_link($appverse['docs']);
+    if ($link !== '') {
+      $rows[] = '<strong>' . t('Docs:') . '</strong> ' . $link;
+    }
+  }
+  if (!empty($appverse['tags']) && is_array($appverse['tags'])) {
+    $rows[] = '<strong>' . t('Tags:') . '</strong> ' . htmlspecialchars(implode(', ', $appverse['tags']));
+  }
+  if (!empty($appverse['shared_paths']) && is_array($appverse['shared_paths'])) {
+    $rows[] = '<strong>' . t('Shared paths:') . '</strong> ' . htmlspecialchars(implode(', ', $appverse['shared_paths']));
+  }
+  $rows[] = '<strong>' . t('Organization:') . '</strong> ' . htmlspecialchars($gh->getOrganization() ?? '');
+  $rows[] = '<strong>' . t('Stars:') . '</strong> ' . (int) $gh->getStars();
+  $rows[] = '<strong>' . t('License:') . '</strong> ' . htmlspecialchars($gh->getLicense() ?? t('(none detected)'));
 
-  return $form['group_github'];
+  $repoMetaMarkup = '<h4>' . htmlspecialchars($appverse['title'] ?? '(no title)') . '</h4>';
+  if (!empty($appverse['description'])) {
+    $repoMetaMarkup .= '<p>' . htmlspecialchars($appverse['description']) . '</p>';
+  }
+  $repoMetaMarkup .= '<ul><li>' . implode('</li><li>', $rows) . '</li></ul>';
 
+  // Build the apps_stack children — one render array per app card.
+  $appsStack = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['appverse-apps-stack']],
+  ];
+  if ($appCount === 0) {
+    $appsStack['empty'] = [
+      '#markup' => '<p><em>' . t('No apps declared in appverse.yml. The repo will register with zero apps.') . '</em></p>',
+    ];
+  }
+  else {
+    // Summary line: count apps whose software: declaration didn't resolve
+    // to a real Software node. These will save as rejected until the
+    // Repo author fixes appverse.yml.
+    $unresolved = 0;
+    foreach ($records as $r) {
+      if (empty($r['software']['resolvedTitle'])) {
+        $unresolved++;
+      }
+    }
+    if ($unresolved > 0) {
+      $appsStack['unresolved_summary'] = [
+        '#markup' => '<p class="appverse-status-warn"><i class="bi bi-exclamation-triangle-fill"></i> '
+          . t('@n of @total apps reference Software not in the catalog. These apps will save as <strong>rejected</strong> until appverse.yml is fixed.', ['@n' => $unresolved, '@total' => count($records)])
+          . '</p>',
+      ];
+    }
+
+    foreach ($records as $idx => $r) {
+      $appsStack['card_' . $idx] = _ood_software_build_declared_app_card($r);
+    }
+  }
+
+  return [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['appverse-preview-frame']],
+    'header' => [
+      '#markup' => '<p><i class="bi bi-check-lg appverse-status-ok"></i> ' . t('Declared multi-app repo (appverse.yml at root)') . '</p>',
+    ],
+    'repo_meta' => [
+      '#markup' => $repoMetaMarkup,
+    ],
+    'apps_heading' => [
+      '#markup' => '<h5>' . t('Apps in this repo (@n)', ['@n' => $appCount]) . '</h5>',
+    ],
+    'apps_stack' => $appsStack,
+    'footer_note' => [
+      '#markup' => '<p class="text-muted"><em>' . t('Submitting registers the repo and creates @n app(s) via the sync. App metadata comes from your repo\'s <code>appverse.yml</code> files — edit them and re-sync to change app data. See the contributor documentation for details.', ['@n' => $appCount]) . '</em></p>',
+    ],
+  ];
+
+  // Visibility of per-App form fields is controlled by Drupal #states
+  // wired in form_alter; see appverse_shape_state hidden field.
 }
 
+/**
+ * Build a single card render array for one app inside a Repo preview.
+ *
+ * Helper for _ood_software_build_declared_preview(); pulled out for
+ * readability. Returns a render array structured as: header (subpath +
+ * name) → body grid (2x2 of label-above-value cells) → optional
+ * description footer. All styling is via class names from
+ * css/appverse-app-form.css — no inline style attributes.
+ *
+ * User-supplied values (subpath, name, declared-software string, tag
+ * names, description, role/subcategory) are htmlspecialchars-escaped at
+ * the point of interpolation into the #markup strings.
+ *
+ * @param array<string, mixed> $r
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_build_declared_app_card(array $r): array {
+  $description = $r['description'] ?? '';
+  $roleText = htmlspecialchars($r['role'] ?? '', ENT_QUOTES | ENT_HTML5);
+  if (!empty($r['subcategory'])) {
+    $roleText .= ' (' . htmlspecialchars($r['subcategory'], ENT_QUOTES | ENT_HTML5) . ')';
+  }
+
+  // Software-resolution status from getAppPreviewData()'s per-record
+  // 'software' info. Four branches: exact match (green check), fuzzy
+  // suggestion (yellow warning), declared but no match (red x),
+  // missing key (red x). Static icon HTML is safe to interpolate;
+  // user-supplied strings (declared, suggestion) go through
+  // htmlspecialchars.
+  $softwareInfo = $r['software'] ?? [];
+  if (!empty($softwareInfo['resolvedTitle'])) {
+    $softwareCell = '<span class="appverse-status-ok"><i class="bi bi-check-lg"></i> '
+      . htmlspecialchars($softwareInfo['resolvedTitle'], ENT_QUOTES | ENT_HTML5)
+      . '</span>';
+  }
+  elseif (!empty($softwareInfo['suggestion'])) {
+    $softwareCell = '<span class="appverse-status-warn"><i class="bi bi-exclamation-triangle-fill"></i> '
+      . t('Unknown: "@d" — did you mean "@s"?', [
+        '@d' => $softwareInfo['declared'] ?? '',
+        '@s' => $softwareInfo['suggestion'],
+      ])
+      . '</span>';
+  }
+  elseif (!empty($softwareInfo['declared'])) {
+    $softwareCell = '<span class="appverse-status-err"><i class="bi bi-x-lg"></i> '
+      . t('Unknown: "@d"', ['@d' => $softwareInfo['declared']])
+      . '</span>';
+  }
+  else {
+    $softwareCell = '<span class="appverse-status-err"><i class="bi bi-x-lg"></i> '
+      . t('Missing software: key')
+      . '</span>';
+  }
+
+  // Tags column. resolveTaxonomyTermsFromAppverseYml returns
+  // {declared, resolved, unresolved}. Render resolved as ✅,
+  // unresolved with suggestion as ⚠️, unresolved without
+  // suggestion as ❌, no declarations as a muted dash.
+  $tagsInfo = $r['tags'] ?? ['declared' => [], 'resolved' => [], 'unresolved' => []];
+  if (empty($tagsInfo['declared'])) {
+    $tagsCell = '<span class="appverse-app-card__value--muted">' . t('—') . '</span>';
+  }
+  else {
+    $parts = [];
+    foreach ($tagsInfo['resolved'] as $tag) {
+      $parts[] = '<span class="appverse-status-ok"><i class="bi bi-check-lg"></i> '
+        . htmlspecialchars($tag['name'], ENT_QUOTES | ENT_HTML5)
+        . '</span>';
+    }
+    foreach ($tagsInfo['unresolved'] as $unresolved) {
+      if (!empty($unresolved['suggestion'])) {
+        $parts[] = '<span class="appverse-status-warn"><i class="bi bi-exclamation-triangle-fill"></i> '
+          . t('"@d" — did you mean "@s"?', [
+            '@d' => $unresolved['declared'],
+            '@s' => $unresolved['suggestion'],
+          ])
+          . '</span>';
+      }
+      else {
+        $parts[] = '<span class="appverse-status-err"><i class="bi bi-x-lg"></i> '
+          . t('Unknown: "@d"', ['@d' => $unresolved['declared']])
+          . '</span>';
+      }
+    }
+    $tagsCell = '<span class="appverse-status-list">' . implode('', $parts) . '</span>';
+  }
+
+  $readmeText = !empty($r['readmePresent'])
+    ? round(($r['readmeBytes'] ?? 0) / 1024, 1) . ' KB'
+    : '—';
+  $readmeCellHtml = $readmeText !== '—'
+    ? htmlspecialchars($readmeText)
+    : '<span class="appverse-app-card__value--muted">—</span>';
+  $roleCellHtml = $roleText !== ''
+    ? $roleText
+    : '<span class="appverse-app-card__value--muted">—</span>';
+
+  $card = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['appverse-app-card']],
+    'header' => [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['appverse-app-card__header']],
+      'subpath' => [
+        '#markup' => '<span class="appverse-app-card__subpath">'
+          . htmlspecialchars($r['subpath'] ?? '', ENT_QUOTES | ENT_HTML5)
+          . '</span>',
+      ],
+      'name' => [
+        '#markup' => '<span class="appverse-app-card__name">'
+          . htmlspecialchars($r['name'] ?? '(none)', ENT_QUOTES | ENT_HTML5)
+          . '</span>',
+      ],
+    ],
+    'body' => [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['appverse-app-card__body']],
+      'software_cell' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-app-card__cell']],
+        'label' => ['#markup' => '<div class="appverse-app-card__label">' . t('Software') . '</div>'],
+        'value' => ['#markup' => '<div>' . $softwareCell . '</div>'],
+      ],
+      'tags_cell' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-app-card__cell']],
+        'label' => ['#markup' => '<div class="appverse-app-card__label">' . t('Tags') . '</div>'],
+        'value' => ['#markup' => '<div>' . $tagsCell . '</div>'],
+      ],
+      'role_cell' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-app-card__cell', 'appverse-app-card__cell--row2']],
+        'label' => ['#markup' => '<div class="appverse-app-card__label">' . t('Role') . '</div>'],
+        'value' => ['#markup' => '<div>' . $roleCellHtml . '</div>'],
+      ],
+      'readme_cell' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-app-card__cell', 'appverse-app-card__cell--row2']],
+        'label' => ['#markup' => '<div class="appverse-app-card__label">' . t('README') . '</div>'],
+        'value' => ['#markup' => '<div>' . $readmeCellHtml . '</div>'],
+      ],
+    ],
+  ];
+
+  if (!empty($description)) {
+    $card['description'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['appverse-app-card__description']],
+      'text' => [
+        '#markup' => htmlspecialchars(Unicode::truncate($description, 200, FALSE, TRUE), ENT_QUOTES | ENT_HTML5),
+      ],
+    ];
+  }
+
+  return $card;
+}
+
+/**
+ * Build the preview block for a single-app inferred repo.
+ *
+ * This is also where the existing form-field pre-population happens
+ * (title, body, license, app types, organization). The form fields
+ * remain editable so editors can override before submit — preserves
+ * the pre-Phase-1 behavior for apps that haven't yet adopted
+ * appverse.yml.
+ *
+ * Returns a Drupal render array (see notes on the Repo variant).
+ *
+ * @param array<string, mixed> $form
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_build_single_app_preview(\Drupal\ood_software\Plugin\GitHubService $gh, array &$form): array {
+  $records = $gh->getAppPreviewData();
+  $r = $records[0] ?? [];
+
+  $rows = [];
+  if (!empty($r['name'])) {
+    $rows[] = '<strong>' . t('Name:') . '</strong> ' . htmlspecialchars($r['name']);
+  }
+  if (!empty($r['role'])) {
+    $rows[] = '<strong>' . t('Role:') . '</strong> ' . htmlspecialchars($r['role']) . (!empty($r['subcategory']) ? ' (' . htmlspecialchars($r['subcategory']) . ')' : '');
+  }
+  if (!empty($r['description'])) {
+    $rows[] = '<strong>' . t('Description:') . '</strong> ' . htmlspecialchars(Unicode::truncate($r['description'], 120, FALSE, TRUE), ENT_QUOTES | ENT_HTML5);
+  }
+  if (!empty($r['readmePresent'])) {
+    $rows[] = '<strong>' . t('README:') . '</strong> ' . round($r['readmeBytes'] / 1024, 1) . ' KB';
+  }
+  if (!empty($gh->getLicense())) {
+    $rows[] = '<strong>' . t('License:') . '</strong> ' . htmlspecialchars($gh->getLicense());
+  }
+  $rows[] = '<strong>' . t('Organization:') . '</strong> ' . htmlspecialchars($gh->getOrganization() ?? '');
+  $rows[] = '<strong>' . t('Stars:') . '</strong> ' . (int) $gh->getStars();
+
+  // Pre-populate the form fields. Each write is guarded with isset() so this
+  // helper can be safely reused from AddRepoForm at /appverse/add-repo, which
+  // doesn't have the same widget render tree as the legacy node-add form. On
+  // the node-add form all these keys exist, so isset() is a no-op there.
+  if (isset($form['body']['widget'])) {
+    $form['body']['widget'][0]['value']['#value'] = $gh->getDescription();
+  }
+  if (isset($form['field_appverse_readme']['widget'])) {
+    $form['field_appverse_readme']['widget'][0]['value']['#value'] = $gh->getReadme();
+  }
+  if (isset($form['title']['widget'])) {
+    $form['title']['widget'][0]['value']['#value'] = $gh->getRepoName();
+  }
+  if (isset($form['field_appverse_lastupdated']['widget'])) {
+    $form['field_appverse_lastupdated']['widget'][0]['value']['#value'] = $gh->getLastComittedDate();
+  }
+  if (isset($form['field_appverse_organization']['widget'])) {
+    $form['field_appverse_organization']['widget'][0]['target_id']['#value'] = $gh->getOrganization();
+  }
+  if ($gh->getLicenseLink() && isset($form['field_appverse_license_link']['widget'])) {
+    $form['field_appverse_license_link']['widget'][0]['uri']['#value'] = $gh->getLicenseLink();
+  }
+  if ($gh->getLicense() && isset($form['field_license']['widget'])) {
+    $form['field_license']['widget'][0]['target_id']['#value'] = $gh->getLicense();
+  }
+  // app_type loop already guards per-checkbox with isset(), so it's safe across hosts.
+  foreach ($gh->getAppTypeIds() as $apptype_id) {
+    if (isset($form['field_appverse_app_type']['widget'][$apptype_id])) {
+      $form['field_appverse_app_type']['widget'][$apptype_id]['#checked'] = TRUE;
+      $form['field_appverse_app_type']['widget'][$apptype_id]['#value'] = $apptype_id;
+    }
+  }
+
+  return [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['appverse-preview-frame']],
+    'header' => [
+      '#markup' => '<p><i class="bi bi-check-lg appverse-status-ok"></i> '
+        . t('Single-app repository (root manifest.yml, no appverse.yml yet)')
+        . '</p>',
+    ],
+    'note' => [
+      '#markup' => '<p><em>' . t('We have pre-filled the form below with what we found. You can edit before submitting.') . '</em></p>',
+    ],
+    'rows' => [
+      '#markup' => '<ul><li>' . implode('</li><li>', $rows) . '</li></ul>',
+    ],
+  ];
+}
+
+/**
+ * Render an external URL as a safe anchor tag, or empty string if invalid.
+ *
+ * Only http(s) URLs are linked. Other schemes (javascript:, data:, file:, etc.)
+ * are rejected via a strict scheme prefix check and the Url::fromUri()
+ * validation that follows.
+ */
+function _ood_software_safe_link(string $url, ?string $label = NULL): string {
+  if ($url === '') {
+    return '';
+  }
+  // Strict scheme allowlist — Url::fromUri() accepts internal: and entity:
+  // schemes which we do NOT want here.
+  if (!str_starts_with($url, 'https://') && !str_starts_with($url, 'http://')) {
+    return '';
+  }
+  try {
+    $safeUrl = \Drupal\Core\Url::fromUri($url, ['absolute' => TRUE])->toString();
+  }
+  catch (\Throwable $e) {
+    return '';
+  }
+  $display = $label !== NULL ? $label : $url;
+  return '<a href="' . htmlspecialchars($safeUrl, ENT_QUOTES | ENT_HTML5) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars($display, ENT_QUOTES | ENT_HTML5) . '</a>';
+}
 
 /**
  * Ajax callback function to replace the section with '#markup'.
+ *
+ * @param array<string, mixed> $form
+ *
+ * @return array<string, mixed>
  */
-function ood_software_replace_section_callback(array &$form, FormStateInterface $form_state) {
+function ood_software_replace_section_callback(array &$form, FormStateInterface $form_state): array {
   $raw_data = $form_state->getUserInput();
   $body = $raw_data['body'][0]['value'];
   $body_filter = $body ? Xss::filter($body) : '';
@@ -348,45 +807,239 @@ function ood_software_replace_section_callback(array &$form, FormStateInterface 
 }
 
 /**
- * Form submit handler to update hidden fields.
+ * Batch operation: sync a single member app for one subpath.
+ *
+ * @param array<string, mixed> $repoMetadata
+ * @param array<string, mixed> $parsedRootYml
+ * @param array<string, mixed> $context
  */
-function ood_software__edit_submit($form, FormStateInterface $form_state) {
-  $body = $form_state->getValue('body')[0]['value'];
-  $readme = $form_state->getValue('field_appverse_readme')[0]['value'];
-  $lastupdated = $form_state->getValue('field_appverse_lastupdated')[0]['value'];
-
-  // Only update if one of these fields is empty.
-  $gh = \Drupal::service('ood_software.gh');
-  $validUrl = $gh->parseUrl($form_state->getValue('field_appverse_github_url')[0]['uri']);
-  if ($validUrl) {
-    $data = $gh->getData();
-
-    // Always set stars.
-    $form_state->setValue('field_appverse_stars', [['value' => $gh->getStars()]]);
-
-    if ($lastupdated != $gh->getLastComittedDate()) {
-      $form_state->setValue('body', [['format' => 'markdown', 'value' => $gh->getDescription()]]);
-      $form_state->setValue('field_appverse_readme', [['format' => 'markdown', 'value' => $gh->getDescription()]]);
-      $form_state->setValue('field_appverse_lastupdated', [['value' => $gh->getLastComittedDate()]]);
+function _ood_software_batch_sync_app(int $repoId, string $subpath, string $repoUrl, array $repoMetadata, array $parsedRootYml, array &$context): void {
+  try {
+    $repo = \Drupal::entityTypeManager()->getStorage('node')->load($repoId);
+    if (!$repo) {
+      $context['results']['failed'][$subpath] = 'Repo node disappeared during batch';
+      return;
     }
+
+    /** @var \Drupal\ood_software\Plugin\GitHubService $gh */
+    $gh = \Drupal::service('ood_software.gh');
+    $gh->parseUrl($repoUrl);
+    $gh->fetchAppSubpaths([$subpath]);
+    $subpathFiles = $gh->getAppSubpathFiles();
+
+    /** @var \Drupal\ood_software\Service\RepoSyncService $sync */
+    $sync = \Drupal::service('ood_software.repo_sync');
+
+    // Narrow the parsed apps[] to just this subpath so applyDeclaredApps
+    // only processes this one. (applyDeclaredApps iterates
+    // $parsedRootYml['apps']; we don't want it to re-iterate all apps
+    // on every batch operation.)
+    $narrowed = $parsedRootYml;
+    $narrowed['apps'] = array_values(array_filter(
+      $parsedRootYml['apps'] ?? [],
+      fn($a) => is_array($a) && ($a['path'] ?? NULL) === $subpath,
+    ));
+
+    $sync->applyDeclaredApps(
+      $repo,
+      $narrowed,
+      $subpathFiles,
+      $repoUrl,
+      $repoMetadata,
+      // Skip reconciliation — the narrowed apps[] only contains this
+      // subpath, so reconciling against it would mass-delete every
+      // other member App. _ood_software_batch_reconcile_apps runs
+      // once at the end with the full canonical apps[].
+      FALSE,
+    );
+
+    $context['results']['synced'][] = $subpath;
+    $context['message'] = t('Synced @path', ['@path' => $subpath]);
+  }
+  catch (\Throwable $e) {
+    $context['results']['failed'][$subpath] = $e->getMessage();
+    \Drupal::logger('ood_software')->error('Batch sync failed for @path: @msg', [
+      '@path' => $subpath,
+      '@msg' => $e->getMessage(),
+    ]);
   }
 }
 
 /**
- * Form submit handler to redirect to user's my-apps page.
+ * Batch operation: reconcile member Apps against the canonical apps[].
+ *
+ * Runs after all per-subpath sync ops. Each of those passed a narrowed
+ * apps[] containing only its own subpath, so reconciliation was deferred.
+ * This op runs with the full canonical apps[] list and deletes any
+ * member App whose subpath is no longer declared.
+ *
+ * @param array<string, mixed> $parsedRootYml
+ * @param array<string, mixed> $context
  */
-function ood_software__redirect_submit($form, FormStateInterface $form_state) {
-  $current_user = \Drupal::currentUser();
-  $user_id = $current_user->id();
-  $url = \Drupal\Core\Url::fromUri('internal:/user/' . $user_id . '/my-apps');
-  $form_state->setRedirectUrl($url);
+function _ood_software_batch_reconcile_apps(int $repoId, string $repoUrl, array $parsedRootYml, array &$context): void {
+  try {
+    $repo = \Drupal::entityTypeManager()->getStorage('node')->load($repoId);
+    if (!$repo) {
+      $context['results']['failed']['__reconcile__'] = 'Repo node disappeared during reconciliation';
+      return;
+    }
+
+    $declaredSubpaths = [];
+    foreach ($parsedRootYml['apps'] ?? [] as $entry) {
+      $path = trim((string) ($entry['path'] ?? ''), '/');
+      if ($path !== '') {
+        $declaredSubpaths[$path] = TRUE;
+      }
+    }
+
+    /** @var \Drupal\ood_software\Service\RepoSyncService $sync */
+    $sync = \Drupal::service('ood_software.repo_sync');
+    $sync->reconcileDeclaredApps($repo, $declaredSubpaths, $repoUrl);
+
+    $context['message'] = t('Reconciled apps[] for @title', ['@title' => $repo->label()]);
+  }
+  catch (\Throwable $e) {
+    $context['results']['failed']['__reconcile__'] = $e->getMessage();
+    \Drupal::logger('ood_software')->error('Batch reconciliation failed: @msg', ['@msg' => $e->getMessage()]);
+  }
+}
+
+/**
+ * Batch finished callback: render summary of synced + failed apps.
+ *
+ * @param array<string, mixed> $results
+ * @param array<int, mixed> $operations
+ */
+function _ood_software_batch_repo_synced(bool $success, array $results, array $operations): void {
+  if (!$success) {
+    \Drupal::messenger()->addError(t('Repo sync did not complete cleanly. Check the repo page for partial results.'));
+    return;
+  }
+  $synced = $results['synced'] ?? [];
+  $failed = $results['failed'] ?? [];
+  if (!empty($synced)) {
+    \Drupal::messenger()->addStatus(t('Synced @n app(s): @list', [
+      '@n' => count($synced),
+      '@list' => implode(', ', $synced),
+    ]));
+  }
+  if (!empty($failed)) {
+    $details = [];
+    foreach ($failed as $path => $msg) {
+      $details[] = $path . ': ' . $msg;
+    }
+    \Drupal::messenger()->addError(t('@n app(s) failed to sync — @details', [
+      '@n' => count($failed),
+      '@details' => implode('; ', $details),
+    ]));
+  }
+
+  // The per-subpath app saves in this batch each marked the cache dirty via
+  // hook. Progressive (browser) batch usually flushes on each request's
+  // kernel.terminate, but flush once more here so the final state — after the
+  // last subpath and any reconcile-delete — is guaranteed to be on disk.
+  \Drupal::service('ood_software.appverse_cache')->flushIfDirty();
+}
+
+/**
+ * Resync a repo without blocking: resolve the Repo, then Batch its apps.
+ *
+ * Shared by AddRepoForm::submitDeclared, AppverseHubController::resync, and
+ * the reviewer create-tag action. Large monorepos make an inline per-app
+ * GitHub round-trip block the browser for many seconds; batching shows a
+ * progress bar instead. Single-app/inferred repos (no apps[]) sync inline
+ * (one app — nothing to batch).
+ *
+ * CONTRACT: For multi-app repos (non-empty apps[]), callers MUST call
+ * RepoSyncService::resolveRepo() BEFORE this helper. The helper only batches
+ * per-app ops (applyDeclaredApps + reconcileDeclaredApps); it does NOT write
+ * repo-level fields (field_repo_validation_st, field_repo_last_synced,
+ * field_repo_unresolved_tags, field_repo_tags, etc.) for the multi-app path.
+ * Those fields are written exclusively by applyDeclared(), which resolveRepo()
+ * calls. Failing to call resolveRepo() first leaves repo-level fields stale.
+ *
+ * @param int $repoId
+ *   The node ID of the already-resolved appverse_repo entity.
+ * @param string $repoUrl
+ *   Canonical GitHub repo URL.
+ * @param string|null $appverseYmlText
+ *   Raw appverse.yml text, or NULL for inferred repos.
+ * @param array<string, mixed> $repoMetadata
+ *   Repo-level metadata array (stars, description, etc.).
+ * @param array<string, mixed> $parsedRootYml
+ *   Parsed appverse.yml as an array (NOT raw YAML text).
+ */
+function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $appverseYmlText, array $repoMetadata, array $parsedRootYml): void {
+  $subpaths = [];
+  foreach (($parsedRootYml['apps'] ?? []) as $app) {
+    if (!empty($app['path']) && is_string($app['path'])) {
+      $subpaths[] = $app['path'];
+    }
+  }
+  if (!$subpaths) {
+    // No apps[] — declared single-app or inferred. Resolve synchronously;
+    // resolveRepo + the single-app path are cheap (one app).
+    \Drupal::service('ood_software.repo_sync')->resolveRepo($repoUrl, $appverseYmlText, $repoMetadata);
+    return;
+  }
+  $operations = [];
+  foreach ($subpaths as $subpath) {
+    $operations[] = ['_ood_software_batch_sync_app', [$repoId, $subpath, $repoUrl, $repoMetadata, $parsedRootYml]];
+  }
+  $operations[] = ['_ood_software_batch_reconcile_apps', [$repoId, $repoUrl, $parsedRootYml]];
+  // Prefer the repo's human label for the progress title; fall back to the
+  // URL if the node can't be loaded or has no label.
+  $repoLabel = $repoUrl;
+  $repoNode = \Drupal::entityTypeManager()->getStorage('node')->load($repoId);
+  if ($repoNode && $repoNode->label()) {
+    $repoLabel = $repoNode->label();
+  }
+  batch_set([
+    'title' => t('Syncing apps from @repo…', ['@repo' => $repoLabel]),
+    'operations' => $operations,
+    'finished' => '_ood_software_batch_repo_synced',
+    'init_message' => t('Starting…'),
+    'progress_message' => t('Processed @current of @total.'),
+    'error_message' => t('Sync hit an error.'),
+  ]);
+}
+
+/**
+ * Implements hook_node_access().
+ *
+ * Lets the Appverse PM role view unpublished appverse_app nodes (Ready for
+ * Review / Needs Adjustment / Draft). Without this, moderating an app fails:
+ * after a save the node form redirects to /node/{nid}, and core denies view of
+ * the now-unpublished node, producing "Either the path '/node/N' is invalid or
+ * you do not have access to it." It also lets moderators see in-review apps on
+ * the software/hub pages. Scoped to appverse_app + view only; published nodes
+ * fall through to normal access. (D8-2746.)
+ *
+ * Interim implementation keyed to the appverse_pm role. The md-2724 appverse
+ * refactor introduces an "administer appverse content" permission; the version
+ * of this hook on that branch keys off that permission and supersedes this one.
+ */
+function ood_software_node_access(NodeInterface $node, string $operation, AccountInterface $account): AccessResultInterface {
+  if ($operation !== 'view' || $node->bundle() !== 'appverse_app') {
+    return AccessResult::neutral();
+  }
+
+  $access = AccessResult::neutral()
+    ->addCacheableDependency($node)
+    ->cachePerPermissions();
+
+  if (!$node->isPublished() && in_array('appverse_pm', $account->getRoles(), TRUE)) {
+    return $access->orIf(AccessResult::allowed());
+  }
+
+  return $access;
 }
 
 /**
  * Implements hook_node_insert().
  */
-function ood_software_node_insert(NodeInterface $node) {
-  _ood_software_invalidate_appverse_cache($node);
+function ood_software_node_insert(NodeInterface $node): void {
+  _ood_software_mark_appverse_cache_dirty($node);
   if ($node->bundle() === 'appverse_app') {
     $flag_service = \Drupal::service('flag');
     $flag = $flag_service->getFlagById('appverse_apps');
@@ -401,32 +1054,234 @@ function ood_software_node_insert(NodeInterface $node) {
 /**
  * Implements hook_node_update().
  */
-function ood_software_node_update(NodeInterface $node) {
-  _ood_software_invalidate_appverse_cache($node);
+function ood_software_node_update(NodeInterface $node): void {
+  _ood_software_mark_appverse_cache_dirty($node);
+
+  // Moderation transition notifications. Repos only — App-level
+  // transitions intentionally don't fan out so a cascade-publish on N
+  // member apps doesn't produce N emails.
+  if ($node->bundle() === 'appverse_repo' && $node->hasField('moderation_state')
+    // Bulk/migration callers (e.g. the inferred-repo backfill) set this
+    // runtime flag to opt out of publish notifications — a backfill creates
+    // and publishes many repos at once, and emailing every owner about a
+    // data migration is noise, not a real "your app was published" event.
+    && empty($node->_ood_software_suppress_notifications)) {
+    $previousState = _ood_software_previous_moderation_state($node);
+    $extras = [];
+    // Pick up the reviewer comment if AppverseHubRequestChangesForm
+    // stashed it on the node before save.
+    if (!empty($node->_ood_software_review_comment)) {
+      $extras['comment'] = $node->_ood_software_review_comment;
+    }
+    \Drupal::service('ood_software.repo_notifier')
+      ->notifyTransition($node, $previousState, $extras);
+  }
 }
 
 /**
  * Implements hook_node_delete().
  */
-function ood_software_node_delete(NodeInterface $node) {
-  _ood_software_invalidate_appverse_cache($node);
+function ood_software_node_delete(NodeInterface $node): void {
+  _ood_software_mark_appverse_cache_dirty($node);
 }
 
-function _ood_software_invalidate_appverse_cache(NodeInterface $node) {
-  if (in_array($node->bundle(), ['appverse_software', 'appverse_app'])) {
-    // Throttle: skip if cache was generated less than 60 seconds ago.
-    $cache_file = 'public://appverse-cache/appverse-data.json';
-    if (file_exists($cache_file) && (time() - filemtime($cache_file)) < 60) {
-      return;
-    }
-    \Drupal::service('ood_software.appverse_cache')->generate();
+/**
+ * Mark the appverse static cache dirty for appverse content changes.
+ *
+ * Cheap and idempotent: only flags staleness. The single regeneration runs
+ * once per request on kernel.terminate (AppverseCacheFlushSubscriber), so any
+ * number of saves in a request — including a first-publish cascade that saves
+ * a Repo and N member apps — collapse to one generate() against the settled
+ * state. This replaces the old 60-second throttle, which suppressed the
+ * trailing save of such cascades and left the cache stale until cron.
+ *
+ * Covers app saves too: the cache reads live app fields and filters apps by
+ * published status, so per-app edits and publish/unpublish change its output.
+ */
+function _ood_software_mark_appverse_cache_dirty(NodeInterface $node): void {
+  if (in_array($node->bundle(), ['appverse_software', 'appverse_app', 'appverse_repo'], TRUE)) {
+    \Drupal::service('ood_software.appverse_cache')->markDirty();
   }
 }
 
 /**
- * Implements hook_metatags_alter().
+ * Resolve the previous moderation_state for a node update.
+ *
+ * `$node->original` isn't populated on some Drush / migrate save paths;
+ * ModerationInformation::getOriginalState() is the reliable fallback.
+ * Returns NULL when no workflow is attached or no prior state exists.
  */
-function ood_software_metatags_alter(array &$metatags, array &$context) {
+function _ood_software_previous_moderation_state(NodeInterface $node): ?string {
+  if (isset($node->original) && $node->original instanceof NodeInterface
+      && $node->original->hasField('moderation_state')) {
+    return $node->original->get('moderation_state')->value;
+  }
+  $mi = \Drupal::service('content_moderation.moderation_information');
+  if (!$mi->getWorkflowForEntity($node)) {
+    return NULL;
+  }
+  $original = $mi->getOriginalState($node);
+  return $original->id();
+}
+
+/**
+ * Implements hook_content_moderation_notification_mail_data_alter().
+ *
+ * Suppress the contrib `appverse_review_requested` notification when the
+ * subject is a Repo. App-bundle transitions still notify via that
+ * contrib config; Repo-bundle transitions notify via our
+ * RepoNotificationService (see ood_software_node_update).
+ *
+ * @param array<string, mixed> $data
+ */
+function ood_software_content_moderation_notification_mail_data_alter(EntityInterface $entity, array &$data): void {
+  if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'appverse_repo') {
+    $data['to'] = [];
+  }
+}
+
+/**
+ * Implements hook_mail().
+ *
+ * Renders moderation transition emails for appverse_repo nodes.
+ * Dispatched by RepoNotificationService from ood_software_node_update.
+ *
+ * The From and site_name come from \Drupal::config('system.site'), which
+ * domain_config overlays with per-domain values at runtime — so a
+ * transition fired under the OOD domain context uses OOD's overrides;
+ * other domains fall back gracefully. We do NOT set $message['from']
+ * explicitly — MailManager handles that from system.site.mail.
+ *
+ * @param array<string, mixed> $message
+ * @param array<string, mixed> $params
+ */
+function ood_software_mail(string $key, array &$message, array $params): void {
+  $site = \Drupal::config('system.site');
+  $site_name = $site->get('name');
+  $node = $params['node'] ?? NULL;
+  if (!$node instanceof NodeInterface) {
+    return;
+  }
+  $title = $node->label();
+
+  switch ($key) {
+    case 'ready_for_review':
+      $owner = $node->getOwner();
+      $owner_name = $owner->getDisplayName();
+      $repo = $node->hasField('field_repo_url') && !$node->get('field_repo_url')->isEmpty()
+        ? ($node->get('field_repo_url')->first()->getValue()['uri'] ?? '')
+        : '';
+      $admin_queue = \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString();
+      $message['subject'] = t('[@site] Repo submitted for review: @title', [
+        '@site' => $site_name,
+        '@title' => $title,
+      ]);
+      $message['body'][] = t('@owner submitted "@title" for review on @site.', [
+        '@owner' => $owner_name,
+        '@title' => $title,
+        '@site' => $site_name,
+      ]);
+      if ($repo) {
+        $message['body'][] = t('Repository: @repo', ['@repo' => $repo]);
+      }
+      $message['body'][] = t('Review queue: @url', ['@url' => $admin_queue]);
+      break;
+
+    case 'needs_adjustment':
+      // Reviewer comment reaches us via two paths:
+      //   1. $params['comment'] — primary, set by
+      //      AppverseHubRequestChangesForm via the runtime
+      //      _ood_software_review_comment property forwarded through
+      //      hook_node_update.
+      //   2. Fallback — read getRevisionLogMessage() on the latest
+      //      revision. Mirrors the hub preprocess (ood.theme) so any
+      //      code path that drives the transition with a revision log
+      //      message but doesn't set the runtime property still gets
+      //      the comment into the email.
+      $comment = $params['comment'] ?? '';
+      if ($comment === '') {
+        $latestVid = \Drupal::entityTypeManager()->getStorage('node')
+          ->getLatestRevisionId($node->id());
+        if ($latestVid) {
+          $latest = \Drupal::entityTypeManager()->getStorage('node')
+            ->loadRevision($latestVid);
+          if ($latest instanceof \Drupal\Core\Entity\RevisionLogInterface && $latest->getRevisionLogMessage()) {
+            $comment = $latest->getRevisionLogMessage();
+          }
+        }
+      }
+      $hub_link = $node->getOwnerId()
+        ? \Drupal\Core\Url::fromUserInput('/user/' . $node->getOwnerId() . '/my-appverse', ['absolute' => TRUE])->toString()
+        : '';
+      $message['subject'] = t('[@site] Changes requested on your Repo: @title', [
+        '@site' => $site_name,
+        '@title' => $title,
+      ]);
+      $message['body'][] = t('A reviewer requested changes on your repo "@title" before it can be published on @site.', [
+        '@title' => $title,
+        '@site' => $site_name,
+      ]);
+      if ($comment !== '') {
+        $message['body'][] = t("Reviewer's note:\n\n@comment", ['@comment' => $comment]);
+      }
+      if ($hub_link) {
+        $message['body'][] = t('Open your maintenance hub to make changes and resubmit: @url', ['@url' => $hub_link]);
+      }
+      break;
+
+    case 'published':
+      // Build the React catalog URL via pathauto alias so the email
+      // lands on /appverse/#/repo/<slug> — same shape the hub
+      // Twig uses for its "View in catalog" link.
+      $catalog_link = _ood_software_repo_catalog_url($node);
+      $message['subject'] = t('[@site] Your Repo is published: @title', [
+        '@site' => $site_name,
+        '@title' => $title,
+      ]);
+      $message['body'][] = t('Your repo "@title" has been published to the @site catalog.', [
+        '@title' => $title,
+        '@site' => $site_name,
+      ]);
+      $message['body'][] = t('View it in the catalog: @url', ['@url' => $catalog_link]);
+      break;
+  }
+}
+
+/**
+ * Resolve the public catalog URL for a Repo.
+ *
+ * Mirrors the hub preprocess (ood.theme) which builds "View in catalog"
+ * links the same way: read the pathauto alias for the node and strip
+ * everything up to and including an optional "repo/" prefix to
+ * derive the slug, then assemble /appverse/#/repo/<slug>. The
+ * production pathauto pattern is /repo/[node:title], so the
+ * alias typically looks like /repo/my-repo.
+ *
+ * When no alias resolves (newly-created node before pathauto runs,
+ * alias disabled, etc.), getAliasByPath returns the input path; the
+ * fallback slug is the nid so the URL still resolves to something
+ * meaningful inside the catalog (not the canonical /node/<nid>).
+ */
+function _ood_software_repo_catalog_url(NodeInterface $node): string {
+  $alias = \Drupal::service('path_alias.manager')
+    ->getAliasByPath('/node/' . $node->id());
+  // Same regex the hub preprocess uses (ood.theme): strip everything up
+  // to and including an optional "repo/" prefix.
+  $slug = ltrim(preg_replace('#^.*/(repo/)?#', '', $alias), '/');
+  if ($slug === '') {
+    $slug = (string) $node->id();
+  }
+  return \Drupal\Core\Url::fromUserInput('/appverse/#/repo/' . $slug, ['absolute' => TRUE])
+    ->toString();
+}
+
+/**
+ * Implements hook_metatags_alter().
+ *
+ * @param array<string, mixed> $metatags
+ * @param array<string, mixed> $context
+ */
+function ood_software_metatags_alter(array &$metatags, array &$context): void {
   if (!isset($context['entity']) || !$context['entity'] instanceof NodeInterface) {
     return;
   }
@@ -437,7 +1292,7 @@ function ood_software_metatags_alter(array &$metatags, array &$context) {
   }
   elseif ($node->bundle() === 'appverse_app') {
     $software = $node->get('field_appverse_software_implemen')->entity;
-    $logo_url = $software ? _ood_software_get_logo_url($software) : NULL;
+    $logo_url = $software instanceof NodeInterface ? _ood_software_get_logo_url($software) : NULL;
   }
   else {
     return;
@@ -452,12 +1307,12 @@ function ood_software_metatags_alter(array &$metatags, array &$context) {
 /**
  * Resolves the logo file URL from an appverse_software node.
  */
-function _ood_software_get_logo_url(NodeInterface $software_node) {
+function _ood_software_get_logo_url(NodeInterface $software_node): ?string {
   if (!$software_node->hasField('field_appverse_logo') || $software_node->get('field_appverse_logo')->isEmpty()) {
     return NULL;
   }
   $media = $software_node->get('field_appverse_logo')->entity;
-  if (!$media) {
+  if (!$media instanceof \Drupal\media\MediaInterface) {
     return NULL;
   }
   $source_field = $media->getSource()->getConfiguration()['source_field'];
@@ -465,13 +1320,15 @@ function _ood_software_get_logo_url(NodeInterface $software_node) {
     return NULL;
   }
   $file = $media->get($source_field)->entity;
-  return $file ? \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri()) : NULL;
+  return $file instanceof \Drupal\file\FileInterface ? \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri()) : NULL;
 }
 
 /**
  * Implements hook_markdown_easy_config_modify().
+ *
+ * @param array<string, mixed> $config
  */
-function ood_software_markdown_easy_config_modify(array &$config) {
+function ood_software_markdown_easy_config_modify(array &$config): void {
   $config['heading_permalink'] = [
     'min_heading_level' => 2,
     'max_heading_level' => 4,
@@ -492,7 +1349,7 @@ function ood_software_markdown_easy_config_modify(array &$config) {
 /**
  * Implements hook_markdown_easy_environment_modify().
  */
-function ood_software_markdown_easy_environment_modify(Environment &$environment) {
+function ood_software_markdown_easy_environment_modify(Environment &$environment): void {
   $environment->addExtension(new HeadingPermalinkExtension());
   $environment->addExtension(new ExternalLinkExtension());
 }
@@ -502,10 +1359,52 @@ function ood_software_markdown_easy_environment_modify(Environment &$environment
  *
  * - Attaches appverse-docs CSS library and GitHub edit link to synced doc pages.
  * - Redirects browser visitors from appverse node pages to the SPA.
+ *
+ * @param array<string, mixed> $build
  */
-function ood_software_node_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
+function ood_software_node_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, string $view_mode): void {
   if ($view_mode !== 'full' || !$entity instanceof NodeInterface) {
     return;
+  }
+
+  // Repo node page: list member apps with links to their canonical
+  // node pages. Catalog pages can't show unpublished apps (JSON:API filters
+  // by status), so this is the path contributors and reviewers use to
+  // inspect a draft Repo's members.
+  if ($entity->bundle() === 'appverse_repo') {
+    $app_storage = \Drupal::entityTypeManager()->getStorage('node');
+    $app_ids = $app_storage->getQuery()
+      ->accessCheck(TRUE)
+      ->condition('type', 'appverse_app')
+      ->condition('field_appverse_repo', $entity->id())
+      ->sort('field_appverse_app_subpath')
+      ->execute();
+
+    if ($app_ids) {
+      $items = [];
+      foreach ($app_storage->loadMultiple($app_ids) as $app) {
+        $subpath = $app->hasField('field_appverse_app_subpath')
+          && !$app->get('field_appverse_app_subpath')->isEmpty()
+            ? $app->get('field_appverse_app_subpath')->value
+            : '';
+        $items[] = [
+          '#type' => 'link',
+          '#title' => $subpath
+            ? t('@title (@subpath)', ['@title' => $app->label(), '@subpath' => $subpath])
+            : $app->label(),
+          '#url' => $app->toUrl(),
+        ];
+      }
+      $build['member_apps'] = [
+        '#type' => 'fieldset',
+        '#title' => t('Apps in this repo'),
+        '#weight' => 20,
+        'list' => [
+          '#theme' => 'item_list',
+          '#items' => $items,
+        ],
+      ];
+    }
   }
 
   // Appverse documentation pages: attach CSS and GitHub edit link.
@@ -513,47 +1412,708 @@ function ood_software_node_view(array &$build, EntityInterface $entity, EntityVi
   $nid = (int) $entity->id();
   if (isset($doc_map[$nid])) {
     $build['#attached']['library'][] = 'ood_software/appverse-docs';
+    $build['#attached']['library'][] = 'ood_software/appverse_doc_sidebar';
 
-    $github_url = 'https://github.com/sweet-and-fizzy/ood-appverse/edit/main/docs/' . $doc_map[$nid];
-    $build['github_edit_link'] = [
+    // Wrap the doc node output so the two-column grid + rail styles can be
+    // scoped to .appverse-doc-node (never global). The JS reads headings
+    // from inside this wrapper and fills the rail. Guard #attributes/class so
+    // we don't hit "undefined array key" if the caller didn't initialize them.
+    if (!isset($build['#attributes']) || !is_array($build['#attributes'])) {
+      $build['#attributes'] = [];
+    }
+    if (!isset($build['#attributes']['class']) || !is_array($build['#attributes']['class'])) {
+      $build['#attributes']['class'] = [];
+    }
+    $build['#attributes']['class'][] = 'appverse-doc-node';
+
+    // Left-rail scaffolding: search box (combobox) + empty results listbox +
+    // empty TOC nav. Starts hidden; the JS reveals it after building a
+    // non-empty TOC, so no-JS / no-heading pages show no empty rail.
+    $build['appverse_doc_sidebar'] = [
       '#type' => 'container',
-      '#attributes' => ['class' => ['appverse-docs-github-link']],
-      '#weight' => -100,
-      'link' => [
-        '#type' => 'link',
-        '#title' => 'Suggest an edit on GitHub',
-        '#url' => \Drupal\Core\Url::fromUri($github_url),
-        '#attributes' => ['target' => '_blank', 'rel' => 'noopener'],
+      '#weight' => -90,
+      '#attributes' => [
+        'class' => ['appverse-doc-sidebar'],
+        'hidden' => 'hidden',
+        // Stable id so the mobile disclosure button's aria-controls can point
+        // at the rail it expands/collapses.
+        'id' => 'appverse-doc-rail',
+      ],
+      'search' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-doc-search']],
+        'input' => [
+          '#type' => 'html_tag',
+          '#tag' => 'input',
+          '#attributes' => [
+            'type' => 'search',
+            'class' => ['appverse-doc-search__input'],
+            'placeholder' => 'Search this page',
+            'role' => 'combobox',
+            'aria-expanded' => 'false',
+            'aria-controls' => 'appverse-doc-search-results',
+            'aria-autocomplete' => 'list',
+            'autocomplete' => 'off',
+          ],
+        ],
+        'results' => [
+          '#type' => 'html_tag',
+          '#tag' => 'ul',
+          '#attributes' => [
+            'id' => 'appverse-doc-search-results',
+            'class' => ['appverse-doc-search__results'],
+            'role' => 'listbox',
+            'hidden' => 'hidden',
+          ],
+        ],
+      ],
+      'toc' => [
+        '#type' => 'html_tag',
+        '#tag' => 'nav',
+        '#attributes' => [
+          'class' => ['appverse-doc-toc'],
+          'aria-label' => 'On this page',
+        ],
       ],
     ];
+
+    // Derive the GitHub edit URL from the doc's raw source URL, since docs come
+    // from two repos (ood-appverse/docs and appverse-review/references).
+    $source_url = $doc_map[$nid];
+    $github_url = preg_replace(
+      '#^https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+)$#',
+      'https://github.com/$1/$2/edit/$3/$4',
+      $source_url
+    );
+    // Only render the link when the transform matched a raw URL.
+    if ($github_url && $github_url !== $source_url) {
+      $build['github_edit_link'] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['appverse-docs-github-link']],
+        '#weight' => -100,
+        'link' => [
+          '#type' => 'link',
+          '#title' => 'Suggest an edit on GitHub',
+          '#url' => \Drupal\Core\Url::fromUri($github_url),
+          '#attributes' => ['target' => '_blank', 'rel' => 'noopener'],
+        ],
+      ];
+    }
   }
 
   // Appverse SPA redirects for software and app nodes.
-  if ($entity->bundle() === 'appverse_software') {
-    $slug = basename($entity->toUrl()->toString());
-    $build['#attached']['html_head'][] = [
-      [
-        '#type' => 'html_tag',
-        '#tag' => 'script',
-        '#value' => "window.location.replace('/appverse#/' + " . json_encode($slug) . ");",
-      ],
-      'appverse_redirect',
-    ];
-  }
-  elseif ($entity->bundle() === 'appverse_app') {
-    $software = $entity->get('field_appverse_software_implemen')->entity;
-    if ($software) {
-      $software_slug = basename($software->toUrl()->toString());
-      $app_slug = basename($entity->toUrl()->toString());
+  //
+  // Only redirect PUBLISHED nodes to the /appverse catalog. Unpublished apps
+  // (Draft / Ready for Review / Needs Adjustment) are not in the catalog —
+  // its data sources filter on published status and are grant-enforced — so
+  // redirecting there would bounce a reviewer to a page that cannot show the
+  // item. Rendering the node page lets moderators (who have view access via
+  // ood_software_node_access) actually review the in-moderation app, e.g. when
+  // arriving from the manage-apps list or after saving a moderation change.
+  if ($entity->isPublished()) {
+    if ($entity->bundle() === 'appverse_software') {
+      $slug = basename($entity->toUrl()->toString());
       $build['#attached']['html_head'][] = [
         [
           '#type' => 'html_tag',
           '#tag' => 'script',
-          '#value' => "window.location.replace('/appverse#/' + " . json_encode($software_slug) . " + '?app=' + " . json_encode($app_slug) . ");",
+          '#value' => "window.location.replace('/appverse#/' + " . json_encode($slug) . ");",
         ],
         'appverse_redirect',
       ];
     }
+    elseif ($entity->bundle() === 'appverse_app') {
+      $software = $entity->get('field_appverse_software_implemen')->entity;
+      if ($software instanceof NodeInterface) {
+        $software_slug = basename($software->toUrl()->toString());
+        $app_slug = basename($entity->toUrl()->toString());
+        $build['#attached']['html_head'][] = [
+          [
+            '#type' => 'html_tag',
+            '#tag' => 'script',
+            '#value' => "window.location.replace('/appverse#/' + " . json_encode($software_slug) . " + '?app=' + " . json_encode($app_slug) . ");",
+          ],
+          'appverse_redirect',
+        ];
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ *
+ * Push the "Revisions" tab to the END of the tab strip on
+ * appverse_repo and appverse_app node pages. Content for these
+ * bundles is derived from appverse.yml / manifest.yml in the source
+ * repo; each sync overwrites the same fields, so revision history is
+ * rarely meaningful to contributors. Keeping the tab available for
+ * admins who need it, but visually deprioritized.
+ *
+ * Revisions are still created on save — content_moderation requires
+ * them, and the request_adjustment flow stores the admin's comment
+ * as the revision log message.
+ *
+ * @param array<string, mixed> $data
+ */
+function ood_software_menu_local_tasks_alter(array &$data, string $route_name, \Drupal\Core\Cache\RefinableCacheableDependencyInterface &$cacheability): void {
+  if ($route_name !== 'entity.node.canonical' && $route_name !== 'entity.node.version_history') {
+    return;
+  }
+  $node = \Drupal::routeMatch()->getParameter('node');
+  if (!$node instanceof \Drupal\node\NodeInterface) {
+    return;
+  }
+  if (!in_array($node->bundle(), ['appverse_app', 'appverse_repo'], TRUE)) {
+    return;
+  }
+  // The tab strip is cached per route + node; bind both so a
+  // bundle-change (unlikely but possible) invalidates it.
+  $cacheability->addCacheableDependency($node);
+  foreach ($data['tabs'] as $level => $tabs) {
+    foreach ($tabs as $key => $tab) {
+      if (isset($tab['#link']['url']) && $tab['#link']['url']->isRouted()) {
+        if ($tab['#link']['url']->getRouteName() === 'entity.node.version_history') {
+          // Bump the weight so it sorts to the end. Drupal core's
+          // default tab weights are 0..10; 100 reliably lands last.
+          $data['tabs'][$level][$key]['#weight'] = 100;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_views_view_fields_alter().
+ *
+ * Adds the views_view_fields__my_appverse suggestion so the module's
+ * views-view-fields--my-appverse.html.twig wins for this view's rows. (Themes
+ * get this suggestion by filename automatically; modules must add it.)
+ *
+ * @param array<int, string> $suggestions
+ * @param array<string, mixed> $variables
+ */
+function ood_software_theme_suggestions_views_view_fields_alter(array &$suggestions, array $variables): void {
+  $view = $variables['view'] ?? NULL;
+  if ($view instanceof \Drupal\views\ViewExecutable && $view->id() === 'my_appverse') {
+    $suggestions[] = 'views_view_fields__my_appverse';
+  }
+}
+
+/**
+ * Implements hook_preprocess_views_view_fields().
+ *
+ * Builds the appverse_hub render element for each my_appverse row. The
+ * views-view-fields--my-appverse.html.twig suggestion prints {{ appverse_hub }}
+ * instead of the default {{ fields }} loop. The previous renderer lived in the
+ * ood theme (ood_preprocess_views_view_fields + a same-named suggestion
+ * template) and was removed in the same change.
+ *
+ * @param array<string, mixed> $variables
+ */
+function ood_software_preprocess_views_view_fields(array &$variables): void {
+  if (!isset($variables['view']) || $variables['view']->id() !== 'my_appverse') {
+    return;
+  }
+  $row = $variables['row'] ?? NULL;
+  if (!$row || empty($row->_entity) || $row->_entity->bundle() !== 'appverse_repo') {
+    return;
+  }
+  $repo = $row->_entity;
+
+  $variables['appverse_hub'] = [
+    '#theme' => 'appverse_hub',
+    '#hub' => _ood_software_build_hub_row($repo),
+  ];
+  $meta = _ood_software_hub_cache_meta($repo);
+  $variables['appverse_hub']['#cache']['tags'] = $meta['tags'];
+  $variables['appverse_hub']['#cache']['contexts'] = $meta['contexts'];
+}
+
+/**
+ * Cache tags + contexts for a repo card.
+ *
+ * Tags: the repo, every member app, and the owner USER entity (the admin owner
+ * block renders the owner's name/email, so a rename/re-email must invalidate
+ * the card). Contexts: user.permissions (admin vs not) and user (owner vs not)
+ * branch the output.
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
+  $tags = $repo->getCacheTags();
+  foreach (_ood_software_hub_member_apps($repo) as $app) {
+    $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $app->getCacheTags());
+  }
+  // getOwner() is NULL for a deleted author — guard before tagging. PHPStan's
+  // stub types the return as non-null, but Drupal returns NULL at runtime when
+  // the author account has been deleted, so the guard must stay.
+  $ownerAccount = $repo->getOwner();
+  // @phpstan-ignore-next-line booleanNot.alwaysFalse (getOwner() can be NULL at runtime)
+  if ($ownerAccount) {
+    $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $ownerAccount->getCacheTags());
+  }
+  return ['tags' => $tags, 'contexts' => ['user.permissions', 'user']];
+}
+
+/**
+ * Maps an appverse_editorial moderation state to a badge label + modifier.
+ *
+ * Single source of the state→color mapping; used for both repo and app badges.
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_hub_badge(string $state): array {
+  // Literal t() calls so the labels are extractable for translation.
+  $map = [
+    'published' => ['label' => t('Published'), 'modifier' => 'success'],
+    'ready_for_review' => ['label' => t('Awaiting review'), 'modifier' => 'warning'],
+    'needs_adjustment' => ['label' => t('Needs changes'), 'modifier' => 'error'],
+    'draft' => ['label' => t('Draft'), 'modifier' => 'muted'],
+    'archived' => ['label' => t('Archived'), 'modifier' => 'muted'],
+  ];
+  // Unknown state: pass the raw id through dynamically (genuinely variable).
+  return $map[$state] ?? ['label' => t('@l', ['@l' => ucfirst($state)]), 'modifier' => 'muted'];
+}
+
+/**
+ * Loads the member appverse_app nodes for a repo (indexed query).
+ *
+ * Memoized per repo id for the request: the row builder and the cache-meta
+ * helper both need the member list, and member apps don't change within a
+ * single page render. Avoids a second query + loadMultiple per hub row.
+ *
+ * @return array<int, \Drupal\node\NodeInterface>
+ */
+function _ood_software_hub_member_apps(\Drupal\node\NodeInterface $repo): array {
+  $memo = &drupal_static(__FUNCTION__, []);
+  $id = (int) $repo->id();
+  if (array_key_exists($id, $memo)) {
+    return $memo[$id];
+  }
+  $ids = \Drupal::entityTypeManager()->getStorage('node')->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_app')
+    ->condition('field_appverse_repo', $id)
+    ->sort('title')
+    ->execute();
+  return $memo[$id] = $ids
+    ? array_values(\Drupal::entityTypeManager()->getStorage('node')->loadMultiple($ids))
+    : [];
+}
+
+/**
+ * Builds a CSRF-protected POST form render array for one hub action.
+ *
+ * The action routes (ood_software.repo_resync etc.) require _csrf_token and
+ * _method POST. We mirror the existing per-URL token mechanism but via a
+ * render-array form rather than a precomputed Twig token string.
+ *
+ * @param string $internalPath
+ *   The route's internal path WITHOUT leading slash, e.g.
+ *   'appverse/repo/12/resync' — the value the csrf_token service signs.
+ * @param string $label
+ *   Visible/aria label for the submit control.
+ * @param string $icon
+ *   Bootstrap-icon class, e.g. 'bi-arrow-clockwise'.
+ * @param string $variant
+ *   Optional modifier class suffix for styling (e.g. 'primary', 'danger').
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = ''): array {
+  $token = \Drupal::service('csrf_token')->get($internalPath);
+  $dest = \Drupal::service('path.current')->getPath();
+  $action = '/' . $internalPath . '?token=' . $token . '&destination=' . urlencode($dest);
+  return [
+    '#type' => 'inline_template',
+    '#template' => '<form method="post" action="{{ action }}" class="appverse-hub-card__action-form">'
+      . '<button type="submit" class="appverse-hub-card__icon-btn {{ variant ? "appverse-hub-card__icon-btn--" ~ variant : "" }}" '
+      . 'title="{{ label }}" aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i></button></form>',
+    '#context' => [
+      'action' => $action,
+      'label' => $label,
+      'icon' => $icon,
+      'variant' => $variant,
+    ],
+    // The CSRF token is minted here at render time. If this fragment were
+    // cached, a stale token would be served and the POST would 403 silently.
+    // max-age 0 bubbles to ancestors, so the whole card (and the view rows)
+    // become uncacheable for render caching — acceptable here because the hub
+    // is authenticated, per-user and access-controlled, so its rows aren't
+    // render-cached for these viewers anyway. (If render caching were ever
+    // wanted, place just the token behind a #lazy_builder, or use the Form API,
+    // which auto-placeholders CSRF tokens.)
+    '#cache' => ['max-age' => 0],
+  ];
+}
+
+/**
+ * Computes the permission-filtered action set for a repo card.
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $isAdmin, string $state, bool $published): array {
+  $id = $repo->id();
+  $dest = urlencode(\Drupal::service('path.current')->getPath());
+  $actions = [
+    'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise'),
+    'send_for_review' => NULL,
+    'publish' => NULL,
+    'unpublish' => NULL,
+    'request_changes' => NULL,
+    'delete' => NULL,
+  ];
+
+  $notPublishedActive = in_array($state, ['draft', 'ready_for_review', 'needs_adjustment'], TRUE)
+    || (!$published && $state === 'published');
+
+  if (!$isAdmin && in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
+    $actions['send_for_review'] = _ood_software_hub_action_form(
+      'appverse/repo/' . $id . '/send-for-review',
+      $state === 'draft' ? t('Send for review') : t('Re-submit'),
+      'bi-send', 'primary'
+    );
+  }
+  if ($isAdmin && $notPublishedActive) {
+    $actions['publish'] = _ood_software_hub_action_form('appverse/repo/' . $id . '/publish', t('Publish'), 'bi-check-circle', 'primary');
+  }
+  if ($published) {
+    $actions['unpublish'] = _ood_software_hub_action_form('appverse/repo/' . $id . '/unpublish', t('Unpublish'), 'bi-slash-circle');
+  }
+  // Request changes maps to the request_adjustment transition, which the
+  // appverse_editorial workflow permits from published, ready_for_review, and
+  // needs_adjustment. Include published so an admin can pull a live Collection
+  // back for fixes (AppverseHubRequestChangesForm cascade-unpublishes its
+  // member apps in that case).
+  if ($isAdmin && in_array($state, ['published', 'ready_for_review', 'needs_adjustment'], TRUE)) {
+    $actions['request_changes'] = ['url' => '/appverse/repo/' . $id . '/request-changes?destination=' . $dest];
+  }
+  if ($isAdmin) {
+    $actions['delete'] = ['url' => '/appverse/repo/' . $id . '/delete?destination=' . $dest];
+  }
+  return $actions;
+}
+
+/**
+ * Builds the structured hub-card data for one appverse_repo row.
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
+  $memberApps = _ood_software_hub_member_apps($repo);
+  $appCount = count($memberApps);
+
+  $shape = $repo->get('field_repo_shape')->value ?? 'inferred';
+  $moderationState = $repo->hasField('moderation_state')
+    ? ($repo->get('moderation_state')->value ?? 'draft')
+    : 'draft';
+
+  $aliasManager = \Drupal::service('path_alias.manager');
+  $repoAlias = $aliasManager->getAliasByPath('/node/' . $repo->id());
+  $repoSlug = ltrim(preg_replace('#^.*/(repo/)?#', '', $repoAlias), '/');
+  if ($repoSlug === '') {
+    $repoSlug = (string) $repo->id();
+  }
+
+  $repoLinkValues = $repo->get('field_repo_url')->getValue();
+  $githubUrl = $repoLinkValues[0]['uri'] ?? '';
+
+  $validationSt = $repo->get('field_repo_validation_st')->value ?? '';
+  $lastSyncedTs = $repo->get('field_repo_last_synced')->value ?? NULL;
+
+  $isInferred = $shape === 'inferred';
+  $apps = [];
+  if ($appCount > 1) {
+    foreach ($memberApps as $app) {
+      $apps[] = _ood_software_build_hub_app($app, $isInferred, $repo->isPublished(), (string) $repoSlug);
+    }
+  }
+
+  // A single-app repo has no apps table to host a Tags column, so surface the
+  // one app's implementation tags on the card itself (below the header).
+  // Reuse the per-app builder so the tag structure is identical to the table.
+  $singleAppTags = NULL;
+  if ($appCount === 1) {
+    $only = reset($memberApps);
+    if ($only instanceof \Drupal\node\NodeInterface) {
+      $built = _ood_software_build_hub_app($only, $isInferred, $repo->isPublished(), (string) $repoSlug);
+      $singleAppTags = $built['tags'] ?? NULL;
+    }
+  }
+
+  $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
+  $canEdit = $repo->access('update');
+  $editUrl = ($shape === 'inferred' && $canEdit) ? '/node/' . $repo->id() . '/edit' : NULL;
+
+  // Owner block — shown only when the repo is owned by SOMEONE ELSE. On a
+  // viewer's own apps (their "My Apps" hub, or their own repo on the Manage
+  // page) the owner is the viewer, so the block is redundant noise and is
+  // suppressed. The 'user' cache context keeps this per-viewer-safe.
+  $owner = NULL;
+  $currentUid = (int) \Drupal::currentUser()->id();
+  // getOwner() is NULL if the author account was deleted while the repo
+  // persists. Guard before dereferencing.
+  $ownerAccount = $repo->getOwner();
+  // @phpstan-ignore-next-line booleanAnd.leftAlwaysTrue (getOwner() can be NULL at runtime for a deleted author)
+  if ($ownerAccount && (int) $ownerAccount->id() !== $currentUid) {
+    $owner = [
+      'name' => $ownerAccount->getDisplayName(),
+      'persona_url' => '/community-persona/' . $ownerAccount->id(),
+      'email' => $ownerAccount->getEmail() ?? '',
+    ];
+  }
+
+  // needs_adjustment feedback: latest revision_log on node_revision.
+  $moderationComment = NULL;
+  if ($moderationState === 'needs_adjustment') {
+    $latest = \Drupal::database()->select('node_revision', 'nr')
+      ->fields('nr', ['revision_log'])
+      ->condition('nid', $repo->id())
+      ->orderBy('vid', 'DESC')
+      ->range(0, 1)
+      ->execute()
+      ->fetchAssoc();
+    $moderationComment = $latest['revision_log'] ?? NULL;
+  }
+
+  // Discovery tags (repo-level `tags` vocab) shown on the card header.
+  // field_repo_unresolved_tags does not exist until B2 adds it; guard the
+  // field read so a partial deploy can't fatal the hub render.
+  $discoveryResolved = [];
+  foreach ($repo->get('field_repo_tags')->referencedEntities() as $term) {
+    $discoveryResolved[] = $term->label();
+  }
+  $discoveryUnresolved = [];
+  if ($repo->hasField('field_repo_unresolved_tags')) {
+    foreach ($repo->get('field_repo_unresolved_tags')->getValue() as $item) {
+      $discoveryUnresolved[] = $item['value'];
+    }
+  }
+  $discoveryTags = [
+    'resolved' => $discoveryResolved,
+    'unresolved' => $discoveryUnresolved,
+  ];
+
+  return [
+    'repo_id' => (int) $repo->id(),
+    'title' => $repo->label(),
+    'label' => $appCount > 1 ? t('Monorepo') : t('Repo'),
+    'catalog_url' => '/appverse/#/repo/' . $repoSlug,
+    'github_url' => $githubUrl,
+    'is_inferred' => $shape === 'inferred',
+    'is_monorepo' => $appCount > 1,
+    'app_count' => $appCount,
+    'published' => $repo->isPublished(),
+    'can_edit' => $canEdit,
+    'is_admin' => $isAdmin,
+    'moderation_state' => $moderationState,
+    'status' => _ood_software_hub_badge($moderationState),
+    'has_validation_issues' => in_array($validationSt, ['degraded', 'stale_invalid'], TRUE),
+    'validation_st' => $validationSt,
+    'last_synced' => $lastSyncedTs ? \Drupal::service('date.formatter')->format((int) $lastSyncedTs, 'custom', 'm-d-y H:i') : '',
+    'unpublished_after_publish' => !$repo->isPublished() && $moderationState === 'published',
+    'moderation_comment' => $moderationComment,
+    'edit_url' => $editUrl,
+    'owner' => $owner,
+    'actions' => _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished()),
+    'discovery_tags' => $discoveryTags,
+    'single_app_tags' => $singleAppTags,
+    'apps' => $apps,
+  ];
+}
+
+/**
+ * Builds one member-app row for the hub card.
+ *
+ * @param \Drupal\node\NodeInterface $app
+ *   The member appverse_app node.
+ * @param bool $parentInferred
+ *   Whether the parent repo is inferred (gates the per-app edit link together
+ *   with entity update access).
+ * @param bool $repoPublished
+ *   Whether the parent repo is published (drives the per-app status label).
+ * @param string $repoSlug
+ *   Parent repo slug for the app's catalog deep-link.
+ *
+ * @return array<string, mixed>
+ */
+function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $parentInferred, bool $repoPublished, string $repoSlug): array {
+  $aliasManager = \Drupal::service('path_alias.manager');
+  $appAlias = $aliasManager->getAliasByPath('/node/' . $app->id());
+  $appSlug = ltrim(preg_replace('#^.*/#', '', $appAlias), '/');
+  if ($appSlug === '') {
+    $appSlug = (string) $app->id();
+  }
+
+  $software = $app->get('field_appverse_software_implemen')->entity ?? NULL;
+  $canEdit = $app->access('update');
+
+  // Per-app status: when the parent repo is unpublished, member apps are
+  // hidden from the catalog regardless of their own state.
+  if (!$repoPublished) {
+    $status = ['label' => t('Hidden'), 'modifier' => 'muted'];
+  }
+  else {
+    $status = $app->isPublished()
+      ? ['label' => t('Published'), 'modifier' => 'success']
+      : ['label' => t('Unpublished'), 'modifier' => 'warning'];
+  }
+
+  // Resolved implementation tags (chips) + unresolved (flagged, with a
+  // per-tag create-term URL). Flagged always shown in full; resolved
+  // truncate to keep tag-heavy repos readable.
+  //
+  // Guard both field reads with hasField(): on an environment where the
+  // module's update hooks haven't run yet (the field config from
+  // config/install isn't installed), reading an undefined field throws
+  // "Field X is unknown" and fatals the whole hub render. Guarding degrades
+  // gracefully (no chips) instead — the field appears once updates run.
+  $resolvedTags = [];
+  if ($app->hasField('field_add_implementation_tags')) {
+    foreach ($app->get('field_add_implementation_tags')->referencedEntities() as $term) {
+      $resolvedTags[] = $term->label();
+    }
+  }
+  $unresolved = [];
+  // The create-term action is admin-only (route uses adminOnlyAccess), so only
+  // build the create link for admins. Non-admin contributors (e.g. on their own
+  // My Apps hub) still SEE the unresolved chip, but without a link that would
+  // 403 on click — their fix is to correct appverse.yml. The 'user.permissions'
+  // cache context (set on the hub render) keeps this per-viewer-safe.
+  $canCreateTags = \Drupal::currentUser()->hasPermission('administer appverse content')
+    && count(\Drupal::service('router.route_provider')
+      ->getRoutesByNames(['ood_software.create_implementation_tag'])) > 0;
+  if ($app->hasField('field_appverse_unresolved_tags')) {
+    foreach ($app->get('field_appverse_unresolved_tags')->getValue() as $item) {
+      $declared = $item['value'];
+      $createUrl = $canCreateTags
+        ? \Drupal\Core\Url::fromRoute('ood_software.create_implementation_tag', ['node' => $app->id()],
+            ['query' => ['tag' => $declared, 'destination' => \Drupal::destination()->get()]])->toString()
+        : NULL;
+      $unresolved[] = ['declared' => $declared, 'create_url' => $createUrl];
+    }
+  }
+  $shownLimit = 5;
+  $tags = [
+    'resolved' => $resolvedTags,
+    'resolved_shown' => array_slice($resolvedTags, 0, $shownLimit),
+    'truncated' => count($resolvedTags) > $shownLimit,
+    'remaining' => max(0, count($resolvedTags) - $shownLimit),
+    'unresolved' => $unresolved,
+  ];
+
+  return [
+    'app_id' => (int) $app->id(),
+    'title' => $app->label(),
+    'catalog_url' => '/appverse/#/repo/' . $repoSlug . '?app=' . $appSlug,
+    'subpath' => $app->get('field_appverse_app_subpath')->value ?? '',
+    'software' => $software ? $software->label() : NULL,
+    'published' => $app->isPublished(),
+    'can_edit' => $canEdit,
+    'edit_url' => ($parentInferred && $canEdit) ? '/node/' . $app->id() . '/edit' : NULL,
+    'status' => $status,
+    'tags' => $tags,
+    'unpublish_form' => $repoPublished
+      ? _ood_software_hub_action_form('appverse/app/' . $app->id() . '/unpublish', $app->isPublished() ? t('Unpublish app') : t('Publish app'), $app->isPublished() ? 'bi-slash-circle' : 'bi-check-circle')
+      : NULL,
+  ];
+}
+
+/**
+ * Implements hook_views_pre_render().
+ *
+ * The per-row template renders each card, but the appverse_hub library must
+ * attach even on an empty result set (no rows → no per-row preprocess) so the
+ * exposed-form filter grid keeps its CSS. Attaching here covers both cases.
+ */
+function ood_software_views_pre_render(\Drupal\views\ViewExecutable $view): void {
+  if ($view->id() !== 'my_appverse') {
+    return;
+  }
+  $view->element['#attached']['library'][] = 'ood_software/appverse_hub';
+
+  // Collapse relationship-multiplied rows. The admin "Software used" exposed
+  // filter joins each repo to its member apps (reverse relationship), so a
+  // monorepo's row is returned once per member app. The SQL DISTINCT can't
+  // collapse it because the relationship's id column is in the SELECT, and the
+  // filter must stay (it constrains which repos match). De-duplicate the
+  // result set here, keeping the first row per repo node.
+  if (!empty($view->result)) {
+    $seen = [];
+    $deduped = [];
+    foreach ($view->result as $row) {
+      // ResultRow::$_entity is declared non-null, but relationship rows that
+      // did not resolve an entity leave it unset at runtime — keep the guard.
+      // @phpstan-ignore-next-line empty.property (row may have no _entity at runtime)
+      if (empty($row->_entity)) {
+        $deduped[] = $row;
+        continue;
+      }
+      $id = $row->_entity->id();
+      if (isset($seen[$id])) {
+        continue;
+      }
+      $seen[$id] = TRUE;
+      $deduped[] = $row;
+    }
+    if (count($deduped) !== count($view->result)) {
+      $view->result = array_values($deduped);
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_views_view().
+ *
+ * Adds an "Add a repo" button to the user hub (page_user), linking to
+ * /appverse/add-repo. Not on the admin manage-repos display — adding a repo is
+ * a contributor action, not a reviewer one.
+ *
+ * @param array<string, mixed> $variables
+ */
+function ood_software_preprocess_views_view(array &$variables): void {
+  if (($variables['view'] ?? NULL) === NULL || $variables['view']->id() !== 'my_appverse') {
+    return;
+  }
+  if (($variables['view']->current_display ?? NULL) !== 'page_user') {
+    return;
+  }
+  $button = [
+    '#type' => 'link',
+    '#title' => t('+ Add a repo'),
+    '#url' => \Drupal\Core\Url::fromRoute('ood_software.add_repo'),
+    '#attributes' => ['class' => ['appverse-hub-add-repo', 'btn', 'btn-primary']],
+  ];
+  // Prepend to the header without clobbering anything already there.
+  if (empty($variables['header'])) {
+    $variables['header'] = [];
+  }
+  $variables['header']['ood_software_add_repo'] = $button;
+}
+
+/**
+ * Implements hook_views_data_alter().
+ *
+ * Two manage-repos exposed filters get the wrong filter plugin from core's
+ * field-storage discovery:
+ *
+ * - field_appverse_software_implemen_target_id is an integer column, typed
+ *   as a numeric filter. Override to entity_reference so it renders as an
+ *   autocomplete bound to appverse_software titles.
+ * - field_repo_last_synced is a timestamp column, typed as a numeric filter
+ *   (raw int input). Override to the date filter so it accepts human date
+ *   input; the exposed form-alter then upgrades it to an HTML5 date picker.
+ *
+ * @param array<string, mixed> $data
+ */
+function ood_software_views_data_alter(array &$data): void {
+  if (isset($data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter'])) {
+    $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['id'] = 'entity_reference';
+    $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['entity_type'] = 'node';
+  }
+  if (isset($data['node__field_repo_last_synced']['field_repo_last_synced_value']['filter'])) {
+    $data['node__field_repo_last_synced']['field_repo_last_synced_value']['filter']['id'] = 'date';
   }
 }
 

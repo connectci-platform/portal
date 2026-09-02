@@ -10,6 +10,7 @@ dependencies:
     - field.field.node.regional_about.field_region
     - node.type.regional_about
   module:
+    - content_moderation
     - path
     - text
 id: node.regional_about.default
@@ -57,6 +58,13 @@ content:
     weight: 3
     region: content
     settings: {  }
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default

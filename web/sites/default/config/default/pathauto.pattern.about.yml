@@ -7,7 +7,7 @@ dependencies:
 id: about
 label: About
 type: 'canonical_entities:node'
-pattern: 'about/[node:title]'
+pattern: '/about/[node:title]'
 selection_criteria:
   e5cc554f-fbe8-48cb-8cdc-5a083fbefdfa:
     id: 'entity_bundle:node'

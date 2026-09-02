@@ -6,7 +6,6 @@ dependencies:
     - field.field.paragraph.rp_ssh_login.field_rp_recommended
     - field.field.paragraph.rp_ssh_login.field_rp_ssh_docs_url
     - field.field.paragraph.rp_ssh_login.field_rp_ssh_hostname
-    - field.field.paragraph.rp_ssh_login.field_rp_ssh_url
     - field.field.paragraph.rp_ssh_login.field_rp_ssh_user_placeholder
     - paragraphs.paragraphs_type.rp_ssh_login
   module:
@@ -38,14 +37,6 @@ content:
     settings:
       size: 60
       placeholder: login.example.edu
-    third_party_settings: {  }
-  field_rp_ssh_url:
-    type: link_default
-    weight: 2
-    region: content
-    settings:
-      placeholder_url: 'https://login01.example.edu'
-      placeholder_title: login01
     third_party_settings: {  }
   field_rp_ssh_user_placeholder:
     type: string_textfield

@@ -7,7 +7,7 @@ dependencies:
 id: blog_region
 label: 'Blog region'
 type: 'canonical_entities:node'
-pattern: 'blog/[node:title]'
+pattern: '/blog/[node:title]'
 selection_criteria:
   41cd4d8a-693d-47ea-bba5-dd3b819baac9:
     id: 'entity_bundle:node'

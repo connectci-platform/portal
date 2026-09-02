@@ -78,12 +78,18 @@ describe("RP Resources Admin View", () => {
 
     it("filters by resource name", () => {
       cy.visit(managePath);
-      // Filter matches DB title; rendered table cell shows short_name
-      // due to operations_cider_node_load() mutation.
-      cy.get("#edit-title").type("Test Resource Alpha");
+      // The exposed "Resource" filter (URL identifier "title") does a CONTAINS
+      // match on field_cider_short_name, not the raw node title — so filter on
+      // the short name "Alpha", which is also the displayed Resource cell value.
+      cy.get("#edit-title").type("Alpha");
       cy.get("#edit-submit-rp-resources-admin").click();
-      cy.get("table tbody tr").should("have.length.greaterThan", 0);
-      cy.get("table tbody").contains("Alpha");
+      // The exposed filter submits as a GET reload. Wait for the URL to reflect
+      // the applied filter AND for the filtered row to actually render before
+      // asserting — a bare "contains" can fire against the pre-reload unfiltered
+      // table still on screen. Scoping the wait to the row containing "Alpha"
+      // makes the retry wait for the real post-filter render.
+      cy.url().should("include", "title=Alpha");
+      cy.get("table tbody").contains("tr", "Alpha");
     });
 
     it("filters by organization name", () => {

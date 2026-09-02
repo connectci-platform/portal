@@ -1,0 +1,9 @@
+uuid: 892ab3c6-42dd-4c0a-b3cb-b3928aad2a96
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_greatplains_ddev_site
+domain_id: greatplains_wpi_edu
+pattern: '*.greatplains.ddev.site'
+redirect: 0
+environment: default

@@ -3,16 +3,21 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.storage.node.field_ccmnet_approved
     - field.storage.node.field_match_interested_users
     - field.storage.node.field_me_ccmnet_leadership
     - field.storage.node.field_me_state
     - field.storage.node.field_mentee
     - field.storage.node.field_mentor
     - node.type.mentorship_engagement
+    - taxonomy.vocabulary.mentorship_programs
     - taxonomy.vocabulary.state
     - user.role.administrator
+    - user.role.campuschampionsadmin
     - user.role.ccmnet_pm
+    - user.role.champions_mentorship_admin
   content:
+    - 'taxonomy_term:mentorship_programs:dd8c1b08-4a82-4ad7-8f40-3936fe48bca2'
     - 'taxonomy_term:state:56c8a790-72fd-4c30-993f-7c1edc34796f'
     - 'taxonomy_term:state:5713b9d3-d1c8-48dd-a2e3-1253e04c4d00'
     - 'taxonomy_term:state:700f4aab-439e-4b79-b7d3-5be9f3b5aa4c'
@@ -329,6 +334,138 @@ display:
           multi_type: separator
           separator: ', '
           field_api_classes: false
+        field_ccmnet_approved:
+          id: field_ccmnet_approved
+          table: node__field_ccmnet_approved
+          field: field_ccmnet_approved
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: field
+          label: Approved
+          exclude: false
+          alter:
+            alter_text: true
+            text: "{% if field_ccmnet_approved__value == 1 %}\r\n  <i class=\"bi bi-check2\"></i>\r\n  <span class=\"visually-hidden\">Approved</span>\r\n{% else %}\r\n  <span class=\"visually-hidden\">Not Approved</span>\r\n{% endif %}"
+            make_link: false
+            path: ''
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: true
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          click_sort_column: value
+          type: boolean
+          settings:
+            format: boolean
+            format_custom_false: ''
+            format_custom_true: ''
+          group_column: value
+          group_columns: {  }
+          group_rows: true
+          delta_limit: 0
+          delta_offset: 0
+          delta_reversed: false
+          delta_first_last: false
+          multi_type: separator
+          separator: ', '
+          field_api_classes: false
+        status:
+          id: status
+          table: node_field_data
+          field: status
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: node
+          entity_field: status
+          plugin_id: field
+          label: Published
+          exclude: false
+          alter:
+            alter_text: true
+            text: "{% if status__value == 1 %}\r\n  <i class=\"bi bi-check2\"></i>\r\n  <span class=\"visually-hidden\">Published</span>\r\n{% else %}\r\n  <span class=\"visually-hidden\">Not Published</span>\r\n{% endif %}"
+            make_link: false
+            path: ''
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: true
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          click_sort_column: value
+          type: boolean
+          settings:
+            format: boolean
+            format_custom_false: ''
+            format_custom_true: ''
+          group_column: value
+          group_columns: {  }
+          group_rows: true
+          delta_limit: 0
+          delta_offset: 0
+          delta_reversed: false
+          delta_first_last: false
+          multi_type: separator
+          separator: ', '
+          field_api_classes: false
         field_me_state:
           id: field_me_state
           table: node__field_me_state
@@ -460,7 +597,7 @@ display:
         options:
           offset: 0
           pagination_heading_level: h4
-          items_per_page: 10
+          items_per_page: 20
           total_pages: null
           id: 0
           tags:
@@ -489,8 +626,11 @@ display:
           bef:
             general:
               autosubmit: false
+              auto_submit_sort_only: false
+              autosubmit_breakpoint: ''
               autosubmit_exclude_textfield: false
               autosubmit_textfield_delay: 500
+              autosubmit_textfield_minimum_length: 3
               autosubmit_hide: false
               input_required: false
               allow_secondary: false
@@ -502,11 +642,33 @@ display:
                 plugin_id: bef_select2
                 advanced:
                   sort_options: false
+                  sort_options_method: alphabetical_asc
+                  sort_options_natural: true
                   placeholder_text: '- None -'
                   rewrite:
                     filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
                   collapsible: false
+                  collapsible_disable_automatic_open: false
+                  open_by_default: false
                   is_secondary: false
+                  hide_label: false
+                  field_classes: ''
+              field_ccmnet_approved_value:
+                plugin_id: default
+                advanced:
+                  sort_options: false
+                  sort_options_method: alphabetical_asc
+                  sort_options_natural: true
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  open_by_default: false
+                  is_secondary: false
+                  hide_label: false
+                  field_classes: ''
       access:
         type: role
         options:
@@ -543,10 +705,123 @@ display:
           entity_type: node
           entity_field: status
           plugin_id: boolean
-          value: '1'
+          operator: '='
+          value: All
           group: 1
+          exposed: true
           expose:
-            operator: ''
+            operator_id: status_op
+            label: Published
+            description: ''
+            use_operator: false
+            operator: status_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: status
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+        field_mentorship_program_target_id:
+          id: field_mentorship_program_target_id
+          table: node__field_mentorship_program
+          field: field_mentorship_program_target_id
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: taxonomy_index_tid
+          operator: or
+          value: {  }
+          group: 1
+          exposed: true
+          expose:
+            operator_id: field_mentorship_program_target_id_op
+            label: 'Mentorship Program'
+            description: ''
+            use_operator: false
+            operator: field_mentorship_program_target_id_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: field_mentorship_program_target_id
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+              anonymous: '0'
+              student: '0'
+              mentor: '0'
+              professional_mentor: '0'
+              researcher: '0'
+              representative: '0'
+              administrator: '0'
+              masquerade: '0'
+              regional_expert: '0'
+              campuschampionsadmin: '0'
+              exportpeople: '0'
+              research_computing_facilitator: '0'
+              research_software_engineer: '0'
+              ci_systems_engineer: '0'
+              mentee: '0'
+              student_champion: '0'
+              domain_champion: '0'
+              cssn: '0'
+              affinity_group_leader: '0'
+              match_pm: '0'
+              sc: '0'
+              lt: '0'
+              ra: '0'
+              coco_pm: '0'
+              cnctci_pm: '0'
+              news_pm: '0'
+              kb_pm: '0'
+              careers_sc: '0'
+              rp_documentation_manager: '0'
+              ccmnet_pm: '0'
+              consultant: '0'
+              match_sc: '0'
+              cip: '0'
+              site_developer: '0'
+              ccmnet: '0'
+              ccmnet_admin: '0'
+              ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
+            reduce: false
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+          reduce_duplicates: false
+          vid: mentorship_programs
+          type: select
+          hierarchy: false
+          limit: true
+          error_message: true
         type:
           id: type
           table: node_field_data
@@ -556,6 +831,7 @@ display:
           plugin_id: bundle
           value:
             mentorship_engagement: mentorship_engagement
+          group: 1
         field_me_state_target_id:
           id: field_me_state_target_id
           table: node__field_me_state
@@ -575,7 +851,7 @@ display:
           exposed: true
           expose:
             operator_id: field_me_state_target_id_op
-            label: ''
+            label: 'Mentorship State'
             description: ''
             use_operator: false
             operator: field_me_state_target_id_op
@@ -615,6 +891,7 @@ display:
               news_pm: '0'
               kb_pm: '0'
               careers_sc: '0'
+              rp_documentation_manager: '0'
               ccmnet_pm: '0'
               consultant: '0'
               match_sc: '0'
@@ -623,6 +900,11 @@ display:
               ccmnet: '0'
               ccmnet_admin: '0'
               ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -642,6 +924,90 @@ display:
           hierarchy: false
           limit: true
           error_message: true
+        field_ccmnet_approved_value:
+          id: field_ccmnet_approved_value
+          table: node__field_ccmnet_approved
+          field: field_ccmnet_approved_value
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: boolean
+          operator: '='
+          value: All
+          group: 1
+          exposed: true
+          expose:
+            operator_id: ''
+            label: Approved
+            description: ''
+            use_operator: false
+            operator: field_ccmnet_approved_value_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: field_ccmnet_approved_value
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+              anonymous: '0'
+              student: '0'
+              mentor: '0'
+              professional_mentor: '0'
+              researcher: '0'
+              representative: '0'
+              administrator: '0'
+              masquerade: '0'
+              regional_expert: '0'
+              campuschampionsadmin: '0'
+              exportpeople: '0'
+              research_computing_facilitator: '0'
+              research_software_engineer: '0'
+              ci_systems_engineer: '0'
+              mentee: '0'
+              student_champion: '0'
+              domain_champion: '0'
+              cssn: '0'
+              affinity_group_leader: '0'
+              match_pm: '0'
+              sc: '0'
+              lt: '0'
+              ra: '0'
+              coco_pm: '0'
+              cnctci_pm: '0'
+              news_pm: '0'
+              kb_pm: '0'
+              careers_sc: '0'
+              rp_documentation_manager: '0'
+              ccmnet_pm: '0'
+              consultant: '0'
+              match_sc: '0'
+              cip: '0'
+              site_developer: '0'
+              ccmnet: '0'
+              ccmnet_admin: '0'
+              ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+      filter_groups:
+        operator: AND
+        groups:
+          1: AND
       style:
         type: table
         options:
@@ -651,9 +1017,13 @@ display:
           columns:
             edit_node: edit_node
             title: title
-            field_mentee: field_mentee
             field_mentor: field_mentor
-            field_status: field_status
+            field_mentee: field_mentee
+            field_me_ccmnet_leadership: field_me_ccmnet_leadership
+            field_ccmnet_approved: field_ccmnet_approved
+            status: status
+            field_me_state: field_me_state
+            field_match_interested_users: field_match_interested_users
           default: '-1'
           info:
             edit_node:
@@ -670,13 +1040,6 @@ display:
               separator: ''
               empty_column: false
               responsive: ''
-            field_mentee:
-              sortable: false
-              default_sort_order: asc
-              align: ''
-              separator: ''
-              empty_column: false
-              responsive: ''
             field_mentor:
               sortable: false
               default_sort_order: asc
@@ -684,9 +1047,40 @@ display:
               separator: ''
               empty_column: false
               responsive: ''
-            field_status:
+            field_mentee:
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            field_me_ccmnet_leadership:
               sortable: false
               default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            field_ccmnet_approved:
+              sortable: true
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            status:
+              sortable: true
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            field_me_state:
+              sortable: false
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            field_match_interested_users:
               align: ''
               separator: ''
               empty_column: false
@@ -723,16 +1117,7 @@ display:
         - 'user.node_grants:view'
         - user.roles
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_match_interested_users'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_me_ccmnet_leadership'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_me_state'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_mentee'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_mentor'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_match_interested_users'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_me_ccmnet_leadership'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_me_state'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_mentee'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_mentor'
+        - 'config:field.storage.node.field_ccmnet_approved'
         - 'config:field.storage.node.field_match_interested_users'
         - 'config:field.storage.node.field_me_ccmnet_leadership'
         - 'config:field.storage.node.field_me_state'
@@ -1159,15 +1544,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - url.query_args
         - 'user.node_grants:view'
         - user.permissions
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_me_state'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_mentee'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_mentor'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_me_state'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_mentee'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_mentor'
         - 'config:field.storage.node.field_me_state'
         - 'config:field.storage.node.field_mentee'
         - 'config:field.storage.node.field_mentor'
@@ -1177,7 +1557,9 @@ display:
     display_plugin: page
     position: 1
     display_options:
-      display_extenders: {  }
+      display_extenders:
+        jsonapi_views:
+          enabled: true
       path: mentorships/status
     cache_metadata:
       max-age: -1
@@ -1189,16 +1571,316 @@ display:
         - 'user.node_grants:view'
         - user.roles
       tags:
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_match_interested_users'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_me_ccmnet_leadership'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_me_state'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_mentee'
-        - 'config:domain.config.nectd8_wpi_edu.en.field.storage.node.field_mentor'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_match_interested_users'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_me_ccmnet_leadership'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_me_state'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_mentee'
-        - 'config:domain.config.nectd8_wpi_edu.field.storage.node.field_mentor'
+        - 'config:field.storage.node.field_ccmnet_approved'
+        - 'config:field.storage.node.field_match_interested_users'
+        - 'config:field.storage.node.field_me_ccmnet_leadership'
+        - 'config:field.storage.node.field_me_state'
+        - 'config:field.storage.node.field_mentee'
+        - 'config:field.storage.node.field_mentor'
+  page_2:
+    id: page_2
+    display_title: 'Page - Campus Champions'
+    display_plugin: page
+    position: 2
+    display_options:
+      title: 'Campus Champions Mentorships'
+      access:
+        type: role
+        options:
+          role:
+            administrator: administrator
+            champions_mentorship_admin: champions_mentorship_admin
+            campuschampionsadmin: campuschampionsadmin
+      filters:
+        status:
+          id: status
+          table: node_field_data
+          field: status
+          entity_type: node
+          entity_field: status
+          plugin_id: boolean
+          operator: '='
+          value: All
+          group: 1
+          exposed: true
+          expose:
+            operator_id: status_op
+            label: Published
+            description: ''
+            use_operator: false
+            operator: status_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: status
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+        type:
+          id: type
+          table: node_field_data
+          field: type
+          entity_type: node
+          entity_field: type
+          plugin_id: bundle
+          value:
+            mentorship_engagement: mentorship_engagement
+          group: 1
+        field_mentorship_program_target_id:
+          id: field_mentorship_program_target_id
+          table: node__field_mentorship_program
+          field: field_mentorship_program_target_id
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: taxonomy_index_tid
+          operator: or
+          value:
+            910: 910
+          group: 1
+          exposed: false
+          expose:
+            operator_id: ''
+            label: ''
+            description: ''
+            use_operator: false
+            operator: ''
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: ''
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+            reduce: false
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+          reduce_duplicates: false
+          vid: mentorship_programs
+          type: select
+          hierarchy: false
+          limit: true
+          error_message: true
+        field_me_state_target_id:
+          id: field_me_state_target_id
+          table: node__field_me_state
+          field: field_me_state_target_id
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: taxonomy_index_tid
+          operator: or
+          value:
+            827: 827
+            828: 828
+            829: 829
+            830: 830
+            886: 886
+          group: 1
+          exposed: true
+          expose:
+            operator_id: field_me_state_target_id_op
+            label: 'Mentorship State'
+            description: ''
+            use_operator: false
+            operator: field_me_state_target_id_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: field_me_state_target_id
+            required: false
+            remember: false
+            multiple: true
+            remember_roles:
+              authenticated: authenticated
+              anonymous: '0'
+              student: '0'
+              mentor: '0'
+              professional_mentor: '0'
+              researcher: '0'
+              representative: '0'
+              administrator: '0'
+              masquerade: '0'
+              regional_expert: '0'
+              campuschampionsadmin: '0'
+              exportpeople: '0'
+              research_computing_facilitator: '0'
+              research_software_engineer: '0'
+              ci_systems_engineer: '0'
+              mentee: '0'
+              student_champion: '0'
+              domain_champion: '0'
+              cssn: '0'
+              affinity_group_leader: '0'
+              match_pm: '0'
+              sc: '0'
+              lt: '0'
+              ra: '0'
+              coco_pm: '0'
+              cnctci_pm: '0'
+              news_pm: '0'
+              kb_pm: '0'
+              careers_sc: '0'
+              rp_documentation_manager: '0'
+              ccmnet_pm: '0'
+              consultant: '0'
+              match_sc: '0'
+              cip: '0'
+              site_developer: '0'
+              ccmnet: '0'
+              ccmnet_admin: '0'
+              ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
+            reduce: false
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+          reduce_duplicates: false
+          vid: state
+          type: select
+          hierarchy: false
+          limit: true
+          error_message: true
+        field_ccmnet_approved_value:
+          id: field_ccmnet_approved_value
+          table: node__field_ccmnet_approved
+          field: field_ccmnet_approved_value
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: boolean
+          operator: '='
+          value: All
+          group: 1
+          exposed: true
+          expose:
+            operator_id: ''
+            label: 'Mentorship Approved'
+            description: ''
+            use_operator: false
+            operator: field_ccmnet_approved_value_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: field_ccmnet_approved_value
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+              anonymous: '0'
+              student: '0'
+              mentor: '0'
+              professional_mentor: '0'
+              researcher: '0'
+              representative: '0'
+              administrator: '0'
+              masquerade: '0'
+              regional_expert: '0'
+              campuschampionsadmin: '0'
+              exportpeople: '0'
+              research_computing_facilitator: '0'
+              research_software_engineer: '0'
+              ci_systems_engineer: '0'
+              mentee: '0'
+              student_champion: '0'
+              domain_champion: '0'
+              cssn: '0'
+              affinity_group_leader: '0'
+              match_pm: '0'
+              sc: '0'
+              lt: '0'
+              ra: '0'
+              coco_pm: '0'
+              cnctci_pm: '0'
+              news_pm: '0'
+              kb_pm: '0'
+              careers_sc: '0'
+              rp_documentation_manager: '0'
+              ccmnet_pm: '0'
+              consultant: '0'
+              match_sc: '0'
+              cip: '0'
+              site_developer: '0'
+              ccmnet: '0'
+              ccmnet_admin: '0'
+              ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+      filter_groups:
+        operator: AND
+        groups:
+          1: AND
+      defaults:
+        access: false
+        title: false
+        filters: false
+        filter_groups: false
+      display_extenders:
+        jsonapi_views:
+          enabled: true
+      path: mentorships/cc-status
+    cache_metadata:
+      max-age: -1
+      contexts:
+        - 'languages:language_content'
+        - 'languages:language_interface'
+        - url
+        - url.query_args
+        - 'user.node_grants:view'
+        - user.roles
+      tags:
+        - 'config:field.storage.node.field_ccmnet_approved'
         - 'config:field.storage.node.field_match_interested_users'
         - 'config:field.storage.node.field_me_ccmnet_leadership'
         - 'config:field.storage.node.field_me_state'

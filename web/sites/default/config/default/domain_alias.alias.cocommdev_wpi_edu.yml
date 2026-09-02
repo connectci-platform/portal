@@ -1,9 +1,0 @@
-uuid: 9a7d3002-16fd-4479-966e-5eb9f7f37226
-langcode: en
-status: true
-dependencies: {  }
-id: cocommdev_wpi_edu
-domain_id: coco_cyberinfrastructure_org
-pattern: cocommdev.wpi.edu
-redirect: 0
-environment: default

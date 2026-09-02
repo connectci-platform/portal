@@ -1,6 +1,6 @@
 name: 'DDEV with Files'
 description: 'Setup DDEV environment with database and file downloads'
-author: 'necyberteam'
+author: 'connectci-platform'
 
 inputs:
   site:

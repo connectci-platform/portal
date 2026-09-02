@@ -1,0 +1,13 @@
+parameters:
+    level: 6
+    paths:
+        - docroot/modules/custom
+    excludePaths:
+        - docroot/modules/custom/*/tests/*
+
+services:
+    -
+        class: Cyberteam\PhpStan\NoContainerInjectionRule
+        tags:
+            - phpstan.rules.rule
+

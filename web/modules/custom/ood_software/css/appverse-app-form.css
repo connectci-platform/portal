@@ -1,0 +1,168 @@
+/* AJAX preview cards rendered inside the appverse_app node-add form. */
+
+/* The whole Add-a-Repo form is wrapped in #add-repo-form-wrapper (the AJAX
+   replace target). Scope the link + actions polish to it so nothing leaks. */
+
+/* Breathing room below the form so it doesn't end flush against the
+   footer / viewport bottom. Covers the add-repo AJAX form
+   (#add-repo-form-wrapper) and the appverse_app edit form (Drupal gives
+   the latter a form-id-derived class). */
+#add-repo-form-wrapper,
+form.node-appverse-app-edit-form,
+form.node-appverse-app-form {
+  padding-bottom: 3rem;
+}
+
+/* Intro / inline links use the appverse-red brand color instead of the
+   theme's default (off-brand) link color. */
+#add-repo-form-wrapper a {
+  color: #c91235;
+}
+
+/* Inline <code> (the preview "Repo: <url>" and the appverse.yml/manifest.yml
+   mentions) — mute to the secondary gray instead of Bootstrap's default
+   bright pink (#e83e8c), matching the preview card's subpath. */
+#add-repo-form-wrapper code {
+  color: #57606a;
+  background: transparent;
+  font-size: 0.95em;
+}
+#add-repo-form-wrapper a:hover,
+#add-repo-form-wrapper a:focus {
+  color: #a30e2b;
+  text-decoration: underline;
+}
+
+/* Form action buttons (Fetch on the URL stage; Back + Confirm on the
+   preview stage) lay out inline with a consistent gap. Drupal's default
+   .form-actions rendering stacks/spaces them unevenly. */
+#add-repo-form-wrapper .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+#add-repo-form-wrapper .form-actions .button,
+#add-repo-form-wrapper .form-actions input[type="submit"] {
+  margin: 0;
+}
+
+/* Row containing the GitHub URL field and the Fetch Repo button.
+   `position: relative` establishes a positioning context so stray
+   theme rules that absolutely-position form submits don't escape
+   the row. */
+.appverse-url-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  position: relative;
+}
+/* Drupal's link-field widget wraps the .form-item in
+   .field--name-field-appverse-github-url, so target that wrapper
+   (the direct flex child) rather than .form-item which lives one
+   level deeper. */
+.appverse-url-row > .field--name-field-appverse-github-url,
+.appverse-url-row > .form-item {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+.appverse-url-row > .field--name-field-appverse-github-url .form-item {
+  margin: 0;
+}
+/* The actual <input> inside the wrapper. Constrain it to the
+   wrapper's width so theme-default `width: 100%` doesn't overflow
+   the flex item and visually push under the button. */
+.appverse-url-row > .field--name-field-appverse-github-url input[type="url"],
+.appverse-url-row > .field--name-field-appverse-github-url input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+/* The Fetch Repo button. `position: static` defends against theme
+   rules (style.css legacy or core admin) that try to absolutely
+   position form submits — those break the flex layout and cause
+   the button to overlap the input. */
+.appverse-url-row > .button {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin-top: 0;
+  position: static;
+}
+
+/* AJAX preview wrapper — sits full-width in its own row inside group_github. */
+.appverse-ajax-preview { width: 100%; clear: both; margin-top: 1rem; }
+
+/* Outer preview frame that wraps a Repo / single-app / empty preview. */
+.appverse-preview-frame {
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 1rem;
+}
+.appverse-preview-frame > p { margin-top: 0; }
+
+/* Each per-app card stacked inside the preview frame. */
+.appverse-app-card {
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.appverse-app-card:last-child { margin-bottom: 0; }
+
+.appverse-app-card__header {
+  padding: 0.6rem 0.9rem;
+  background: #f6f8fa;
+  border-bottom: 1px solid #d0d7de;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.appverse-app-card__subpath {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  color: #57606a;
+  flex-shrink: 0;
+}
+.appverse-app-card__name {
+  font-weight: bold;
+  font-size: 1.05em;
+}
+
+.appverse-app-card__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.appverse-app-card__cell {
+  padding: 0.6rem 0.9rem;
+}
+.appverse-app-card__cell + .appverse-app-card__cell { border-left: 1px solid #eaecef; }
+.appverse-app-card__cell--row2 { border-top: 1px solid #eaecef; }
+.appverse-app-card__label {
+  font-size: 0.8em;
+  color: #57606a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+.appverse-app-card__value { /* default body color */ }
+.appverse-app-card__value--muted { color: #8b949e; }
+
+.appverse-app-card__description {
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid #eaecef;
+  background: #fafbfc;
+  color: #57606a;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+/* Status icon classes (use existing bootstrap icon classes for the icons themselves). */
+.appverse-status-ok { color: #1a7f37; }
+.appverse-status-warn { color: #9a6700; }
+.appverse-status-err { color: #cf222e; }
+.appverse-status-list > * { display: block; }

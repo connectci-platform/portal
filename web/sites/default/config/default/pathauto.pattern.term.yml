@@ -8,7 +8,7 @@ dependencies:
 id: term
 label: Term
 type: 'canonical_entities:taxonomy_term'
-pattern: '[term:vocabulary:name]/[term:name]'
+pattern: '/[term:vocabulary:name]/[term:name]'
 selection_criteria:
   31e65263-561a-4492-83b1-e6d595d24a4b:
     id: 'entity_bundle:taxonomy_term'

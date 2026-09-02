@@ -1,0 +1,23 @@
+uuid: a60389c0-d774-4dc9-bfc3-af127c5becad
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_quota_inode_amount
+    - paragraphs.paragraphs_type.rp_storage_filesystem
+id: paragraph.rp_storage_filesystem.field_rp_quota_inode_amount
+field_name: field_rp_quota_inode_amount
+entity_type: paragraph
+bundle: rp_storage_filesystem
+label: 'Quota inode amount'
+description: 'Number of files (inode quota)'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: null
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

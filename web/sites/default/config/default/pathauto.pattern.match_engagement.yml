@@ -7,7 +7,7 @@ dependencies:
 id: match_engagement
 label: 'MATCH Engagement'
 type: 'canonical_entities:node'
-pattern: 'match/engagements/[node:title]'
+pattern: '/match/engagements/[node:title]'
 selection_criteria:
   adcef023-9957-4dc8-b198-30403464f2b1:
     id: 'entity_bundle:node'

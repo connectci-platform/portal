@@ -1,0 +1,10 @@
+uuid: 9d4fe0cc-efb8-4862-9edb-4d790c8848a2
+langcode: en
+status: true
+dependencies: {  }
+id: mcp_service
+label: 'MCP Service'
+weight: 32
+is_admin: null
+permissions:
+  - 'use content assist api'

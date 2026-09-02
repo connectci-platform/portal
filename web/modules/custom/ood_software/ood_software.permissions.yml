@@ -1,0 +1,9 @@
+administer appverse content:
+  title: 'Administer Appverse content'
+  description: 'Manage Repos, Apps, and Software across all users: view the admin hub, change moderation states, force re-syncs, and act on content owned by other users.'
+  restrict access: true
+
+submit appverse repo:
+  title: 'Submit an Appverse repo'
+  description: 'Use the dedicated /appverse/add-repo form to register a new GitHub repo (inferred single-app or declared multi-app).'
+  restrict access: false

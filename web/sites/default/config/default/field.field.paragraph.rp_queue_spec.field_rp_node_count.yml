@@ -1,0 +1,23 @@
+uuid: bacde4b9-c39b-4bc1-8996-c4597baa03e0
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_node_count
+    - paragraphs.paragraphs_type.rp_queue_spec
+id: paragraph.rp_queue_spec.field_rp_node_count
+field_name: field_rp_node_count
+entity_type: paragraph
+bundle: rp_queue_spec
+label: 'Number of nodes'
+description: 'Number of nodes in this partition'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

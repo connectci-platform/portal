@@ -1,319 +1,322 @@
 {
-  "name": "drupal/recommended-project",
-  "description": "Drupal 10 project",
-  "type": "project",
-  "license": "GPL-2.0-or-later",
-  "homepage": "https://www.drupal.org/project/drupal",
-  "support": {
-    "docs": "https://www.drupal.org/docs/user_guide/en/index.html",
-    "chat": "https://www.drupal.org/node/314178"
-  },
-  "repositories": {
-    "drupal": {
-      "type": "composer",
-      "url": "https://packages.drupal.org/8"
+    "name": "drupal/recommended-project",
+    "description": "Drupal 10 project",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "homepage": "https://www.drupal.org/project/drupal",
+    "support": {
+        "docs": "https://www.drupal.org/docs/user_guide/en/index.html",
+        "chat": "https://www.drupal.org/node/314178"
     },
-    "asset-packagist": {
-      "type": "composer",
-      "url": "https://asset-packagist.org"
-    },
-    "cilogin_auth": {
-      "type": "vcs",
-      "url": "https://github.com/necyberteam/cilogin_auth.git"
-    },
-    "access": {
-      "type": "git",
-      "url": "https://github.com/necyberteam/access.git"
-    },
-    "amp_dev": {
-      "type": "git",
-      "url": "https://github.com/necyberteam/amp_dev.git"
-    },
-    "access/infrastructure_news": {
-      "type": "git",
-      "url": "https://github.com/access-ci-org/infrastructure_news"
-    },
-    "operations_cider": {
-      "type": "git",
-      "url": "https://github.com/necyberteam/Operations_Drupal_Feed_Cider.git"
-    },
-    "drupal_seamless_cilogon": {
-      "type": "git",
-      "url": "https://github.com/access-ci-org/drupal_seamless_cilogon.git"
-    },
-    "campus-champions-theme": {
-      "type": "git",
-      "url": "https://github.com/necyberteam/campus-champions-theme.git"
-    },
-    "asp-theme": {
-      "type": "git",
-      "url": "https://github.com/necyberteam/aspTheme.git"
-    },
-    "facets_honeypot": {
-      "type": "git",
-      "url": "https://github.com/UCBoulder/facets_honeypot.git"
-    },
-    "webform_submission_search_api": {
-      "type": "git",
-      "url": "https://github.com/necyberteam/webform_submission_search_api.git"
-    }
-  },
-  "require": {
-    "access/drupal_seamless_cilogon": "3.0.x-dev",
-    "access/infrastructure_news": "1.0.x-dev",
-    "access/operations_cider": "dev-main",
-    "amp/access": "md-qabot-dev",
-    "composer/installers": "^2.3.0",
-    "cweagans/composer-patches": "^2.0",
-    "drupal/access_by_ref": "^4.0.0",
-    "drupal/advanced_cors": "^1.5",
-    "drupal/advanced_email_validation": "^2.0",
-    "drupal/auditfiles": "^4.1@beta",
-    "drupal/autoban": "^1.10",
-    "drupal/better_exposed_filters": "^7.0.5",
-    "drupal/block_exclude_pages": "^2.0",
-    "drupal/captcha": "^2.0.0",
-    "drupal/coffee": "^2.0",
-    "drupal/collapsiblock": "^4.4",
-    "drupal/config_filter": "2.7.0",
-    "drupal/config_split": "^2.0",
-    "drupal/content_moderation_notifications": "^3.4",
-    "drupal/core-composer-scaffold": "^10.6.1",
-    "drupal/core-project-message": "^10.6.1",
-    "drupal/core-recommended": "^10.6.1",
-    "drupal/crawler_rate_limit": "^3.0@beta",
-    "drupal/csv_serialization": "^4.0",
-    "drupal/ctools": "^4.1.0",
-    "drupal/ctools_views": "^4.1.0",
-    "drupal/datalayer": "^2.0@RC",
-    "drupal/devel_kint_extras": "^1.1",
-    "drupal/domain": "^2.0@beta",
-    "drupal/domain_access": "^2.0@beta",
-    "drupal/domain_alias": "^2.0@beta",
-    "drupal/domain_config": "^2.0@beta",
-    "drupal/domain_entity": "^1.0@RC",
-    "drupal/domain_site_settings": "^1.5",
-    "drupal/domain_source": "^2.0@beta",
-    "drupal/domain_theme_switch": "^2.0",
-    "drupal/easy_breadcrumb": "^2.0",
-    "drupal/email_change_verification": "^1.0@beta",
-    "drupal/environment_indicator": "^4.0",
-    "drupal/facet_bot_blocker": "^1.0",
-    "drupal/facets": "^2.0",
-    "drupal/feeds": "3.x-dev@dev",
-    "drupal/field_group": "^3.2",
-    "drupal/field_permissions": "^1.1",
-    "drupal/fieldblock": "^2.3.0",
-    "drupal/file_delete": "^3.0.0",
-    "drupal/filter_perms": "^2.0.2",
-    "drupal/flag": "^4.0@beta",
-    "drupal/fontawesome": "^3.0.0",
-    "drupal/gtm": "^1.8",
-    "drupal/honeypot": "^2.2.2",
-    "drupal/image_captcha": "^2.0",
-    "drupal/imce": "^3.0",
-    "drupal/inline_entity_form": "^3.0@RC",
-    "drupal/jquery_ui": "^1.7",
-    "drupal/jquery_ui_datepicker": "^2.1",
-    "drupal/jquery_ui_slider": "^2.1",
-    "drupal/jquery_ui_touch_punch": "^1.1",
-    "drupal/jsonapi_extras": "^3.28",
-    "drupal/jsonapi_views": "^1.1",
-    "drupal/kint-kint": "^2.3.0",
-    "drupal/label_help": "^2.0@beta",
-    "drupal/layout_builder_styles": "^2.0",
-    "drupal/login_disable": "^2.1",
-    "drupal/logout_token": "^2.0.0",
-    "drupal/mail_login": "^4.0.3",
-    "drupal/mailsystem": "^4.4",
-    "drupal/markdown_easy": "^2.0",
-    "drupal/masquerade": "^2.0@beta",
-    "drupal/menu_block": "^1.6",
-    "drupal/menu_item_extras": "^3.0",
-    "drupal/menu_item_role_access": "^2.0",
-    "drupal/menu_link_attributes": "^1.0",
-    "drupal/metatag": "^2.2",
-    "drupal/mgv": "^2.2",
-    "drupal/multiple_registration": "^3.0",
-    "drupal/openapi": "^2.3",
-    "drupal/openapi_rest": "^2.0@RC",
-    "drupal/openapi_ui": "^1.0@RC",
-    "drupal/openapi_ui_swagger": "^1.1",
-    "drupal/openid_connect": "^1.4",
-    "drupal/pantheon_advanced_page_cache": "^2.0",
-    "drupal/paragraphs": "^1.20",
-    "drupal/pathauto": "^1.8",
-    "drupal/private_files_download_permission": "^3.1",
-    "drupal/r4032login": "^2.2",
-    "drupal/readonlymode": "^1.1",
-    "drupal/real_aes": "^2.3",
-    "drupal/realname": "^2.0@beta",
-    "drupal/recaptcha": "^3.2",
-    "drupal/recaptcha_v3": "^2.0",
-    "drupal/recurring_events": "^2.0.3",
-    "drupal/redirect": "^1.8",
-    "drupal/redis": "^1.8",
-    "drupal/rel_to_abs": "^2.2",
-    "drupal/reroute_email": "^2.2",
-    "drupal/restui": "^1.20",
-    "drupal/role_delegation": "^1.1",
-    "drupal/search404": "^2.0",
-    "drupal/search_api": "^1.31",
-    "drupal/search_api_page": "^1.0",
-    "drupal/search_exclude": "^3.0@beta",
-    "drupal/select2": "^2.0.0",
-    "drupal/shortcode": "^2.0",
-    "drupal/social_api": "^4.0",
-    "drupal/social_auth": "^4.0",
-    "drupal/social_auth_google": "^4.0",
-    "drupal/spamspan": "^3.2",
-    "drupal/stable": "^2.0",
-    "drupal/svg_image": "^3.0",
-    "drupal/symfony_mailer": "^1.3",
-    "drupal/symfony_mailer_log": "^1.0",
-    "drupal/taxonomy_term_depth": "^3.0.1",
-    "drupal/tfa": "^1.2",
-    "drupal/token": "^1.7",
-    "drupal/token_views_filter": "^2.1.0",
-    "drupal/twig_tweak": "^3.2",
-    "drupal/typed_data": "^2.0",
-    "drupal/ultimate_cron": "^2.0@beta",
-    "drupal/user_current_paths": "^2.0",
-    "drupal/views_aggregator": "^2.0",
-    "drupal/views_block_filter_block": "^2.0",
-    "drupal/views_bulk_operations": "^4.0",
-    "drupal/views_contextual_filters_or": "^1.1",
-    "drupal/views_data_export": "^1.0@RC",
-    "drupal/views_field_view": "^1.0@beta",
-    "drupal/views_filters_populate": "^2.0",
-    "drupal/views_sort_options_weight": "^2.1",
-    "drupal/views_taxonomy_term_name_depth": "^7.0",
-    "drupal/views_tree": "^3.0.0",
-    "drupal/webform": "^6.1",
-    "drupal/webform_views": "^5.0.0",
-    "drupal/yaml_editor": "^1.0",
-    "drupal_fork/cilogon_auth": "main-dev",
-    "drush/drush": "^13.6.2",
-    "necyberteam/asp-theme": "main-dev",
-    "necyberteam/campus-champions-theme": "main-dev",
-    "necyberteam/webform_submission_search_api": "main-dev",
-    "npm-asset/select2": "^4.0",
-    "oit/facets_honeypot": "^1.0",
-    "oomphinc/composer-installers-extender": "^2.0",
-    "pantheon-systems/quicksilver-pushback": "^2",
-    "politsin/jquery-ui-touch-punch": "^1.0",
-    "swagger-api/swagger-ui": "^3.52"
-  },
-  "require-dev": {
-    "amp/amp_dev": "dev-main",
-    "doctrine/instantiator": "~2.0.0",
-    "drupal/core-dev": "^10.6.1",
-    "drupal/devel": "^5.4",
-    "drupal/examples": "^4.0",
-    "drupal/upgrade_status": "^4.0",
-    "mglaman/drupal-check": "^1.4",
-    "palantirnet/drupal-rector": "^0.15.1",
-    "phpspec/prophecy-phpunit": "^2",
-    "phpstan/phpstan": "^1.9",
-    "phpstan/phpstan-deprecation-rules": "^1.0"
-  },
-  "conflict": {
-    "drupal/drupal": "*"
-  },
-  "minimum-stability": "dev",
-  "prefer-stable": true,
-  "config": {
-    "sort-packages": true,
-    "allow-plugins": {
-      "composer/installers": true,
-      "cweagans/composer-patches": true,
-      "dealerdirect/phpcodesniffer-composer-installer": true,
-      "drupal/core-composer-scaffold": true,
-      "drupal/core-project-message": true,
-      "oomphinc/composer-installers-extender": true,
-      "php-http/discovery": true,
-      "phpstan/extension-installer": true,
-      "tbachert/spi": true
-    }
-  },
-  "extra": {
-    "drupal-scaffold": {
-      "locations": {
-        "web-root": "web/"
-      },
-      "file-mapping": {
-        "[web-root]/README.txt": false,
-        "[web-root]/sites/README.txt": false,
-        "[web-root]/example.gitignore": false,
-        "[web-root]/sites/example.settings.local.php": false,
-        "[web-root]/sites/example.sites.php": false,
-        "[web-root]/modules/README.txt": false,
-        "[web-root]/profiles/README.txt": false,
-        "[web-root]/themes/README.txt": false,
-        "[web-root]/INSTALL.txt": false,
-        "[web-root]/sites/development.services.yml": false,
-        "[web-root]/robots.txt": {
-          "append": "robo/assets/robots-additions.txt"
+    "repositories": {
+        "drupal": {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
+        },
+        "asset-packagist": {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        },
+        "access": {
+            "type": "git",
+            "url": "https://github.com/connectci-platform/access.git"
+        },
+        "amp_dev": {
+            "type": "git",
+            "url": "https://github.com/connectci-platform/amp_dev.git"
+        },
+        "access/infrastructure_news": {
+            "type": "git",
+            "url": "https://github.com/access-ci-org/infrastructure_news"
+        },
+        "operations_cider": {
+            "type": "git",
+            "url": "https://github.com/connectci-platform/operations_cider.git"
+        },
+        "drupal_seamless_cilogon": {
+            "type": "git",
+            "url": "https://github.com/access-ci-org/drupal_seamless_cilogon.git"
+        },
+        "campus-champions-theme": {
+            "type": "git",
+            "url": "https://github.com/connectci-platform/campus-champions-theme.git"
+        },
+        "asp-theme": {
+            "type": "git",
+            "url": "https://github.com/connectci-platform/aspTheme.git"
+        },
+        "facets_honeypot": {
+            "type": "git",
+            "url": "https://github.com/UCBoulder/facets_honeypot.git"
+        },
+        "webform_submission_search_api": {
+            "type": "git",
+            "url": "https://github.com/connectci-platform/webform_submission_search_api.git"
         }
-      }
     },
-    "composer-patches": {
-      "patches-file": "composer.patches.json"
+    "require": {
+        "access/drupal_seamless_cilogon": "3.0.x-dev",
+        "access/infrastructure_news": "1.0.x-dev",
+        "composer/installers": "^2.3.0",
+        "connectci/access": "dev-md-qabot",
+        "connectci/asp-theme": "main-dev",
+        "connectci/campus-champions-theme": "main-dev",
+        "connectci/operations_cider": "dev-main",
+        "connectci/webform_submission_search_api": "main-dev",
+        "cweagans/composer-patches": "^2.0",
+        "drupal/access_by_ref": "^4.0.0",
+        "drupal/advanced_cors": "^1.5",
+        "drupal/advanced_email_validation": "^2.0",
+        "drupal/auditfiles": "^4.1@beta",
+        "drupal/autoban": "^1.10",
+        "drupal/better_exposed_filters": "^7.0.5",
+        "drupal/block_exclude_pages": "^2.0",
+        "drupal/captcha": "^2.0.0",
+        "drupal/coffee": "^2.0",
+        "drupal/collapsiblock": "^4.4",
+        "drupal/config_filter": "2.7.0",
+        "drupal/config_split": "^2.0",
+        "drupal/content_moderation_notifications": "^3.4",
+        "drupal/core-composer-scaffold": "^10.6.1",
+        "drupal/core-project-message": "^10.6.1",
+        "drupal/core-recommended": "^10.6.1",
+        "drupal/crawler_rate_limit": "^3.0@beta",
+        "drupal/csv_serialization": "^4.0",
+        "drupal/ctools": "^4.1.0",
+        "drupal/ctools_views": "^4.1.0",
+        "drupal/datalayer": "^2.0@RC",
+        "drupal/devel_kint_extras": "^1.1",
+        "drupal/domain": "^2.0@beta",
+        "drupal/domain_access": "^2.0@beta",
+        "drupal/domain_alias": "^2.0@beta",
+        "drupal/domain_config": "^2.0@beta",
+        "drupal/domain_entity": "^1.0@RC",
+        "drupal/domain_menu_access": "^2.0",
+        "drupal/domain_simple_sitemap": "^3.0@RC",
+        "drupal/domain_site_settings": "^1.5",
+        "drupal/domain_source": "^2.0@beta",
+        "drupal/domain_theme_switch": "^2.0",
+        "drupal/easy_breadcrumb": "^2.0",
+        "drupal/email_change_verification": "^1.0@beta",
+        "drupal/environment_indicator": "^4.0",
+        "drupal/facet_bot_blocker": "^1.0",
+        "drupal/facets": "^2.0",
+        "drupal/feeds": "^3.0.0",
+        "drupal/field_group": "^4.0",
+        "drupal/field_permissions": "^1.1",
+        "drupal/fieldblock": "^2.3.0",
+        "drupal/file_delete": "^3.0.0",
+        "drupal/filter_perms": "^2.0.2",
+        "drupal/flag": "^5.0.3",
+        "drupal/fontawesome": "^3.0.0",
+        "drupal/gtm": "^1.8",
+        "drupal/honeypot": "^2.2.2",
+        "drupal/image_captcha": "^2.0",
+        "drupal/imce": "^3.0",
+        "drupal/inline_entity_form": "^3.0@RC",
+        "drupal/jquery_ui": "^1.7",
+        "drupal/jquery_ui_datepicker": "^2.1",
+        "drupal/jquery_ui_slider": "^2.1",
+        "drupal/jquery_ui_touch_punch": "^1.1",
+        "drupal/jsonapi_extras": "^3.28",
+        "drupal/jsonapi_views": "^1.1",
+        "drupal/kint-kint": "^2.3.0",
+        "drupal/label_help": "^2.0@beta",
+        "drupal/layout_builder_styles": "^2.0",
+        "drupal/login_disable": "^2.1",
+        "drupal/logout_token": "^2.0.0",
+        "drupal/mail_login": "^4.0.3",
+        "drupal/mailsystem": "^4.4",
+        "drupal/markdown_easy": "^2.0",
+        "drupal/masquerade": "^2.0@beta",
+        "drupal/menu_block": "^1.6",
+        "drupal/menu_item_extras": "^3.0",
+        "drupal/menu_item_role_access": "^2.0",
+        "drupal/menu_link_attributes": "^1.0",
+        "drupal/metatag": "^2.2",
+        "drupal/mgv": "^2.2",
+        "drupal/multiple_registration": "^3.0",
+        "drupal/openapi": "^2.3",
+        "drupal/openapi_rest": "^2.0@RC",
+        "drupal/openapi_ui": "^1.0@RC",
+        "drupal/openapi_ui_swagger": "^1.1",
+        "drupal/openid_connect": "^1.4",
+        "drupal/pantheon_advanced_page_cache": "^2.0",
+        "drupal/paragraphs": "^1.20",
+        "drupal/pathauto": "^1.8",
+        "drupal/private_files_download_permission": "^3.1",
+        "drupal/r4032login": "^2.2",
+        "drupal/readonlymode": "^1.1",
+        "drupal/real_aes": "^2.3",
+        "drupal/realname": "^2.0@beta",
+        "drupal/recaptcha": "^3.2",
+        "drupal/recaptcha_v3": "^2.0",
+        "drupal/recurring_events": "^2.0.3",
+        "drupal/redirect": "^1.8",
+        "drupal/redis": "^1.8",
+        "drupal/rel_to_abs": "^2.2",
+        "drupal/reroute_email": "^2.2",
+        "drupal/restui": "^1.20",
+        "drupal/role_delegation": "^1.1",
+        "drupal/search404": "^2.0",
+        "drupal/search_api": "^1.31",
+        "drupal/search_api_page": "^1.0",
+        "drupal/search_exclude": "^3.0@beta",
+        "drupal/select2": "^2.0.0",
+        "drupal/shortcode": "^2.0",
+        "drupal/simple_sitemap": "^4.2",
+        "drupal/social_api": "^4.0",
+        "drupal/social_auth": "^4.0",
+        "drupal/social_auth_google": "^4.0",
+        "drupal/spamspan": "^3.2",
+        "drupal/stable": "^2.0",
+        "drupal/svg_image": "^3.0",
+        "drupal/symfony_mailer": "^1.3",
+        "drupal/symfony_mailer_log": "^1.0",
+        "drupal/taxonomy_term_depth": "^3.0.1",
+        "drupal/tfa": "^1.2",
+        "drupal/token": "^1.7",
+        "drupal/token_views_filter": "^2.1.0",
+        "drupal/twig_tweak": "^3.2",
+        "drupal/typed_data": "^2.0",
+        "drupal/ultimate_cron": "^2.0@beta",
+        "drupal/user_current_paths": "^2.0",
+        "drupal/views_aggregator": "^2.0",
+        "drupal/views_block_filter_block": "^2.0",
+        "drupal/views_bulk_operations": "^4.0",
+        "drupal/views_contextual_filters_or": "^1.1",
+        "drupal/views_data_export": "^1.0@RC",
+        "drupal/views_field_view": "^1.0@beta",
+        "drupal/views_filters_populate": "^2.0",
+        "drupal/views_sort_options_weight": "^2.1",
+        "drupal/views_taxonomy_term_name_depth": "^7.0",
+        "drupal/views_tree": "^3.0.0",
+        "drupal/webform": "^6.3.0",
+        "drupal/webform_views": "^5.0.0",
+        "drupal/yaml_editor": "^1.0",
+        "drush/drush": "^13.6.2",
+        "npm-asset/select2": "^4.0",
+        "oit/facets_honeypot": "^1.0",
+        "oomphinc/composer-installers-extender": "^2.0",
+        "pantheon-systems/quicksilver-pushback": "^2",
+        "politsin/jquery-ui-touch-punch": "^1.0",
+        "swagger-api/swagger-ui": "^3.52"
     },
-    "installer-paths": {
-      "web/core": [
-        "type:drupal-core"
-      ],
-      "web/libraries/{$name}": [
-        "type:drupal-library",
-        "type:bower-asset",
-        "type:npm-asset"
-      ],
-      "web/modules/contrib/{$name}": [
-        "type:drupal-module"
-      ],
-      "web/profiles/contrib/{$name}": [
-        "type:drupal-profile"
-      ],
-      "web/themes/contrib/{$name}": [
-        "type:drupal-theme"
-      ],
-      "drush/Commands/contrib/{$name}": [
-        "type:drupal-drush"
-      ],
-      "web/modules/custom/{$name}": [
-        "type:drupal-custom-module"
-      ],
-      "web/themes/custom/{$name}": [
-        "type:drupal-custom-theme"
-      ],
-      "web/private/scripts/quicksilver/{$name}/": [
-        "type:quicksilver-script"
-      ]
+    "require-dev": {
+        "connectci/amp_dev": "main-dev",
+        "doctrine/instantiator": "~2.0.0",
+        "drupal/core-dev": "^10.6.1",
+        "drupal/devel": "^5.4",
+        "drupal/examples": "^4.0",
+        "drupal/upgrade_status": "^4.0",
+        "mglaman/drupal-check": "^1.4",
+        "palantirnet/drupal-rector": "^0.20",
+        "phpspec/prophecy-phpunit": "^2",
+        "phpstan/phpstan": "^1.9",
+        "phpstan/phpstan-deprecation-rules": "^1.0"
     },
-    "installer-types": [
-      "bower-asset",
-      "npm-asset"
-    ]
-  },
-  "scripts": {
-    "robo": "robo --ansi",
-    "robo-ci": "robo --no-ansi",
-    "post-install-cmd": [
-      "@setup-swagger-ui"
-    ],
-    "post-update-cmd": [
-      "@setup-swagger-ui"
-    ],
-    "setup-swagger-ui": [
-      "rm -rf web/libraries/swagger-ui",
-      "mkdir -p web/libraries/swagger-ui",
-      "cp -r vendor/swagger-api/swagger-ui/dist web/libraries/swagger-ui/dist"
-    ]
-  },
-  "autoload": {
-    "psr-4": {
-      "Mih\\": "robo/src"
+    "conflict": {
+        "drupal/drupal": "*"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/installers": true,
+            "cweagans/composer-patches": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "drupal/core-composer-scaffold": true,
+            "drupal/core-project-message": true,
+            "oomphinc/composer-installers-extender": true,
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true,
+            "tbachert/spi": true
+        }
+    },
+    "extra": {
+        "drupal-scaffold": {
+            "locations": {
+                "web-root": "web/"
+            },
+            "file-mapping": {
+                "[web-root]/README.txt": false,
+                "[web-root]/sites/README.txt": false,
+                "[web-root]/example.gitignore": false,
+                "[web-root]/sites/example.settings.local.php": false,
+                "[web-root]/sites/example.sites.php": false,
+                "[web-root]/modules/README.txt": false,
+                "[web-root]/profiles/README.txt": false,
+                "[web-root]/themes/README.txt": false,
+                "[web-root]/INSTALL.txt": false,
+                "[web-root]/sites/development.services.yml": false,
+                "[web-root]/robots.txt": {
+                    "append": "robo/assets/robots-additions.txt"
+                }
+            }
+        },
+        "composer-patches": {
+            "patches-file": "composer.patches.json"
+        },
+        "installer-paths": {
+            "web/core": [
+                "type:drupal-core"
+            ],
+            "web/libraries/{$name}": [
+                "type:drupal-library",
+                "type:bower-asset",
+                "type:npm-asset"
+            ],
+            "web/modules/contrib/{$name}": [
+                "type:drupal-module"
+            ],
+            "web/profiles/contrib/{$name}": [
+                "type:drupal-profile"
+            ],
+            "web/themes/contrib/{$name}": [
+                "type:drupal-theme"
+            ],
+            "drush/Commands/contrib/{$name}": [
+                "type:drupal-drush"
+            ],
+            "web/modules/custom/{$name}": [
+                "type:drupal-custom-module"
+            ],
+            "web/themes/custom/{$name}": [
+                "type:drupal-custom-theme"
+            ],
+            "web/private/scripts/quicksilver/{$name}/": [
+                "type:quicksilver-script"
+            ]
+        },
+        "installer-types": [
+            "bower-asset",
+            "npm-asset"
+        ]
+    },
+    "scripts": {
+        "robo": "robo --ansi",
+        "robo-ci": "robo --no-ansi",
+        "post-install-cmd": [
+            "@setup-swagger-ui"
+        ],
+        "post-update-cmd": [
+            "@setup-swagger-ui"
+        ],
+        "setup-swagger-ui": [
+            "rm -rf web/libraries/swagger-ui",
+            "mkdir -p web/libraries/swagger-ui",
+            "cp -r vendor/swagger-api/swagger-ui/dist web/libraries/swagger-ui/dist"
+        ]
+    },
+    "autoload": {
+        "psr-4": {
+            "Mih\\": "robo/src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cyberteam\\PhpStan\\": "phpstan/"
+        }
     }
-  }
 }

@@ -15,7 +15,7 @@ id: node.appverse_app.field_appverse_organization
 field_name: field_appverse_organization
 entity_type: node
 bundle: appverse_app
-label: 'Organization / Author'
+label: Organization
 description: ''
 required: false
 translatable: false

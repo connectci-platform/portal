@@ -1,0 +1,53 @@
+uuid: b19e5fd7-9ddb-41d4-a528-e14e2927e4e5
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_hide_community_profile
+  module:
+    - multiple_registration
+    - user
+third_party_settings:
+  multiple_registration:
+    user_additional_register_form_required:
+      authenticated: 0
+      student: 0
+      mentor: 0
+      researcher: 0
+      representative: 0
+      research_computing_facilitator: 0
+      research_software_engineer: 0
+      ci_systems_engineer: 0
+      student_champion: 0
+      domain_champion: 0
+      ccmnet: 0
+      ondemand: 0
+      pascience: 0
+    user_additional_register_form:
+      authenticated: 0
+      student: 0
+      mentor: 0
+      researcher: 0
+      representative: 0
+      research_computing_facilitator: 0
+      research_software_engineer: 0
+      ci_systems_engineer: 0
+      student_champion: 0
+      domain_champion: 0
+      ccmnet: 0
+      ondemand: 0
+      pascience: 0
+id: user.user.field_hide_community_profile
+field_name: field_hide_community_profile
+entity_type: user
+bundle: user
+label: 'Hide Community Profile'
+description: "Check this box if you don't want your community profile to be visible publicly."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  on_label: hide
+  off_label: show
+field_type: boolean

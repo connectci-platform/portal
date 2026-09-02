@@ -1,0 +1,23 @@
+uuid: 57a2b37e-094b-4520-9f8d-f839a9869f09
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_gpu_count
+    - paragraphs.paragraphs_type.rp_queue_spec
+id: paragraph.rp_queue_spec.field_rp_gpu_count
+field_name: field_rp_gpu_count
+entity_type: paragraph
+bundle: rp_queue_spec
+label: 'GPU Count'
+description: 'Number of GPUs per node'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: null
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

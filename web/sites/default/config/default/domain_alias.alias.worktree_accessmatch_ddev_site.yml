@@ -1,0 +1,9 @@
+uuid: 1aa4186b-09a2-4eac-8342-7b7f330d4726
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_accessmatch_ddev_site
+domain_id: amp_cyberinfrastructure_org
+pattern: '*.accessmatch.ddev.site'
+redirect: 0
+environment: default

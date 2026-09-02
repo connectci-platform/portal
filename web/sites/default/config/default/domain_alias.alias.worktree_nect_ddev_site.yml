@@ -1,0 +1,9 @@
+uuid: ddce64a2-e55b-4f93-88ed-1642f12823c3
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_nect_ddev_site
+domain_id: nectd8_wpi_edu
+pattern: '*.nect.ddev.site'
+redirect: 0
+environment: default

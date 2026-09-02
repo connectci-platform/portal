@@ -1,0 +1,22 @@
+uuid: d6db1481-affb-47ef-8312-0b93d4050c3b
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_ood_software
+    - node.type.access_active_resources_from_cid
+  module:
+    - text
+id: node.access_active_resources_from_cid.field_rp_ood_software
+field_name: field_rp_ood_software
+entity_type: node
+bundle: access_active_resources_from_cid
+label: 'OOD software (JSON)'
+description: 'JSON array of software available via ACCESS OnDemand. Each entry needs a name; description/research_field/web_page are enriched from SDS. Same shape as top software.'
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

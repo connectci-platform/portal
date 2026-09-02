@@ -27,6 +27,7 @@ id: cider_active_resources_feed
 description: 'Feeds CiDeR Active Resources '
 help: ''
 import_period: 3600
+import_period_per_feed: false
 fetcher: http
 fetcher_configuration:
   auto_detect_feeds: false
@@ -51,7 +52,10 @@ processor_configuration:
   update_existing: 2
   update_non_existent: _keep
   skip_hash_check: false
+  skip_validation: false
+  skip_validation_types: {  }
   authorize: true
+  revision: false
   expire: -1
   owner_feed_author: false
   owner_id: 0
@@ -148,8 +152,7 @@ mappings:
       value: cider_resource_descriptive_name
     settings:
       language: null
-    unique:
-      value: '1'
+    unique: {  }
   -
     target: field_cider_short_name
     map:
@@ -163,7 +166,8 @@ mappings:
       value: cider_resource_id
     settings:
       language: null
-    unique: {  }
+    unique:
+      value: 1
   -
     target: field_access_global_resource_id
     map:

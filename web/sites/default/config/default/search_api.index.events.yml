@@ -95,6 +95,18 @@ field_settings:
     dependencies:
       config:
         - field.storage.eventinstance.field_video
+  registration_capacity:
+    label: 'Registration Capacity'
+    property_path: search_api_registration_capacity
+    type: integer
+  registration_enabled:
+    label: 'Registration Enabled'
+    property_path: search_api_registration_enabled
+    type: boolean
+  registration_has_waitlist:
+    label: 'Registration Has Waitlist'
+    property_path: search_api_registration_has_waitlist
+    type: boolean
   skill_level:
     label: 'Skill Level'
     datasource_id: 'entity:eventinstance'
@@ -139,6 +151,7 @@ processor_settings:
   custom_announcement_affinity_group: {  }
   custom_event_affiliation: {  }
   custom_event_affinity_group: {  }
+  custom_event_registration: {  }
   custom_event_skill_level: {  }
   custom_event_title: {  }
   custom_event_type: {  }
@@ -147,6 +160,7 @@ processor_settings:
   entity_type: {  }
   event_tags: {  }
   event_where_to_share: {  }
+  eventinstance_domain: {  }
   highlight:
     weights:
       postprocess_query: 0
@@ -167,13 +181,13 @@ processor_settings:
     title: true
     alt: true
     tags:
-      b: 2
-      em: 1
-      h1: 5
-      h2: 3
-      h3: 2
-      strong: 2
-      u: 1
+      b: 2.0
+      em: 1.0
+      h1: 5.0
+      h2: 3.0
+      h3: 2.0
+      strong: 2.0
+      u: 1.0
   language_with_fallback: {  }
   mentee_name: {  }
   rendered_item: {  }

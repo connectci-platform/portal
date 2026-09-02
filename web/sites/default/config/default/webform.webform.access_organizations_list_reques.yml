@@ -25,6 +25,7 @@ elements: |-
   your_email:
     '#type': email
     '#title': 'Your Email'
+    '#description': '<p>Use your organizational email.</p>'
     '#required': true
   your_organization:
     '#type': textfield

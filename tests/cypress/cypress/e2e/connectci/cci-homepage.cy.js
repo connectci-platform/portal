@@ -9,9 +9,7 @@ describe("Unauthenticated user tests the CCI Hompage", () => {
 
   it("Verify the main page has expected content", () => {
     cy.visit('/'); // Adjust the URL as needed
-    cy.contains('Welcome to Connect Cyberinfrastructure').should('be.visible');
-    cy.contains('A landing page for all our affiliated sites.').should('be.visible');
-    cy.contains('Launch your community quickly with Connect.CI').should('be.visible');
+    cy.contains('Connect. Learn. Advance.').should('be.visible');
     cy.get('a[href="https://support.access-ci.org/"]').should('contain', 'ACCESS Support');
     cy.get('a[href="https://careers-ct.cyberinfrastructure.org/"]').should('contain', 'CAREERS Cyberteam');
     cy.get('a[href="https://greatplains.cyberinfrastructure.org/"]').should('contain', 'Great Plains Cyberteam');

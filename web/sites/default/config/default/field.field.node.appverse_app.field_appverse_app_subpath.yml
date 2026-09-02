@@ -1,0 +1,19 @@
+uuid: cb2a0aa1-046f-4c0f-8ff9-6c98162c3505
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_app_subpath
+    - node.type.appverse_app
+id: node.appverse_app.field_appverse_app_subpath
+field_name: field_appverse_app_subpath
+entity_type: node
+bundle: appverse_app
+label: 'App subpath'
+description: 'Subpath inside the source repo where this app lives. Empty for single-app-at-root apps. Forms the dedup key alongside the GitHub URL.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

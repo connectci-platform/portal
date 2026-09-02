@@ -1,0 +1,19 @@
+uuid: 8a3873af-09de-4fd6-a9b2-a52b27a27baf
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - text
+id: node.field_rp_datasets_text
+field_name: field_rp_datasets_text
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

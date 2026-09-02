@@ -80,7 +80,7 @@ describe("Verify the the community-outreach tag page", () => {
       cy.wait(1000);
       cy.get(blockclass)
         .contains('more people')
-        .should('have.attr', 'href', '/tags/340/people-with-' + skillOrInterest);
+        .should('have.attr', 'href', '/tags/community-outreach/people-with-' + skillOrInterest);
     }
 
 

@@ -10,6 +10,14 @@
 
 describe("Events API v2.3", () => {
 
+  // The v2.3 "upcoming events" filter is applied server-side in the site's
+  // configured timezone (America/New_York). Compute the comparison date in that
+  // same timezone rather than UTC, otherwise the test flakes between local
+  // midnight and UTC midnight, rejecting a same-day event as if it were past.
+  const SITE_TIMEZONE = 'America/New_York';
+  const siteToday = () =>
+    new Date().toLocaleDateString('en-CA', { timeZone: SITE_TIMEZONE });
+
   it("returns correct structure with expected fields", () => {
     cy.request('/api/2.3/events')
       .then((response) => {
@@ -36,7 +44,7 @@ describe("Events API v2.3", () => {
   });
 
   it("defaults to upcoming events only", () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = siteToday();
 
     cy.request('/api/2.3/events')
       .then((response) => {
@@ -120,23 +128,61 @@ describe("Events API v2.3", () => {
   });
 
   it("supports search_api_fulltext filter", () => {
-    // First get a known event title to search for
+    // Search for a word taken from a real event title and confirm the fulltext
+    // filter returns a non-empty, narrowed result set.
+    //
+    // We can't just search the first word of the first event: the search_api
+    // index runs a stemmer, and a few words (e.g. "Scaling" -> stored token
+    // "scal") don't survive the index-time/query-time stemming round-trip, so
+    // searching the raw word returns 0. Which event sorts first changes daily
+    // (v2.3 returns upcoming-only, sorted ascending), so that made the test
+    // flake whenever a stem-fragile word landed in the soonest event. Instead,
+    // collect candidate words across all titles and use the first one that
+    // actually matches.
     cy.request('/api/2.3/events')
       .then((allResponse) => {
         if (allResponse.body.length === 0) return;
 
-        const searchTerm = allResponse.body[0].title.split(' ')[0];
-        cy.request(`/api/2.3/events?search_api_fulltext=${encodeURIComponent(searchTerm)}`)
-          .then((response) => {
-            expect(response.status).to.eq(200);
-            expect(response.body.length).to.be.greaterThan(0);
-            expect(response.body.length).to.be.at.most(allResponse.body.length);
+        const total = allResponse.body.length;
+        const seen = new Set();
+        const candidates = [];
+        allResponse.body.forEach((event) => {
+          (event.title || '').match(/[A-Za-z0-9]{3,}/g)?.forEach((word) => {
+            const key = word.toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              candidates.push(word);
+            }
           });
+        });
+
+        expect(candidates.length, 'no searchable words found in event titles').to.be.greaterThan(0);
+
+        // Walk candidates until one returns a hit, then assert it narrows the set.
+        const tryWord = (index) => {
+          if (index >= candidates.length) {
+            throw new Error('No title word matched the fulltext filter');
+          }
+          const term = candidates[index];
+          return cy
+            .request(`/api/2.3/events?search_api_fulltext=${encodeURIComponent(term)}`)
+            .then((response) => {
+              expect(response.status).to.eq(200);
+              if (response.body.length === 0) {
+                return tryWord(index + 1);
+              }
+              expect(response.body.length, `fulltext "${term}"`).to.be.at.most(total);
+            });
+        };
+
+        return tryWord(0);
       });
   });
 
   it("supports beginning_date_relative parameter", () => {
-    const today = new Date().toISOString().split('T')[0];
+    // beginning_date_relative=today is resolved server-side in the site
+    // timezone, so compare against the site's today rather than UTC.
+    const today = siteToday();
 
     cy.request('/api/2.3/events?beginning_date_relative=today')
       .then((response) => {

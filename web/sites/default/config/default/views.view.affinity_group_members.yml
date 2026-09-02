@@ -690,10 +690,10 @@ display:
       automatic_download: true
       export_method: batch
       export_batch_size: 250
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:

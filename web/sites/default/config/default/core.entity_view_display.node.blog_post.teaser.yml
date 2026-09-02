@@ -42,3 +42,5 @@ hidden:
   field_image: true
   field_project: true
   field_tags: true
+  langcode: true
+  search_api_excerpt: true

@@ -980,6 +980,7 @@ display:
               news_pm: '0'
               kb_pm: '0'
               careers_sc: '0'
+              rp_documentation_manager: '0'
               ccmnet_pm: '0'
               consultant: '0'
               match_sc: '0'
@@ -988,10 +989,17 @@ display:
               ccmnet: '0'
               ccmnet_admin: '0'
               ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
+              mcp_service: '0'
             expose_fields: false
-            placeholder: 'Search by name'
+            placeholder: 'Search by name or organization'
             searched_fields_id: search_api_fulltext_searched_fields
             value_maxlength: 128
+            value_max_words: null
           is_grouped: false
           group_info:
             label: ''

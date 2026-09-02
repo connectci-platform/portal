@@ -15,8 +15,12 @@ describe("Test Affinity Groups page facets for authenticated users", () => {
   })
 
   it("Authenticated user tests the affinity groups page with all facets", () => {
+    // Watch for Facets AJAX so we can wait on state instead of fixed timers.
+    cy.intercept('**/facets*').as('facets');
+    cy.intercept('**/views/ajax*').as('viewsAjax');
+
     cy.visit('/affinity-groups');
-    
+
     // Page elements
     cy.contains('Affinity Groups');
     cy.contains('Affinity Group');
@@ -24,27 +28,32 @@ describe("Test Affinity Groups page facets for authenticated users", () => {
     cy.contains('Join');
     cy.contains('Request a Group');
 
-    // Test search functionality
+    // Test search functionality. The type/clear triggers Facets/Views AJAX that
+    // re-renders the facet block, so wait for the list to settle before touching it.
     cy.get('#edit-search-api-fulltext--2').type('test search', { delay: 0 })
-    cy.wait(1000)
+    cy.get('ul[data-drupal-facet-alias="affinity_search_tags"]').should('be.visible')
     cy.get('#edit-search-api-fulltext--2').clear()
-    cy.wait(1000)
+    cy.get('ul[data-drupal-facet-alias="affinity_search_tags"]').should('be.visible')
 
-    // Test Tags facet (available to all users)  
-    // Click "Show more" to expand tags list - try the last one instead of first
-    cy.get('ul[data-drupal-facet-alias="affinity_search_tags"]').parent().find('a.facets-soft-limit-link').last().click();
-    cy.wait(500);
-    
-    // Test the AI tag (tag ID 271)
-    cy.get('input#affinity-search-tags-271.facets-checkbox').should('exist').check({ force: true });
-    cy.wait(1000);
+    // Test Tags facet (available to all users).
+    // Click "Show more" to expand tags list. Scope to the tags facet container and
+    // wait for the link to be visible so we don't click a stale/detached element.
+    cy.get('ul[data-drupal-facet-alias="affinity_search_tags"]')
+      .parents('.facets-widget, [class*="facet"]').first()
+      .find('a.facets-soft-limit-link').should('be.visible').click();
+
+    // Test the AI tag (tag ID 271). Only present after "Show more" expands the list;
+    // the longer timeout absorbs slow AJAX rendering without a fixed wait.
+    cy.get('input#affinity-search-tags-271.facets-checkbox', { timeout: 10000 })
+      .should('exist').check({ force: true });
     
     // Verify the filter is applied
     cy.url().should('include', 'affinity_search_tags');
     
-    // Uncheck to reset
-    cy.get('input#affinity-search-tags-271.facets-checkbox').uncheck({ force: true });
-    cy.wait(500);
+    // Uncheck to reset. Re-query with a longer timeout since checking the box
+    // re-renders the facet block via AJAX.
+    cy.get('input#affinity-search-tags-271.facets-checkbox', { timeout: 10000 })
+      .uncheck({ force: true });
 
     // Test Category facet if it exists (requires authentication)
     cy.get('body').then($body => {

@@ -3,17 +3,30 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.paragraph.rp_queue_spec.field_rp_cpu_count
     - field.field.paragraph.rp_queue_spec.field_rp_cpus
+    - field.field.paragraph.rp_queue_spec.field_rp_gpu_count
+    - field.field.paragraph.rp_queue_spec.field_rp_gpu_vram
     - field.field.paragraph.rp_queue_spec.field_rp_gpus
+    - field.field.paragraph.rp_queue_spec.field_rp_max_wall_time
+    - field.field.paragraph.rp_queue_spec.field_rp_node_count
     - field.field.paragraph.rp_queue_spec.field_rp_queue_name
     - field.field.paragraph.rp_queue_spec.field_rp_queue_purpose
     - field.field.paragraph.rp_queue_spec.field_rp_ram
+    - field.field.paragraph.rp_queue_spec.field_rp_vram
     - paragraphs.paragraphs_type.rp_queue_spec
 id: paragraph.rp_queue_spec.default
 targetEntityType: paragraph
 bundle: rp_queue_spec
 mode: default
 content:
+  field_rp_cpu_count:
+    type: number
+    weight: 3
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
   field_rp_cpus:
     type: string_textfield
     weight: 2
@@ -22,12 +35,40 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
+  field_rp_gpu_count:
+    type: number
+    weight: 4
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_gpu_vram:
+    type: number
+    weight: 6
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
   field_rp_gpus:
     type: string_textfield
-    weight: 3
+    weight: 5
     region: content
     settings:
       size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_max_wall_time:
+    type: number
+    weight: 6
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_node_count:
+    type: number
+    weight: 2
+    region: content
+    settings:
       placeholder: ''
     third_party_settings: {  }
   field_rp_queue_name:
@@ -48,10 +89,17 @@ content:
     third_party_settings: {  }
   field_rp_ram:
     type: string_textfield
-    weight: 4
+    weight: 7
     region: content
     settings:
       size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_vram:
+    type: number
+    weight: 8
+    region: content
+    settings:
       placeholder: ''
     third_party_settings: {  }
 hidden:

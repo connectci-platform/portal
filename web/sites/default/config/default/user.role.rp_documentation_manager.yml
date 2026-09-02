@@ -2,6 +2,8 @@ uuid: 395f64f1-bafc-4aec-a0bb-13d0f94e89fd
 langcode: en
 status: true
 dependencies:
+  config:
+    - filter.format.resource_docs
   module:
     - file
     - node
@@ -18,3 +20,4 @@ permissions:
   - 'edit any access_active_resources_from_cid content'
   - 'edit any resource_group content'
   - 'edit own resource_group content'
+  - 'use text format resource_docs'

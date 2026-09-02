@@ -93,10 +93,17 @@ describe('Event Registration Surveys and Reminders', () => {
 
       cy.get('#edit-summary-text').type('Survey test event summary.', { delay: 0 });
 
-      // Date and Time - set to future date
+      // Date and Time - set to a future date. Computed dynamically (not
+      // hardcoded) because registration closes once the event begins, so a
+      // fixed past date silently breaks every registration-dependent survey
+      // test once that date arrives. A few days out keeps the event in the
+      // future for the whole register/approve/post-survey flow.
+      const eventDate = new Date();
+      eventDate.setDate(eventDate.getDate() + 7);
+      const eventDateStr = eventDate.toISOString().split('T')[0];
       cy.get('#edit-recur-type-custom').click();
-      cy.get('#edit-custom-date-0-value-date').type('2026-06-15', { delay: 0 });
-      cy.get('#edit-custom-date-0-end-value-date').type('2026-06-15', { delay: 0 });
+      cy.get('#edit-custom-date-0-value-date').type(eventDateStr, { delay: 0 });
+      cy.get('#edit-custom-date-0-end-value-date').type(eventDateStr, { delay: 0 });
       cy.get('#edit-custom-date-0-value-time').type('10:00:00', { delay: 0 });
       cy.get('#edit-custom-date-0-end-value-time').type('12:00:00', { delay: 0 });
 

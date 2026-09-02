@@ -7,7 +7,7 @@ dependencies:
 id: resource_group
 label: 'Resource Group'
 type: 'canonical_entities:node'
-pattern: 'documentation/resources/[node:title]'
+pattern: '/documentation/resources/[node:title]'
 selection_criteria:
   17aa21ff-a7e7-47a3-a1ae-c4f03ea66c51:
     id: 'entity_bundle:node'

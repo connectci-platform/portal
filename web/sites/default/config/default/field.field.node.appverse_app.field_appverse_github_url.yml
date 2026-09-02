@@ -15,7 +15,7 @@ id: node.appverse_app.field_appverse_github_url
 field_name: field_appverse_github_url
 entity_type: node
 bundle: appverse_app
-label: 'GitHub URL for your App'
+label: 'GitHub URL for your repository'
 description: ''
 required: false
 translatable: false

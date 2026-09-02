@@ -1,0 +1,9 @@
+uuid: 394d3dae-f7fc-48ae-b964-33b911fd45c6
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_kyct_ddev_site
+domain_id: kycyberteam_cyberinfrastructure_org
+pattern: '*.kyct.ddev.site'
+redirect: 0
+environment: default

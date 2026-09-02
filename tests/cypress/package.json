@@ -5,7 +5,7 @@
     "test": "cypress run"
   },
   "devDependencies": {
-    "cypress": "^14.5.3"
+    "cypress": "^15.18.1"
   },
   "dependencies": {
     "axe-core": "^4.10.3",

@@ -325,7 +325,8 @@ elements: |-
     project_description:
       '#type': textarea
       '#title': 'Project Description'
-      '#description': '<p><span class="_1e0c1bgi" data-ep-placeholder-id="gin-redirect-entrypoint" data-testid="comment-base-item-20011">Provide a description of the project—its history, progress, and current status—and include the names and institutional affiliations of any collaborators</span></p>'
+      '#description': '<p class="mb-3"><strong>Proposal Format – 1-2 pages with project description, problem statement, expected research outcomes, timeline, and deliverables for the project- include the names and institutional affiliations of any collaborators</strong></p>'
+      '#description_display': before
       '#required': true
     project_information_subsection:
       '#type': webform_section

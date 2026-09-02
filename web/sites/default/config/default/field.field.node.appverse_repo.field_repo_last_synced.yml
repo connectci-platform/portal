@@ -1,0 +1,19 @@
+uuid: 97dec704-f748-42b7-a5c7-c1589ef913d7
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_last_synced
+    - node.type.appverse_repo
+id: node.appverse_repo.field_repo_last_synced
+field_name: field_repo_last_synced
+entity_type: node
+bundle: appverse_repo
+label: 'Last synced at'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

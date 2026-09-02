@@ -9,6 +9,7 @@ dependencies:
     - field.field.node.resource_group.field_rp_account_required
     - field.field.node.resource_group.field_rp_account_setup_url
     - field.field.node.resource_group.field_rp_datasets
+    - field.field.node.resource_group.field_rp_datasets_text
     - field.field.node.resource_group.field_rp_description
     - field.field.node.resource_group.field_rp_external_storage
     - field.field.node.resource_group.field_rp_file_transfer
@@ -22,14 +23,15 @@ dependencies:
     - field.field.node.resource_group.field_rp_software_list_url
     - field.field.node.resource_group.field_rp_ssh_login_nodes
     - field.field.node.resource_group.field_rp_storage
+    - field.field.node.resource_group.field_rp_storage_text
     - field.field.node.resource_group.field_rp_support_links
     - node.type.resource_group
   module:
-    - entity_reference_revisions
+    - content_moderation
     - field_group
     - link
-    - path
     - paragraphs
+    - path
     - text
 third_party_settings:
   field_group:
@@ -44,9 +46,11 @@ third_party_settings:
         - field_rp_login_help_links
         - field_rp_file_transfer_text
         - field_rp_file_transfer
+        - field_rp_storage_text
         - field_rp_storage
         - field_rp_external_storage
         - field_rp_software_list_url
+        - field_rp_datasets_text
         - field_rp_datasets
         - field_rp_support_links
         - field_rp_office_hours
@@ -93,7 +97,7 @@ content:
     third_party_settings: {  }
   field_rp_datasets:
     type: paragraphs
-    weight: 24
+    weight: 25
     region: content
     settings:
       title: Dataset
@@ -108,6 +112,14 @@ content:
       features:
         collapse_edit_all: collapse_edit_all
         duplicate: duplicate
+    third_party_settings: {  }
+  field_rp_datasets_text:
+    type: text_textarea
+    weight: 24
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
     third_party_settings: {  }
   field_rp_description:
     type: text_textarea_with_summary
@@ -243,6 +255,14 @@ content:
         collapse_edit_all: collapse_edit_all
         duplicate: duplicate
     third_party_settings: {  }
+  field_rp_storage_text:
+    type: text_textarea
+    weight: 20
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
   field_rp_support_links:
     type: link_default
     weight: 26
@@ -250,6 +270,13 @@ content:
     settings:
       placeholder_url: ''
       placeholder_title: ''
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default
@@ -260,6 +287,11 @@ content:
   path:
     type: path
     weight: 12
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  simple_sitemap:
+    weight: 10
     region: content
     settings: {  }
     third_party_settings: {  }

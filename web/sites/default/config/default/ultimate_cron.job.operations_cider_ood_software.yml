@@ -1,0 +1,30 @@
+uuid: 15de38f4-be1f-4955-a5e0-31aee3d9d30d
+langcode: en
+status: true
+dependencies:
+  module:
+    - operations_cider
+title: 'Operations CiDeR: OOD Software'
+id: operations_cider_ood_software
+weight: 19
+module: operations_cider
+callback: '\Drupal\operations_cider\Plugin\CronManager::updateOodSoftware'
+scheduler:
+  id: crontab
+  configuration:
+    rules:
+      - '0 4 * * 0'
+    catch_up: 604800
+launcher:
+  id: serial
+  configuration:
+    timeouts:
+      lock_timeout: 3600
+    launcher:
+      thread: 0
+logger:
+  id: database
+  configuration:
+    method: '3'
+    expire: 1209600
+    retain: 1000

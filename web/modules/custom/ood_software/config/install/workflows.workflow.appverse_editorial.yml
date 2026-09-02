@@ -1,0 +1,107 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.appverse_app
+    - node.type.appverse_repo
+  module:
+    - content_moderation
+id: appverse_editorial
+label: 'Appverse Editorial'
+type: content_moderation
+type_settings:
+  states:
+    archived:
+      label: Archived
+      weight: 5
+      published: false
+      default_revision: true
+    draft:
+      label: Draft
+      weight: -5
+      published: false
+      default_revision: true
+    needs_adjustment:
+      label: 'Needs Adjustment'
+      weight: 7
+      published: false
+      default_revision: true
+    published:
+      label: Published
+      weight: 0
+      published: true
+      default_revision: true
+    ready_for_review:
+      label: 'Ready for Review'
+      weight: 6
+      published: false
+      default_revision: false
+  transitions:
+    archive:
+      label: Archive
+      from:
+        - published
+      to: archived
+      weight: 2
+    archived_draft:
+      label: 'Restore to Draft'
+      from:
+        - archived
+        - needs_adjustment
+      to: draft
+      weight: 3
+    archived_published:
+      label: Restore
+      from:
+        - archived
+      to: published
+      weight: 4
+    create_new_draft:
+      label: 'Create New Draft'
+      from:
+        - draft
+        - needs_adjustment
+        - published
+        - ready_for_review
+      to: draft
+      weight: 0
+    publish:
+      label: Publish
+      from:
+        - draft
+        - needs_adjustment
+        - published
+        - ready_for_review
+      to: published
+      weight: 1
+    request_adjustment:
+      label: 'Request Adjustment'
+      from:
+        - published
+        - ready_for_review
+      to: needs_adjustment
+      weight: 6
+    review_to_review:
+      label: 'Review to Review'
+      from:
+        - ready_for_review
+      to: ready_for_review
+      weight: 7
+    send_for_review:
+      label: 'Send for Review'
+      from:
+        - draft
+        - needs_adjustment
+      to: ready_for_review
+      weight: 5
+    unpublish:
+      label: 'Unpublish (to draft)'
+      from:
+        - published
+      to: draft
+      weight: 7
+  entity_types:
+    node:
+      - appverse_app
+      - appverse_repo
+  default_moderation_state: draft

@@ -1,6 +1,6 @@
 name: 'DDEV Base Setup'
 description: 'Setup DDEV environment with database import'
-author: 'necyberteam'
+author: 'connectci-platform'
 
 inputs:
   site:
@@ -39,9 +39,14 @@ runs:
     - name: Configure and start DDEV
       shell: bash
       run: |
-        ddev config --project-type=drupal10 --docroot=web --database=mysql:8.0 --php-version=8.2
+        ddev config --project-type=drupal10 --docroot=web --database=mysql:8.0 --php-version=8.3
         # Add additional hostnames for all test domains (DDEV will automatically append .ddev.site)
         ddev config --additional-hostnames=accessmatch,ccmnet,connectci,crct,campuschampions,coco,greatplains,kyct,nect,ondemand,pasciencedmz
+        # Signal CI to the web container so settings.php skips development.services.yml,
+        # keeping Twig theme-debug OFF in CI (debug output corrupts AJAX JSON responses;
+        # see web/sites/default/settings.php case 'local'). Only this throwaway CI
+        # checkout sets CI; local dev never does, so it keeps debug ON.
+        ddev config --web-environment-add="CI=true"
         ddev start
 
     - name: Setup GitHub authentication for DDEV
@@ -83,6 +88,22 @@ runs:
       run: |
         # Drupal import database.
         vendor/bin/robo did
+
+    - name: Verify Twig theme-debug is OFF in CI
+      shell: bash
+      run: |
+        # Guards against a silent no-op: if CI=true did not reach the web
+        # container, settings.php would still load development.services.yml and
+        # theme-debug would stay ON, corrupting AJAX responses (the very bug this
+        # guards). First confirm the signal reached FPM, then confirm rendered
+        # output carries no THEME DEBUG comments.
+        ddev exec printenv CI | grep -qx "true" \
+          || { echo "::error::CI env var did not reach the ddev web container — theme-debug may still be on"; exit 1; }
+        if curl -fsSL "https://accessmatch.ddev.site/" | grep -q "THEME DEBUG"; then
+          echo "::error::Twig theme-debug is ON in CI (rendered HTML contains THEME DEBUG). development.services.yml was not skipped."
+          exit 1
+        fi
+        echo "Twig theme-debug confirmed OFF in CI."
 
     - name: Rebuild CI Links search index
       shell: bash

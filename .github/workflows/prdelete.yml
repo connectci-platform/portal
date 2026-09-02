@@ -31,7 +31,17 @@ jobs:
       - name: Recreate md-dev branch
         if: env.PR_BRANCH == 'md-dev'
         run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN_REPO }}@github.com/${{ github.repository }}.git
           git checkout main
           git pull origin main
           git checkout -b md-dev
           git push origin md-dev
+
+      # The push above does not fire main.yml's push trigger (GH_TOKEN_REPO
+      # pushes do not create push events), so the multidev never gets rebuilt.
+      # Dispatch the deploy explicitly instead.
+      - name: Trigger dev deploy for md-dev
+        if: env.PR_BRANCH == 'md-dev'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_REPO }}
+        run: gh workflow run main.yml --ref md-dev

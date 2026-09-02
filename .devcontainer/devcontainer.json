@@ -55,10 +55,10 @@
 
     "phpcs.enable": true,
     "phpcs.standard": "Drupal,DrupalPractice",
-    "phpcs.executablePath": "/workspaces/cyberteam_drupal/vendor/bin/phpcs",
+    "phpcs.executablePath": "/workspaces/portal/vendor/bin/phpcs",
 
     "phpcbf.enable": true,
-    "phpcbf.executablePath": "/workspaces/cyberteam_drupal/vendor/bin/phpcbf",
+    "phpcbf.executablePath": "/workspaces/portal/vendor/bin/phpcbf",
     "phpcbf.documentFormattingProvider": true,
     "phpcbf.onsave": true,
     "phpcbf.standard": "Drupal,DrupalPractice",
@@ -127,7 +127,7 @@
   "customizations": {
     "codespaces": {
       "repositories": {
-        "necyberteam/*": {
+        "connectci-platform/*": {
           "permissions": {
             "contents": "write"
           }
@@ -135,5 +135,5 @@
       }
     }
   },
-  "postCreateCommand": "cd /workspaces/cyberteam_drupal && ./.devcontainer/codespaces.sh"
+  "postCreateCommand": "cd /workspaces/portal && ./.devcontainer/codespaces.sh"
 }

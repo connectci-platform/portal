@@ -15,6 +15,7 @@ global-styling-and-scripts:
     js/global.js: {}
   dependencies:
     - core/jquery
+    - core/drupal
 
 js-header:
   header: true

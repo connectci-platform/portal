@@ -2,6 +2,8 @@ uuid: 149894cc-3ed7-4561-875f-fbb14765724c
 langcode: en
 status: true
 dependencies:
+  config:
+    - node.type.mentorship_engagement
   module:
     - field_permissions
 id: champions_mentorship_admin
@@ -10,6 +12,7 @@ weight: 28
 is_admin: null
 permissions:
   - 'create field_admin_notes'
+  - 'edit any mentorship_engagement content'
   - 'edit field_admin_notes'
   - 'edit own field_admin_notes'
   - 'view field_admin_notes'

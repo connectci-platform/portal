@@ -3,7 +3,7 @@ uuid: 7b7fe09b-7851-42b7-8db8-8a4f7545f29e
 type: 'access denied'
 message: '@uri'
 referer: ''
-threshold: '20'
+threshold: '100'
 window: '1 hour ago'
 provider: ban
 user_type: '0'

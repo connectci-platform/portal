@@ -23,6 +23,7 @@ dependencies:
     - field.field.user.user.field_domain_all_affiliates
     - field.field.user.user.field_github_graph
     - field.field.user.user.field_github_username
+    - field.field.user.user.field_hide_community_profile
     - field.field.user.user.field_hpc_experience
     - field.field.user.user.field_institution
     - field.field.user.user.field_is_cc
@@ -209,6 +210,7 @@ hidden:
   field_discourse_openondemand_org: true
   field_github_graph: true
   field_github_username: true
+  field_hide_community_profile: true
   field_is_cc: true
   field_ood_community_spotlight: true
   field_ood_spotlight_promoted: true
@@ -218,3 +220,4 @@ hidden:
   field_user_preferred_pronouns: true
   field_xdusage_person_id: true
   field_xdusage_person_synced: true
+  langcode: true

@@ -7,7 +7,7 @@ dependencies:
     - field.field.media.remote_video.field_media_oembed_video
     - media.type.remote_video
   module:
-    - image
+    - svg_image
 _core:
   default_config_hash: PGGoP-hVkXe_S-GiJRAub4PHDu0KhMExylclrqjdJb4
 id: media.remote_video.media_library
@@ -29,5 +29,7 @@ content:
 hidden:
   created: true
   field_media_oembed_video: true
+  langcode: true
   name: true
+  search_api_excerpt: true
   uid: true

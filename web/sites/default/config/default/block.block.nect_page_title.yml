@@ -24,4 +24,4 @@ visibility:
     id: request_path
     negate: true
     context_mapping: {  }
-    pages: "/user/*\r\n!/user/register\r\n!/user/login\r\n!/user/*/*\r\n/resource/*\r\n/amp-front-page\r\n/mentorships/*\r\n/community-persona/*\r\n!/community-persona/add-interest\r\n!/community-persona/add-skill\r\n<front>"
+    pages: "/user/*\r\n!/user/register\r\n!/user/login\r\n!/user/*/*\r\n/resource/*\r\n/amp-front-page\r\n/mentorships/*\r\n!/mentorships/status\r\n!/mentorships/cc-status\r\n/community-persona/*\r\n!/community-persona/add-interest\r\n!/community-persona/add-skill\r\n<front>"

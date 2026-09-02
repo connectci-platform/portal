@@ -1,0 +1,30 @@
+uuid: ac5789f1-8160-409b-9862-13eabcf48bc5
+langcode: en
+status: true
+dependencies:
+  content:
+    - 'block_content:basic:d584b51e-776e-4ac8-8672-5ed92c5cb854'
+  module:
+    - block_content
+    - system
+  theme:
+    - aspTheme
+id: asptheme_researcherstoriesintrotext
+theme: aspTheme
+region: title_banner
+weight: 0
+provider: null
+plugin: 'block_content:d584b51e-776e-4ac8-8672-5ed92c5cb854'
+settings:
+  id: 'block_content:d584b51e-776e-4ac8-8672-5ed92c5cb854'
+  label: 'Researcher Stories: intro text'
+  label_display: '0'
+  provider: block_content
+  status: true
+  info: ''
+  view_mode: full
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /tools/researcher-stories

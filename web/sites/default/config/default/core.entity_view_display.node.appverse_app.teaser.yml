@@ -6,13 +6,20 @@ dependencies:
     - core.entity_view_mode.node.teaser
     - field.field.node.appverse_app.body
     - field.field.node.appverse_app.field_add_implementation_tags
+    - field.field.node.appverse_app.field_appverse_app_subpath
     - field.field.node.appverse_app.field_appverse_app_type
+    - field.field.node.appverse_app.field_appverse_app_validation_er
+    - field.field.node.appverse_app.field_appverse_app_validation_st
     - field.field.node.appverse_app.field_appverse_github_url
     - field.field.node.appverse_app.field_appverse_lastupdated
     - field.field.node.appverse_app.field_appverse_license_link
+    - field.field.node.appverse_app.field_appverse_maintainer_name
     - field.field.node.appverse_app.field_appverse_organization
     - field.field.node.appverse_app.field_appverse_readme
+    - field.field.node.appverse_app.field_appverse_repo
     - field.field.node.appverse_app.field_appverse_software_implemen
+    - field.field.node.appverse_app.field_appverse_stars
+    - field.field.node.appverse_app.field_appverse_unresolved_tags
     - field.field.node.appverse_app.field_domain_access
     - field.field.node.appverse_app.field_domain_all_affiliates
     - field.field.node.appverse_app.field_domain_source
@@ -51,16 +58,23 @@ content:
     region: content
 hidden:
   field_add_implementation_tags: true
+  field_appverse_app_subpath: true
   field_appverse_app_type: true
+  field_appverse_app_validation_er: true
+  field_appverse_app_validation_st: true
   field_appverse_github_url: true
   field_appverse_lastupdated: true
   field_appverse_license_link: true
+  field_appverse_maintainer_name: true
   field_appverse_organization: true
   field_appverse_readme: true
+  field_appverse_repo: true
   field_appverse_software_implemen: true
   field_appverse_stars: true
+  field_appverse_unresolved_tags: true
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true
   field_license: true
+  langcode: true
   search_api_excerpt: true

@@ -1,0 +1,23 @@
+uuid: e58c14aa-32c8-4fec-95e5-183a761888a7
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_max_wall_time
+    - paragraphs.paragraphs_type.rp_queue_spec
+id: paragraph.rp_queue_spec.field_rp_max_wall_time
+field_name: field_rp_max_wall_time
+entity_type: paragraph
+bundle: rp_queue_spec
+label: 'Max wall time (minutes)'
+description: 'Maximum wall time a single job may run on this queue, in whole minutes (e.g. 30 = half an hour, 60 = 1 hour, 2880 = 2 days). Leave blank for no limit.'
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 1
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

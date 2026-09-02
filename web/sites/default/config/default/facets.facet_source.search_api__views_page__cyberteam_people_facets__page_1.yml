@@ -1,0 +1,9 @@
+uuid: 935f3e6f-8fc0-4337-9ee7-f758b06df44e
+langcode: en
+status: true
+dependencies: {  }
+id: search_api__views_page__cyberteam_people_facets__page_1
+name: 'search_api:views_page__cyberteam_people_facets__page_1'
+filter_key: null
+url_processor: query_string
+breadcrumb: {  }

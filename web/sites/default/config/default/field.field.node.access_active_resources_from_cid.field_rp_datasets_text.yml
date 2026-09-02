@@ -1,0 +1,23 @@
+uuid: 18f70f40-6544-460c-ac4d-65c91c12a328
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_datasets_text
+    - node.type.access_active_resources_from_cid
+  module:
+    - text
+id: node.access_active_resources_from_cid.field_rp_datasets_text
+field_name: field_rp_datasets_text
+entity_type: node
+bundle: access_active_resources_from_cid
+label: 'Datasets Text'
+description: 'Optional rich text displayed above the datasets table.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats:
+    - resource_docs
+field_type: text_long

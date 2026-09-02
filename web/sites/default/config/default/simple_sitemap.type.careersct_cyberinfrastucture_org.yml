@@ -1,0 +1,18 @@
+uuid: 626e884e-448e-4099-ae18-f592e2516afb
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: careersct_cyberinfrastucture_org
+id: careersct_cyberinfrastucture_org
+label: 'CAREERS Cyberteam sitemap'
+description: 'Sitemap type for domain: CAREERS Cyberteam'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

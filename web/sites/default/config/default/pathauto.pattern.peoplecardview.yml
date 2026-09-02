@@ -7,7 +7,7 @@ dependencies:
 id: peoplecardview
 label: PeopleCardView
 type: 'canonical_entities:node'
-pattern: 'people/card/[node:field_region]'
+pattern: '/people/card/[node:field_region]'
 selection_criteria:
   7ec97775-e51a-47a2-b80f-be81bc468566:
     id: 'entity_bundle:node'

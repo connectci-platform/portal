@@ -97,19 +97,13 @@ describe('Badge CSV Lifecycle — badges / MATCH', () => {
   it('Trigger cron to move pending rows to review', () => {
     cy.loginAs(ADMIN_USER, ADMIN_PASS);
 
-    // Trigger the ultimate_cron job for pending badge matching.
-    cy.exec('ddev drush ultimate-cron:run access_badges_pending_match', {
-      failOnNonZeroExit: false,
+    // Run the ultimate_cron job for pending badge matching directly —
+    // general cron won't launch it (its crontab rule is 5am only).
+    cy.exec('ddev drush cron:run access_badges_pending_match', {
       timeout: 60000,
     }).then((result) => {
-      cy.task('log', 'Cron result: code=' + result.code + ' stdout=' + result.stdout + ' stderr=' + result.stderr);
-      if (result.code !== 0) {
-        // Fallback: run general cron — must succeed or the test fails.
-        cy.exec('ddev drush cron', { timeout: 60000 })
-          .its('code').should('eq', 0);
-      } else {
-        expect(result.code).to.eq(0);
-      }
+      cy.task('log', 'Cron result: exitCode=' + result.exitCode + ' stdout=' + result.stdout + ' stderr=' + result.stderr);
+      expect(result.exitCode).to.eq(0);
     });
 
     // Cron must leave Cherry Tart's row in a valid state ('pending' or 'review').

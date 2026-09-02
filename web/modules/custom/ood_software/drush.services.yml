@@ -1,6 +1,11 @@
 services:
   ood_software.commands:
     class: \Drupal\ood_software\Commands\OodSoftwareCommands
-    arguments: ['@entity_type.manager', '@key.repository', '@http_client']
+    arguments: ['@entity_type.manager', '@key.repository', '@http_client', '@ood_software.repo_sync', '@ood_software.gh', '@ood_software.appverse_cache']
+    tags:
+      - { name: drush.command }
+  ood_software.commands.backfill:
+    class: \Drupal\ood_software\Commands\AppverseBackfillCommands
+    arguments: ['@entity_type.manager', '@ood_software.repo_sync', '@ood_software.gh', '@logger.factory']
     tags:
       - { name: drush.command }

@@ -9,9 +9,9 @@ id: paragraph.rp_queue_spec.field_rp_gpus
 field_name: field_rp_gpus
 entity_type: paragraph
 bundle: rp_queue_spec
-label: GPUs
-description: ''
-required: null
+label: 'GPU Type'
+description: 'Type of GPU'
+required: false
 translatable: null
 default_value: {  }
 default_value_callback: ''

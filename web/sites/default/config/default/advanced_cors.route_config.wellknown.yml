@@ -1,0 +1,16 @@
+uuid: 7f3a1234-5678-4abc-def0-123456789abc
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: Uwlcy8Sxln-1hpXPNrCiO9RmBSDMQB5zr3MdIq3G0R8
+id: wellknown
+label: 'Well-Known URIs'
+weight: 0
+patterns: "/.well-known/*\r\n"
+allowed_headers: '*'
+allowed_methods: '*'
+allowed_origins: '*'
+exposed_headers: ''
+max_age: ''
+supports_credentials: 'false'

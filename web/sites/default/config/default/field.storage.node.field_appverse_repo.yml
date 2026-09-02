@@ -1,0 +1,19 @@
+uuid: 557a493a-e541-4ba1-af3e-7ae38595c8cc
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_appverse_repo
+field_name: field_appverse_repo
+entity_type: node
+type: entity_reference
+settings:
+  target_type: node
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -9,9 +9,9 @@ id: paragraph.rp_storage_filesystem.field_rp_quota
 field_name: field_rp_quota
 entity_type: paragraph
 bundle: rp_storage_filesystem
-label: Quota
+label: 'Quota (Deprecated)'
 description: ''
-required: null
+required: false
 translatable: null
 default_value: {  }
 default_value_callback: ''

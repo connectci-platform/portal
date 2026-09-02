@@ -1,0 +1,8 @@
+uuid: 044e8052-e1cc-4f73-8c16-4ccd2c18c9ed
+langcode: en
+status: true
+dependencies: {  }
+id: access-documentation
+label: 'Access Documentation'
+description: ''
+locked: false

@@ -1,0 +1,19 @@
+uuid: bbca590d-4e37-422f-97f6-5103110f2904
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - text
+id: node.field_rp_storage_text
+field_name: field_rp_storage_text
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

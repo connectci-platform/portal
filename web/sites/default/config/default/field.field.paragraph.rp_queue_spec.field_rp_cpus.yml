@@ -9,9 +9,9 @@ id: paragraph.rp_queue_spec.field_rp_cpus
 field_name: field_rp_cpus
 entity_type: paragraph
 bundle: rp_queue_spec
-label: CPUs
-description: ''
-required: null
+label: 'CPU Type'
+description: 'Type of CPU'
+required: false
 translatable: null
 default_value: {  }
 default_value_callback: ''

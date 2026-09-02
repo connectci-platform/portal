@@ -7,7 +7,7 @@ dependencies:
 id: affinity_groups
 label: 'Affinity Groups'
 type: 'canonical_entities:node'
-pattern: 'affinity-groups/[node:title]'
+pattern: '/affinity-groups/[node:title]'
 selection_criteria:
   3aa86924-f349-4e25-bb22-b87cf7933e47:
     id: 'entity_bundle:node'

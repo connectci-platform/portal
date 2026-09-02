@@ -1,0 +1,9 @@
+uuid: ad0495be-8f8e-4d9f-9da6-72a8bb635a57
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_crct_ddev_site
+domain_id: careersct_cyberinfrastucture_org
+pattern: '*.crct.ddev.site'
+redirect: 0
+environment: default

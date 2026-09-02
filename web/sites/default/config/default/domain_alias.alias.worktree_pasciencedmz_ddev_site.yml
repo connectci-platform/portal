@@ -1,0 +1,9 @@
+uuid: f8a4ceba-f9c6-48a9-b125-a3433c429a86
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_pasciencedmz_ddev_site
+domain_id: pasciencedmz_connectci_org
+pattern: '*.pasciencedmz.ddev.site'
+redirect: 0
+environment: default

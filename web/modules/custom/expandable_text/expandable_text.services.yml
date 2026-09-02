@@ -1,0 +1,5 @@
+services:
+  expandable_text.twig_extension:
+    class: Drupal\expandable_text\TwigExtension
+    tags:
+      - { name: twig.extension }

@@ -14,6 +14,7 @@ dependencies:
     - field.field.node.community_events.field_track
     - node.type.community_events
   module:
+    - content_moderation
     - datetime
     - path
     - text
@@ -88,6 +89,13 @@ content:
     weight: 5
     region: content
     settings: {  }
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
     third_party_settings: {  }
   moderation_state:
     type: moderation_state_default

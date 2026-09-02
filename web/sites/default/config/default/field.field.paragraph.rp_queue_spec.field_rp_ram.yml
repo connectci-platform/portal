@@ -9,9 +9,9 @@ id: paragraph.rp_queue_spec.field_rp_ram
 field_name: field_rp_ram
 entity_type: paragraph
 bundle: rp_queue_spec
-label: RAM
+label: 'RAM (Deprecated)'
 description: ''
-required: null
+required: false
 translatable: null
 default_value: {  }
 default_value_callback: ''

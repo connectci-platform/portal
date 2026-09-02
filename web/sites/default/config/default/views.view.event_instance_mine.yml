@@ -801,6 +801,33 @@ display:
         - url.query_args
         - user
       tags: {  }
+  mcp_my_events:
+    id: mcp_my_events
+    display_title: 'MCP My Events'
+    display_plugin: page
+    position: 2
+    display_options:
+      pager:
+        type: some
+        options:
+          offset: 0
+          items_per_page: 100
+      defaults:
+        pager: false
+      exposed_block: true
+      display_extenders:
+        jsonapi_views:
+          enabled: true
+      path: mcp/my-events
+    cache_metadata:
+      max-age: -1
+      contexts:
+        - 'languages:language_content'
+        - 'languages:language_interface'
+        - url
+        - url.query_args
+        - user
+      tags: {  }
   my_events_page:
     id: my_events_page
     display_title: Page

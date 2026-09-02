@@ -1,0 +1,30 @@
+uuid: 7736de5e-54e8-4729-b86c-4dbc2bc367b7
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - options
+id: node.field_repo_validation_st
+field_name: field_repo_validation_st
+entity_type: node
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: valid
+      label: Valid
+    -
+      value: degraded
+      label: Degraded
+    -
+      value: stale_invalid
+      label: 'Stale invalid'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

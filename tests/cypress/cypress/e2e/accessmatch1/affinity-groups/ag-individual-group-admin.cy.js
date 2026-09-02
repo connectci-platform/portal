@@ -30,24 +30,21 @@ describe("Admin user tests the Individual Affinity Groups", () => {
       .click();
 
     // Add a ci-link - this involves typing the title into the field, which
-    // get populated with options that have (nn) suffixes, then can select
-    // the first the dropdown the shows up.
-    cy.get('#edit-field-resources-entity-reference-0-target-id').clear();
-    cy.get('#edit-field-resources-entity-reference-0-target-id')
-      .type('access-support-ci-link-for-testing')
-      .wait(1000)
-      .type('{downarrow}{enter}');
+    // gets populated with options that have (nn) suffixes, then selecting the
+    // first option the dropdown shows. See selectAutocompleteOption below for
+    // why we wait on the menu and assert the resolved value.
+    const ciLink0 = '#edit-field-resources-entity-reference-0-target-id';
+    selectAutocompleteOption(ciLink0, 'access-support-ci-link-for-testing');
 
     if (!Cypress.$('[data-drupal-selector="edit-field-resources-entity-reference-1-target-id"]').length) {
       cy.get('#edit-field-resources-entity-reference-add-more').click();
-      cy.wait(1000);
+      // The "Add another item" button triggers a Drupal AJAX rebuild; wait for
+      // it to finish before interacting with the field it adds.
+      cy.waitForDrupalSettle();
     }
 
-    cy.get('[data-drupal-selector="edit-field-resources-entity-reference-1-target-id"]').clear();
-    cy.get('[data-drupal-selector="edit-field-resources-entity-reference-1-target-id"]')
-      .type('access-support-ci-link-for-testing')
-      .wait(1000)
-      .type('{downarrow}{enter}');
+    const ciLink1 = '[data-drupal-selector="edit-field-resources-entity-reference-1-target-id"]';
+    selectAutocompleteOption(ciLink1, 'access-support-ci-link-for-testing');
 
     // Add a cider resource
     cy.get('#edit-field-cider-resources-0-target-id').clear();
@@ -86,6 +83,31 @@ describe("Admin user tests the Individual Affinity Groups", () => {
       .and('contain', '/affinity-groups/618/users/ACCESS Support');
   });
 });
+
+/**
+ * Select an option from a Drupal entity-reference autocomplete field, reliably.
+ *
+ * The flaky part this guards against: cy.typeAutocomplete waits for the
+ * autocomplete AJAX *response*, but jQuery UI renders the suggestion menu a tick
+ * later. Sending {downarrow}{enter} immediately can land before the menu exists,
+ * so nothing is selected. The field keeps the raw typed text (no "(nn)" id),
+ * Drupal silently drops the unresolved reference on submit, and the resources
+ * block then renders empty - making the test fail far away at the block
+ * assertion instead of here.
+ *
+ * So we: wait for the menu to actually render, key-select the first option, then
+ * assert the field resolved to a real entity (its value gains the "(nn)" id
+ * suffix). If selection ever fails again it fails right here, at the cause.
+ */
+function selectAutocompleteOption(selector, text) {
+  cy.get(selector).clear();
+  cy.typeAutocomplete(selector, text);
+  // Block until jQuery UI has rendered at least one suggestion.
+  cy.get('.ui-autocomplete:visible li.ui-menu-item').should('have.length.greaterThan', 0);
+  cy.get(selector).type('{downarrow}{enter}');
+  // Confirm a real reference was selected before relying on it downstream.
+  cy.get(selector).invoke('val').should('match', /\(\d+\)\s*$/);
+}
 
 // helper function to create a ci-link that can be added to the AG
 function create_dummy_ci_link() {
@@ -130,12 +152,11 @@ describe("Admin can add announcements to Affinity Group via entity reference", (
     // Now edit the AG to add this announcement via entity reference
     cy.visit("/node/327/edit");
 
-    // Find the field_affinity_announcements field and add the announcement
-    cy.get('[data-drupal-selector="edit-field-affinity-announcements-0-target-id"]').clear();
-    cy.get('[data-drupal-selector="edit-field-affinity-announcements-0-target-id"]')
-      .type(testAnnouncementTitle)
-      .wait(1000)
-      .type('{downarrow}{enter}');
+    // Find the field_affinity_announcements field and add the announcement.
+    // selectAutocompleteOption waits for the suggestion menu and asserts the
+    // reference resolved, so a missed selection fails here rather than later.
+    const announcementField = '[data-drupal-selector="edit-field-affinity-announcements-0-target-id"]';
+    selectAutocompleteOption(announcementField, testAnnouncementTitle);
 
     cy.get('#edit-submit').click();
     cy.contains('has been updated');

@@ -1,0 +1,223 @@
+{#
+/**
+ * @file
+ * Maintenance-hub card for one appverse_repo (views.view.my_appverse).
+ *
+ * @var hub - structured row data from _ood_software_build_hub_row().
+ *
+ * Header cluster, left→right:
+ *   [status badge] | [pencil — inferred+can_edit] | Last sync <ts> [resync]
+ *   | [github] | [catalog] | [owner name][email — admin] | [lifecycle icons]
+ */
+#}
+<article class="appverse-hub-card state-{{ hub.moderation_state }}">
+  {# Header is a CSS grid with shared column tracks so fields line up across
+     cards: title | last-sync+resync | github | owner | status | actions.
+     Status sits in its own column next to the actions so it always lines up.
+     Each cell always renders (even when empty) to preserve column alignment. #}
+  <header class="appverse-hub-card__header">
+    <h3 class="appverse-hub-card__title appverse-hub-card__cell--title">
+      {# Only published repos appear in the catalog, so don't link to it when
+         this repo isn't visible there. #}
+      {% if hub.published %}
+        <a href="{{ hub.catalog_url }}">{{ hub.title }}</a>
+      {% else %}
+        {{ hub.title }}
+      {% endif %}
+    </h3>
+
+    <div class="appverse-hub-card__cell appverse-hub-card__cell--sync">
+      {% if hub.last_synced %}
+        <span class="appverse-hub-card__last-synced">{{ 'Last sync'|t }} {{ hub.last_synced }}</span>
+      {% endif %}
+      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
+    </div>
+
+    {# The card title links to the catalog, so a separate catalog icon would be
+       redundant. GitHub is the only remaining header link here. #}
+    <div class="appverse-hub-card__cell appverse-hub-card__cell--github">
+      {% if hub.github_url %}
+        <a href="{{ hub.github_url }}" class="appverse-hub-card__icon-btn" target="_blank" rel="noopener"
+           title="{{ 'View on GitHub'|t }}" aria-label="{{ 'View @t on GitHub'|t({'@t': hub.title}) }}">
+          <i class="bi bi-github" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+    </div>
+
+    {# Owner name + contact only when the repo is owned by someone else (the
+       row builder sets hub.owner to null when the viewer owns it). On your own
+       apps the owner is you, so it's redundant noise. The grid column track
+       stays (empty) when there's no owner so cards stay aligned. #}
+    <div class="appverse-hub-card__cell appverse-hub-card__cell--owner">
+      {% if hub.owner %}
+        <a href="{{ hub.owner.persona_url }}" class="appverse-hub-card__owner">{{ hub.owner.name }}</a>
+        {% if hub.owner.email %}
+          <a href="mailto:{{ hub.owner.email }}" class="appverse-hub-card__icon-btn"
+             title="{{ 'Email @n'|t({'@n': hub.owner.name}) }}" aria-label="{{ 'Email @n'|t({'@n': hub.owner.name}) }}">
+            <i class="bi bi-envelope" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="appverse-hub-card__cell appverse-hub-card__cell--status">
+      {% if hub.unpublished_after_publish %}
+        <span class="badge badge-warning">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
+      {% else %}
+        <span class="badge badge-{{ hub.status.modifier }}">{{ hub.status.label }}</span>
+      {% endif %}
+      {% if hub.has_validation_issues %}
+        <span class="badge badge-error">{{ 'Validation errors'|t }}</span>
+      {% endif %}
+    </div>
+
+    <div class="appverse-hub-card__cell appverse-hub-card__cell--actions">
+      {% if hub.edit_url %}
+        <a href="{{ hub.edit_url }}" class="appverse-hub-card__icon-btn"
+           title="{{ 'Edit'|t }}" aria-label="{{ 'Edit @t'|t({'@t': hub.title}) }}">
+          <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+      {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
+      {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
+      {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}
+      {% if hub.actions.request_changes %}
+        <a href="{{ hub.actions.request_changes.url }}" class="appverse-hub-card__icon-btn"
+           title="{{ 'Request changes'|t }}" aria-label="{{ 'Request changes'|t }}">
+          <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+      {% if hub.actions.delete %}
+        <a href="{{ hub.actions.delete.url }}" class="appverse-hub-card__icon-btn appverse-hub-card__icon-btn--danger"
+           title="{{ 'Delete'|t }}" aria-label="{{ 'Delete @t'|t({'@t': hub.title}) }}">
+          <i class="bi bi-trash" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  {# Repo-level discovery tags (shared `tags` vocab), on their own full-width
+     row below the header so they wrap freely and don't compete with the
+     header's fixed grid (which would shove the action icons to a second row).
+     Resolved tags are quiet neutral chips; unresolved ones read as warnings. #}
+  {% if hub.discovery_tags.resolved or hub.discovery_tags.unresolved %}
+    <div class="appverse-hub-card__tags" role="list" aria-label="{{ 'Repository tags'|t }}">
+      <span class="appverse-hub-card__tags-label">{{ 'Tags:'|t }}</span>
+      {% for tag in hub.discovery_tags.resolved %}
+        <span class="appverse-tag appverse-tag--resolved" role="listitem">{{ tag }}</span>
+      {% endfor %}
+      {% for tag in hub.discovery_tags.unresolved %}
+        <span class="appverse-tag appverse-tag--unresolved" role="listitem"
+              title="{{ 'Not a catalog tag — not applied. Contributor should use an existing tag in appverse.yml.'|t }}">
+          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ tag }}
+        </span>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {# Single-app repos have no apps table, so show the one app's implementation
+     tags here on the card. (Monorepos show per-app tags in the apps table
+     below instead; hub.single_app_tags is null for them.) #}
+  {% if hub.single_app_tags and (hub.single_app_tags.resolved or hub.single_app_tags.unresolved) %}
+    <div class="appverse-hub-card__tags" role="list" aria-label="{{ 'Implementation tags'|t }}">
+      <span class="appverse-hub-card__tags-label">{{ 'Implementation:'|t }}</span>
+      {% for tag in hub.single_app_tags.resolved_shown %}
+        <span class="appverse-tag appverse-tag--resolved" role="listitem">{{ tag }}</span>
+      {% endfor %}
+      {% if hub.single_app_tags.truncated %}
+        <span class="appverse-tag appverse-tag--more" role="listitem"
+              title="{{ '@count more tags'|t({'@count': hub.single_app_tags.remaining}) }}">
+          +{{ hub.single_app_tags.remaining }} {{ 'more'|t }}
+        </span>
+      {% endif %}
+      {% for item in hub.single_app_tags.unresolved %}
+        <span class="appverse-tag appverse-tag--unresolved" role="listitem"
+              title="{{ item.create_url ? 'Not in the vocabulary yet — click to create this tag.'|t : 'Not in the vocabulary — an admin can add it.'|t }}">
+          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+          {% if item.create_url %}<a href="{{ item.create_url }}">{{ item.declared }}</a>{% else %}{{ item.declared }}{% endif %}
+        </span>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if hub.moderation_state == 'needs_adjustment' and hub.moderation_comment %}
+    <div class="appverse-hub-card__moderation-comment">
+      <strong>{{ 'Admin feedback:'|t }}</strong>
+      <p>{{ hub.moderation_comment }}</p>
+    </div>
+  {% endif %}
+
+  {% if hub.is_monorepo %}
+    <details class="appverse-hub-card__apps">
+      <summary>
+        <i class="bi bi-chevron-right appverse-hub-card__apps-chevron" aria-hidden="true"></i>
+        {{ '@count apps'|t({'@count': hub.app_count}) }}
+      </summary>
+      <table class="appverse-hub-apps-table">
+        <thead>
+          <tr>
+            <th>{{ 'App'|t }}</th>
+            <th>{{ 'Subpath'|t }}</th>
+            <th>{{ 'Software'|t }}</th>
+            <th>{{ 'Implementation'|t }}</th>
+            <th>{{ 'Status'|t }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in hub.apps %}
+            <tr>
+              <td>
+                {# Link to the catalog only when the app is actually visible
+                   there: both the app and its parent repo must be published. #}
+                {% if hub.published and app.published %}
+                  <a href="{{ app.catalog_url }}">{{ app.title }}</a>
+                {% else %}
+                  {{ app.title }}
+                {% endif %}
+              </td>
+              <td><code>{{ app.subpath ?: '.' }}</code></td>
+              <td>{{ app.software ?: '—' }}</td>
+              <td class="appverse-hub-apps-table__tags">
+                {# Resolved implementation tags — first N chips, then "+M more". #}
+                {% for tag in app.tags.resolved_shown %}
+                  <span class="appverse-tag appverse-tag--resolved">{{ tag }}</span>
+                {% endfor %}
+                {% if app.tags.truncated %}
+                  <span class="appverse-tag appverse-tag--more"
+                        title="{{ '@count more tags'|t({'@count': app.tags.remaining}) }}">
+                    +{{ app.tags.remaining }} {{ 'more'|t }}
+                  </span>
+                {% endif %}
+                {# Unresolved tags — always shown in full, with a create-term link. #}
+                {% for item in app.tags.unresolved %}
+                  {% if item.create_url %}
+                    <a href="{{ item.create_url }}"
+                       class="appverse-tag appverse-tag--unresolved"
+                       title="{{ 'Not in the vocabulary yet — click to create this tag.'|t }}">
+                      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ item.declared }}
+                    </a>
+                  {% else %}
+                    <span class="appverse-tag appverse-tag--unresolved"
+                          title="{{ 'Not in the vocabulary — an admin can add it.'|t }}">
+                      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ item.declared }}
+                    </span>
+                  {% endif %}
+                {% endfor %}
+              </td>
+              <td>
+                <span class="badge badge-{{ app.status.modifier }}">{{ app.status.label }}</span>
+                {% if app.edit_url %}
+                  <a href="{{ app.edit_url }}" class="appverse-hub-card__icon-btn"
+                     title="{{ 'Edit'|t }}" aria-label="{{ 'Edit @t'|t({'@t': app.title}) }}">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </a>
+                {% endif %}
+                {% if app.unpublish_form %}{{ app.unpublish_form }}{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
+</article>

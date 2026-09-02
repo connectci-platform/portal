@@ -2915,3 +2915,28 @@ details.vertical-tabs__pane > .details-wrapper {
   padding: 0.2em 0.5em;
   cursor: pointer;
 }
+
+#views-exposed-form-mentorship-status-page-2,
+#views-exposed-form-mentorship-status-page-1 {
+  margin: 2rem;
+}
+
+.page-mentorships-cc-status,
+.page-mentorships-status {
+  table thead th {
+    border-bottom: none;
+  }
+}
+
+/* Sidebar on /tags page */
+.block-views-blocknode-add-tags-block-3 {
+  ul {
+    li {
+      margin-bottom: 0.5rem !important;
+    }
+    a {
+      font-size: 1rem;
+      color: var(--text);
+    }
+  }
+}

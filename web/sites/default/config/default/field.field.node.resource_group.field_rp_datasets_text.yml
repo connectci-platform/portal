@@ -1,0 +1,23 @@
+uuid: c4e43769-303f-44b9-9ea5-9d88db5df7e1
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_datasets_text
+    - node.type.resource_group
+  module:
+    - text
+id: node.resource_group.field_rp_datasets_text
+field_name: field_rp_datasets_text
+entity_type: node
+bundle: resource_group
+label: 'Datasets Text'
+description: 'Fallback: used by child Resources that leave this field empty.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats:
+    - resource_docs
+field_type: text_long

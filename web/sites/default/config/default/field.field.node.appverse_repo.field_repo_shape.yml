@@ -1,0 +1,21 @@
+uuid: bd40bbb3-6555-4837-8abb-2f90326d62e5
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_shape
+    - node.type.appverse_repo
+  module:
+    - options
+id: node.appverse_repo.field_repo_shape
+field_name: field_repo_shape
+entity_type: node
+bundle: appverse_repo
+label: Shape
+description: 'Whether the Repo was declared via appverse.yml or inferred from a single-app manifest.yml. Set by RepoSyncService.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

@@ -1,0 +1,9 @@
+uuid: 83a0865c-a4c4-4c90-bc90-0c13babba959
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_ondemand_ddev_site
+domain_id: openondemand_cyberinfrastructure_org
+pattern: '*.ondemand.ddev.site'
+redirect: 0
+environment: default

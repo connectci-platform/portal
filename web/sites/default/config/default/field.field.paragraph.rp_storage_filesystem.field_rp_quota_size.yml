@@ -1,0 +1,23 @@
+uuid: ef0cb1d0-a08f-45a6-84b8-94e50cd2f21e
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_quota_size
+    - paragraphs.paragraphs_type.rp_storage_filesystem
+id: paragraph.rp_storage_filesystem.field_rp_quota_size
+field_name: field_rp_quota_size
+entity_type: paragraph
+bundle: rp_storage_filesystem
+label: 'Quota size'
+description: 'GB of available space'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: null
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

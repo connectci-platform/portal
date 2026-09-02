@@ -21,35 +21,51 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_domain_access
     - field.field.node.access_active_resources_from_cid.field_domain_all_affiliates
     - field.field.node.access_active_resources_from_cid.field_domain_source
+    - field.field.node.access_active_resources_from_cid.field_rp_access_ood_login_link
     - field.field.node.access_active_resources_from_cid.field_rp_account_required
     - field.field.node.access_active_resources_from_cid.field_rp_account_setup_url
     - field.field.node.access_active_resources_from_cid.field_rp_datasets
+    - field.field.node.access_active_resources_from_cid.field_rp_datasets_link
+    - field.field.node.access_active_resources_from_cid.field_rp_datasets_text
     - field.field.node.access_active_resources_from_cid.field_rp_description
     - field.field.node.access_active_resources_from_cid.field_rp_external_storage
+    - field.field.node.access_active_resources_from_cid.field_rp_external_storage_link
+    - field.field.node.access_active_resources_from_cid.field_rp_file_system_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_transfer
+    - field.field.node.access_active_resources_from_cid.field_rp_file_transfer_link
     - field.field.node.access_active_resources_from_cid.field_rp_file_transfer_text
+    - field.field.node.access_active_resources_from_cid.field_rp_freq_used_software_link
     - field.field.node.access_active_resources_from_cid.field_rp_jobs_info
     - field.field.node.access_active_resources_from_cid.field_rp_listing
     - field.field.node.access_active_resources_from_cid.field_rp_login_help_links
     - field.field.node.access_active_resources_from_cid.field_rp_login_text
+    - field.field.node.access_active_resources_from_cid.field_rp_login_to_anvil_gpu_link
     - field.field.node.access_active_resources_from_cid.field_rp_mfa_required
     - field.field.node.access_active_resources_from_cid.field_rp_office_hours
     - field.field.node.access_active_resources_from_cid.field_rp_ondemand_url
+    - field.field.node.access_active_resources_from_cid.field_rp_ood_software
+    - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
+    - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
     - field.field.node.access_active_resources_from_cid.field_rp_queue_specs
+    - field.field.node.access_active_resources_from_cid.field_rp_sds_software
+    - field.field.node.access_active_resources_from_cid.field_rp_software_link
+    - field.field.node.access_active_resources_from_cid.field_rp_software_list_url
+    - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_link
     - field.field.node.access_active_resources_from_cid.field_rp_ssh_login_nodes
     - field.field.node.access_active_resources_from_cid.field_rp_storage
+    - field.field.node.access_active_resources_from_cid.field_rp_storage_link
+    - field.field.node.access_active_resources_from_cid.field_rp_storage_text
+    - field.field.node.access_active_resources_from_cid.field_rp_submitting_jobs
     - field.field.node.access_active_resources_from_cid.field_rp_support_links
-    - field.field.node.access_active_resources_from_cid.field_rp_software_list_url
     - field.field.node.access_active_resources_from_cid.field_rp_top_software
+    - field.field.node.access_active_resources_from_cid.field_rp_xdmod_resource_id
     - node.type.access_active_resources_from_cid
-    - views.view.cider_resources_on_ag_groups
   module:
     - datetime
     - entity_reference_revisions
     - link
     - text
     - user
-    - views
 id: node.access_active_resources_from_cid.default
 targetEntityType: node
 bundle: access_active_resources_from_cid
@@ -176,6 +192,18 @@ content:
     third_party_settings: {  }
     weight: 3
     region: content
+  field_rp_access_ood_login_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 42
+    region: content
   field_rp_account_required:
     type: boolean
     label: above
@@ -207,6 +235,25 @@ content:
     third_party_settings: {  }
     weight: 30
     region: content
+  field_rp_datasets_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 35
+    region: content
+  field_rp_datasets_text:
+    type: text_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 29
+    region: content
   field_rp_description:
     type: text_default
     label: above
@@ -221,6 +268,30 @@ content:
     third_party_settings: {  }
     weight: 25
     region: content
+  field_rp_external_storage_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 38
+    region: content
+  field_rp_file_system_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 37
+    region: content
   field_rp_file_transfer:
     type: entity_reference_revisions_entity_view
     label: above
@@ -230,12 +301,36 @@ content:
     third_party_settings: {  }
     weight: 27
     region: content
+  field_rp_file_transfer_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 39
+    region: content
   field_rp_file_transfer_text:
     type: text_default
     label: above
     settings: {  }
     third_party_settings: {  }
     weight: 26
+    region: content
+  field_rp_freq_used_software_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 34
     region: content
   field_rp_jobs_info:
     type: text_default
@@ -262,6 +357,18 @@ content:
     settings: {  }
     third_party_settings: {  }
     weight: 22
+    region: content
+  field_rp_login_to_anvil_gpu_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 40
     region: content
   field_rp_mfa_required:
     type: boolean
@@ -297,6 +404,18 @@ content:
     third_party_settings: {  }
     weight: 15
     region: content
+  field_rp_queue_spec_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 32
+    region: content
   field_rp_queue_specs:
     type: entity_reference_revisions_entity_view
     label: above
@@ -305,6 +424,30 @@ content:
       link: ''
     third_party_settings: {  }
     weight: 29
+    region: content
+  field_rp_software_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 33
+    region: content
+  field_rp_ssh_login_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 41
     region: content
   field_rp_ssh_login_nodes:
     type: entity_reference_revisions_entity_view
@@ -323,6 +466,37 @@ content:
       link: ''
     third_party_settings: {  }
     weight: 28
+    region: content
+  field_rp_storage_link:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 36
+    region: content
+  field_rp_storage_text:
+    type: text_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 27
+    region: content
+  field_rp_submitting_jobs:
+    type: link
+    label: above
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 31
     region: content
   field_rp_support_links:
     type: link
@@ -355,7 +529,10 @@ hidden:
   field_domain_all_affiliates: true
   field_domain_source: true
   field_rp_listing: true
+  field_rp_ood_software: true
   field_rp_queue_metrics: true
+  field_rp_sds_software: true
   field_rp_software_list_url: true
   field_rp_xdmod_resource_id: true
+  langcode: true
   search_api_excerpt: true

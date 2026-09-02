@@ -3,8 +3,8 @@ langcode: en
 status: true
 dependencies:
   config:
-    - field.field.taxonomy_term.tcs_access_tools_used.field_tcs_tool_logo
     - field.field.taxonomy_term.tcs_access_tools_used.field_tcs_link_to_tool
+    - field.field.taxonomy_term.tcs_access_tools_used.field_tcs_tool_logo
     - image.style.thumbnail
     - taxonomy.vocabulary.tcs_access_tools_used
   module:
@@ -41,6 +41,13 @@ content:
       progress_indicator: throbber
       preview_image_style: thumbnail
     third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
+    third_party_settings: {  }
   name:
     type: string_textfield
     weight: 0
@@ -52,6 +59,11 @@ content:
   path:
     type: path
     weight: 4
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  simple_sitemap:
+    weight: 10
     region: content
     settings: {  }
     third_party_settings: {  }

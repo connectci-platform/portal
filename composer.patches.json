@@ -11,19 +11,27 @@
     "drupal/mgv": {
       "current domain name": "patches/currentdomainname.patch"
     },
-    "drupal/token_views_filter": {
-      "WSOD when filtering by Date field": "patches/3499480-07.patch"
-    },
     "drupal/views_data_export": {
       "Attach views_data_export JavaScript library": "https://www.drupal.org/files/issues/2023-06-01/views_data_export-3189760-22.patch"
     },
     "drupal/recurring_events": {
       "Blank plugin ID error when resaving new dates": "patches/eventinstancecreatorpluginmanager.patch",
       "Registration contact page custom permissions": "patches/recurring_events-registration-route-perm.patch",
-      "Debug logging for duplicate event instance investigation": "patches/recurring_events-debug-duplicate-instances.patch"
+      "Debug logging for duplicate event instance investigation": "patches/recurring_events-debug-duplicate-instances.patch",
+      "Pass $event as context to hook_recurring_events_event_instance_alter() and drop moderation_state before adding a translation": "patches/recurring_events-instance-alter-context.patch",
+      "Guard undefined value/end_value keys in pre_create_alter exclude/include loops (fixes AJAX parsererror on event edit form; upstream in 3.0.0)": "patches/recurring_events-pre-create-alter-undefined-key.patch"
     },
     "drupal/domain": {
       "Fix TypeError when domain source field is not present": "patches/domain_source-null-check-3482951.patch"
+    },
+    "drupal/multiple_registration": {
+      "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
+    },
+    "drupal/menu_item_role_access": {
+      "The 'views_view' entity type does not exist - https://www.drupal.org/i/3005803": "patches/3005803-15.patch"
+    },
+    "drupal/domain_simple_sitemap": {
+      "Long domain machine names exceed the 32 char sitemap ID limit and break generation": "patches/domain_simple_sitemap-sitemap-id-max-length.patch"
     }
   }
 }

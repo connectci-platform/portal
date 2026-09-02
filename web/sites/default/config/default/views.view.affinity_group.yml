@@ -3659,7 +3659,7 @@ display:
           type: boolean
           type_custom_true: ''
           type_custom_false: ''
-          not: 0
+          not: false
         field_mailing_list:
           id: field_mailing_list
           table: node__field_mailing_list
@@ -5036,10 +5036,10 @@ display:
       path: node/%/people-export
       filename: '[view:title]_people_[date:html_date].csv'
       automatic_download: true
-      store_in_public_file_directory: false
       custom_redirect_path: false
       redirect_to_display: none
       include_query_params: false
+      store_in_public_file_directory: false
     cache_metadata:
       max-age: -1
       contexts:
@@ -5980,7 +5980,7 @@ display:
           type: boolean
           type_custom_true: ''
           type_custom_false: ''
-          not: 0
+          not: false
         view_6:
           id: view_6
           table: views

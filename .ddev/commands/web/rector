@@ -1,0 +1,42 @@
+#!/bin/bash
+
+## Description: Run Rector (preview by default; pass --fix to apply changes)
+## Usage: rector [--fix] [path ...]
+## Example: "ddev rector" previews all custom code; "ddev rector --fix" applies changes; "ddev rector web/modules/custom/ood_software" scopes to one module.
+## Flags: [{"Name":"fix","Usage":"Write changes to disk instead of only previewing them"}]
+## CanRunGlobally: false
+
+set -eu
+
+if [ ! -x vendor/bin/rector ]; then
+  echo "rector is not installed. Run: ddev composer require --dev palantirnet/drupal-rector" >&2
+  exit 1
+fi
+
+# Separate the --fix flag from any path arguments.
+apply=0
+paths=()
+for arg in "$@"; do
+  case "$arg" in
+    --fix) apply=1 ;;
+    *) paths+=("$arg") ;;
+  esac
+done
+
+# Rector exits 0 = no changes, 2 = changes found (dry-run) or applied.
+# In preview mode a "changes found" result is informational, not a failure,
+# so normalize exit 2 -> 0 there. In --fix mode, surface real errors.
+if [ "$apply" -eq 1 ]; then
+  echo "Applying Rector changes..."
+  php -d memory_limit=1G vendor/bin/rector process "${paths[@]}"
+else
+  echo "Previewing Rector changes (dry-run). Re-run with '--fix' to apply."
+  set +e
+  php -d memory_limit=1G vendor/bin/rector process --dry-run "${paths[@]}"
+  status=$?
+  set -e
+  # 0 (clean) and 2 (changes-would-be-made) are both successful previews.
+  if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+    exit "$status"
+  fi
+fi

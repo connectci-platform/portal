@@ -1,0 +1,9 @@
+uuid: 31b1d6c1-bb74-4a48-9d83-c6a15a2b8e33
+langcode: en
+status: true
+dependencies: {  }
+id: search_api__views_page__campus_champions_members__page_1
+name: 'search_api:views_page__campus_champions_members__page_1'
+filter_key: null
+url_processor: query_string
+breadcrumb: {  }

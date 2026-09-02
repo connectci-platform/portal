@@ -7,7 +7,7 @@ dependencies:
 id: access_announcements
 label: 'ACCESS Announcements'
 type: 'canonical_entities:node'
-pattern: 'announcements/[node:title]'
+pattern: '/announcements/[node:title]'
 selection_criteria:
   f23e84f6-c549-40b1-bbfa-d498a4902d37:
     id: 'entity_bundle:node'

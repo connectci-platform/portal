@@ -54,6 +54,18 @@
   line-height: 1.5;
 }
 
+/* Task-list items (markdown `- [ ] item`) render a checkbox <input> inside
+   the <li>. The checkbox IS the marker, so drop the redundant list bullet and
+   un-indent so the checkbox aligns with the text. The renderer adds no
+   task-list class, so target the <li> by the checkbox it contains. */
+.field--name-body li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.25rem;
+}
+.field--name-body li > input[type="checkbox"] {
+  margin-right: 0.4rem;
+}
+
 /* Inline code */
 .field--name-body code {
   background: #f4f4f5;

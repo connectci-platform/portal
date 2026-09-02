@@ -22,6 +22,7 @@ dependencies:
     - field.field.user.user.field_domain_all_affiliates
     - field.field.user.user.field_github_graph
     - field.field.user.user.field_github_username
+    - field.field.user.user.field_hide_community_profile
     - field.field.user.user.field_hpc_experience
     - field.field.user.user.field_institution
     - field.field.user.user.field_is_cc
@@ -62,6 +63,16 @@ content:
     third_party_settings: {  }
     weight: 10
     region: content
+  field_hide_community_profile:
+    type: boolean
+    label: above
+    settings:
+      format: default
+      format_custom_false: ''
+      format_custom_true: ''
+    third_party_settings: {  }
+    weight: 11
+    region: content
 hidden:
   field_academic_status: true
   field_access_organization: true
@@ -94,6 +105,7 @@ hidden:
   field_user_preferred_pronouns: true
   field_xdusage_person_id: true
   field_xdusage_person_synced: true
+  langcode: true
   masquerade: true
   member_for: true
   realname: true

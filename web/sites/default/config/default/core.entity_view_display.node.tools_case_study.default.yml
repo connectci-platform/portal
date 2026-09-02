@@ -24,8 +24,6 @@ dependencies:
     - field.field.node.tools_case_study.field_tcs_total_gpu_hours
     - node.type.tools_case_study
   content:
-    - 'block_content:basic:03d0c44a-d7ca-48f0-9ec9-699ff3a82c59'
-    - 'block_content:basic:8a1f7385-d51d-4d1f-8851-01a2b43c81a2'
     - 'block_content:basic:d28178b8-4942-42a2-a462-5723a25643c6'
   module:
     - access_misc
@@ -257,7 +255,7 @@ third_party_settings:
             configuration:
               id: 'field_block:node:tools_case_study:body'
               label: 'Project Summary'
-              label_display: '0'
+              label_display: visible
               provider: layout_builder
               context_mapping:
                 entity: layout_builder.entity
@@ -288,7 +286,7 @@ third_party_settings:
             configuration:
               id: 'field_block:node:tools_case_study:field_tcs_research_topic'
               label: 'Research Topic'
-              label_display: '0'
+              label_display: visible
               provider: layout_builder
               context_mapping:
                 entity: layout_builder.entity
@@ -456,60 +454,6 @@ third_party_settings:
                   link_to_entity: false
                 third_party_settings: {  }
             weight: 7
-            additional:
-              layout_builder_styles_style:
-                accordion_wrapper: 0
-                bg_light_teal: 0
-                mb_10: 0
-                mb_3: 0
-                mb_5: 0
-                md_teal_box: 0
-                page_title: 0
-                pb_4: 0
-                pe_3: 0
-                pt_4: 0
-                tags: 0
-                __div_h_full: 0
-          946c30d8-5764-43a5-9078-6d172562b1e3:
-            uuid: 946c30d8-5764-43a5-9078-6d172562b1e3
-            region: first
-            configuration:
-              id: 'block_content:8a1f7385-d51d-4d1f-8851-01a2b43c81a2'
-              label: 'Research Topic - title'
-              label_display: '0'
-              provider: block_content
-              status: true
-              info: ''
-              view_mode: full
-              context_mapping: {  }
-            weight: 3
-            additional:
-              layout_builder_styles_style:
-                __div_h_full: 0
-                accordion_wrapper: 0
-                bg_light_teal: 0
-                mb_10: 0
-                mb_3: 0
-                mb_5: 0
-                md_teal_box: 0
-                page_title: 0
-                pb_4: 0
-                pe_3: 0
-                pt_4: 0
-                tags: 0
-          336f1a94-bd93-46aa-b043-56cb8f592a11:
-            uuid: 336f1a94-bd93-46aa-b043-56cb8f592a11
-            region: first
-            configuration:
-              id: 'block_content:03d0c44a-d7ca-48f0-9ec9-699ff3a82c59'
-              label: 'Project Summary - title'
-              label_display: '0'
-              provider: block_content
-              status: true
-              info: ''
-              view_mode: full
-              context_mapping: {  }
-            weight: 5
             additional:
               layout_builder_styles_style:
                 accordion_wrapper: 0
@@ -703,4 +647,5 @@ hidden:
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true
+  langcode: true
   search_api_excerpt: true

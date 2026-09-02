@@ -1,0 +1,19 @@
+uuid: 16908c37-7a34-4b58-9198-b3e89e070b8d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_app_validation_er
+    - node.type.appverse_app
+id: node.appverse_app.field_appverse_app_validation_er
+field_name: field_appverse_app_validation_er
+entity_type: node
+bundle: appverse_app
+label: 'Validation errors'
+description: 'Human-readable errors explaining why this app is rejected (multi-valued; appended across sync steps).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

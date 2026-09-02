@@ -5,8 +5,19 @@ dependencies:
   config:
     - core.entity_view_mode.eventinstance.list
     - field.field.eventinstance.default.domain_access
+    - field.field.eventinstance.default.field_event_speakers
+    - field.field.eventinstance.default.field_event_virtual_meeting_link
+    - field.field.eventinstance.default.field_location
+    - field.field.eventinstance.default.field_post_survey_email_text
     - field.field.eventinstance.default.field_post_survey_reminder_sent
     - field.field.eventinstance.default.field_post_survey_sent
+    - field.field.eventinstance.default.field_post_survey_url
+    - field.field.eventinstance.default.field_pre_survey_email_text
+    - field.field.eventinstance.default.field_pre_survey_url
+    - field.field.eventinstance.default.field_registration
+    - field.field.eventinstance.default.field_screen_survey_email_text
+    - field.field.eventinstance.default.field_screen_survey_url
+    - field.field.eventinstance.default.field_summary
     - field.field.eventinstance.default.field_video
     - recurring_events.eventinstance_type.default
   module:
@@ -181,6 +192,25 @@ content:
     third_party_settings: {  }
     weight: 54
     region: content
+  screen_survey_email_text:
+    type: text_default
+    label: visible
+    settings: {  }
+    third_party_settings: {  }
+    weight: 65
+    region: content
+  screen_survey_url:
+    type: link
+    label: visible
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 66
+    region: content
   skill_level:
     type: list_default
     label: visible
@@ -228,7 +258,18 @@ hidden:
   body: true
   choose_where_to_share_this: true
   domain_access: true
+  field_event_speakers: true
+  field_event_virtual_meeting_link: true
+  field_location: true
+  field_post_survey_email_text: true
   field_post_survey_reminder_sent: true
   field_post_survey_sent: true
+  field_post_survey_url: true
+  field_pre_survey_email_text: true
+  field_pre_survey_url: true
+  field_registration: true
+  field_screen_survey_email_text: true
+  field_screen_survey_url: true
+  field_summary: true
   field_video: true
   search_api_excerpt: true

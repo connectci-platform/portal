@@ -1,0 +1,23 @@
+uuid: 8d295a34-ddb3-4e8a-be85-a38fc321ecff
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_gpu_vram
+    - paragraphs.paragraphs_type.rp_queue_spec
+id: paragraph.rp_queue_spec.field_rp_gpu_vram
+field_name: field_rp_gpu_vram
+entity_type: paragraph
+bundle: rp_queue_spec
+label: 'GPU vRAM'
+description: 'GB of vRAM per GPU'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: null
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

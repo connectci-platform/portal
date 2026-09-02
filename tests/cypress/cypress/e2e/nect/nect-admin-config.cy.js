@@ -341,9 +341,6 @@ describe("Check admin configuration pages", () => {
     cy.visit('/admin/config/domain/domain_access');
     cy.get('h1').should('contain', 'Domain Access settings');
 
-    cy.visit('/admin/config/domain/domain_site_settings');
-    cy.get('h1').should('contain', 'Domains sites list');
-
     cy.visit('/admin/config/domain/domain_source');
     cy.get('h1').should('contain', 'Domain Source settings');
 

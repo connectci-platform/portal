@@ -36,7 +36,7 @@ jobs:
           drupal_update: ${{ github.event.inputs.drupal_update }}
           version: ${{ github.event.inputs.version }}
           username: ${{ github.actor }}
-          email: github.actions@necyberteam.org
+          email: 41898282+github-actions[bot]@users.noreply.github.com
           gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Pull Request

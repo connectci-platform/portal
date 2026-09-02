@@ -64,4 +64,5 @@ hidden:
   field_tcs_time_to_science: true
   field_tcs_total_cpu_hours: true
   field_tcs_total_gpu_hours: true
+  langcode: true
   search_api_excerpt: true

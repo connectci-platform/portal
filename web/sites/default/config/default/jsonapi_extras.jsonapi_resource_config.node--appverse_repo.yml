@@ -1,0 +1,122 @@
+uuid: c6e7cf7a-28d4-4485-83b0-3aa5b697a0bc
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: node--appverse_repo
+disabled: false
+path: node/appverse_repo
+resourceType: node--appverse_repo
+resourceFields:
+  field_repo_description:
+    disabled: false
+    fieldName: field_repo_description
+    publicName: field_repo_description
+    enhancer:
+      id: ''
+  field_repo_url:
+    disabled: false
+    fieldName: field_repo_url
+    publicName: field_repo_url
+    enhancer:
+      id: ''
+  field_repo_maintainer_name:
+    disabled: false
+    fieldName: field_repo_maintainer_name
+    publicName: field_repo_maintainer_name
+    enhancer:
+      id: ''
+  field_repo_maintainer_url:
+    disabled: false
+    fieldName: field_repo_maintainer_url
+    publicName: field_repo_maintainer_url
+    enhancer:
+      id: ''
+  field_repo_organization:
+    disabled: false
+    fieldName: field_repo_organization
+    publicName: field_repo_organization
+    enhancer:
+      id: ''
+  field_repo_shared_paths:
+    disabled: false
+    fieldName: field_repo_shared_paths
+    publicName: field_repo_shared_paths
+    enhancer:
+      id: ''
+  field_repo_related:
+    disabled: false
+    fieldName: field_repo_related
+    publicName: field_repo_related
+    enhancer:
+      id: ''
+  field_repo_validation_st:
+    disabled: false
+    fieldName: field_repo_validation_st
+    publicName: field_repo_validation_st
+    enhancer:
+      id: ''
+  field_repo_validation_er:
+    disabled: false
+    fieldName: field_repo_validation_er
+    publicName: field_repo_validation_er
+    enhancer:
+      id: ''
+  field_repo_last_synced:
+    disabled: false
+    fieldName: field_repo_last_synced
+    publicName: field_repo_last_synced
+    enhancer:
+      id: ''
+  field_repo_stars:
+    disabled: false
+    fieldName: field_repo_stars
+    publicName: field_repo_stars
+    enhancer:
+      id: ''
+  field_repo_last_commit:
+    disabled: false
+    fieldName: field_repo_last_commit
+    publicName: field_repo_last_commit
+    enhancer:
+      id: ''
+  field_repo_www_url:
+    disabled: false
+    fieldName: field_repo_www_url
+    publicName: field_repo_www_url
+    enhancer:
+      id: ''
+  field_repo_docs_url:
+    disabled: false
+    fieldName: field_repo_docs_url
+    publicName: field_repo_docs_url
+    enhancer:
+      id: ''
+  field_repo_readme:
+    disabled: false
+    fieldName: field_repo_readme
+    publicName: field_repo_readme
+    enhancer:
+      id: ''
+  field_repo_tags:
+    disabled: false
+    fieldName: field_repo_tags
+    publicName: field_repo_tags
+    enhancer:
+      id: ''
+  field_repo_shape:
+    disabled: false
+    fieldName: field_repo_shape
+    publicName: field_repo_shape
+    enhancer:
+      id: ''
+  field_repo_unresolved_tags:
+    disabled: false
+    fieldName: field_repo_unresolved_tags
+    publicName: field_repo_unresolved_tags
+    enhancer:
+      id: ''

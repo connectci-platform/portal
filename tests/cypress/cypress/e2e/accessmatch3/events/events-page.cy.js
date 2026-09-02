@@ -56,10 +56,14 @@ describe('Unauthenticated user tests the Events Page', () => {
     cy.get('#edit-search-api-fulltext--2').clear()
     cy.wait(1000)
     cy.get('#edit-search-api-fulltext--2').type('cypress anonymous', { delay: 0 })
-    cy.wait(2000)
-    
-    // Look for the anonymous test event in search results
-    cy.contains('cypress anonymous test event')
+
+    // The event is created by events-add.cy.js and must be indexed by search_api
+    // before it appears in these fulltext results. With index_directly the index
+    // updates on save, but the eventinstance can lag the eventseries save, and
+    // the Views AJAX search also needs to settle — so a fixed cy.wait races under
+    // CI load. Retry the assertion until the event is searchable instead of
+    // guessing a delay (the cause of intermittent "never found it" timeouts).
+    cy.contains('cypress anonymous test event', { timeout: 15000 })
       .closest('.views-row')
       .within(() => {
         cy.contains('Online');

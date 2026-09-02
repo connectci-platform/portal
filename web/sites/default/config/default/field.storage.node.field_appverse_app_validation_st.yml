@@ -1,0 +1,27 @@
+uuid: 8683fc2a-674f-4632-89f5-1a63eb159985
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - options
+id: node.field_appverse_app_validation_st
+field_name: field_appverse_app_validation_st
+entity_type: node
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: valid
+      label: Valid
+    -
+      value: rejected
+      label: Rejected
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

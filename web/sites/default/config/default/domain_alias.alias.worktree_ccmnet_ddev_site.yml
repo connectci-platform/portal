@@ -1,0 +1,9 @@
+uuid: 04900069-07f7-4317-99e7-ffe904d6f9dd
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_ccmnet_ddev_site
+domain_id: ccmnet_org
+pattern: '*.ccmnet.ddev.site'
+redirect: 0
+environment: default

@@ -22,3 +22,30 @@ services:
   ood_software.appverse_cache:
     class: Drupal\ood_software\Service\AppverseCacheService
     arguments: ['@entity_type.manager', '@file_url_generator', '@file_system', '@logger.factory']
+
+  ood_software.repo_member_apps:
+    class: Drupal\ood_software\Service\RepoMemberApps
+    arguments: ['@entity_type.manager']
+
+  ood_software.appverse_cache_flush:
+    class: Drupal\ood_software\EventSubscriber\AppverseCacheFlushSubscriber
+    arguments: ['@ood_software.appverse_cache']
+    tags:
+      - { name: event_subscriber }
+
+  ood_software.repo_sync:
+    class: Drupal\ood_software\Service\RepoSyncService
+    arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh']
+
+  ood_software.repo_notifier:
+    class: Drupal\ood_software\Service\RepoNotificationService
+    arguments:
+      - '@plugin.manager.mail'
+      - '@entity_type.manager'
+      - '@logger.factory'
+
+  ood_software.legacy_app_add_redirect:
+    class: Drupal\ood_software\EventSubscriber\LegacyAppAddRedirectSubscriber
+    arguments: ['@messenger', '@current_user']
+    tags:
+      - { name: event_subscriber }

@@ -270,4 +270,5 @@ content:
 hidden:
   flag_interest: true
   flag_skill: true
+  langcode: true
   search_api_excerpt: true

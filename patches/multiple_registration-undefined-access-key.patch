@@ -1,6 +1,9 @@
+diff --git a/multiple_registration.module b/multiple_registration.module
+index ace7e6d..6e922b4 100755
 --- a/multiple_registration.module
 +++ b/multiple_registration.module
-@@ -200,7 +200,7 @@ function multiple_registration_form_alter(&$form, FormStateInterface $form_state
+@@ -199,7 +199,7 @@ function multiple_registration_form_alter(&$form, FormStateInterface $form_state
+           $field_roles_required = array_filter($field_definition->getThirdPartySetting('multiple_registration', 'user_additional_register_form_required', []));
            if (!empty($field_roles)) {
              // If something was selected.
 -            if ($form[$field_name]['#access'] !== false) {

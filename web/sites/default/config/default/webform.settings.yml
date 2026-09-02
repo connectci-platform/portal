@@ -343,7 +343,7 @@ libraries:
 requirements:
   cdn: false
   clientside_validation: true
-  bootstrap: true
+  bootstrap: false
   spam: true
 third_party_settings:
   captcha:

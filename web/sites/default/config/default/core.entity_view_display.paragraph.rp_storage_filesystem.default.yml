@@ -9,6 +9,8 @@ dependencies:
     - field.field.paragraph.rp_storage_filesystem.field_rp_fs_path
     - field.field.paragraph.rp_storage_filesystem.field_rp_purge
     - field.field.paragraph.rp_storage_filesystem.field_rp_quota
+    - field.field.paragraph.rp_storage_filesystem.field_rp_quota_inode_amount
+    - field.field.paragraph.rp_storage_filesystem.field_rp_quota_size
     - paragraphs.paragraphs_type.rp_storage_filesystem
 id: paragraph.rp_storage_filesystem.default
 targetEntityType: paragraph
@@ -21,7 +23,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {  }
-    weight: 4
+    weight: 6
     region: content
   field_rp_directory:
     type: string
@@ -37,7 +39,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {  }
-    weight: 5
+    weight: 7
     region: content
   field_rp_fs_path:
     type: string
@@ -53,7 +55,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {  }
-    weight: 3
+    weight: 5
     region: content
   field_rp_quota:
     type: string
@@ -62,6 +64,24 @@ content:
       link_to_entity: false
     third_party_settings: {  }
     weight: 2
+    region: content
+  field_rp_quota_inode_amount:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_rp_quota_size:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 3
     region: content
 hidden:
   search_api_excerpt: true

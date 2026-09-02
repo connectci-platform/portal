@@ -1,0 +1,39 @@
+uuid: c5c28b69-d53b-413c-83ce-3a049dae4217
+langcode: en
+status: true
+dependencies:
+  config:
+    - system.menu.access-documentation
+  module:
+    - menu_block
+    - system
+  theme:
+    - aspTheme
+id: asptheme_accessdocumentation
+theme: aspTheme
+region: sidebar_first
+weight: 0
+provider: null
+plugin: 'menu_block:access-documentation'
+settings:
+  id: 'menu_block:access-documentation'
+  label: 'Access Documentation'
+  label_display: '0'
+  provider: menu_block
+  follow: false
+  follow_parent: child
+  display_empty: false
+  label_link: false
+  label_type: block
+  level: 1
+  depth: 0
+  expand_all_items: true
+  parent: 'access-documentation:'
+  render_parent: false
+  suggestion: access_documentation
+  hide_on_nonactive: false
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: "/documentation\r\n/documentation/*"

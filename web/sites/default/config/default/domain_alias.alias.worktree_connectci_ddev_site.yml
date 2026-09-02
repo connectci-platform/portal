@@ -1,0 +1,9 @@
+uuid: 9c9a84da-2e07-42fd-b87e-daa390df6e9d
+langcode: en
+status: true
+dependencies: {  }
+id: worktree_connectci_ddev_site
+domain_id: connectcidev_wpi_edu
+pattern: '*.connectci.ddev.site'
+redirect: 0
+environment: default
