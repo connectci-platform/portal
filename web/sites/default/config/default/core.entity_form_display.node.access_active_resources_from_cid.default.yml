@@ -98,7 +98,6 @@ third_party_settings:
     group_data_management:
       children:
         - field_rp_storage_link
-        - field_rp_listing
         - field_rp_file_system_link
         - field_rp_file_transfer_link
         - field_rp_file_transfer_text
@@ -509,7 +508,7 @@ content:
     third_party_settings: {  }
   field_rp_listing:
     type: boolean_checkbox
-    weight: 6
+    weight: 2
     region: content
     settings:
       display_label: true
