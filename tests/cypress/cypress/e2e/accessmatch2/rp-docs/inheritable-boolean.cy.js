@@ -18,6 +18,11 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
   const BETA_PATH = "/documentation/resources/beta";
   const BETA_EDIT = `/node/${BETA_NID}/edit`;
 
+  // The badge selects live inside the collapsed "Login" details group; open it
+  // (idempotently, via the attribute) before interacting with them.
+  const openLoginGroup = () =>
+    cy.get("details#edit-group-login-access").invoke("attr", "open", "open");
+
   const setBool = (nid, field, value) =>
     // value: "1", "0", or "" (empty = inherit)
     cy.exec(
@@ -70,6 +75,7 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
     cy.visit(BETA_EDIT);
 
     // Explicitly choose No, save.
+    openLoginGroup();
     cy.get("select[name='operations_cider_bool[field_rp_account_required]']").select("0");
     cy.get("#edit-submit").click();
 
@@ -114,6 +120,7 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
     );
     cy.exec("ddev drush cr", { failOnNonZeroExit: false });
     cy.visit(BETA_EDIT);
+    openLoginGroup();
     cy.get("select[name='operations_cider_bool[field_rp_account_required]']").select("1");
     cy.get("#edit-submit").click();
     cy.contains("is required when RP Account Required is checked");
