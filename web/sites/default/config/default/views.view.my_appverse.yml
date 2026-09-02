@@ -3,16 +3,9 @@ langcode: en
 status: true
 dependencies:
   config:
-    - field.storage.node.field_appverse_repo
-    - field.storage.node.field_repo_last_synced
-    - field.storage.node.field_repo_organization
-    - field.storage.node.field_repo_validation_st
-    - field.storage.node.field_appverse_software_implemen
-    - node.type.appverse_app
     - node.type.appverse_repo
     - taxonomy.vocabulary.appverse_organization
   module:
-    - content_moderation
     - node
     - options
     - taxonomy
@@ -136,7 +129,7 @@ display:
         options: {  }
       empty:
         empty_state:
-          id: area_text_custom
+          id: empty_state
           table: views
           field: area_text_custom
           relationship: none
@@ -144,7 +137,7 @@ display:
           admin_label: ''
           plugin_id: text_custom
           empty: true
-          content: 'You haven''t submitted any repos yet. <a href="/appverse/add-repo" class="btn btn-primary btn-sm">Submit your first repo</a>'
+          content: 'You haven''t submitted any repos yet. Read the <a href="/appverse-contributor-documentation">Appverse Contributor Documentation</a>'
           tokenize: false
       sorts:
         changed:
@@ -258,7 +251,6 @@ display:
       contexts:
         - 'languages:language_content'
         - 'languages:language_interface'
-        - url
         - url.query_args
         - 'user.node_grants:view'
         - user.permissions
