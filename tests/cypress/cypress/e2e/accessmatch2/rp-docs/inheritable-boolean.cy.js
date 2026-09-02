@@ -8,56 +8,77 @@
  * the submit mapping in isolation; this covers the on-page behaviour the node
  * form pulls in (the real widget render + the rendered badge).
  *
- * Fixtures (amp_dev.install): "Test Resource Group" (12312) with members
- * Alpha (12309, explicit values) and Beta (12310, inherits). The group's
- * account_required is empty by default; this spec sets it and restores it.
+ * Fixtures (amp_dev.install): "Test Resource Group" with members Alpha
+ * (explicit values) and Beta (inherits). Node IDs differ per environment, so
+ * everything anchors on the pathauto aliases and resolves nids at runtime.
  */
-describe("RP docs — inheritable boolean (account/MFA) control", () => {
-  const GROUP_NID = 12312;
-  const BETA_NID = 12310;
-  const BETA_PATH = "/documentation/resources/beta";
-  const BETA_EDIT = `/node/${BETA_NID}/edit`;
+describe("RP docs — inheritable boolean (account/MFA) control", { retries: { runMode: 2, openMode: 0 } }, () => {
+  const BETA_ALIAS = "/documentation/resources/beta";
+  const GROUP_ALIAS = "/documentation/resources/test-resource-group";
+
+  // Resolved in before(); alias + /edit does not route, so edit visits need
+  // the real /node/{nid}/edit path.
+  let betaNid;
 
   // The badge selects live inside the collapsed "Login" details group; open it
   // (idempotently, via the attribute) before interacting with them.
   const openLoginGroup = () =>
     cy.get("details#edit-group-login-access").invoke("attr", "open", "open");
 
-  const setBool = (nid, field, value) =>
-    // value: "1", "0", or "" (empty = inherit)
+  // Run a drush php snippet against the node behind an alias. Loud by default
+  // so a broken fixture fails the run at setup with a clear message.
+  const drushOnAlias = (alias, php, opts = {}) =>
     cy.exec(
+      `ddev drush php:eval '$p=\\Drupal::service("path_alias.manager")->getPathByAlias("${alias}");` +
+        `$n=\\Drupal::entityTypeManager()->getStorage("node")->load((int) substr($p, 6));${php}'`,
+      { timeout: 120000, ...opts }
+    );
+
+  const setBool = (alias, field, value, opts = {}) =>
+    drushOnAlias(
+      alias,
       value === ""
-        ? `ddev drush php:eval '$n=\\Drupal::entityTypeManager()->getStorage("node")->load(${nid});$n->set("${field}",NULL);$n->save();'`
-        : `ddev drush php:eval '$n=\\Drupal::entityTypeManager()->getStorage("node")->load(${nid});$n->set("${field}",${value});$n->save();'`,
-      { failOnNonZeroExit: false }
+        ? `$n->set("${field}", NULL);$n->save();`
+        : `$n->set("${field}", ${value});$n->save();`,
+      opts
     );
 
   before(() => {
     cy.exec('ddev drush user:role:add rp_documentation_manager "authenticated_test_user"', { failOnNonZeroExit: false });
+    cy.exec(
+      `ddev drush php:eval 'echo (int) substr(\\Drupal::service("path_alias.manager")->getPathByAlias("${BETA_ALIAS}"), 6);'`
+    ).then((r) => {
+      betaNid = r.stdout.trim().replace(/\D/g, "");
+      expect(betaNid, `nid resolved from ${BETA_ALIAS}`).to.not.equal("0");
+    });
     // Group requires an account; Beta left empty so it inherits.
-    setBool(GROUP_NID, "field_rp_account_required", "1");
-    setBool(BETA_NID, "field_rp_account_required", "");
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
+    setBool(GROUP_ALIAS, "field_rp_account_required", "1");
+    setBool(BETA_ALIAS, "field_rp_account_required", "");
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
+    // Warm the rebuilt caches so the first cy.visit is not a cold full
+    // bootstrap that can blow the page-load budget on a fresh stack.
+    cy.request({ url: BETA_ALIAS, timeout: 120000 });
   });
 
   after(() => {
-    // Restore fixture state (group empty, Beta empty).
-    setBool(GROUP_NID, "field_rp_account_required", "");
-    setBool(BETA_NID, "field_rp_account_required", "");
+    // Restore fixture state (group empty, Beta empty); quiet so teardown noise
+    // never masks a test result.
+    setBool(GROUP_ALIAS, "field_rp_account_required", "", { failOnNonZeroExit: false });
+    setBool(BETA_ALIAS, "field_rp_account_required", "", { failOnNonZeroExit: false });
     cy.exec('ddev drush user:role:remove rp_documentation_manager "authenticated_test_user"', { failOnNonZeroExit: false });
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
   });
 
   it("renders the inherited badge on a resource that inherits account_required", () => {
     // Beta inherits the group's TRUE, so the page shows the account badge even
     // though Beta's own field is empty.
-    cy.visit(BETA_PATH);
+    cy.visit(BETA_ALIAS);
     cy.contains("RP account needed");
   });
 
   it("shows a three-state select defaulting to Inherit with the resolved value", () => {
     cy.loginAs("authenticated@amptesting.com", "6%l7iF}6(4tI");
-    cy.visit(BETA_EDIT);
+    cy.visit(`/node/${betaNid}/edit`);
 
     // The field is a <select>, not a checkbox, and its inherit option names the
     // currently-inherited value.
@@ -72,7 +93,7 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
 
   it("lets a resource override the inherited value to No, hiding the badge", () => {
     cy.loginAs("authenticated@amptesting.com", "6%l7iF}6(4tI");
-    cy.visit(BETA_EDIT);
+    cy.visit(`/node/${betaNid}/edit`);
 
     // Explicitly choose No, save.
     openLoginGroup();
@@ -81,19 +102,19 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
 
     // The rendered page no longer shows the account badge — the explicit No
     // overrode the group's Yes.
-    cy.visit(BETA_PATH);
+    cy.visit(BETA_ALIAS);
     cy.contains("RP account needed").should("not.exist");
 
     // Reset Beta back to inherit for the next test / teardown.
-    setBool(BETA_NID, "field_rp_account_required", "");
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
+    setBool(BETA_ALIAS, "field_rp_account_required", "", { failOnNonZeroExit: false });
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
   });
 
   it("saving while left on Inherit keeps the resource inheriting (no silent flip)", () => {
     // The regression this whole change fixes: opening and saving an inheriting
     // resource must not turn the empty field into an explicit value.
     cy.loginAs("authenticated@amptesting.com", "6%l7iF}6(4tI");
-    cy.visit(BETA_EDIT);
+    cy.visit(`/node/${betaNid}/edit`);
     cy.get("select[name='operations_cider_bool[field_rp_account_required]']")
       .find("option:selected")
       .invoke("val")
@@ -101,7 +122,7 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
     cy.get("#edit-submit").click();
 
     // Still inheriting -> badge still present from the group's Yes.
-    cy.visit(BETA_PATH);
+    cy.visit(BETA_ALIAS);
     cy.contains("RP account needed");
   });
 
@@ -114,20 +135,18 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
     // No setup URL anywhere — not on Beta AND not on the group (which Beta would
     // otherwise inherit, correctly suppressing the error). Only then is the
     // "URL required" rule genuinely expected to fire.
-    cy.exec(
-      `ddev drush php:eval '$b=\\Drupal::entityTypeManager()->getStorage("node")->load(${BETA_NID});$b->set("field_rp_account_setup_url",[]);$b->save();$g=\\Drupal::entityTypeManager()->getStorage("node")->load(${GROUP_NID});$g->set("field_rp_account_setup_url",[]);$g->save();'`,
-      { failOnNonZeroExit: false }
-    );
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
-    cy.visit(BETA_EDIT);
+    drushOnAlias(BETA_ALIAS, '$n->set("field_rp_account_setup_url", []);$n->save();');
+    drushOnAlias(GROUP_ALIAS, '$n->set("field_rp_account_setup_url", []);$n->save();');
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
+    cy.visit(`/node/${betaNid}/edit`);
     openLoginGroup();
     cy.get("select[name='operations_cider_bool[field_rp_account_required]']").select("1");
     cy.get("#edit-submit").click();
     cy.contains("is required when RP Account Required is checked");
 
     // Reset Beta back to inherit for teardown.
-    setBool(BETA_NID, "field_rp_account_required", "");
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
+    setBool(BETA_ALIAS, "field_rp_account_required", "", { failOnNonZeroExit: false });
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
   });
 
   it("does NOT false-error when the setup URL is inherited from the group", () => {
@@ -137,23 +156,27 @@ describe("RP docs — inheritable boolean (account/MFA) control", () => {
     // required" rule must NOT fire — the resource must save.
     cy.loginAs("authenticated@amptesting.com", "6%l7iF}6(4tI");
     // Group provides the setup URL; Beta's own is empty (inherits it).
-    cy.exec(
-      `ddev drush php:eval '$g=\\Drupal::entityTypeManager()->getStorage("node")->load(${GROUP_NID});$g->set("field_rp_account_setup_url",["uri"=>"https://group.example/setup"]);$g->save();$b=\\Drupal::entityTypeManager()->getStorage("node")->load(${BETA_NID});$b->set("field_rp_account_setup_url",[]);$b->save();'`,
-      { failOnNonZeroExit: false }
-    );
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
+    drushOnAlias(GROUP_ALIAS, '$n->set("field_rp_account_setup_url", ["uri" => "https://group.example/setup"]);$n->save();');
+    drushOnAlias(BETA_ALIAS, '$n->set("field_rp_account_setup_url", []);$n->save();');
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
 
-    cy.visit(BETA_EDIT);
+    cy.visit(`/node/${betaNid}/edit`);
     // Leave account on Inherit (currently Yes) and save.
     cy.get("#edit-submit").click();
     // No validation error, and we land on the saved node (not back on the form).
     cy.contains("is required when RP Account Required is checked").should("not.exist");
 
+    // Regression: the save must NOT materialize the inherited URL onto the
+    // resource (that would silently convert inheritance into an explicit copy).
+    drushOnAlias(
+      BETA_ALIAS,
+      'echo $n->get("field_rp_account_setup_url")->isEmpty() ? "EMPTY" : "MATERIALIZED";'
+    ).then((r) => {
+      expect(r.stdout).to.contain("EMPTY");
+    });
+
     // Teardown: clear the group's setup URL again.
-    cy.exec(
-      `ddev drush php:eval '$g=\\Drupal::entityTypeManager()->getStorage("node")->load(${GROUP_NID});$g->set("field_rp_account_setup_url",[]);$g->save();'`,
-      { failOnNonZeroExit: false }
-    );
-    cy.exec("ddev drush cr", { failOnNonZeroExit: false });
+    drushOnAlias(GROUP_ALIAS, '$n->set("field_rp_account_setup_url", []);$n->save();', { failOnNonZeroExit: false });
+    cy.exec("ddev drush cr", { failOnNonZeroExit: false, timeout: 180000 });
   });
 });

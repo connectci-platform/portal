@@ -58,7 +58,7 @@
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "1.0.x-dev",
         "composer/installers": "^2.3.0",
-        "connectci/access": "dev-fix/access-misc-test-setup",
+        "connectci/access": "dev-fix/setup-url-validator-inheritance",
         "connectci/asp-theme": "main-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-feat/inherit-source-doc-links",
