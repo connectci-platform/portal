@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c0a3731576472102f6fc8c41326484b6",
+    "content-hash": "5cd071a4e27d46db32d9fe390bf3d690",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -675,17 +675,18 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-fix/setup-url-validator-inheritance",
+            "version": "3.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "8f381cdc8a959be3880c539a39b76382dee9e323"
+                "reference": "362b75115ce1fa79e12bb9e942979a5144a40136"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -701,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-09-02T15:41:57+00:00"
+            "time": "2026-09-02T18:41:09+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -709,7 +710,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "18a640a10f2d13e95faeea3e698cebfcfaa279e1"
+                "reference": "244b66263c4f8f38defb682e276e8a79c586d36f"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -727,7 +728,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-01T19:17:39+00:00"
+            "time": "2026-09-02T18:41:51+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -757,11 +758,11 @@
         },
         {
             "name": "connectci/operations_cider",
-            "version": "dev-feat/inherit-source-doc-links",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "2523f00dbb6c440d091df3849a32f9a50deb8fc5"
+                "reference": "6ae6c0d6b86c35e76d20af18729fa1251310753f"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -770,6 +771,7 @@
             "replace": {
                 "access/operations_cider": "self.version"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -789,7 +791,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-09-02T15:41:57+00:00"
+            "time": "2026-09-02T18:40:37+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
