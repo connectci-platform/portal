@@ -82,7 +82,7 @@ third_party_settings:
         - field_rp_access_ood_login_link
         - field_rp_ssh_login_nodes
         - field_rp_login_help_links
-      label: 'Login to Anvil CPU'
+      label: 'Login'
       region: content
       parent_name: ''
       weight: 7
