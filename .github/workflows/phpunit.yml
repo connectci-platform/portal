@@ -29,6 +29,10 @@ jobs:
     # shard, so coverage can never silently drop, and the balance holds no matter
     # how class names cluster. `other-modules` uses plain directory paths, so its
     # new files auto-enroll too.
+    #
+    # The events shards discover ONLY tests/src/Kernel/. Any OTHER suite dir
+    # under access_events (Unit, Functional, ...) must be listed explicitly in
+    # the other-modules paths below, or its tests never run in this gate.
     name: PHPUnit (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
@@ -39,6 +43,7 @@ jobs:
             paths: >-
               web/modules/custom/access/modules/access_affinitygroup/tests/
               web/modules/custom/access/modules/access_content_api/tests/
+              web/modules/custom/access/modules/access_events/tests/src/Unit/
               web/modules/custom/access/modules/access_misc/tests/
               web/modules/custom/access/modules/user_profiles/tests/
               web/modules/custom/access/tests/
