@@ -9,9 +9,6 @@ on:
       database_branch:
         description: 'Branch to download database artifact from (default: main)'
         default: 'main'
-      group:
-        description: 'PHPUnit @group filter (default: access_affinitygroup)'
-        default: 'access_affinitygroup'
 
 permissions:
   contents: read
@@ -20,14 +17,74 @@ permissions:
 
 jobs:
   phpunit:
-    name: PHPUnit
+    # The full custom-module suite ALWAYS runs on every PR and merge — there is
+    # no change-based selection (a mechanism whose failure mode is "silently skip
+    # a test that would have caught the regression" was rejected in design).
+    #
+    # Sharded only for wall-clock: access_events is ~20 min of kernel tests on its
+    # own (measured), so it is split into three, while every other custom module
+    # runs fast in one shard. The events split is BY ROUND-ROBIN FILE POSITION
+    # over the whole kernel directory (shard_dir/shard_index/shard_total), never
+    # an enumerated filename list: a new test file auto-enrolls into exactly one
+    # shard, so coverage can never silently drop, and the balance holds no matter
+    # how class names cluster. `other-modules` uses plain directory paths, so its
+    # new files auto-enroll too.
+    name: PHPUnit (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: other-modules
+            paths: >-
+              web/modules/custom/access/modules/access_affinitygroup/tests/
+              web/modules/custom/access/modules/access_content_api/tests/
+              web/modules/custom/access/modules/access_misc/tests/
+              web/modules/custom/access/modules/user_profiles/tests/
+              web/modules/custom/access/tests/
+              web/modules/custom/campuschampions/tests/
+              web/modules/custom/connectci_llms/tests/
+              web/modules/custom/domain_menu_system_block/tests/
+              web/modules/custom/expandable_text/tests/
+              web/modules/custom/ood_software/tests/
+              web/modules/custom/operations_cider/tests/
+          - name: events-1
+            shard_index: '0'
+          - name: events-2
+            shard_index: '1'
+          - name: events-3
+            shard_index: '2'
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: ./.github/actions/ddev-phpunit
         with:
-          group: ${{ github.event.inputs.group || 'access_affinitygroup' }}
+          paths: ${{ matrix.paths }}
+          # The events shards set shard_index; other-modules leaves it blank and
+          # uses paths. shard_dir/shard_total are constant for the events split.
+          shard_dir: ${{ matrix.shard_index != '' && 'web/modules/custom/access/modules/access_events/tests/src/Kernel/' || '' }}
+          shard_index: ${{ matrix.shard_index }}
+          shard_total: ${{ matrix.shard_index != '' && '3' || '' }}
           database: ${{ github.event.inputs.database }}
           database_branch: ${{ github.event.inputs.database_branch }}
           github_token: ${{ secrets.GH_TOKEN_REPO }}
           amp_uid: ${{ secrets.AMP_UID }}
+
+  # Single fixed required check: branch protection points HERE, not at the dynamic
+  # per-shard job names (which would leave a stale required context pending on a
+  # rename — finding F5). Passes iff every shard succeeded.
+  phpunit-gate:
+    name: PHPUnit
+    needs: phpunit
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all shards to have passed
+        shell: bash
+        run: |
+          result="${{ needs.phpunit.result }}"
+          echo "phpunit matrix result: $result"
+          if [ "$result" != "success" ]; then
+            echo "::error::One or more PHPUnit shards did not pass ($result)."
+            exit 1
+          fi
+          echo "All PHPUnit shards passed."
