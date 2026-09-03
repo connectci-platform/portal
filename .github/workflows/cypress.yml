@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'accessmatch1') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "accessmatch"
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'accessmatch2') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "accessmatch"
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'accessmatch3') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "accessmatch"
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'accessmatch-api') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "accessmatch"
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.message, '#a11y') || contains(github.event.pull_request.title, '#a11y') || contains(github.event.pull_request.body, '#a11y')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "accessmatch"
@@ -116,7 +116,7 @@ jobs:
     needs: [axe-support]
     if: contains(github.event.head_commit.message, '#a11y') || contains(github.event.pull_request.title, '#a11y') || contains(github.event.pull_request.body, '#a11y')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "campuschampions"
@@ -135,7 +135,7 @@ jobs:
     needs: [axe-campuschampions]
     if: contains(github.event.head_commit.message, '#a11y') || contains(github.event.pull_request.title, '#a11y') || contains(github.event.pull_request.body, '#a11y')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "ccmnet"
@@ -154,7 +154,7 @@ jobs:
     needs: [axe-ccmnet]
     if: contains(github.event.head_commit.message, '#a11y') || contains(github.event.pull_request.title, '#a11y') || contains(github.event.pull_request.body, '#a11y')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "connectci"
@@ -173,7 +173,7 @@ jobs:
     needs: [axe-connectci]
     if: contains(github.event.head_commit.message, '#a11y') || contains(github.event.pull_request.title, '#a11y') || contains(github.event.pull_request.body, '#a11y')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "ondemand"
@@ -192,7 +192,7 @@ jobs:
     needs: [axe-openondemand]
     if: contains(github.event.head_commit.message, '#a11y') || contains(github.event.pull_request.title, '#a11y') || contains(github.event.pull_request.body, '#a11y')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "pasciencedmz"
@@ -210,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'ccmnet') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "ccmnet"
@@ -227,7 +227,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'connectci') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "connectci"
@@ -244,7 +244,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'crct') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "crct"
@@ -261,7 +261,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'crct') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "crct"
@@ -279,7 +279,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'crct') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "crct"
@@ -297,7 +297,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'campuschampions') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "campuschampions"
@@ -314,7 +314,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'coco') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "coco"
@@ -331,7 +331,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'greatplains') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "greatplains"
@@ -348,7 +348,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'kyct') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "kyct"
@@ -365,7 +365,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'nect') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "nect"
@@ -382,7 +382,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.inputs.sites, 'ondemand') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-cypress-test
         with:
           site: "ondemand"
