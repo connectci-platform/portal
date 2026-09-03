@@ -2604,19 +2604,6 @@ details.tags label {
   z-index: 10;
 }
 
-.order-2 #views-exposed-form-cyberteam-people-facets-page-1 {
-  margin-top: 2rem;
-
-  .js-form-type-select {
-    display: none;
-  }
-}
-
-.order-1 #views-exposed-form-cyberteam-people-facets-page-1 {
-  .js-form-type-textfield {
-    display: none;
-  }
-}
 .user-skills a:nth-of-type(1n+6) {
   display: none !important;
 }
