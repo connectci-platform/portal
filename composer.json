@@ -60,7 +60,7 @@
         "composer/installers": "^2.3.0",
         "connectci/access": "3.0.x-dev",
         "connectci/asp-theme": "main-dev",
-        "connectci/campus-champions-theme": "main-dev",
+        "connectci/campus-champions-theme": "d8-2813-dev",
         "connectci/operations_cider": "dev-main",
         "connectci/webform_submission_search_api": "main-dev",
         "cweagans/composer-patches": "^2.0",
