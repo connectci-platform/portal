@@ -1,18 +1,18 @@
-uuid: 84138bd1-8341-486e-95ac-728d41b198eb
+uuid: 5af0d57d-331e-50c4-9371-d6f9c8f1f460
 langcode: en
 status: true
 dependencies:
   config:
     - field.storage.node.field_rp_login_to_anvil_gpu_link
-    - node.type.access_active_resources_from_cid
+    - node.type.resource_group
   module:
     - link
-id: node.access_active_resources_from_cid.field_rp_login_to_anvil_gpu_link
+id: node.resource_group.field_rp_login_to_anvil_gpu_link
 field_name: field_rp_login_to_anvil_gpu_link
 entity_type: node
-bundle: access_active_resources_from_cid
+bundle: resource_group
 label: 'RP source documentation for Login'
-description: ''
+description: 'Fallback: used by child Resources that leave this field empty.'
 required: false
 translatable: false
 default_value: {  }

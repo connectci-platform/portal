@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "b6e5d1cb1a58bca0fab9ef7663fdc7be91706670"
+                "reference": "362b75115ce1fa79e12bb9e942979a5144a40136"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -702,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-09-02T13:40:09+00:00"
+            "time": "2026-09-02T18:41:09+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -710,7 +710,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "18a640a10f2d13e95faeea3e698cebfcfaa279e1"
+                "reference": "244b66263c4f8f38defb682e276e8a79c586d36f"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -728,7 +728,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-01T19:17:39+00:00"
+            "time": "2026-09-02T18:41:51+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -762,7 +762,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "5aa581d3cc646da25d0772bfec2ade9cee35468f"
+                "reference": "6ae6c0d6b86c35e76d20af18729fa1251310753f"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -791,7 +791,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-08-28T02:01:23+00:00"
+            "time": "2026-09-02T18:40:37+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",

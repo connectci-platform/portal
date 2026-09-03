@@ -26,6 +26,18 @@ dependencies:
     - field.field.node.resource_group.field_rp_storage_text
     - field.field.node.resource_group.field_rp_support_links
     - node.type.resource_group
+    - field.field.node.resource_group.field_rp_access_ood_login_link
+    - field.field.node.resource_group.field_rp_datasets_link
+    - field.field.node.resource_group.field_rp_external_storage_link
+    - field.field.node.resource_group.field_rp_file_system_link
+    - field.field.node.resource_group.field_rp_file_transfer_link
+    - field.field.node.resource_group.field_rp_freq_used_software_link
+    - field.field.node.resource_group.field_rp_login_to_anvil_gpu_link
+    - field.field.node.resource_group.field_rp_queue_spec_link
+    - field.field.node.resource_group.field_rp_software_link
+    - field.field.node.resource_group.field_rp_ssh_login_link
+    - field.field.node.resource_group.field_rp_storage_link
+    - field.field.node.resource_group.field_rp_submitting_jobs
   module:
     - content_moderation
     - field_group
@@ -35,35 +47,139 @@ dependencies:
     - text
 third_party_settings:
   field_group:
-    group_inheritable_defaults:
+    group_compute:
       children:
-        - field_rp_login_text
-        - field_rp_ondemand_url
-        - field_rp_mfa_required
-        - field_rp_account_required
-        - field_rp_account_setup_url
-        - field_rp_ssh_login_nodes
-        - field_rp_login_help_links
-        - field_rp_file_transfer_text
-        - field_rp_file_transfer
-        - field_rp_storage_text
-        - field_rp_storage
-        - field_rp_external_storage
+        - field_rp_submitting_jobs
+        - field_rp_queue_spec_link
+      label: 'Submitting Jobs'
+      region: content
+      parent_name: ''
+      weight: 3
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_rp_freq_software:
+      children:
+        - field_rp_software_link
+        - field_rp_freq_used_software_link
         - field_rp_software_list_url
-        - field_rp_datasets_text
-        - field_rp_datasets
-        - field_rp_support_links
-        - field_rp_office_hours
-      label: 'Inheritable Defaults'
+      label: Software
       region: content
       parent_name: ''
       weight: 5
       format_type: details
       format_settings:
         classes: ''
+        show_empty_fields: false
         id: ''
+        label_as_html: false
         open: false
-        description: 'These fields are optional. If a child Resource leaves any of these fields empty, the value set here on the Group will be used as a fallback.'
+        description: ''
+        required_fields: false
+    group_data_management:
+      children:
+        - field_rp_storage_link
+        - field_rp_storage_text
+        - field_rp_file_system_link
+        - field_rp_storage
+        - field_rp_external_storage_link
+        - field_rp_external_storage
+      label: Storage
+      region: content
+      parent_name: ''
+      weight: 6
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_file_transfer:
+      children:
+        - field_rp_file_transfer_link
+        - field_rp_file_transfer_text
+        - field_rp_file_transfer
+      label: 'File Transfer'
+      region: content
+      parent_name: ''
+      weight: 7
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_login_access:
+      children:
+        - field_rp_login_to_anvil_gpu_link
+        - field_rp_mfa_required
+        - field_rp_account_required
+        - field_rp_account_setup_url
+        - field_rp_login_text
+        - field_rp_ssh_login_link
+        - field_rp_ssh_login_nodes
+        - field_rp_ondemand_url
+        - field_rp_access_ood_login_link
+        - field_rp_login_help_links
+      label: Login
+      region: content
+      parent_name: ''
+      weight: 8
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_software:
+      children:
+        - field_rp_datasets_link
+        - field_rp_datasets_text
+        - field_rp_datasets
+      label: Datasets
+      region: content
+      parent_name: ''
+      weight: 9
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: false
+    group_sidebar_content:
+      children:
+        - field_rp_support_links
+        - field_rp_office_hours
+      label: 'Sidebar Content'
+      region: content
+      parent_name: ''
+      weight: 10
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
         required_fields: false
 id: node.resource_group.default
 targetEntityType: node
@@ -82,14 +198,14 @@ content:
     third_party_settings: {  }
   field_rp_account_required:
     type: boolean_checkbox
-    weight: 14
+    weight: 3
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
   field_rp_account_setup_url:
     type: link_default
-    weight: 15
+    weight: 4
     region: content
     settings:
       placeholder_url: ''
@@ -97,7 +213,7 @@ content:
     third_party_settings: {  }
   field_rp_datasets:
     type: paragraphs
-    weight: 25
+    weight: 3
     region: content
     settings:
       title: Dataset
@@ -115,7 +231,7 @@ content:
     third_party_settings: {  }
   field_rp_datasets_text:
     type: text_textarea
-    weight: 24
+    weight: 2
     region: content
     settings:
       rows: 5
@@ -133,7 +249,7 @@ content:
     third_party_settings: {  }
   field_rp_external_storage:
     type: text_textarea
-    weight: 22
+    weight: 6
     region: content
     settings:
       rows: 5
@@ -141,7 +257,7 @@ content:
     third_party_settings: {  }
   field_rp_file_transfer:
     type: paragraphs
-    weight: 20
+    weight: 3
     region: content
     settings:
       title: 'File Transfer Method'
@@ -159,7 +275,7 @@ content:
     third_party_settings: {  }
   field_rp_file_transfer_text:
     type: text_textarea
-    weight: 19
+    weight: 2
     region: content
     settings:
       rows: 5
@@ -167,14 +283,14 @@ content:
     third_party_settings: {  }
   field_rp_listing:
     type: boolean_checkbox
-    weight: 3
+    weight: 11
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
   field_rp_login_help_links:
     type: link_default
-    weight: 17
+    weight: 10
     region: content
     settings:
       placeholder_url: ''
@@ -182,7 +298,7 @@ content:
     third_party_settings: {  }
   field_rp_login_text:
     type: text_textarea
-    weight: 11
+    weight: 5
     region: content
     settings:
       rows: 5
@@ -190,14 +306,14 @@ content:
     third_party_settings: {  }
   field_rp_mfa_required:
     type: boolean_checkbox
-    weight: 13
+    weight: 2
     region: content
     settings:
       display_label: true
     third_party_settings: {  }
   field_rp_office_hours:
     type: link_default
-    weight: 27
+    weight: 2
     region: content
     settings:
       placeholder_url: ''
@@ -205,7 +321,7 @@ content:
     third_party_settings: {  }
   field_rp_ondemand_url:
     type: link_default
-    weight: 12
+    weight: 8
     region: content
     settings:
       placeholder_url: ''
@@ -213,7 +329,7 @@ content:
     third_party_settings: {  }
   field_rp_software_list_url:
     type: link_default
-    weight: 23
+    weight: 3
     region: content
     settings:
       placeholder_url: ''
@@ -221,7 +337,7 @@ content:
     third_party_settings: {  }
   field_rp_ssh_login_nodes:
     type: paragraphs
-    weight: 16
+    weight: 7
     region: content
     settings:
       title: 'SSH Login Node'
@@ -239,7 +355,7 @@ content:
     third_party_settings: {  }
   field_rp_storage:
     type: paragraphs
-    weight: 21
+    weight: 4
     region: content
     settings:
       title: 'Storage Filesystem'
@@ -257,7 +373,7 @@ content:
     third_party_settings: {  }
   field_rp_storage_text:
     type: text_textarea
-    weight: 20
+    weight: 2
     region: content
     settings:
       rows: 5
@@ -265,7 +381,7 @@ content:
     third_party_settings: {  }
   field_rp_support_links:
     type: link_default
-    weight: 26
+    weight: 1
     region: content
     settings:
       placeholder_url: ''
@@ -314,6 +430,102 @@ content:
     weight: 50
     region: content
     settings: {  }
+    third_party_settings: {  }
+  field_rp_access_ood_login_link:
+    type: link_default
+    weight: 9
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_datasets_link:
+    type: link_default
+    weight: 1
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_external_storage_link:
+    type: link_default
+    weight: 5
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_file_system_link:
+    type: link_default
+    weight: 3
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_file_transfer_link:
+    type: link_default
+    weight: 1
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_freq_used_software_link:
+    type: link_default
+    weight: 2
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_login_to_anvil_gpu_link:
+    type: link_default
+    weight: 1
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_queue_spec_link:
+    type: link_default
+    weight: 2
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_software_link:
+    type: link_default
+    weight: 1
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_ssh_login_link:
+    type: link_default
+    weight: 6
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_storage_link:
+    type: link_default
+    weight: 1
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
+    third_party_settings: {  }
+  field_rp_submitting_jobs:
+    type: link_default
+    weight: 1
+    region: content
+    settings:
+      placeholder_url: ''
+      placeholder_title: ''
     third_party_settings: {  }
 hidden:
   created: true
