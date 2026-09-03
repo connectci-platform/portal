@@ -57,7 +57,6 @@ module:
   domain_alias: 0
   domain_config: 0
   domain_entity: 0
-  domain_menu_access: 0
   domain_menu_system_block: 0
   domain_simple_sitemap: 0
   domain_source: 0
