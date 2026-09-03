@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "f3f0cdd27c3cc0c2ea28c4cd5c8a0ed048945ba4"
+                "reference": "fc0d74cf82a806e3f58edcaa8a2f9e6ecd4c3b85"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
