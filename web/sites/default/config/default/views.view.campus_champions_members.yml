@@ -817,8 +817,8 @@ display:
               auto_submit_sort_only: false
               autosubmit_breakpoint: ''
               autosubmit_exclude_textfield: false
-              autosubmit_textfield_delay: 1000
-              autosubmit_textfield_minimum_length: 3
+              autosubmit_textfield_delay: 800
+              autosubmit_textfield_minimum_length: 2
               autosubmit_hide: true
               input_required: false
               allow_secondary: false
