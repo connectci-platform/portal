@@ -19,7 +19,7 @@ describe("Unauthenticated user tests the Tools overview Page", () => {
 
     //Testing OnDeman Tool Row
     cy.get(":nth-child(3) > p").contains(
-      "Utilize remote computing resources easily from any device."
+      "Access remote computing resources from any device."
     );
     cy.get(".clearfix > .grid > :nth-child(4)").contains(
       "Remote access web portal"
