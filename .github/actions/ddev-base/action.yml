@@ -54,6 +54,10 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "::error::github_token is empty — repository secrets are not exposed to Dependabot-triggered runs; add GH_TOKEN_REPO to the Dependabot secrets store (Settings > Secrets and variables > Dependabot)."
+          exit 1
+        fi
         echo "$GITHUB_TOKEN" | ddev exec gh auth login --with-token
         ddev exec composer config -g github-oauth.github.com $GITHUB_TOKEN
 
