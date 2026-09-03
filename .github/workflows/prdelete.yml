@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set env GITHUB_REF_MD
         run: echo "GITHUB_REF_MD=$(echo ${{ github.head_ref }} | cut -c 1-3)" >> $GITHUB_ENV

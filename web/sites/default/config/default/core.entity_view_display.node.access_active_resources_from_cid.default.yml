@@ -528,6 +528,7 @@ hidden:
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true
+  field_rp_display_name: true
   field_rp_listing: true
   field_rp_ood_software: true
   field_rp_queue_metrics: true
