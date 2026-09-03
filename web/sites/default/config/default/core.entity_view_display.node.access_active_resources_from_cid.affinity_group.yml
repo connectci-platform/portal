@@ -106,6 +106,7 @@ hidden:
   field_rp_datasets_link: true
   field_rp_datasets_text: true
   field_rp_description: true
+  field_rp_display_name: true
   field_rp_external_storage: true
   field_rp_external_storage_link: true
   field_rp_file_system_link: true
