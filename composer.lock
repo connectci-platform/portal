@@ -7557,17 +7557,17 @@
         },
         {
             "name": "drupal/pantheon_advanced_page_cache",
-            "version": "2.4.0",
+            "version": "2.4.1",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/pantheon_advanced_page_cache.git",
-                "reference": "2.4.0"
+                "reference": "2.4.1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/pantheon_advanced_page_cache-2.4.0.zip",
-                "reference": "2.4.0",
-                "shasum": "910024eefab0111371e8d1f53db957ba43145cc4"
+                "url": "https://ftp.drupal.org/files/projects/pantheon_advanced_page_cache-2.4.1.zip",
+                "reference": "2.4.1",
+                "shasum": "abcc7e5f0c3a306f19c47b7f1557a932533d7906"
             },
             "require": {
                 "drupal/core": "^10 || ^11",
@@ -7589,8 +7589,8 @@
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.4.0",
-                    "datestamp": "1782503467",
+                    "version": "2.4.1",
+                    "datestamp": "1788291954",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
