@@ -1,0 +1,19 @@
+uuid: c8a23fcb-278b-44b4-a2d4-efa288dfc05a
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_indicators_default
+field_name: field_rvv_indicators_default
+entity_type: paragraph
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -1,0 +1,10 @@
+uuid: cae8f8a7-2a55-4018-8a7f-28c33824aeda
+langcode: en
+status: true
+dependencies: {  }
+id: review_verdict
+label: 'Review Verdict'
+icon_uuid: null
+icon_default: null
+description: 'Per-app verdict within a review. Carries the conclusion (accept/reject), indicators, and findings for one app.'
+behavior_plugins: {  }

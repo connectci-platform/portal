@@ -1,0 +1,19 @@
+uuid: afc62c27-ba63-4692-b583-55971450480a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_evidence
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_evidence
+field_name: field_rvf_evidence
+entity_type: paragraph
+bundle: review_finding
+label: Evidence
+description: 'File path and line reference (e.g. Gemfile.lock:9). Mutable location metadata.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

@@ -1,0 +1,20 @@
+uuid: 39876004-9071-415d-b4c9-f84d54d2a71f
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_maint_level_note
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_maint_level_note
+field_name: field_arv_maint_level_note
+entity_type: node
+bundle: appverse_review
+label: 'Maintenance level note'
+description: "Justification for overriding the tool's derived maintenance level. Required when the published level differs from the seeded default (enforced in form validation). Never shown publicly; the public sees only a reviewer-adjusted marker."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

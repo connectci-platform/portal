@@ -1,0 +1,75 @@
+uuid: 17a5ebff-b596-4322-9863-446cc8fb8335
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.appverse_review
+  module:
+    - content_moderation
+id: appverse_review_workflow
+label: 'Appverse Review'
+type: content_moderation
+type_settings:
+  states:
+    draft:
+      label: Draft
+      weight: -5
+      published: false
+      default_revision: true
+    in_review:
+      label: 'In Review'
+      weight: 0
+      published: false
+      default_revision: true
+    published:
+      label: Published
+      weight: 10
+      published: true
+      default_revision: true
+    waiting_for_contributor:
+      label: 'Waiting for Contributor'
+      weight: 5
+      published: false
+      default_revision: true
+  transitions:
+    begin_review:
+      label: 'Begin Review'
+      from:
+        - draft
+      to: in_review
+      weight: 0
+    publish:
+      label: Publish
+      from:
+        - in_review
+      to: published
+      weight: 3
+    request_contributor_input:
+      label: 'Request Contributor Input'
+      from:
+        - in_review
+      to: waiting_for_contributor
+      weight: 1
+    resume_review:
+      label: 'Resume Review'
+      from:
+        - waiting_for_contributor
+      to: in_review
+      weight: 2
+    return_to_draft:
+      label: 'Return to Draft'
+      from:
+        - in_review
+        - waiting_for_contributor
+      to: draft
+      weight: 5
+    unpublish:
+      label: 'Unpublish (to In Review)'
+      from:
+        - published
+      to: in_review
+      weight: 4
+  entity_types:
+    node:
+      - appverse_review
+  default_moderation_state: draft

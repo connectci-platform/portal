@@ -1,0 +1,18 @@
+uuid: fe46aa8e-147f-40f4-a8c0-a0e2b7699c15
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_port_level_note
+field_name: field_rvv_port_level_note
+entity_type: paragraph
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

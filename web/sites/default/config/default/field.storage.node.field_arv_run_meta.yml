@@ -1,0 +1,19 @@
+uuid: ff7e4a31-3093-48eb-8cce-1a10be2eea7f
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_run_meta
+field_name: field_arv_run_meta
+entity_type: node
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false
