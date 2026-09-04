@@ -1,0 +1,163 @@
+uuid: dddb9822-dda2-446f-9392-18099c8178c4
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.appverse_review
+  module:
+    - jsonapi_extras
+id: node--appverse_review
+disabled: false
+path: node/appverse_review
+resourceType: node--appverse_review
+resourceFields:
+  nid:
+    disabled: false
+    fieldName: nid
+    publicName: nid
+    enhancer:
+      id: ''
+  uuid:
+    disabled: false
+    fieldName: uuid
+    publicName: uuid
+    enhancer:
+      id: ''
+  title:
+    disabled: false
+    fieldName: title
+    publicName: title
+    enhancer:
+      id: ''
+  status:
+    disabled: false
+    fieldName: status
+    publicName: status
+    enhancer:
+      id: ''
+  created:
+    disabled: false
+    fieldName: created
+    publicName: created
+    enhancer:
+      id: ''
+  changed:
+    disabled: false
+    fieldName: changed
+    publicName: changed
+    enhancer:
+      id: ''
+  field_arv_repo:
+    disabled: false
+    fieldName: field_arv_repo
+    publicName: field_arv_repo
+    enhancer:
+      id: ''
+  field_arv_sha:
+    disabled: false
+    fieldName: field_arv_sha
+    publicName: field_arv_sha
+    enhancer:
+      id: ''
+  field_arv_ref:
+    disabled: false
+    fieldName: field_arv_ref
+    publicName: field_arv_ref
+    enhancer:
+      id: ''
+  field_arv_reviewed_at:
+    disabled: false
+    fieldName: field_arv_reviewed_at
+    publicName: field_arv_reviewed_at
+    enhancer:
+      id: ''
+  field_arv_tool_version:
+    disabled: false
+    fieldName: field_arv_tool_version
+    publicName: field_arv_tool_version
+    enhancer:
+      id: ''
+  field_arv_recommendation:
+    disabled: false
+    fieldName: field_arv_recommendation
+    publicName: field_arv_recommendation
+    enhancer:
+      id: ''
+  field_arv_recommendation_note:
+    disabled: false
+    fieldName: field_arv_recommendation_note
+    publicName: field_arv_recommendation_note
+    enhancer:
+      id: ''
+  field_arv_repo_shape:
+    disabled: false
+    fieldName: field_arv_repo_shape
+    publicName: field_arv_repo_shape
+    enhancer:
+      id: ''
+  field_arv_report_pdf:
+    disabled: false
+    fieldName: field_arv_report_pdf
+    publicName: field_arv_report_pdf
+    enhancer:
+      id: ''
+  field_arv_report_md:
+    disabled: false
+    fieldName: field_arv_report_md
+    publicName: field_arv_report_md
+    enhancer:
+      id: ''
+  field_arv_report_html:
+    disabled: false
+    fieldName: field_arv_report_html
+    publicName: field_arv_report_html
+    enhancer:
+      id: ''
+  field_arv_verdicts:
+    disabled: false
+    fieldName: field_arv_verdicts
+    publicName: field_arv_verdicts
+    enhancer:
+      id: ''
+  field_arv_repo_findings:
+    disabled: false
+    fieldName: field_arv_repo_findings
+    publicName: field_arv_repo_findings
+    enhancer:
+      id: ''
+  field_arv_assessment:
+    disabled: false
+    fieldName: field_arv_assessment
+    publicName: field_arv_assessment
+    enhancer:
+      id: ''
+  field_arv_repo_criteria:
+    disabled: false
+    fieldName: field_arv_repo_criteria
+    publicName: field_arv_repo_criteria
+    enhancer:
+      id: ''
+  field_arv_run_meta:
+    disabled: false
+    fieldName: field_arv_run_meta
+    publicName: field_arv_run_meta
+    enhancer:
+      id: ''
+  field_arv_assigned_reviewer:
+    disabled: false
+    fieldName: field_arv_assigned_reviewer
+    publicName: field_arv_assigned_reviewer
+    enhancer:
+      id: ''
+  field_arv_prior_review:
+    disabled: false
+    fieldName: field_arv_prior_review
+    publicName: field_arv_prior_review
+    enhancer:
+      id: ''
+  field_arv_moderator_notes:
+    disabled: true
+    fieldName: field_arv_moderator_notes
+    publicName: field_arv_moderator_notes
+    enhancer:
+      id: ''

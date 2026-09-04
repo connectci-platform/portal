@@ -1,0 +1,19 @@
+uuid: 87673f03-f5fa-44ea-9a98-64223c5682b1
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_repo_criteria
+field_name: field_arv_repo_criteria
+entity_type: node
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

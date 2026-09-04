@@ -1,0 +1,21 @@
+uuid: 64dcdc4d-2489-403a-8e95-a9190885454f
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_tool_version
+field_name: field_arv_tool_version
+entity_type: node
+type: string
+settings:
+  max_length: 64
+  case_sensitive: false
+  is_ascii: true
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

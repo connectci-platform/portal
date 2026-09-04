@@ -1,0 +1,36 @@
+uuid: 3604b450-5170-4feb-bda6-8250692f5719
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvf_severity
+field_name: field_rvf_severity
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: critical
+      label: Critical
+    -
+      value: high
+      label: High
+    -
+      value: medium
+      label: Medium
+    -
+      value: low
+      label: Low
+    -
+      value: info
+      label: Info
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

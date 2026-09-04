@@ -1,0 +1,19 @@
+uuid: 926e6cd3-6ce9-4b0b-906b-c8f9b25e7c92
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_indicators_default
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_indicators_default
+field_name: field_arv_indicators_default
+entity_type: node
+bundle: appverse_review
+label: 'Derived indicators (tool default)'
+description: "The tool's derived indicators as JSON (level/summary/anchor per category), seeded from the artifact's repo_level.indicators. Immutable machine data; used to detect and mark reviewer adjustments."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

@@ -1,0 +1,33 @@
+uuid: 2cb39456-6958-4b08-9d4e-07e0ab5101c1
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvf_aspect
+field_name: field_rvf_aspect
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: security
+      label: Security
+    -
+      value: structure
+      label: Structure
+    -
+      value: quality
+      label: Quality
+    -
+      value: maintenance
+      label: Maintenance
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -1,0 +1,20 @@
+uuid: d0ccaf1d-9c9d-44e9-ac00-8beb2a37586c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_port_level_note
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_port_level_note
+field_name: field_rvv_port_level_note
+entity_type: paragraph
+bundle: review_verdict
+label: 'Portability level note'
+description: "Justification for overriding the tool's derived portability level. Required when the published level differs from the seeded default (enforced in form validation). Never shown publicly; the public sees only a reviewer-adjusted marker."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

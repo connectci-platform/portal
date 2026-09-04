@@ -1,0 +1,19 @@
+uuid: 97b517ff-7d4a-4a0a-95d5-990570314845
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_reviewed_at
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_reviewed_at
+field_name: field_arv_reviewed_at
+entity_type: node
+bundle: appverse_review
+label: 'Reviewed at'
+description: 'When the review tool ran.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

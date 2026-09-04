@@ -1,0 +1,19 @@
+uuid: 34db149a-89cd-44f1-ac19-6709410e1c78
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_stable_id
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_stable_id
+field_name: field_rvf_stable_id
+entity_type: paragraph
+bundle: review_finding
+label: 'Stable ID'
+description: 'Position-independent finding identity. sha256(app_id + rule + defect_key)[:16].'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
