@@ -6,6 +6,8 @@
  */
 
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\layout_builder\SectionComponent;
+use Drupal\node\Entity\Node;
 use Drupal\taxonomy\Entity\Term;
 
 /**
@@ -458,4 +460,96 @@ function ood_software_update_10506(): TranslatableMarkup {
   return t('Cleared view_mode on @count menu links so menu_item_extras can be uninstalled.', [
     '@count' => $cleared,
   ]);
+}
+
+/**
+ * Add the "Classroom Stories" slideshow view block to node 12116's layout.
+ *
+ * The block was placed manually in the Layout Builder override on
+ * production; this codifies it so the placement survives a config-only
+ * environment (e.g. a fresh multidev) instead of only existing where
+ * someone clicked it in.
+ *
+ * Reuses the uuid and weight the manual placement already has, so the
+ * component is identical across environments.
+ *
+ * Also disables jsonapi_extras' "Validate config integrity" setting, which
+ * blocks `drush deploy` here with a field/resource-config mismatch. This is
+ * only a temporary local override of the active config: the value exported
+ * in config sync stays TRUE, so the next config:import turns it back on.
+ *
+ * Finally, re-asserts the weight of every "content" region component in
+ * section 0, not just the new one. The first version of this hook only set
+ * a weight on the new component and left the rest alone, trusting they'd
+ * already be 0/2/3/4/6/7 — but on a `robo did` DB reload the view block came
+ * in with the highest weight instead, landing at the bottom of the page.
+ * Hardcoding the full order removes the dependency on whatever weights
+ * happened to already be on the other components.
+ */
+function ood_software_update_10507(): TranslatableMarkup {
+  \Drupal::configFactory()
+    ->getEditable('jsonapi_extras.settings')
+    ->set('validate_configuration_integrity', FALSE)
+    ->save();
+
+  $plugin_id = 'views_block:oocs_classroom_stories_slideshow-block_1';
+
+  $node = Node::load(12116);
+  if (!$node || !$node->hasField('layout_builder__layout')) {
+    return t('Disabled jsonapi_extras config integrity validation. Node 12116 not found or has no layout override; nothing else to do.');
+  }
+
+  $sections = $node->get('layout_builder__layout')->getSections();
+  if (!$sections) {
+    return t('Disabled jsonapi_extras config integrity validation. Node 12116 has no layout sections; nothing else to do.');
+  }
+
+  $section = $sections[0];
+
+  // Add the view block if it isn't already placed anywhere in the layout.
+  $found = FALSE;
+  foreach ($sections as $existing_section) {
+    foreach ($existing_section->getComponents() as $component) {
+      if (($component->getPluginId() ?? '') === $plugin_id) {
+        $found = TRUE;
+      }
+    }
+  }
+  if (!$found) {
+    // Reuse the uuid the manual placement got in production so the
+    // component is identical across environments.
+    $section->appendComponent(new SectionComponent('6c4c87c1-6e21-428e-a977-43de4001d33b', 'content', [
+      'id' => $plugin_id,
+      'label' => '',
+      'label_display' => 0,
+      'provider' => 'views',
+      'views_label' => '',
+      'items_per_page' => 'none',
+      'exposed' => [],
+      'context_mapping' => [],
+    ]));
+  }
+
+  // Final, on-the-page order for the "content" region, keyed by component
+  // uuid. Reasserted every run so the view block (and everything around it)
+  // stays where it was placed, regardless of the weights already on the row.
+  $weights = [
+    '80aa3e26-4b2d-448c-ad7f-fe9bc10276ff' => 0,
+    'c0ffbca3-1681-4cad-9785-aeddb3b5c326' => 2,
+    'c0324193-630b-4761-b004-dc050343ef9f' => 3,
+    'b739b3bd-c34c-4648-ac1c-3629a02b3a3e' => 4,
+    '6c4c87c1-6e21-428e-a977-43de4001d33b' => 5,
+    '3a494a8f-43b7-4da7-af78-c7383c6a799f' => 6,
+    'b15ae5bf-f9a1-45d2-8ef9-a05ff6abdd80' => 7,
+  ];
+  foreach ($section->getComponents() as $component) {
+    if (isset($weights[$component->getUuid()])) {
+      $component->setWeight($weights[$component->getUuid()]);
+    }
+  }
+
+  $node->setNewRevision(FALSE);
+  $node->save();
+
+  return t('Added the "Classroom Stories" slideshow view block to node 12116 (or reasserted its position), and disabled jsonapi_extras config integrity validation.');
 }
