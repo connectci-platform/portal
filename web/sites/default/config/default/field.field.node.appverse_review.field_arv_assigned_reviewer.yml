@@ -1,0 +1,28 @@
+uuid: a4cca97f-fd24-4d69-b209-ce47b559e6f4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_assigned_reviewer
+    - node.type.appverse_review
+    - user.role.appverse_pm
+id: node.appverse_review.field_arv_assigned_reviewer
+field_name: field_arv_assigned_reviewer
+entity_type: node
+bundle: appverse_review
+label: 'Assigned reviewer'
+description: 'The reviewer responsible for curating this review.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:user'
+  handler_settings:
+    auto_create: false
+    filter:
+      type: role
+      role:
+        appverse_pm: appverse_pm
+        administrator: administrator
+field_type: entity_reference
