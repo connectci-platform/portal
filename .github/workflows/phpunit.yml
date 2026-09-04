@@ -60,7 +60,7 @@ jobs:
           - name: events-3
             shard_index: '2'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-phpunit
         with:
           paths: ${{ matrix.paths }}

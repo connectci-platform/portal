@@ -8,7 +8,7 @@ jobs:
     name: Grab files backup and clean it out a bit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/dingorunner
         env:
@@ -19,7 +19,7 @@ jobs:
           env: live
 
       - name: 'Upload Backup Artifact'
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: amp-file-backup
           path: files.tar.gz
