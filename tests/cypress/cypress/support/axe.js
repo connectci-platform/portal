@@ -23,8 +23,26 @@ function categorizeViolation(violation) {
   return 'warning';
 }
 
+// Admin toolbar (incl. environment indicator) has a known, accepted color-contrast
+// issue on the active tab - see MD-2782. Excluded from all axe scans rather than
+// fixed, since the root cause is in the environment_indicator contrib module's JS.
+const DEFAULT_EXCLUDE = [['#toolbar-administration']];
+
+// Merge default excludes into whatever context a spec passes (or none).
+function withDefaultExclude(context) {
+  if (context === null || context === undefined) {
+    return { exclude: DEFAULT_EXCLUDE };
+  }
+  if (typeof context === 'object' && !Array.isArray(context)) {
+    const existingExclude = Array.isArray(context.exclude) ? context.exclude : [];
+    return { ...context, exclude: [...existingExclude, ...DEFAULT_EXCLUDE] };
+  }
+  return context;
+}
+
 // Helper: run axe, write report, and decide whether to fail.
 Cypress.Commands.add('a11yCheckWithReport', (context = null, options = {}) => {
+  context = withDefaultExclude(context);
   const includedImpacts = ['minor', 'moderate', 'serious', 'critical']; // all levels
   const axeOptions = { includedImpacts, ...options };
 
