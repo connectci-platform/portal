@@ -1,0 +1,14 @@
+uuid: 8d1f4a3e-9e2c-4b7a-8a5e-1f0c6d2b7e9a
+langcode: en
+status: true
+dependencies:
+  config:
+    - user.role.ondemand_pm
+  module:
+    - user
+id: user_remove_role_action.ondemand_pm
+label: 'Remove the OnDemand PM role from the selected user(s)'
+type: user
+plugin: user_remove_role_action
+configuration:
+  rid: ondemand_pm
