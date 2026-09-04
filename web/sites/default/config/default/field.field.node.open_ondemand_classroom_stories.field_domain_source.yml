@@ -1,0 +1,25 @@
+uuid: 410a39f0-840f-4da1-95b9-07d3663b3f6e
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_domain_source
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_domain_source
+field_name: field_domain_source
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: 'Domain Source'
+description: 'Select the canonical domain for this content.'
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:domain'
+  handler_settings:
+    target_bundles: null
+    sort:
+      field: weight
+      direction: ASC
+field_type: entity_reference

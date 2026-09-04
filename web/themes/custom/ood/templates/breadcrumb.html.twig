@@ -1,0 +1,34 @@
+{#
+/**
+ * @file
+ * Theme override for a breadcrumb trail.
+ *
+ * Available variables:
+ * - breadcrumb: Breadcrumb trail items.
+ */
+#}
+{% if breadcrumb %}
+<div class="border-0 border-solid border-b-[1px] border-b-gray flex items-center py-2">
+  <nav class="breadcrumb container" role="navigation" title="breadcrumb">
+      <h2 id="system-breadcrumb" class="visually-hidden">{{ 'Breadcrumb'|t }}</h2>
+    <ol class="flex flex-wrap">
+      <li class="home">
+        <a href="/" title="Home" class="inline-flex items-center">
+          <img src="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='16'%20fill='%23ca1236'%20class='bi%20bi-house-door-fill'%20viewBox='0%200%2016%2016'%3e%3cpath%20d='M6.5%2014.5v-3.505c0-.245.25-.495.5-.495h2c.25%200%20.5.25.5.5v3.5a.5.5%200%200%200%20.5.5h4a.5.5%200%200%200%20.5-.5v-7a.5.5%200%200%200-.146-.354L13%205.793V2.5a.5.5%200%200%200-.5-.5h-1a.5.5%200%200%200-.5.5v1.293L8.354%201.146a.5.5%200%200%200-.708%200l-6%206A.5.5%200%200%200%201.5%207.5v7a.5.5%200%200%200%20.5.5h4a.5.5%200%200%200%20.5-.5'/%3e%3c/svg%3e" alt="Home" height="14">
+        </a>
+      </li>
+    {% for item in breadcrumb %}
+      {% if not loop.first and not (is_front and loop.last) %}
+      <li class="uppercase text-menu font-semibold font-condensed text-ellipsis max-w-[150px] whitespace-nowrap overflow-hidden">
+        {% if item.url %}
+          <a href="{{ item.url }}" class="text-dark-teal no-underline hover--underline">{{ item.text }}</a>
+        {% else %}
+          {{ item.text }}
+        {% endif %}
+      </li>
+      {% endif %}
+    {% endfor %}
+    </ol>
+  </nav>
+</div>
+{% endif %}

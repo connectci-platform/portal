@@ -1,17 +1,15 @@
-uuid: 57559ea1-78c7-40d4-8334-efe06aced9fa
+uuid: cb40a8cd-c5c0-4b9c-af33-0e9cbaedb691
 langcode: en
 status: true
 dependencies:
   module:
-    - user
-id: user.field_current_occupation
-field_name: field_current_occupation
-entity_type: user
-type: string
+    - node
+id: node.field_oocs_project_summary
+field_name: field_oocs_project_summary
+entity_type: node
+type: string_long
 settings:
-  max_length: 255
   case_sensitive: false
-  is_ascii: false
 module: core
 locked: false
 cardinality: 1

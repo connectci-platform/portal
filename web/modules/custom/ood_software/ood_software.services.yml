@@ -19,9 +19,13 @@ services:
     class: Drupal\ood_software\Service\DocSyncService
     arguments: ['@http_client', '@entity_type.manager', '@logger.factory']
 
+  ood_software.appverse_logo_url:
+    class: Drupal\ood_software\Service\AppverseLogoUrl
+    arguments: ['@file_url_generator']
+
   ood_software.appverse_cache:
     class: Drupal\ood_software\Service\AppverseCacheService
-    arguments: ['@entity_type.manager', '@file_url_generator', '@file_system', '@logger.factory']
+    arguments: ['@entity_type.manager', '@file_url_generator', '@file_system', '@logger.factory', '@ood_software.appverse_logo_url']
 
   ood_software.repo_member_apps:
     class: Drupal\ood_software\Service\RepoMemberApps

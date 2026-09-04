@@ -1,0 +1,29 @@
+uuid: 11c2cf3b-e71c-4357-8321-930a5e4db1c9
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_name
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_oocs_name
+field_name: field_oocs_name
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: Name
+description: ''
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:user'
+  handler_settings:
+    target_bundles: null
+    sort:
+      field: _none
+      direction: ASC
+    auto_create: false
+    filter:
+      type: _none
+    include_anonymous: true
+field_type: entity_reference

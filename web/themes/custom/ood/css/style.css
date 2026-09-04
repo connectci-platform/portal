@@ -1,6 +1,9 @@
 @import url("../../../nect-theme/css/style.css");
 :root {
   --ood-red: #ca1236;
+  --ood-purple: #686EA7;
+  --ood-ocean-blue: #0076af;
+  --ood-light-gray: #F4F4F5;
   --header-gray: #dddee0;
   --primary: var(--ood-red);
   --primary-hover: #a80e2c;
@@ -18,6 +21,14 @@
 
 .bg-header-gray {
   background-color: var(--header-gray);
+}
+
+.bg-ood-light-gray {
+  background-color: var(--ood-light-gray);
+}
+
+.bg-purple {
+  background-color: var(--ood-purple);
 }
 
 @font-face {
@@ -47,6 +58,36 @@ html {
 
 body {
   font-family: "Source Sans 3";
+}
+
+#block-ood-breadcrumbs .breadcrumb {
+  font-size: 0.8rem;
+  background-color: inherit;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+#block-ood-breadcrumbs ol {
+  margin: 0;
+  padding: 0 0 1rem 0;
+}
+[dir="rtl"] #block-ood-breadcrumbs ol {
+  /* This is required to win over specificity of [dir="rtl"] ol */
+  margin-right: 0;
+}
+#block-ood-breadcrumbs li {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+/* IE8 does not support :not() and :last-child. */
+#block-ood-breadcrumbs li:before {
+  content: " \/ " / "";
+  margin: 0 12px;
+}
+#block-ood-breadcrumbs li:first-child:before {
+  content: none;
 }
 
 .page-node-10418 {
@@ -1135,7 +1176,7 @@ footer .ood-feedback-btn {
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 1.25rem;
-  background-color: #686EA7;
+  background-color: var(--ood-purple);
   color: #fff;
   font-family: "Source Sans 3", sans-serif;
   font-size: 0.95rem;
@@ -1352,4 +1393,110 @@ body.page-batch [role="banner"] {
 
 .page-tags main {
   margin-bottom: 4rem;
+}
+
+.page-node-type-open-ondemand-classroom-stories {
+  .layout__region--first h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    padding: .25rem;
+    margin-bottom: 0;
+    color: #fff;
+    background-color: var(--ood-purple);
+  }
+  .field--name-field-oocs-project-summary {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Open OnDemand classroom slideshow*/
+.oocs {
+  header .title-text {
+    max-width: 700px;
+
+    p {
+      font-size: 1.4rem;
+    }
+  }
+  h3 {
+    min-height: 65px;
+  }
+  .cssn-photo img {
+    height: 75px;
+    width: 75px;
+  }
+  .square-tags {
+    min-height: 85px;
+
+    a {
+      background: #fff;
+    }
+  }
+}
+
+div:has(>#best-practices-classroom):not(.layout-builder-block),
+div:has(>#contributing-classroom-content):not(.layout-builder-block) {
+  background-color: var(--ood-purple);
+  padding-left: 50%;
+  padding-right: 50%;
+  margin-left: -50%;
+  margin-right: -50%;
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+  color: #fff;
+}
+div:has(>#contributing-classroom-content):not(.layout-builder-block) {
+  background-color: var(--ood-ocean-blue);
+}
+
+.page-node-type-open-ondemand-classroom-stories {
+  .layout__region--second h2 {
+    font-size: 1rem;
+    font-family: "Source Sans 3", "Serifa Std", sans-serif;
+    text-transform: uppercase;
+  }
+}
+
+.oocs-app img {
+  height: 30px;
+  width: 30px;
+}
+
+.oocs-full {
+  h3 {
+    font-family: "Source Sans 3", "Serifa Std", sans-serif;
+    font-size: 2rem;
+  }
+  .border-dark {
+    border-top: 15px solid var(--ood-purple) !important;
+  }
+  .square-tags {
+    a {
+      background: #fff;
+    }
+  }
+}
+
+@media screen and (min-width: 992px) {
+  .oocs-full .right-side {
+    width: 600px;
+  }
+}
+
+.page-node-12116 .carousel {
+  h3 {
+    font-family: "Source Sans 3", "Serifa Std", sans-serif;
+  }
+  p {
+    font-size: 1rem;
+    line-height: 1.25rem;
+  }
+  .oocs-apps ul {
+    margin-bottom: .25rem;
+  }
+}
+
+.classroom-person-details {
+  font-size: 1rem;
+  line-height: 1.2rem;
 }

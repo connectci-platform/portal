@@ -1,0 +1,29 @@
+uuid: e6f1899c-682e-4db1-80fa-ed010b818054
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_implementation_tags
+    - node.type.open_ondemand_classroom_stories
+    - taxonomy.vocabulary.appverse_implementation_tags
+id: node.open_ondemand_classroom_stories.field_oocs_implementation_tags
+field_name: field_oocs_implementation_tags
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: 'Implementation tags'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:taxonomy_term'
+  handler_settings:
+    target_bundles:
+      appverse_implementation_tags: appverse_implementation_tags
+    sort:
+      field: name
+      direction: asc
+    auto_create: false
+    auto_create_bundle: ''
+field_type: entity_reference
