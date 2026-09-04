@@ -1,5 +1,5 @@
 {
-    "_hash": "f5afdd579405637e860d1e01885ddd9e063c0c4bd3822a70a6509cfc3c0566ab",
+    "_hash": "1f3352a4bed02e237a47ddaef98d69240c4742efebdc64e3dfcbff1867bdc388",
     "patches": {
         "drupal/core": [
             {
@@ -72,16 +72,6 @@
         "drupal/recurring_events": [
             {
                 "package": "drupal/recurring_events",
-                "description": "Blank plugin ID error when resaving new dates",
-                "url": "patches/eventinstancecreatorpluginmanager.patch",
-                "sha256": "da776c6d9790da484880e7e0800c1a8132670ec114849dd7bed37f3f2f02b043",
-                "depth": 1,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            },
-            {
-                "package": "drupal/recurring_events",
                 "description": "Registration contact page custom permissions",
                 "url": "patches/recurring_events-registration-route-perm.patch",
                 "sha256": "7c8dcd9a5c0b31bf8ccee3d38e1ccc668e888ebe02a805d519d726ac8294180e",
@@ -92,19 +82,9 @@
             },
             {
                 "package": "drupal/recurring_events",
-                "description": "Debug logging for duplicate event instance investigation",
-                "url": "patches/recurring_events-debug-duplicate-instances.patch",
-                "sha256": "7e308d3eac8bd8368399d44064d41a21e2f6f4ec2707a3f378020ca33567cffc",
-                "depth": 1,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            },
-            {
-                "package": "drupal/recurring_events",
                 "description": "Pass $event as context to hook_recurring_events_event_instance_alter() and drop moderation_state before adding a translation",
                 "url": "patches/recurring_events-instance-alter-context.patch",
-                "sha256": "41e8cc74fb800fdec9f26bff5d5a24f2196f4804ba8d8020f8e19a07564cef9a",
+                "sha256": "92d0dadd16094fa072cf70b28887ba41d59487bec2ed34d8b264d5ed1fe049b0",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
@@ -112,9 +92,9 @@
             },
             {
                 "package": "drupal/recurring_events",
-                "description": "Guard undefined value/end_value keys in pre_create_alter exclude/include loops (fixes AJAX parsererror on event edit form; upstream in 3.0.0)",
-                "url": "patches/recurring_events-pre-create-alter-undefined-key.patch",
-                "sha256": "01d1a87ff6aad183698e1138fdf0ef2186b1c5e0fe25310530ec1cf04f3df8ae",
+                "description": "Compare RegistrationType against the enum, not strings (reg_type token and registrant list view filter/title)",
+                "url": "patches/recurring_events-registration-type-enum-comparisons.patch",
+                "sha256": "41cde45fb7ab4ff45536eba95cfeae392faefd9a857f6458aa138dde24f46d54",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
