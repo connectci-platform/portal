@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Test\AssertMailTrait;
 use Drupal\KernelTests\KernelTestBase;
@@ -114,6 +115,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -168,6 +170,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }
@@ -234,6 +237,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
 
   /**
    * Flatten a captured mail body (array of strings) for substring checks.
+   *
+   * @param array<string, mixed> $mail
    */
   protected function mailBody(array $mail): string {
     if (is_array($mail['body'])) {
@@ -272,6 +277,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $node = $this->createRepo((int) $contributor->id(), 'draft');
 
     // Same transition that normally emails the owner — but flagged.
+    // @phpstan-ignore-next-line — transient runtime signal set as a dynamic property, read by ood_software_node_update().
     $node->_ood_software_suppress_notifications = TRUE;
     $node->set('moderation_state', 'published');
     $node->setNewRevision(TRUE);
@@ -315,6 +321,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
 
     $node->set('moderation_state', 'needs_adjustment');
     $node->setNewRevision(TRUE);
+    // @phpstan-ignore-next-line — transient runtime signal set as a dynamic property, read by ood_software_node_update().
     $node->_ood_software_review_comment = 'fix X';
     $node->save();
 
@@ -473,6 +480,129 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertCount(1, $oodMails);
     $this->assertSame('admin@example.com', $oodMails[0]['to']);
     $this->assertStringContainsString('submitted for review', $oodMails[0]['subject']);
+  }
+
+  /**
+   * An is-admin (all-permissions) role is included in reviewer resolution.
+   *
+   * Guards the is-admin branch of the role-scoped recipient query: a role
+   * flagged is_admin grants the permission without listing it, so it would be
+   * missed by a naive "roles that list the permission" query. This test fails
+   * if that branch is dropped from rolesGranting(). It also confirms a user
+   * with no granting role is not emailed.
+   *
+   * Note: this is a functional-correctness guard, not a performance guard — it
+   * asserts the recipient SET, which is identical under the old load-all code
+   * and the new role-scoped code. The bounded-query property (not O(all users))
+   * is covered by testRolesGrantingIsScopedAndExcludesPseudoRoles below and by
+   * the bounded query itself, not by this recipient-set assertion.
+   */
+  public function testReadyForReviewIsRoleScoped(): void {
+    // A role flagged is_admin grants the permission implicitly (never lists it).
+    $adminAllRid = strtolower($this->randomMachineName(8));
+    $adminAllRole = \Drupal::entityTypeManager()->getStorage('user_role')->create([
+      'id' => $adminAllRid,
+      'label' => 'Superadmin',
+      'is_admin' => TRUE,
+    ]);
+    $adminAllRole->save();
+    $superadmin = User::create([
+      'name' => $this->randomMachineName(),
+      'mail' => 'superadmin@example.com',
+      'status' => 1,
+    ]);
+    $superadmin->addRole($adminAllRid);
+    $superadmin->save();
+
+    // A plain contributor with no reviewer/admin role must NOT be emailed,
+    // even though under the old load-all-then-filter code it would have been
+    // loaded and scanned.
+    $contributor = $this->createContributor('plain@example.com');
+
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $oodMails = array_values(array_filter(
+      $this->drupalGetMails(),
+      fn($m) => $m['module'] === 'ood_software',
+    ));
+    $recipients = array_map(fn($m) => $m['to'], $oodMails);
+
+    $this->assertContains('superadmin@example.com', $recipients, 'An is-admin (all-permissions) role must be reached by the role-scoped query.');
+    $this->assertNotContains('plain@example.com', $recipients, 'A user with no granting role must not be emailed.');
+  }
+
+  /**
+   * rolesGranting() returns exactly the granting roles and no pseudo-roles.
+   *
+   * This is the mechanism-level guard for the recipient query being bounded to
+   * role-holders rather than scanning all users. It asserts on the resolved
+   * role set directly (via reflection, since the method is protected), so it
+   * fails if someone reverts to a load-all-and-filter approach that ignores
+   * roles, drops the is-admin branch, or stops excluding anonymous/authenticated
+   * (excluding 'authenticated' is correctness-critical: were it granted the
+   * permission, an all-authenticated broadcast/scan must not be produced here).
+   */
+  public function testRolesGrantingIsScopedAndExcludesPseudoRoles(): void {
+    // A role that explicitly lists the permission.
+    $listedRid = $this->createAdminRole();
+    // A role flagged is_admin (grants all permissions without listing them).
+    $adminAllRid = strtolower($this->randomMachineName(8));
+    \Drupal::entityTypeManager()->getStorage('user_role')->create([
+      'id' => $adminAllRid,
+      'label' => 'Superadmin',
+      'is_admin' => TRUE,
+    ])->save();
+    // A role that grants an unrelated permission — must NOT be returned.
+    $unrelatedRid = strtolower($this->randomMachineName(8));
+    \Drupal::entityTypeManager()->getStorage('user_role')->create([
+      'id' => $unrelatedRid,
+      'label' => 'Unrelated',
+      'permissions' => ['access content'],
+    ])->save();
+
+    $service = \Drupal::service('ood_software.repo_notifier');
+    $method = new \ReflectionMethod($service, 'rolesGranting');
+    $method->setAccessible(TRUE);
+    $roleIds = $method->invoke($service, 'administer appverse content');
+
+    $this->assertContains($listedRid, $roleIds, 'A role listing the permission must be returned.');
+    $this->assertContains($adminAllRid, $roleIds, 'An is-admin role must be returned.');
+    $this->assertNotContains($unrelatedRid, $roleIds, 'A role without the permission must not be returned.');
+    $this->assertNotContains('anonymous', $roleIds, 'The anonymous pseudo-role must be excluded.');
+    $this->assertNotContains('authenticated', $roleIds, 'The authenticated pseudo-role must be excluded.');
+  }
+
+  /**
+   * A transition on a repo whose owner was deleted must not fatal.
+   *
+   * getOwner() is typed non-nullable, but at runtime a node pointing at a
+   * deleted user account resolves to null. sendToOwner() must tolerate that
+   * (log and skip) rather than fatal on ->getEmail(), because it runs inside
+   * the moderation-transition save. Guards against removing the null check.
+   */
+  public function testTransitionSurvivesDeletedOwner(): void {
+    // Point the repo at a uid with no corresponding user account — the same
+    // state a node is left in after its owner is deleted (getOwner() resolves
+    // to null at runtime despite the non-nullable return type). Using a
+    // never-created uid avoids triggering user-deletion hooks in the kernel
+    // harness while reproducing the exact null-owner condition.
+    $node = $this->createRepo(999999, 'ready_for_review');
+
+    // The transition save must complete without throwing.
+    $nodeStorage = \Drupal::entityTypeManager()->getStorage('node');
+    $nid = (int) $node->id();
+    $nodeStorage->resetCache([$nid]);
+    $node = $nodeStorage->load($nid);
+    $node->set('moderation_state', 'published');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $nodeStorage->resetCache([$nid]);
+    $reloaded = $nodeStorage->load($nid);
+    $this->assertSame('published', $reloaded->get('moderation_state')->value, 'The transition must complete even when the owner was deleted.');
   }
 
 }
