@@ -54,6 +54,11 @@ describe('Accessibility Testing - reports all violations without failing CI (ini
     ]);
   });
 
+  it('Documentation - logged in', () => {
+    cy.loginAs('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    checkA11y('/documentation');
+  });
+
   it('Affinity Groups', () => {
     checkMultipleUrls([
       '/affinity-groups',
