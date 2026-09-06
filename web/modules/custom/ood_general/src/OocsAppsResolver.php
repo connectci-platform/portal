@@ -81,7 +81,8 @@ class OocsAppsResolver {
    *   touched (app, software, media, file).
    *
    * @return array|null
-   *   ['logo_url' => ..., 'alt' => ..., 'link' => ...], or NULL to skip.
+   *   ['logo_url' => ..., 'alt' => ..., 'initial' => ..., 'link' => ...],
+   *   or NULL to skip.
    */
   public function buildItem(NodeInterface $entity, array &$cache_tags) {
     $bundle = $entity->bundle();
@@ -125,13 +126,11 @@ class OocsAppsResolver {
     }
 
     $logo_url = $this->logoUrl->get($software, $cache_tags);
-    if (!$logo_url) {
-      return NULL;
-    }
 
     return [
       'logo_url' => $logo_url,
       'alt' => $alt,
+      'initial' => mb_strtoupper(mb_substr(trim($alt), 0, 1)),
       'link' => $link,
     ];
   }
