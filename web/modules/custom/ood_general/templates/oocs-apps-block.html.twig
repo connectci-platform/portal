@@ -8,7 +8,9 @@
  * the href, and slugs are already restricted to [a-z0-9_-] by the block.
  *
  * Available variables:
- * - apps: List of { logo_url, alt, link } structs.
+ * - apps: List of { logo_url, alt, initial, link } structs. initial is the
+ *   uppercased first letter of alt, used as a fallback when logo_url is
+ *   empty.
  */
 #}
 {% if apps %}
@@ -17,7 +19,11 @@
       {% for app in apps %}
         <li class="mr-3">
           <a href="{{ app.link }}" class="oocs-app" data-toggle="tooltip" data-placement="top" title="{{ app.alt }}">
-            <img src="{{ app.logo_url }}" alt="{{ app.alt }}" style="height: 30px; width: 30px;" />
+            {% if app.logo_url %}
+              <img src="{{ app.logo_url }}" alt="{{ app.alt }}" style="height: 30px; width: 30px;" />
+            {% else %}
+              <span class="oocs-app__fallback" aria-hidden="true">{{ app.initial }}</span>
+            {% endif %}
           </a>
         </li>
       {% endfor %}

@@ -1462,6 +1462,23 @@ div:has(>#contributing-classroom-content):not(.layout-builder-block) {
   width: 30px;
 }
 
+main a:has(> .oocs-app__fallback) {
+  text-decoration: none;
+}
+
+.oocs-app__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  width: 30px;
+  border-radius: 25%;
+  background-color: var(--header-gray);
+  color: #333;
+  font-weight: bold;
+  font-size: 14px;
+}
+
 .oocs-full {
   h3 {
     font-family: "Source Sans 3", "Serifa Std", sans-serif;
