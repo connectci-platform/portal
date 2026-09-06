@@ -3351,7 +3351,7 @@
         },
         {
             "name": "drupal/ctools_views",
-            "version": "4.1.0",
+            "version": "4.1.1",
             "require": {
                 "drupal/core": "^9.5 || ^10 || ^11",
                 "drupal/ctools": "^4"
@@ -3359,8 +3359,8 @@
             "type": "metapackage",
             "extra": {
                 "drupal": {
-                    "version": "4.1.0",
-                    "datestamp": "1718144949",
+                    "version": "4.1.1",
+                    "datestamp": "1784926417",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
