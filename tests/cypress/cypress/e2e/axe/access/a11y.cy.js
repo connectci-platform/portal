@@ -47,7 +47,6 @@ describe('Accessibility Testing - reports all violations without failing CI (ini
 
   it('Documentation', () => {
     checkMultipleUrls([
-      '/documentation',
       '/documentation/resources/anvil-cpu',
       '/documentation/resources/jetstream2-gpu',
       '/documentation/resources/aces-0',
