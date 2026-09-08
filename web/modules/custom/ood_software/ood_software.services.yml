@@ -41,6 +41,10 @@ services:
     class: Drupal\ood_software\Service\AppverseReviewService
     arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system']
 
+  ood_software.review_seeder:
+    class: Drupal\ood_software\Service\AppverseReviewSeeder
+    arguments: ['@entity_type.manager', '@file.repository', '@file_system', '@logger.factory']
+
   ood_software.repo_notifier:
     class: Drupal\ood_software\Service\RepoNotificationService
     arguments:
