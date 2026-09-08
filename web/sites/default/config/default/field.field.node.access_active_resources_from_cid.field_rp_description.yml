@@ -12,7 +12,7 @@ field_name: field_rp_description
 entity_type: node
 bundle: access_active_resources_from_cid
 label: 'RP Description'
-description: ''
+description: 'The full text appears on the resource page. The Summary, when set, is shown as the short blurb on the Resource Documentation listing; leave it empty to show the trimmed opening of the full text there.'
 required: null
 translatable: null
 default_value: {  }
