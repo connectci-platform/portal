@@ -1,0 +1,73 @@
+uuid: null
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_finding.field_rvf_anchor
+    - field.field.paragraph.review_finding.field_rvf_app_id
+    - field.field.paragraph.review_finding.field_rvf_aspect
+    - field.field.paragraph.review_finding.field_rvf_category
+    - field.field.paragraph.review_finding.field_rvf_defect_key
+    - field.field.paragraph.review_finding.field_rvf_evidence
+    - field.field.paragraph.review_finding.field_rvf_line
+    - field.field.paragraph.review_finding.field_rvf_reviewer_prose
+    - field.field.paragraph.review_finding.field_rvf_rule
+    - field.field.paragraph.review_finding.field_rvf_severity
+    - field.field.paragraph.review_finding.field_rvf_stable_id
+    - field.field.paragraph.review_finding.field_rvf_summary
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+    - text
+third_party_settings: {  }
+id: paragraph.review_finding.default
+targetEntityType: paragraph
+bundle: review_finding
+mode: default
+content:
+  field_rvf_severity:
+    type: list_default
+    weight: 0
+    region: content
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+  field_rvf_rule:
+    type: string
+    weight: 1
+    region: content
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+  field_rvf_summary:
+    type: string
+    weight: 2
+    region: content
+    label: hidden
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+  field_rvf_evidence:
+    type: string
+    weight: 3
+    region: content
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+  field_rvf_reviewer_prose:
+    type: text_default
+    weight: 4
+    region: content
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+hidden: 
+  field_rvf_anchor: true
+  field_rvf_app_id: true
+  field_rvf_aspect: true
+  field_rvf_category: true
+  field_rvf_defect_key: true
+  field_rvf_line: true
+  field_rvf_stable_id: true

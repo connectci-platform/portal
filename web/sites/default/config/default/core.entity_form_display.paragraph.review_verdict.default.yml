@@ -1,0 +1,270 @@
+uuid: null
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_verdict.field_rvv_app_id
+    - field.field.paragraph.review_verdict.field_rvv_app_ref
+    - field.field.paragraph.review_verdict.field_rvv_conclusion
+    - field.field.paragraph.review_verdict.field_rvv_criteria
+    - field.field.paragraph.review_verdict.field_rvv_docs_anchor
+    - field.field.paragraph.review_verdict.field_rvv_docs_level
+    - field.field.paragraph.review_verdict.field_rvv_docs_level_note
+    - field.field.paragraph.review_verdict.field_rvv_docs_summary
+    - field.field.paragraph.review_verdict.field_rvv_findings
+    - field.field.paragraph.review_verdict.field_rvv_indicators_default
+    - field.field.paragraph.review_verdict.field_rvv_moderator_notes
+    - field.field.paragraph.review_verdict.field_rvv_port_anchor
+    - field.field.paragraph.review_verdict.field_rvv_port_level
+    - field.field.paragraph.review_verdict.field_rvv_port_level_note
+    - field.field.paragraph.review_verdict.field_rvv_port_summary
+    - field.field.paragraph.review_verdict.field_rvv_sec_anchor
+    - field.field.paragraph.review_verdict.field_rvv_sec_level
+    - field.field.paragraph.review_verdict.field_rvv_sec_level_note
+    - field.field.paragraph.review_verdict.field_rvv_sec_summary
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - field_group
+    - paragraphs
+    - text
+third_party_settings:
+  field_group:
+    group_sig_security:
+      children:
+        - field_rvv_sec_level
+        - field_rvv_sec_summary
+        - field_rvv_sec_level_note
+      label: 'Security'
+      region: content
+      parent_name: ''
+      weight: 1
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
+    group_sig_portability:
+      children:
+        - field_rvv_port_level
+        - field_rvv_port_summary
+        - field_rvv_port_level_note
+      label: 'Portability'
+      region: content
+      parent_name: ''
+      weight: 2
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
+    group_sig_documentation:
+      children:
+        - field_rvv_docs_level
+        - field_rvv_docs_summary
+        - field_rvv_docs_level_note
+      label: 'Documentation'
+      region: content
+      parent_name: ''
+      weight: 3
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
+    group_vd_machine:
+      children:
+        - field_rvv_app_ref
+        - field_rvv_app_id
+        - field_rvv_sec_anchor
+        - field_rvv_port_anchor
+        - field_rvv_docs_anchor
+        - field_rvv_criteria
+        - field_rvv_indicators_default
+      label: 'Machine data - seeded from the artifact, do not edit'
+      region: content
+      parent_name: ''
+      weight: 5
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: true
+id: paragraph.review_verdict.default
+targetEntityType: paragraph
+bundle: review_verdict
+mode: default
+content:
+  field_rvv_conclusion:
+    type: options_select
+    weight: 0
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_sec_level:
+    type: options_select
+    weight: 10
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_sec_summary:
+    type: string_textfield
+    weight: 11
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_sec_level_note:
+    type: text_textarea
+    weight: 12
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_port_level:
+    type: options_select
+    weight: 13
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_port_summary:
+    type: string_textfield
+    weight: 14
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_port_level_note:
+    type: text_textarea
+    weight: 15
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_docs_level:
+    type: options_select
+    weight: 16
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_docs_summary:
+    type: string_textfield
+    weight: 17
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_docs_level_note:
+    type: text_textarea
+    weight: 18
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_findings:
+    type: paragraphs
+    weight: 30
+    region: content
+    settings:
+      title: Finding
+      title_plural: Findings
+      edit_mode: closed
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: review_finding
+      features:
+        collapse_edit_all: collapse_edit_all
+        duplicate: '0'
+        add_above: '0'
+    third_party_settings: {  }
+  field_rvv_moderator_notes:
+    type: text_textarea
+    weight: 40
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_app_ref:
+    type: entity_reference_autocomplete
+    weight: 50
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_app_id:
+    type: string_textfield
+    weight: 51
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_sec_anchor:
+    type: string_textfield
+    weight: 52
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_port_anchor:
+    type: string_textfield
+    weight: 53
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_docs_anchor:
+    type: string_textfield
+    weight: 54
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_criteria:
+    type: string_textarea
+    weight: 55
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvv_indicators_default:
+    type: string_textarea
+    weight: 56
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+hidden: {  }
