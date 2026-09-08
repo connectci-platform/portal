@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "48e4ad2d6131213dfa7a9bca161d2ac4",
+    "content-hash": "99dfd76bf34c602a696fbcbe14ba1eaa",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -705,13 +705,12 @@
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-main",
+            "version": "dev-fix/rp-listing-child-sort",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "349455e91cbd0f22ef0754244c3cedfde165fa41"
+                "reference": "88d6d71a0a8435276238129551b962df5288d7d8"
             },
-            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -727,7 +726,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-03T18:04:01+00:00"
+            "time": "2026-09-08T15:13:17+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -757,11 +756,11 @@
         },
         {
             "name": "connectci/operations_cider",
-            "version": "dev-main",
+            "version": "dev-feat/rp-listing-displayed-name-sort",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "6ae6c0d6b86c35e76d20af18729fa1251310753f"
+                "reference": "0b13c23ef4c3795dd11caa577ece12c729dcf3dc"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -770,7 +769,6 @@
             "replace": {
                 "access/operations_cider": "self.version"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -790,7 +788,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-09-02T18:40:37+00:00"
+            "time": "2026-09-08T15:29:40+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -24699,5 +24697,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
