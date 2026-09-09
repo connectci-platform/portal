@@ -318,6 +318,21 @@ content:
     type: options_buttons
     weight: 3
     region: content
+  field_event_timezone:
+    type: string_textfield
+    weight: 4
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_event_in_person:
+    type: boolean_checkbox
+    weight: 4
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
     settings: {  }
     third_party_settings: {  }
   registration_reminders:
