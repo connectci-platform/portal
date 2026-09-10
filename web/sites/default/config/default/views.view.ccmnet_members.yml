@@ -1027,6 +1027,7 @@ display:
           contextual_filters_or: false
       relationships: {  }
       css_class: 'd-flex  flex-wrap justify-content-between'
+      use_ajax: true
       header: {  }
       footer: {  }
       display_extenders: {  }
