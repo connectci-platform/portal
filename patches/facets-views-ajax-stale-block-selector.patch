@@ -87,7 +87,7 @@ diff --git a/js/facets-views-ajax.js b/js/facets-views-ajax.js
 +      // its id. Drupal appends a random --<hash> suffix to a block wrapper id
 +      // each time the block is re-rendered over AJAX, so an id read before one
 +      // refresh no longer matches after it. A selector that matches nothing
-+      // makes core's insert command detach behaviours from the whole document,
++      // makes core's insert command detach behaviors from the whole document,
 +      // which empties Drupal.views.instances and breaks every later facet
 +      // click.
 +      var block_selector = '.js-facet-block-id-' + block_id;

@@ -1,5 +1,5 @@
 {
-    "_hash": "21a01972b4a14ef1aab20b387deddf43464744ebf37020a673c82463dcdfcbe9",
+    "_hash": "2129f2ffc313907e1a6b658cb6a447e7c4efa29d128ee769e7ce63d8ee0d515f",
     "patches": {
         "drupal/core": [
             {
@@ -68,7 +68,7 @@
                 "package": "drupal/facets",
                 "description": "Facet block AJAX refresh uses a stale wrapper id, wiping Drupal.views.instances and locking up later facet clicks",
                 "url": "patches/facets-views-ajax-stale-block-selector.patch",
-                "sha256": "6dfb1f8bf4f3ea55bab96aad7619e165100ad6bd8bf8e42bb07cd64c77319adb",
+                "sha256": "8d2bcaae6c9a99398e97de9b436dffd550f77f389e2cf2acd164cde65a89da92",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

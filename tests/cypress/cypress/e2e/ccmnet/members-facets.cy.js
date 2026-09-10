@@ -7,7 +7,7 @@
 // wrapper ids, and Drupal appends a random --<hash> suffix to those ids on
 // every AJAX re-render, so the second response is left with selectors that
 // match nothing. Core's insert command then resolves an empty wrapper and
-// detaches behaviours from the whole document, emptying
+// detaches behaviors from the whole document, emptying
 // Drupal.views.instances with no replacement to re-attach it.
 //
 // The next facet click threw "Cannot read properties of undefined (reading
