@@ -6,6 +6,7 @@ dependencies:
     - node.type.appverse_repo
     - taxonomy.vocabulary.appverse_organization
   module:
+    - content_moderation
     - node
     - options
     - taxonomy
@@ -140,22 +141,20 @@ display:
           content: 'You haven''t submitted any repos yet. Read the <a href="/appverse-contributor-documentation">Appverse Contributor Documentation</a>'
           tokenize: false
       sorts:
-        changed:
-          id: changed
+        moderation_state:
+          id: moderation_state
           table: node_field_data
-          field: changed
+          field: moderation_state
           relationship: none
           group_type: group
           admin_label: ''
           entity_type: node
-          entity_field: changed
-          plugin_id: date
+          plugin_id: moderation_state_sort
           order: DESC
           expose:
             label: ''
             field_identifier: ''
           exposed: false
-          granularity: second
       arguments: {  }
       filters:
         type:
@@ -394,7 +393,7 @@ display:
           entity_field: status
           plugin_id: boolean
           operator: '='
-          value: All
+          value: '0'
           group: 1
           exposed: true
           expose:
@@ -412,7 +411,48 @@ display:
             remember_roles:
               authenticated: authenticated
               anonymous: '0'
+              student: '0'
+              mentor: '0'
+              professional_mentor: '0'
+              researcher: '0'
+              representative: '0'
               administrator: '0'
+              masquerade: '0'
+              regional_expert: '0'
+              campuschampionsadmin: '0'
+              exportpeople: '0'
+              research_computing_facilitator: '0'
+              research_software_engineer: '0'
+              ci_systems_engineer: '0'
+              mentee: '0'
+              student_champion: '0'
+              domain_champion: '0'
+              cssn: '0'
+              affinity_group_leader: '0'
+              match_pm: '0'
+              sc: '0'
+              lt: '0'
+              ra: '0'
+              coco_pm: '0'
+              cnctci_pm: '0'
+              news_pm: '0'
+              kb_pm: '0'
+              careers_sc: '0'
+              rp_documentation_manager: '0'
+              ccmnet_pm: '0'
+              consultant: '0'
+              match_sc: '0'
+              cip: '0'
+              site_developer: '0'
+              ccmnet: '0'
+              ccmnet_admin: '0'
+              ondemand: '0'
+              champions_mentorship_admin: '0'
+              pascience: '0'
+              pascience_manager: '0'
+              appverse_pm: '0'
+              mcp_bot: '0'
+              mcp_service: '0'
           is_grouped: false
           group_info:
             label: ''
