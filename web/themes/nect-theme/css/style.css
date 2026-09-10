@@ -2460,10 +2460,6 @@ button.copyclip:has(:hover, + details.search-ci-links summary:hover) {
   display: none;
 }
 
-#block-nect-exposedformccmnet-memberspage-1 .form-item-items-per-page,
-#block-nect-exposedformccmnet-memberspage-1-2 .form-item-search-api-fulltext {
-  display: none;
-}
 .cssn-photo {
   margin-bottom: 10px;
 }
