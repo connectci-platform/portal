@@ -1,0 +1,23 @@
+uuid: 5c5458ac-b82a-55e0-8d34-363dd88f3e21
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_software_link
+    - node.type.resource_group
+  module:
+    - link
+id: node.resource_group.field_rp_software_link
+field_name: field_rp_software_link
+entity_type: node
+bundle: resource_group
+label: 'RP source documentation for Software'
+description: 'Fallback: used by child Resources that leave this field empty.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  title: 0
+  link_type: 16
+field_type: link

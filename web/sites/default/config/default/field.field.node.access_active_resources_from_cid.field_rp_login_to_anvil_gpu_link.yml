@@ -11,7 +11,7 @@ id: node.access_active_resources_from_cid.field_rp_login_to_anvil_gpu_link
 field_name: field_rp_login_to_anvil_gpu_link
 entity_type: node
 bundle: access_active_resources_from_cid
-label: 'RP source documentation for Login to Anvil GPU'
+label: 'RP source documentation for Login'
 description: ''
 required: false
 translatable: false

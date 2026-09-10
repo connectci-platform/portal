@@ -1,0 +1,23 @@
+uuid: 6de8b9e9-2e74-53fa-8c69-2c687af6b1b4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_storage_link
+    - node.type.resource_group
+  module:
+    - link
+id: node.resource_group.field_rp_storage_link
+field_name: field_rp_storage_link
+entity_type: node
+bundle: resource_group
+label: 'RP source documentation for Storage'
+description: 'Fallback: used by child Resources that leave this field empty.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  title: 0
+  link_type: 16
+field_type: link

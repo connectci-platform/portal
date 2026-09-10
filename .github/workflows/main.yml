@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, '#nobuild') }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/dingorunner
         if: ${{ contains(github.event.head_commit.message, '#sync') }}
@@ -39,7 +39,7 @@ jobs:
     if: ${{ contains(github.ref, 'md-') }}
     needs: deploy
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       - name: Composer install
         run: |

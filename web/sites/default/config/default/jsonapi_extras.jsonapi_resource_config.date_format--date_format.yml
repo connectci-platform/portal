@@ -1,0 +1,74 @@
+uuid: 2f840f3d-a6d1-460c-8439-d9bb3b563280
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 50
+id: date_format--date_format
+disabled: true
+path: date_format/date_format
+resourceType: date_format--date_format
+resourceFields:
+  uuid:
+    disabled: false
+    fieldName: uuid
+    publicName: uuid
+    enhancer:
+      id: ''
+  langcode:
+    disabled: false
+    fieldName: langcode
+    publicName: langcode
+    enhancer:
+      id: ''
+  status:
+    disabled: false
+    fieldName: status
+    publicName: status
+    enhancer:
+      id: ''
+  dependencies:
+    disabled: false
+    fieldName: dependencies
+    publicName: dependencies
+    enhancer:
+      id: ''
+  third_party_settings:
+    disabled: false
+    fieldName: third_party_settings
+    publicName: third_party_settings
+    enhancer:
+      id: ''
+  _core:
+    disabled: false
+    fieldName: _core
+    publicName: _core
+    enhancer:
+      id: ''
+  id:
+    disabled: false
+    fieldName: id
+    publicName: id
+    enhancer:
+      id: ''
+  label:
+    disabled: false
+    fieldName: label
+    publicName: label
+    enhancer:
+      id: ''
+  locked:
+    disabled: false
+    fieldName: locked
+    publicName: locked
+    enhancer:
+      id: ''
+  pattern:
+    disabled: false
+    fieldName: pattern
+    publicName: pattern
+    enhancer:
+      id: ''
