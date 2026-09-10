@@ -1,5 +1,5 @@
 {
-    "_hash": "10b7df6dcb6e981832f5405f46282e7cf61c2f54ba11e467680f796e9ffda970",
+    "_hash": "21a01972b4a14ef1aab20b387deddf43464744ebf37020a673c82463dcdfcbe9",
     "patches": {
         "drupal/core": [
             {
@@ -49,6 +49,26 @@
                 "description": "Missing Drupal\\Core\\Url import in WidgetPluginBase causes fatal on /facets-block-ajax",
                 "url": "patches/facets-widgetpluginbase-missing-url-import.patch",
                 "sha256": "e9aaa98dda581dff36cb1c3d096a2aca711ae5ba5d4245eadd7259e025293a36",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/facets",
+                "description": "Facet AJAX URLs built from a query-string-less page URL come back as /path?https%3A%2F%2F... - https://www.drupal.org/i/3509670",
+                "url": "patches/facets-views-ajax-url-parse-3509670.patch",
+                "sha256": "8f75e640ac74cf5e6715363700729ed3f07165d4538d68298c7ef4ca0ccc5299",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/facets",
+                "description": "Facet block AJAX refresh uses a stale wrapper id, wiping Drupal.views.instances and locking up later facet clicks",
+                "url": "patches/facets-views-ajax-stale-block-selector.patch",
+                "sha256": "6dfb1f8bf4f3ea55bab96aad7619e165100ad6bd8bf8e42bb07cd64c77319adb",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

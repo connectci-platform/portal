@@ -64,8 +64,7 @@ describe('Tests the CSSN Directory Page for Authenticated Users', () => {
         cy.visit('/community/cssn/directory')
 
         // Search form should still work for authenticated users
-        cy.get('#edit-search-api-fulltext--2')
-            .type('Pasquale')
+        cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'Pasquale')
 
         cy.get('.cssn-directory-item').as('item')
         cy.get('@item').should('have.length', 1) // Only one user with the name Pasquale

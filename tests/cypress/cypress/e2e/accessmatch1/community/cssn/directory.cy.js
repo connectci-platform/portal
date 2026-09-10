@@ -22,8 +22,7 @@ describe('Tests the CSSN Directory Page for Anonymous Users', () => {
         cy.get('.page-title').contains('CSSN Directory')
 
         // Search form should work for anonymous users
-        cy.get('#edit-search-api-fulltext--2')
-            .type('Pasquale')
+        cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'Pasquale')
 
         cy.get('.cssn-directory-item').as('item')
         cy.get('@item').should('have.length', 1) // Only one user with the name Pasquale
@@ -54,7 +53,7 @@ describe('Tests the CSSN Directory Page for Anonymous Users', () => {
             .and('contain', '/taxonomy/term/')
 
         // Clear search for facet tests
-        cy.get('#edit-search-api-fulltext--2').clear()
+        cy.clearSearchAndWait('[data-drupal-selector="edit-search-api-fulltext"]')
 
         // Verify roles facet does NOT exist for anonymous users
         cy.get('#roles-cip').should('not.exist')

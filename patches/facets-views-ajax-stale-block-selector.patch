@@ -1,0 +1,96 @@
+Refresh facet blocks by class, and survive a missing view instance.
+
+A facet click fires two facet-block refreshes: one from updateFacetsView() and
+one from the beforeSend() override, which piggybacks on the Views AJAX request
+updateFacetsView() has just issued. Both read the block wrapper ids out of the
+DOM to build their replace selectors.
+
+Drupal appends a random --<hash> suffix to a wrapper id whenever the element is
+re-rendered over AJAX, so the first response to land renames every block and the
+second response is left holding selectors that match nothing. Core's insert
+command then resolves an empty wrapper and calls
+
+    Drupal.detachBehaviors(undefined, settings)
+
+which defaults to the whole document with the unload trigger. That runs
+Drupal.behaviors.ViewsAjaxView.detach over the entire page, emptying both
+Drupal.views.instances and drupalSettings.views.ajaxViews. No replacement
+happens, so nothing re-attaches them.
+
+The next facet click then throws in updateFacetsView(), reading .settings off
+the view instance that is no longer registered. The checkbox widget disables
+every checkbox in the block before it triggers, and only a successful refresh
+re-enables them, so the throw leaves the facet permanently unusable and the
+checked state of the clicked facet never comes back.
+
+Two changes:
+
+  - facetsBlocks() addresses each block by the js-facet-block-id-<id> class the
+    module already puts on it. That class survives a re-render, so the replace
+    always matches and the document-wide detach never happens.
+
+  - updateFacetsView() reads the view instance once and falls back to a normal
+    page load when it is missing, so no future regression of this kind can lock
+    the page up.
+
+Related upstream, neither committed and neither covering this case directly:
+https://www.drupal.org/i/3013795 (robustify how ajax finds the facet block) and
+https://www.drupal.org/i/3422013 (the same id-rewrite race for a facet block
+placed inside a view header).
+
+Present in 2.0.10 and on 2.0.x HEAD. Gone in 3.0.x, which rewrote views AJAX
+handling and no longer ships this file.
+
+diff --git a/js/facets-views-ajax.js b/js/facets-views-ajax.js
+--- a/js/facets-views-ajax.js
++++ b/js/facets-views-ajax.js
+@@ -65,6 +65,17 @@
+ 
+   // Helper function to update views output & Ajax facets.
+   var updateFacetsView = function (href, current_dom_id, view_path) {
++    var view_instance = Drupal.views.instances['views_dom_id:' + current_dom_id];
++
++    // Bail out to a normal page load when the view instance has gone away.
++    // Drupal.facets.disableFacet() has already disabled every checkbox in the
++    // widget by this point, and only a successful refresh re-enables them, so
++    // throwing here would leave the page unusable.
++    if (!view_instance) {
++      window.location.href = href;
++      return;
++    }
++
+     // Update url.
+     window.historyInitiated = true;
+     window.history.pushState(null, document.title, href);
+@@ -74,13 +85,13 @@
+     var views_arguments = Drupal.Views.parseViewArgs(href, 'search');
+     var views_settings = $.extend(
+         {},
+-        Drupal.views.instances['views_dom_id:' + current_dom_id].settings,
++        view_instance.settings,
+         views_arguments,
+         views_parameters
+     );
+ 
+     // Update View.
+-    var views_ajax_settings = Drupal.views.instances['views_dom_id:' + current_dom_id].element_settings;
++    var views_ajax_settings = view_instance.element_settings;
+     views_ajax_settings.submit = views_settings;
+     views_ajax_settings.url = view_path + '?q=' + href;
+ 
+@@ -162,7 +173,14 @@
+           return v.slice(block_id_start.length, v.length);
+         }
+       }).join();
+-      var block_selector = '#' + $(this).attr('id');
++      // Target the block by the class facets already puts on it rather than by
++      // its id. Drupal appends a random --<hash> suffix to a block wrapper id
++      // each time the block is re-rendered over AJAX, so an id read before one
++      // refresh no longer matches after it. A selector that matches nothing
++      // makes core's insert command detach behaviours from the whole document,
++      // which empties Drupal.views.instances and breaks every later facet
++      // click.
++      var block_selector = '.js-facet-block-id-' + block_id;
+       facets_blocks[block_id] = block_selector;
+     });
+ 

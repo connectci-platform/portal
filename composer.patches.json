@@ -7,7 +7,9 @@
     },
     "drupal/facets": {
       "Creating requests causes failures on Drupal 10.3": "https://www.drupal.org/files/issues/2024-08-07/3466281-2--for-2.0.8.patch",
-      "Missing Drupal\\Core\\Url import in WidgetPluginBase causes fatal on /facets-block-ajax": "patches/facets-widgetpluginbase-missing-url-import.patch"
+      "Missing Drupal\\Core\\Url import in WidgetPluginBase causes fatal on /facets-block-ajax": "patches/facets-widgetpluginbase-missing-url-import.patch",
+      "Facet AJAX URLs built from a query-string-less page URL come back as /path?https%3A%2F%2F... - https://www.drupal.org/i/3509670": "patches/facets-views-ajax-url-parse-3509670.patch",
+      "Facet block AJAX refresh uses a stale wrapper id, wiping Drupal.views.instances and locking up later facet clicks": "patches/facets-views-ajax-stale-block-selector.patch"
     },
     "drupal/mgv": {
       "current domain name": "patches/currentdomainname.patch"

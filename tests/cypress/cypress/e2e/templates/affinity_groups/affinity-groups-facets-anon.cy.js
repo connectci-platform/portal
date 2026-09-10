@@ -21,9 +21,11 @@ describe("Test Affinity Groups page for anonymous users", () => {
     cy.contains('Request a Group');
 
     // Test search functionality (should work for anonymous users)
-    cy.get('#edit-search-api-fulltext--2').type('test search', { delay: 0 })
+    // Search input by data-drupal-selector, not id: the id carries a form-build
+    // counter that changes when facet AJAX rebuilds the exposed form.
+    cy.get('[data-drupal-selector="edit-search-api-fulltext"]').type('test search', { delay: 0 })
     cy.wait(1000)
-    cy.get('#edit-search-api-fulltext--2').clear().type('{enter}') // Clear and press Enter to trigger search update
+    cy.get('[data-drupal-selector="edit-search-api-fulltext"]').clear().type('{enter}') // Clear and press Enter to trigger search update
     cy.wait(2000) // Wait for search to update
 
     // Verify Category facet does NOT exist for anonymous users
@@ -73,7 +75,7 @@ describe("Test Affinity Groups page for anonymous users", () => {
     })
 
     // Use specific search to test functionality
-    cy.get('#edit-search-api-fulltext--2').type('ACCESS', { delay: 0 })
+    cy.get('[data-drupal-selector="edit-search-api-fulltext"]').type('ACCESS', { delay: 0 })
     cy.wait(1000)
     cy.get('body').then($body => {
       if ($body.text().includes('ACCESS Support') || $body.text().includes('ACCESS')) {
@@ -82,7 +84,7 @@ describe("Test Affinity Groups page for anonymous users", () => {
         cy.log('No ACCESS groups found')
       }
     })
-    cy.get('#edit-search-api-fulltext--2').clear().type('{enter}') // Clear and press Enter to reset search
+    cy.get('[data-drupal-selector="edit-search-api-fulltext"]').clear().type('{enter}') // Clear and press Enter to reset search
     cy.wait(2000) // Wait for page to reload with all groups
   });
 

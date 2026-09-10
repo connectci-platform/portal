@@ -301,8 +301,15 @@ function stringifyOptions(options) {
 // Pick the right one for the situation:
 // - typeAutocomplete:    entity-reference / taxonomy autocomplete fields
 // - searchAndWait:       exposed search-api filter inputs
+// - clearSearchAndWait:  clearing one of those inputs
 // - expectAjax/waitForAjax: escape hatch for everything else (named alias)
 // - waitForDrupalSettle: "wait for any in-flight AJAX throbber to disappear"
+//
+// Never target an exposed filter or a facet block by id. Both the exposed
+// form's duplicate-id counter (`--2`) and the block wrapper's AJAX suffix
+// (`--<hash>`) change once a view re-renders over AJAX. Use
+// `[data-drupal-selector="edit-search-api-fulltext"]` for the search input and
+// `.block-facet-block<facet-id>:visible` for a facet block.
 //
 // NOT for facets: the facets module binds `change.facets` during
 // Drupal.attachBehaviors, so a click can land before binding and fire no AJAX
@@ -339,6 +346,22 @@ Cypress.Commands.add("searchAndWait", (selector, query) => {
   const alias = `viewsSearchAjax_${Cypress._.uniqueId()}`;
   cy.intercept('GET', '**/views/ajax**').as(alias);
   cy.get(selector).type(query, { delay: 0 });
+  cy.wait(`@${alias}`);
+});
+
+/**
+ * Clear an exposed search-api filter and wait for the Views AJAX response.
+ *
+ * BEF auto-submits on an empty field regardless of the configured minimum
+ * length, so clearing triggers a refresh back to the unfiltered result set.
+ *
+ * @example
+ *   cy.clearSearchAndWait('[data-drupal-selector="edit-search-api-fulltext"]');
+ */
+Cypress.Commands.add("clearSearchAndWait", (selector) => {
+  const alias = `viewsClearAjax_${Cypress._.uniqueId()}`;
+  cy.intercept('GET', '**/views/ajax**').as(alias);
+  cy.get(selector).clear();
   cy.wait(`@${alias}`);
 });
 

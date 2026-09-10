@@ -1892,11 +1892,6 @@ table.sticky-header th {
   display: none;
 }
 
-#block-nect-exposedformcssn-directorypage-1-2 .form-item-search-api-fulltext,
-#block-nect-exposedformcssn-directorypage-1 .form-item-items-per-page{
-  display: none;
-}
-
 .cssn-photo img {
   height: 100px;
   width: 90px;
