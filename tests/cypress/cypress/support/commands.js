@@ -294,14 +294,19 @@ function stringifyOptions(options) {
 //
 // Drupal-driven AJAX (Views, facets, autocomplete, multi-value form widgets)
 // has no synchronous "done" signal we can await. Tests historically used fixed
-// `cy.wait(1000)` timers — fast enough on a quiet machine, racy under CI load.
-// These helpers wait for the actual response or DOM signal, so tests stay
+// `cy.wait(1000)` timers — fast enough on a quiet machine, racy under CI load,
+// where a Views round trip plus the facets block refresh that follows it runs
+// two to five seconds. These helpers wait for the request that actually
+// carries the interaction and then for the page to go idle, so tests stay
 // fast on a fast machine and reliable on a slow one.
 //
 // Pick the right one for the situation:
 // - typeAutocomplete:    entity-reference / taxonomy autocomplete fields
 // - searchAndWait:       exposed search-api filter inputs
 // - clearSearchAndWait:  clearing one of those inputs
+// - clickFacetAndWait:   facet checkboxes, facet links and facet reset links
+// - expandFacetSoftLimit: a facet's "Show more" link, by facet URL alias
+// - waitForAjaxIdle:     "wait until nothing is in flight" (the primitive)
 // - expectAjax/waitForAjax: escape hatch for everything else (named alias)
 // - waitForDrupalSettle: "wait for any in-flight AJAX throbber to disappear"
 //
@@ -309,14 +314,195 @@ function stringifyOptions(options) {
 // form's duplicate-id counter (`--2`) and the block wrapper's AJAX suffix
 // (`--<hash>`) change once a view re-renders over AJAX. Use
 // `[data-drupal-selector="edit-search-api-fulltext"]` for the search input and
-// `.block-facet-block<facet-id>:visible` for a facet block.
-//
-// NOT for facets: the facets module binds `change.facets` during
-// Drupal.attachBehaviors, so a click can land before binding and fire no AJAX
-// at all. Both AJAX-intercept and URL-change waits proved unreliable. Use
-// cy.wait(1000) after .check()/.uncheck() in facet specs until we find a
-// deterministic ready-signal for the widget binding.
+// `.block-facet-block<facet-id>:visible` for a facet block. Facet items are
+// placed twice (a desktop block and a collapsed mobile copy) and both copies
+// carry the same item id, so scope every facet item with `:visible`.
 // -----------------------------------------------------------------------------
+
+/**
+ * Wait until no jQuery-driven AJAX request is in flight and no Drupal AJAX
+ * throbber is left on the page.
+ *
+ * Views AJAX, the facets block refresh and the facets summary refresh all run
+ * through Drupal.ajax, which runs through jQuery.ajax, so `jQuery.active` is
+ * an exact count of the requests still outstanding. Polling it is what
+ * replaces the fixed timers: a facet click fires two requests in sequence, and
+ * the second one only starts once the first response has been inserted.
+ *
+ * @param {object} [options]
+ * @param {number} [options.grace]
+ *   Milliseconds to wait before the first check, for a debounced auto-submit
+ *   that has not fired yet. The exposed filters on these views are debounced
+ *   up to 800ms.
+ * @param {number} [options.settle]
+ *   Milliseconds the page must stay idle before this resolves. This is what
+ *   catches the follow-up request that starts after the first one lands.
+ * @param {number} [options.timeout]
+ *   Milliseconds to keep polling before failing.
+ *
+ * @example
+ *   cy.get('#some-facet:visible').click();
+ *   cy.waitForAjaxIdle();
+ */
+Cypress.Commands.add("waitForAjaxIdle", (options = {}) => {
+  const { grace = 0, settle = 750, timeout = 30000 } = options;
+
+  return cy.window({ log: false }).then({ timeout: grace + timeout + 5000 }, (win) => {
+    const busy = () => {
+      const active = win.jQuery ? win.jQuery.active : 0;
+      return active > 0 || win.document.querySelector('.ajax-progress') !== null;
+    };
+    const deadline = Date.now() + grace + timeout;
+
+    // idleSince is null until we see a quiet poll, then holds the timestamp of
+    // that poll so we can require `settle` ms of continuous quiet.
+    const poll = (idleSince) => {
+      if (busy()) {
+        if (Date.now() > deadline) {
+          throw new Error(`waitForAjaxIdle: AJAX still in flight after ${timeout}ms`);
+        }
+        return Cypress.Promise.delay(100).then(() => poll(null));
+      }
+      if (idleSince !== null && Date.now() - idleSince >= settle) {
+        return null;
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`waitForAjaxIdle: AJAX did not settle within ${timeout}ms`);
+      }
+      return Cypress.Promise.delay(100).then(() => poll(idleSince === null ? Date.now() : idleSince));
+    };
+
+    return Cypress.Promise.delay(grace).then(() => poll(null));
+  });
+});
+
+/**
+ * Wait for a Views AJAX request that actually carries the given exposed-filter
+ * value, skipping any request already queued when the intercept was set up.
+ *
+ * `cy.wait('@alias')` resolves on the first request to match the alias, which
+ * under load is routinely the previous interaction's request or a debounce
+ * fragment ("jul" on the way to "julie"). Waiting for the request whose
+ * payload holds the value we typed makes the wait mean what the spec meant.
+ *
+ * @param {string} alias
+ *   Intercept alias, without the leading "@".
+ * @param {string} name
+ *   Exposed filter parameter name, e.g. "search_api_fulltext".
+ * @param {string} value
+ *   The value the request must carry. Pass '' for a cleared field.
+ */
+Cypress.Commands.add("waitForExposedFilterRequest", (alias, name, value, options = {}) => {
+  const { attempts = 12, timeout = 20000 } = options;
+  const pattern = new RegExp(`${Cypress._.escapeRegExp(name)}=${Cypress._.escapeRegExp(value)}(&|$)`);
+
+  const next = (left) =>
+    cy.wait(`@${alias}`, { timeout }).then((interception) => {
+      const request = interception.request;
+      // The value can arrive in the query string (Views AJAX, and the `?q=`
+      // copy of a facet href) or in the POST body, so search both.
+      const parts = [request.url || ''];
+      if (typeof request.body === 'string') {
+        parts.push(request.body);
+      }
+      else if (request.body) {
+        parts.push(JSON.stringify(request.body));
+      }
+      let haystack = parts.join('&').replace(/\+/g, ' ');
+      try {
+        haystack = decodeURIComponent(haystack);
+      }
+      catch (e) {
+        // Leave the raw string in place: a value that cannot be decoded is
+        // still worth matching against.
+      }
+      if (pattern.test(haystack)) {
+        return null;
+      }
+      if (left <= 1) {
+        throw new Error(`waitForExposedFilterRequest: no Views AJAX request carried ${name}="${value}"`);
+      }
+      return next(left - 1);
+    });
+
+  return next(attempts);
+});
+
+/**
+ * Click a facet item (checkbox, link or reset link) and wait for the view and
+ * the facet blocks to finish refreshing.
+ *
+ * Two things make a bare `.click()` unreliable. The facets checkbox widget
+ * binds `change.facets` during Drupal.attachBehaviors, so a click that lands
+ * before the binding fires no AJAX at all; and the widget disables every
+ * checkbox in the block for the duration of its own request, so a click on a
+ * block whose refresh has not landed either does nothing or acts on a stale
+ * href that drops the selection already made.
+ *
+ * @example
+ *   cy.clickFacetAndWait('#user-skills-members-python:visible');
+ */
+Cypress.Commands.add("clickFacetAndWait", (selector, options = {}) => {
+  const { settle = 750 } = options;
+
+  cy.waitForFacetBinding(selector);
+  cy.get(selector).should('not.be.disabled');
+  cy.get(selector).click();
+  cy.waitForAjaxIdle({ settle });
+  // Facets disables every checkbox in a block for the duration of its own
+  // request and only a successful refresh re-enables them, so a widget left in
+  // the disabled state means the refresh never landed. Assert on the widget
+  // rather than on the item just clicked: a reset link takes itself off the
+  // page, and an item can be re-rendered outside a soft limit.
+  cy.get('.js-facets-widget.facets-disabled').should('not.exist');
+});
+
+/**
+ * Click a facet's "Show more" link so items past its soft limit become
+ * clickable.
+ *
+ * Addressed by the facet's URL alias, not by a block class: the block classes
+ * differ per theme (the nect theme emits none of the `block-facet-block<id>`
+ * classes that the asp theme does), and soft-limit.js rewrites
+ * `data-drupal-facet-id` to `<id>-0`, `<id>-1` when a facet is placed more than
+ * once. The link itself is inserted as a sibling of the list, which is why this
+ * goes through the list's parent.
+ *
+ * @example
+ *   cy.expandFacetSoftLimit('organization_cyberteam_people');
+ */
+Cypress.Commands.add("expandFacetSoftLimit", (facetAlias) => {
+  cy.get(`ul[data-drupal-facet-alias="${facetAlias}"]`)
+    .parent()
+    .find('a.facets-soft-limit-link:visible')
+    .first()
+    .click();
+});
+
+/**
+ * Wait until the facets widget holding `selector` has its `facets_filter`
+ * handler bound, which is the point from which a click actually triggers AJAX.
+ *
+ * Facet items that sit outside a widget (a plain reset link) have nothing to
+ * bind, so for those this only waits for the element itself.
+ */
+Cypress.Commands.add("waitForFacetBinding", (selector) => {
+  cy.get(selector).should('exist');
+  cy.window({ log: false }).should((win) => {
+    const $item = win.jQuery(selector);
+    expect($item.length, `facet item ${selector} present`).to.be.greaterThan(0);
+
+    const $widget = $item.closest('.js-facets-widget');
+    if ($widget.length === 0) {
+      return;
+    }
+    const events = win.jQuery._data($widget[0], 'events') || {};
+    expect(
+      events.facets_filter,
+      `facets_filter handler bound on the widget holding ${selector}`
+    ).to.not.be.undefined;
+  });
+});
 
 /**
  * Type into a Drupal entity-reference autocomplete field and wait for the
@@ -337,16 +523,26 @@ Cypress.Commands.add("typeAutocomplete", (selector, value) => {
 });
 
 /**
- * Type into an exposed search-api filter and wait for the Views AJAX response.
+ * Type into an exposed search-api filter and wait for the view to hold the
+ * results for that exact query.
+ *
+ * Waits for the Views AJAX request that carries the typed value, not merely
+ * the first request to go by, then waits for the facet blocks that refresh
+ * behind it. The filter parameter name is read off the input, so this works
+ * for any exposed filter, not just search_api_fulltext.
  *
  * @example
- *   cy.searchAndWait('#edit-search-api-fulltext', 'AI');
+ *   cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'AI');
  */
 Cypress.Commands.add("searchAndWait", (selector, query) => {
   const alias = `viewsSearchAjax_${Cypress._.uniqueId()}`;
-  cy.intercept('GET', '**/views/ajax**').as(alias);
-  cy.get(selector).type(query, { delay: 0 });
-  cy.wait(`@${alias}`);
+  cy.intercept('**/views/ajax**').as(alias);
+  cy.get(selector).then(($input) => {
+    const name = $input.attr('name') || 'search_api_fulltext';
+    cy.wrap($input, { log: false }).type(query, { delay: 0 });
+    cy.waitForExposedFilterRequest(alias, name, query);
+  });
+  cy.waitForAjaxIdle();
 });
 
 /**
@@ -360,9 +556,18 @@ Cypress.Commands.add("searchAndWait", (selector, query) => {
  */
 Cypress.Commands.add("clearSearchAndWait", (selector) => {
   const alias = `viewsClearAjax_${Cypress._.uniqueId()}`;
-  cy.intercept('GET', '**/views/ajax**').as(alias);
-  cy.get(selector).clear();
-  cy.wait(`@${alias}`);
+  cy.intercept('**/views/ajax**').as(alias);
+  cy.get(selector).then(($input) => {
+    const name = $input.attr('name') || 'search_api_fulltext';
+    // Nothing to clear means nothing auto-submits, so there is no request to
+    // wait for.
+    if (!$input.val()) {
+      return;
+    }
+    cy.wrap($input, { log: false }).clear();
+    cy.waitForExposedFilterRequest(alias, name, '');
+  });
+  cy.waitForAjaxIdle();
 });
 
 /**

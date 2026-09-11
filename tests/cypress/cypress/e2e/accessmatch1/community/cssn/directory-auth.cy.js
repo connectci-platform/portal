@@ -28,35 +28,37 @@ describe('Tests the CSSN Directory Page for Authenticated Users', () => {
         // Page Title
         cy.get('.page-title').contains('CSSN Directory')
 
+        // Facet clicks go through cy.clickFacetAndWait, which waits for the
+        // widget's `facets_filter` binding before clicking and for the view
+        // plus the facet blocks to settle after. Counting results immediately
+        // after a click counted the pre-refresh list under CI load.
+
         // Check roles facet exists and works for authenticated users
-        cy.get('#roles-cip').should('exist').click()
-        cy.get('.cssn-directory-item').as('item')
-        cy.get('@item').then(($item) => {
+        cy.clickFacetAndWait('#roles-cip:visible')
+        cy.get('.cssn-directory-item').then(($cips) => {
             // There are at least 14 CIPs
-            expect($item.length).to.be.at.least(14)
+            expect($cips.length).to.be.at.least(14)
 
             // add the c++ facet; should reduce the number of users.
-            cy.get('#skills-c').click()
-            cy.get('.cssn-directory-item').as('item')
-            cy.get('@item')
+            cy.clickFacetAndWait('#skills-c:visible')
+            cy.get('.cssn-directory-item')
                 .should('have.length.at.least', 1)
-                .should('have.length.lessThan', $item.length)
+                .should('have.length.lessThan', $cips.length)
         })
 
         // Reset facets
-        cy.get('#roles-cip').click()
-        cy.get('#skills-reset-all').click()
+        cy.clickFacetAndWait('#roles-cip:visible')
+        cy.clickFacetAndWait('#skills-reset-all:visible')
 
-        // Check the "Show more" link for Organizations facet.
-        cy.get('.block-facet-blockaccess-organization .facets-soft-limit-link')
-          .should('exist')
-          .first()
-          .click()
+        // Check the "Show more" link for Organizations facet. The link only
+        // exists once the block has re-rendered with the full, unfiltered
+        // list, which the reset waits above guarantee.
+        cy.expandFacetSoftLimit('access_organization')
 
         // Check the organizations facet exists and works for authenticated users
-        cy.get('#access-organization-4191').should('exist').click() // Massachusetts Green High Performance Computing Center
-        cy.get('.cssn-directory-item').as('item')
-        cy.get('@item')
+        // Massachusetts Green High Performance Computing Center
+        cy.clickFacetAndWait('#access-organization-4191:visible')
+        cy.get('.cssn-directory-item')
             .should('have.length.at.least', 1)
     })
 

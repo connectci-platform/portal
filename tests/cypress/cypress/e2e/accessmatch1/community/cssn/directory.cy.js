@@ -62,13 +62,14 @@ describe('Tests the CSSN Directory Page for Anonymous Users', () => {
         cy.get('#access-organization-4191').should('not.exist')
         cy.get('.block-facet-blockaccess-organization').should('not.exist')
 
-        // Skills facet might still be available, check if it exists
-        // If it does exist, we can test it, otherwise skip
+        // Skills facet might still be available, check if it exists.
+        // The branch reads the DOM before any facet click, so it stays valid;
+        // the clicks themselves wait for the refresh via cy.clickFacetAndWait.
         cy.get('body').then($body => {
             if ($body.find('#skills-c').length > 0) {
-                cy.get('#skills-c').click()
+                cy.clickFacetAndWait('#skills-c:visible')
                 cy.get('.cssn-directory-item').should('have.length.at.least', 1)
-                cy.get('#skills-reset-all').click()
+                cy.clickFacetAndWait('#skills-reset-all:visible')
             }
         })
 

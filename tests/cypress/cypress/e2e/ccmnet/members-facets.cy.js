@@ -27,17 +27,11 @@ describe('Anonymous user searches and facets the CCMnet members view', () => {
     // Keyword search first, since the bug only reproduces on a facet click
     // that follows a prior Views AJAX rebuild (the search). Use the stable
     // data-drupal-selector, not the id, since the exposed form's id gains a
-    // Drupal form-build counter suffix after any AJAX rebuild. The auto-submit
-    // is debounced 800ms with a 3-character minimum, so wait generously after
-    // typing for the search AJAX to complete and the view to settle.
+    // Drupal form-build counter suffix after any AJAX rebuild. cy.searchAndWait
+    // waits for the request carrying the typed value and then for the facet
+    // blocks that refresh behind it.
     const SEARCH_INPUT = '[data-drupal-selector="edit-search-api-fulltext"]:visible';
     cy.searchAndWait(SEARCH_INPUT, 'Andrew');
-    // The Views AJAX response is not the end of it: facets fires a second,
-    // separate request to rebuild its blocks, and the checkbox we are about to
-    // click is torn out and replaced when that lands. Settle before touching
-    // it, or .check() fails on a detached element.
-    cy.waitForDrupalSettle();
-    cy.wait(2000);
 
     // Each facet is rendered twice in the sidebar (a desktop block and a
     // collapsed mobile copy), both producing a checkbox with the SAME id, so
@@ -48,22 +42,19 @@ describe('Anonymous user searches and facets the CCMnet members view', () => {
     const PYTHON_FACET = '#user-skills-members-python:visible';
     const GIT_FACET = '#user-skills-members-git:visible';
 
-    // First facet click. Facets disables its checkboxes while its own AJAX
-    // request is in flight, so gate on not.be.disabled before interacting.
-    cy.get(PYTHON_FACET).should('not.be.disabled');
-    cy.get(PYTHON_FACET).check();
-    // AJAX-intercept and URL-change waits are unreliable for facet clicks:
-    // the facets module binds `change.facets` during Drupal.attachBehaviors,
-    // so a click can land before binding and fire no AJAX at all. Use a fixed
-    // wait here instead, per the guidance in support/commands.js.
-    cy.wait(2000);
+    // cy.clickFacetAndWait waits for the widget's `facets_filter` binding
+    // before clicking and for both the view and the facet blocks to settle
+    // after, so the second click acts on a block carrying hrefs that already
+    // include the first selection. A fixed timer here lost to the two-to-five
+    // second round trips under CI load, and the second click then replaced the
+    // first selection instead of adding to it.
+    cy.clickFacetAndWait(PYTHON_FACET);
+    cy.url().should('include', 'user_skills_members%3Apython');
 
     // Second facet click — this is the one that reproduced the bug. If the
     // first click's stale replace selector wiped Drupal.views.instances, this
     // click throws instead of refreshing, and the widget stays disabled.
-    cy.get(GIT_FACET).should('not.be.disabled');
-    cy.get(GIT_FACET).check();
-    cy.wait(2000);
+    cy.clickFacetAndWait(GIT_FACET);
 
     // The heart of the regression test: both checkboxes must still be checked
     // AND not disabled. The original symptom was every facet checkbox left

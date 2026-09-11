@@ -13,14 +13,14 @@
   - Cardinality: unlimited
 */
 
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Test Other Authors feature for Event Series', () => {
 
   it('Event creator should be able to add other authors', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
@@ -59,8 +59,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
@@ -82,8 +81,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance
@@ -98,8 +96,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Verify Registrations button is visible in sidebar
@@ -110,8 +107,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Click on Registrations button
@@ -129,8 +125,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("pecan@pie.org", "Pecan");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Verify Registrations button is NOT visible in sidebar
@@ -142,8 +137,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("pecan@pie.org", "Pecan");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Verify Edit link is NOT visible or accessible
@@ -162,8 +156,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
@@ -191,8 +184,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Verify Edit link is no longer visible for event series
@@ -210,8 +202,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
