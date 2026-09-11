@@ -59,7 +59,7 @@
         "access/infrastructure_news": "1.0.x-dev",
         "composer/installers": "^2.3.0",
         "connectci/access": "3.0.x-dev",
-        "connectci/asp-theme": "main-dev",
+        "connectci/asp-theme": "D8-2850-dev",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
         "connectci/webform_submission_search_api": "main-dev",
@@ -204,7 +204,7 @@
         "swagger-api/swagger-ui": "^3.52"
     },
     "require-dev": {
-        "connectci/amp_dev": "main-dev",
+        "connectci/amp_dev": "d8-2850-dev",
         "doctrine/instantiator": "~2.0.0",
         "drupal/core-dev": "^10.6.1",
         "drupal/devel": "^5.4",

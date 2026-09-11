@@ -353,7 +353,7 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
   });
 
   it("renders RP Account Setup CTA in the sidebar", () => {
-    // Sidebar uses CIDeR short_name ("Gamma") rather than the long descriptive title.
+    // Sidebar uses the resolved display name, not the long descriptive title.
     cy.get(".rp-sidebar").contains("GET AN ACCOUNT ON GAMMA");
     cy.get(".rp-sidebar").contains("Set up your Gamma account");
   });

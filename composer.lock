@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4a8425397e120dde9f6369c15cfefd50",
+    "content-hash": "4d2752c8c1cf22e30e7a326c5464ea60",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -706,13 +706,12 @@
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-main",
+            "version": "dev-D8-2850",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "e34882fc881bae306b35bcb5501f96e5b74353fa"
+                "reference": "aa552f8d3f7dd547865a59264123bf03417aba73"
             },
-            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -728,7 +727,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-08T16:07:00+00:00"
+            "time": "2026-09-11T16:41:35+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -19206,13 +19205,12 @@
         },
         {
             "name": "connectci/amp_dev",
-            "version": "dev-main",
+            "version": "dev-d8-2850",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "1dc6984b22732b130846c744a4e6865c26ea826d"
+                "reference": "8aae4c542cfc4861d6580240c99d546b72e01195"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0-or-later"
@@ -19222,7 +19220,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-08-14T18:00:44+00:00"
+            "time": "2026-09-11T17:40:27+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
@@ -24700,5 +24698,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
