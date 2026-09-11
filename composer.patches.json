@@ -15,11 +15,9 @@
       "Attach views_data_export JavaScript library": "https://www.drupal.org/files/issues/2023-06-01/views_data_export-3189760-22.patch"
     },
     "drupal/recurring_events": {
-      "Blank plugin ID error when resaving new dates": "patches/eventinstancecreatorpluginmanager.patch",
       "Registration contact page custom permissions": "patches/recurring_events-registration-route-perm.patch",
-      "Debug logging for duplicate event instance investigation": "patches/recurring_events-debug-duplicate-instances.patch",
       "Pass $event as context to hook_recurring_events_event_instance_alter() and drop moderation_state before adding a translation": "patches/recurring_events-instance-alter-context.patch",
-      "Guard undefined value/end_value keys in pre_create_alter exclude/include loops (fixes AJAX parsererror on event edit form; upstream in 3.0.0)": "patches/recurring_events-pre-create-alter-undefined-key.patch"
+      "Compare RegistrationType against the enum, not strings (reg_type token and registrant list view filter/title)": "patches/recurring_events-registration-type-enum-comparisons.patch"
     },
     "drupal/domain": {
       "Fix TypeError when domain source field is not present": "patches/domain_source-null-check-3482951.patch"
