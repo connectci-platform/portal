@@ -16,3 +16,4 @@ url_generators:
   - arbitrary
   - custom
   - entity_menu_link_content
+  - community_persona
