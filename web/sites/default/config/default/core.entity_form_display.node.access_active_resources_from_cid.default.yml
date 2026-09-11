@@ -100,7 +100,7 @@ third_party_settings:
         - field_rp_ondemand_url
         - field_rp_access_ood_login_link
         - field_rp_login_help_links
-      label: 'Login'
+      label: Login
       region: content
       parent_name: ''
       weight: 8
@@ -437,7 +437,7 @@ content:
       rows: 9
       summary_rows: 3
       placeholder: ''
-      show_summary: false
+      show_summary: true
     third_party_settings: {  }
   field_rp_display_name:
     type: string_textfield
