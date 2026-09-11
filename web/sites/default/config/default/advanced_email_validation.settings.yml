@@ -19,6 +19,8 @@ domain_lists:
     - ''
   banned:
     - centraltermites.site
+    - clarionstreams.site
+    - slappergiraffe.site
 local_list_only:
   disposable: false
   free: false
