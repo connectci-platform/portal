@@ -1,0 +1,70 @@
+{#
+/**
+ * @file
+ * Renders the OOCS classroom story author card and detail sections.
+ *
+ * Available variables:
+ * - author: Author card data (photo_url, first_name, last_name, role,
+ *   institution), or NULL.
+ * - implementation_tags: List of { label, url } linked tag structs.
+ * - science_domain_tags: List of { label, url } linked tag structs.
+ * - topic_tags: List of { label, url } linked tag structs.
+ * - class_context: Course context as a #processed_text render array, or NULL.
+ */
+#}
+
+<div class="bg-ood-light-gray p-3">
+  {% if author %}
+    <div class="oocs-author">
+      <img class="oocs-author__photo rounded-circle mb-3"
+           style="height:150px; width:150px; object-fit: cover;"
+           src="{{ author.photo_url }}"
+           alt="{{ author.first_name }} {{ author.last_name }} profile photo" />
+      <div class="oocs-author__meta mb-3">
+        {% if author.first_name or author.last_name %}
+          <h2 class="oocs-author__name mb-0" style="line-height: 1;">{{ author.first_name }} {{ author.last_name }}</h2>
+        {% endif %}
+        <div class="oocs-author__title-org classroom-person-details">
+          {% if author.role %}
+            <div>{{ author.role }}</div>
+          {% endif %}
+          {% if author.institution %}
+            <div class="font-italic">{{ author.institution }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if implementation_tags or science_domain_tags %}
+    <h2>Implementation Tags</h2>
+    <div class="square-tags tag-list">
+      <ul>
+        {% for tag in implementation_tags %}
+          <li><a href="#main-content" class="bg-white">{{ tag.label }}</a></li>
+        {% endfor %}
+        {% for tag in science_domain_tags %}
+          <li><a href="#main-content" class="bg-white">{{ tag.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if topic_tags %}
+    <h2 class="mt-4">Tags</h2>
+    <div class="square-tags tag-list">
+      <ul>
+        {% for tag in topic_tags %}
+          <li><a href="#main-content" class="bg-white">{{ tag.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if class_context %}
+    <h2 class="mt-4">Course Context</h2>
+    {# Rendered via #processed_text in the block: the field's text format runs
+       its filters, so the stored HTML displays safely. Never use |raw here. #}
+    {{ class_context }}
+  {% endif %}
+</div>

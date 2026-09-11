@@ -133,6 +133,7 @@ module:
   node: 0
   ondemand: 0
   ood_contributions: 0
+  ood_general: 0
   ood_software: 0
   openapi: 0
   openapi_rest: 0

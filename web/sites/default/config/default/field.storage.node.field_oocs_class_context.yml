@@ -1,0 +1,19 @@
+uuid: a59d2d17-0bf2-48e5-add2-726f4601da25
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - text
+id: node.field_oocs_class_context
+field_name: field_oocs_class_context
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

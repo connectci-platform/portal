@@ -1,0 +1,225 @@
+uuid: ed6bf687-35a4-4aba-9e93-8daa98bd52dd
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.open_ondemand_classroom_stories.body
+    - field.field.node.open_ondemand_classroom_stories.field_domain_access
+    - field.field.node.open_ondemand_classroom_stories.field_domain_all_affiliates
+    - field.field.node.open_ondemand_classroom_stories.field_domain_source
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_apps_used
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_class_context
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_implementation_tags
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_project_summary
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_science_domain_tags
+    - field.field.node.open_ondemand_classroom_stories.field_oocs_topic_tags
+    - node.type.open_ondemand_classroom_stories
+  module:
+    - layout_builder
+    - ood_general
+    - text
+    - user
+third_party_settings:
+  layout_builder:
+    enabled: true
+    allow_custom: false
+    sections:
+      -
+        layout_id: layout_twocol_section
+        layout_settings:
+          label: 'Content section'
+          context_mapping: {  }
+          column_widths: 75-25
+          layout_builder_styles_style:
+            bg_light_teal_overflow_section: 0
+            border_b_2: 0
+            border_gray: 0
+            mb_10_section: 0
+            md_order_1: 0
+            md_order_2: 0
+            mobile_row_reverse: 0
+            mt_4_section: 0
+            order_1: 0
+            order_2: 0
+            pt_20: 0
+            _layout__region_second_order_1: 0
+        components:
+          65dae20d-250d-4046-bfd7-78861c439f22:
+            uuid: 65dae20d-250d-4046-bfd7-78861c439f22
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:body'
+              label: Details
+              label_display: visible
+              provider: layout_builder
+              context_mapping:
+                entity: layout_builder.entity
+                view_mode: view_mode
+              formatter:
+                type: text_default
+                label: hidden
+                settings: {  }
+                third_party_settings: {  }
+            weight: 2
+            additional:
+              layout_builder_styles_style:
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+                __div_h_full: 0
+          512bed8d-6f36-4c02-bd01-0f58c1164e56:
+            uuid: 512bed8d-6f36-4c02-bd01-0f58c1164e56
+            region: second
+            configuration:
+              id: oocs_story_block
+              label: 'OOCS Classroom Story Details'
+              label_display: '0'
+              provider: ood_general
+              context_mapping: {  }
+            weight: 0
+            additional:
+              layout_builder_styles_style:
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+                __div_h_full: 0
+          bb0d5765-c45b-4277-a0fd-20fbbe99bef7:
+            uuid: bb0d5765-c45b-4277-a0fd-20fbbe99bef7
+            region: first
+            configuration:
+              id: 'field_block:node:open_ondemand_classroom_stories:field_oocs_project_summary'
+              label: Summary
+              label_display: visible
+              provider: layout_builder
+              context_mapping:
+                entity: layout_builder.entity
+                view_mode: view_mode
+              formatter:
+                type: basic_string
+                label: hidden
+                settings: {  }
+                third_party_settings: {  }
+            weight: 1
+            additional:
+              layout_builder_styles_style:
+                __div_h_full: 0
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+          d5ee60d0-b06e-4e57-8653-e6a6e98cf730:
+            uuid: d5ee60d0-b06e-4e57-8653-e6a6e98cf730
+            region: first
+            configuration:
+              id: oocs_apps_block
+              label: 'OOCS Apps Used'
+              label_display: '0'
+              provider: ood_general
+              context_mapping: {  }
+            weight: 0
+            additional:
+              layout_builder_styles_style:
+                __div_h_full: 0
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+        third_party_settings: {  }
+id: node.open_ondemand_classroom_stories.default
+targetEntityType: node
+bundle: open_ondemand_classroom_stories
+mode: default
+content:
+  body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 101
+    region: content
+  field_oocs_apps_used:
+    type: entity_reference_label
+    label: above
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 103
+    region: content
+  field_oocs_class_context:
+    type: basic_string
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 106
+    region: content
+  field_oocs_implementation_tags:
+    type: entity_reference_label
+    label: above
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 104
+    region: content
+  field_oocs_project_summary:
+    type: basic_string
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 102
+    region: content
+  field_oocs_science_domain_tags:
+    type: entity_reference_label
+    label: above
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 107
+    region: first
+  field_oocs_topic_tags:
+    type: entity_reference_label
+    label: above
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 105
+    region: content
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden:
+  field_domain_access: true
+  field_domain_all_affiliates: true
+  field_domain_source: true
+  search_api_excerpt: true
