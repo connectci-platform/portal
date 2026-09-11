@@ -6,13 +6,13 @@
  * @var hub - structured row data from _ood_software_build_hub_row().
  *
  * Header cluster, left→right:
- *   [status badge] | [pencil — inferred+can_edit] | Last sync <ts> [resync]
+ *   [status badge] | [pencil — inferred+can_edit] | Submitted <ts>
  *   | [github] | [catalog] | [owner name][email — admin] | [lifecycle icons]
  */
 #}
 <article class="appverse-hub-card state-{{ hub.moderation_state }}">
   {# Header is a CSS grid with shared column tracks so fields line up across
-     cards: title | last-sync+resync | github | owner | status | actions.
+     cards: title | submitted | github | owner | status | actions.
      Status sits in its own column next to the actions so it always lines up.
      Each cell always renders (even when empty) to preserve column alignment. #}
   <header class="appverse-hub-card__header">
@@ -26,11 +26,10 @@
       {% endif %}
     </h3>
 
-    <div class="appverse-hub-card__cell appverse-hub-card__cell--sync">
-      {% if hub.last_synced %}
-        <span class="appverse-hub-card__last-synced">{{ 'Last sync'|t }} {{ hub.last_synced }}</span>
+    <div class="appverse-hub-card__cell appverse-hub-card__cell--submitted">
+      {% if hub.submitted %}
+        <span class="appverse-hub-card__submitted">{{ 'Submitted'|t }} {{ hub.submitted }}</span>
       {% endif %}
-      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
     </div>
 
     {# The card title links to the catalog, so a separate catalog icon would be

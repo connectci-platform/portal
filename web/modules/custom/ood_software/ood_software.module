@@ -1757,7 +1757,6 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   $id = $repo->id();
   $dest = urlencode(\Drupal::service('path.current')->getPath());
   $actions = [
-    'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise'),
     'send_for_review' => NULL,
     'publish' => NULL,
     'unpublish' => NULL,
@@ -1820,7 +1819,6 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
   $githubUrl = $repoLinkValues[0]['uri'] ?? '';
 
   $validationSt = $repo->get('field_repo_validation_st')->value ?? '';
-  $lastSyncedTs = $repo->get('field_repo_last_synced')->value ?? NULL;
 
   $isInferred = $shape === 'inferred';
   $apps = [];
@@ -1911,7 +1909,10 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'status' => _ood_software_hub_badge($moderationState),
     'has_validation_issues' => in_array($validationSt, ['degraded', 'stale_invalid'], TRUE),
     'validation_st' => $validationSt,
-    'last_synced' => $lastSyncedTs ? \Drupal::service('date.formatter')->format((int) $lastSyncedTs, 'custom', 'm-d-y H:i') : '',
+    // The card shows when the repo was submitted (node created time) rather
+    // than the former last-sync timestamp, which is now surfaced only via
+    // the exposed "Last synced" views filter.
+    'submitted' => \Drupal::service('date.formatter')->format($repo->getCreatedTime(), 'custom', 'm-d-y H:i'),
     'unpublished_after_publish' => !$repo->isPublished() && $moderationState === 'published',
     'moderation_comment' => $moderationComment,
     'edit_url' => $editUrl,
