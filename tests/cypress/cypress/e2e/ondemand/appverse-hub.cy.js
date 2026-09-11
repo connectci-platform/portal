@@ -302,7 +302,7 @@ describe('Appverse Maintenance Hub', () => {
     });
 
     it('renders the manage-collections page with exposed filters', () => {
-      cy.visit('/appverse/manage-repos', { failOnStatusCode: false });
+      cy.visit('/appverse/manage-repos?status=All', { failOnStatusCode: false });
       cy.get('body').then(($body) => {
         if ($body.text().includes('Access denied')) {
           cy.log('Administrator user lacks "administer appverse content" permission; skipping.');
@@ -318,7 +318,7 @@ describe('Appverse Maintenance Hub', () => {
   describe('Redesigned hub layout', () => {
     it('admin manage-repos shows owner block and header icons', () => {
       cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
-      cy.visit('/appverse/manage-repos', { failOnStatusCode: false });
+      cy.visit('/appverse/manage-repos?status=All', { failOnStatusCode: false });
       cy.get('body').then(($body) => {
         if ($body.text().includes('Access denied')) {
           cy.log('Administrator lacks "administer appverse content"; skipping.');
@@ -485,7 +485,7 @@ describe('Appverse Maintenance Hub', () => {
       });
 
       it('emails the contributor with the reviewer comment', () => {
-        cy.visit('/appverse/manage-repos', { failOnStatusCode: false });
+        cy.visit('/appverse/manage-repos?status=All', { failOnStatusCode: false });
         cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
           .within(() => {
             // Request changes is now a direct inline icon link (no kebab).
@@ -526,7 +526,7 @@ describe('Appverse Maintenance Hub', () => {
       });
 
       it('emails the contributor AND cascade-unpublishes member apps', () => {
-        cy.visit('/appverse/manage-repos', { failOnStatusCode: false });
+        cy.visit('/appverse/manage-repos?status=All', { failOnStatusCode: false });
         cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
           .within(() => {
             // Request changes is now a direct inline icon link (no kebab).
@@ -578,7 +578,7 @@ describe('Appverse Maintenance Hub', () => {
     });
 
     it('emails the contributor once and cascade-publishes member apps', () => {
-      cy.visit('/appverse/manage-repos', { failOnStatusCode: false });
+      cy.visit('/appverse/manage-repos?status=All', { failOnStatusCode: false });
       cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
         .within(() => {
           // Publish is an icon button; its label lives in aria-label, not text.
