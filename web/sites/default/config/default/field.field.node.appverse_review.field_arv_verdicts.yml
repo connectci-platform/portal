@@ -1,0 +1,30 @@
+uuid: 0e15337b-af7f-4175-a22b-404b09075d8a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_verdicts
+    - node.type.appverse_review
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - entity_reference_revisions
+id: node.appverse_review.field_arv_verdicts
+field_name: field_arv_verdicts
+entity_type: node
+bundle: appverse_review
+label: 'Per-app verdicts'
+description: 'One verdict per app in the reviewed repo. Each carries the conclusion, indicators, and findings for that app.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      review_verdict: review_verdict
+    target_bundles_drag_drop:
+      review_verdict:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

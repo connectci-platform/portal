@@ -1,0 +1,18 @@
+uuid: 48c2c1f2-5e04-4045-931e-73dd7c125054
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_moderator_notes
+field_name: field_arv_moderator_notes
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

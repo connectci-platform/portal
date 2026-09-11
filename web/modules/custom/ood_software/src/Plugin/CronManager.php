@@ -31,6 +31,13 @@ class CronManager {
   }
 
   /**
+   * Poll GitHub Actions for completed AI review runs.
+   */
+  public static function reviewPoll() {
+    \Drupal::service('ood_software.review_dispatcher')->pollForResults();
+  }
+
+  /**
    * Update app info from github.
    */
   public static function appUpdates() {

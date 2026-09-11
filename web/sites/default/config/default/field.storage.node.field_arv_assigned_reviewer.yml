@@ -1,0 +1,19 @@
+uuid: 25aede31-c4bb-4bec-a8ee-a8e52753a1d8
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_assigned_reviewer
+field_name: field_arv_assigned_reviewer
+entity_type: node
+type: entity_reference
+settings:
+  target_type: user
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

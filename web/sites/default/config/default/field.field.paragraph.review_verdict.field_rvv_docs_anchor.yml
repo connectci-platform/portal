@@ -1,0 +1,19 @@
+uuid: c3493af5-a79a-4279-b17d-94c88ebfe8c5
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_docs_anchor
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_docs_anchor
+field_name: field_rvv_docs_anchor
+entity_type: paragraph
+bundle: review_verdict
+label: 'Documentation anchor'
+description: 'Fragment into report_html for the documentation indicator deep-link (e.g. #quality). Seeded from the artifact.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

@@ -1,0 +1,21 @@
+uuid: e8dc6605-c0d0-41e4-9acf-ba09d86a9aeb
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_aspect
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_aspect
+field_name: field_rvf_aspect
+entity_type: paragraph
+bundle: review_finding
+label: Aspect
+description: 'Which review aspect produced this finding.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

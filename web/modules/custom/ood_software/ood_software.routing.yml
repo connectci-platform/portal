@@ -92,6 +92,20 @@ ood_software.app_send_for_review:
 
 # --- Admin-only transitions ---
 
+ood_software.repo_re_review:
+  path: '/appverse/repo/{node}/re-review'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::reReview'
+    _title: 'Re-review Repo'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
 ood_software.repo_request_changes:
   path: '/appverse/repo/{node}/request-changes'
   defaults:

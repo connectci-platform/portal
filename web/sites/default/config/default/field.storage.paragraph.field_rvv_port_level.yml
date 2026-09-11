@@ -1,0 +1,30 @@
+uuid: 784815b6-056e-47b8-b27d-0714eb796b35
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+    - options
+id: paragraph.field_rvv_port_level
+field_name: field_rvv_port_level
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: solid
+      label: Solid
+    -
+      value: some_notes
+      label: 'Some notes'
+    -
+      value: needs_attention
+      label: 'Needs attention'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

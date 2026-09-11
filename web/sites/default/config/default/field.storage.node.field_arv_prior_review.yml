@@ -1,0 +1,19 @@
+uuid: 3428f732-2095-40cb-87c2-1b935eb457ed
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_prior_review
+field_name: field_arv_prior_review
+entity_type: node
+type: entity_reference
+settings:
+  target_type: node
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

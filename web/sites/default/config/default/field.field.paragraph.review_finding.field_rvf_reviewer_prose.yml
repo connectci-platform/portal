@@ -1,0 +1,20 @@
+uuid: 2ab052bd-8ddd-4563-8c55-e8f14648a6d6
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_reviewer_prose
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_reviewer_prose
+field_name: field_rvf_reviewer_prose
+entity_type: paragraph
+bundle: review_finding
+label: 'Reviewer prose'
+description: 'Reviewer-editable commentary on this finding. Seeded by the tool, edited by the reviewer. Persists across re-reviews via stable ID matching.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

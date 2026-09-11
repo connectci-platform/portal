@@ -1,0 +1,408 @@
+uuid: null
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.appverse_review.field_arv_assessment
+    - field.field.node.appverse_review.field_arv_assigned_reviewer
+    - field.field.node.appverse_review.field_arv_indicators_default
+    - field.field.node.appverse_review.field_arv_maint_anchor
+    - field.field.node.appverse_review.field_arv_maint_level
+    - field.field.node.appverse_review.field_arv_maint_level_note
+    - field.field.node.appverse_review.field_arv_maint_summary
+    - field.field.node.appverse_review.field_arv_moderator_notes
+    - field.field.node.appverse_review.field_arv_prior_review
+    - field.field.node.appverse_review.field_arv_recommendation
+    - field.field.node.appverse_review.field_arv_recommendation_note
+    - field.field.node.appverse_review.field_arv_ref
+    - field.field.node.appverse_review.field_arv_repo
+    - field.field.node.appverse_review.field_arv_repo_criteria
+    - field.field.node.appverse_review.field_arv_repo_findings
+    - field.field.node.appverse_review.field_arv_repo_shape
+    - field.field.node.appverse_review.field_arv_report_html
+    - field.field.node.appverse_review.field_arv_report_md
+    - field.field.node.appverse_review.field_arv_report_pdf
+    - field.field.node.appverse_review.field_arv_reviewed_at
+    - field.field.node.appverse_review.field_arv_run_meta
+    - field.field.node.appverse_review.field_arv_sha
+    - field.field.node.appverse_review.field_arv_tool_version
+    - field.field.node.appverse_review.field_arv_verdicts
+    - node.type.appverse_review
+  module:
+    - content_moderation
+    - field_group
+    - file
+    - paragraphs
+    - text
+third_party_settings:
+  field_group:
+    group_review_tabs:
+      children:
+        - group_tab_overview
+        - group_tab_verdicts
+        - group_tab_repo_findings
+        - group_tab_notes
+      label: 'Review'
+      region: content
+      parent_name: ''
+      weight: 2
+      format_type: tabs
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        direction: horizontal
+        width_breakpoint: 640
+    group_tab_overview:
+      children:
+        - group_repo_signal
+        - group_machine_data
+      label: 'Overview'
+      region: content
+      parent_name: 'group_review_tabs'
+      weight: 3
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: open
+        description: ''
+        required_fields: true
+    group_tab_verdicts:
+      children:
+        - field_arv_verdicts
+      label: 'Verdicts'
+      region: content
+      parent_name: 'group_review_tabs'
+      weight: 4
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: closed
+        description: ''
+        required_fields: true
+    group_tab_repo_findings:
+      children:
+        - field_arv_repo_findings
+      label: 'Repo findings'
+      region: content
+      parent_name: 'group_review_tabs'
+      weight: 5
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: closed
+        description: ''
+        required_fields: true
+    group_tab_notes:
+      children:
+        - field_arv_assigned_reviewer
+        - field_arv_moderator_notes
+        - field_arv_assessment
+      label: 'Notes'
+      region: content
+      parent_name: 'group_review_tabs'
+      weight: 6
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: closed
+        description: ''
+        required_fields: true
+    group_repo_signal:
+      children:
+        - field_arv_maint_level
+        - field_arv_maint_summary
+        - field_arv_maint_level_note
+      label: 'Repo signal - Maintenance'
+      region: content
+      parent_name: 'group_tab_overview'
+      weight: 0
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
+    group_machine_data:
+      children:
+        - field_arv_repo
+        - field_arv_sha
+        - field_arv_ref
+        - field_arv_reviewed_at
+        - field_arv_tool_version
+        - field_arv_repo_shape
+        - field_arv_recommendation
+        - field_arv_recommendation_note
+        - field_arv_report_md
+        - field_arv_report_pdf
+        - field_arv_report_html
+        - field_arv_prior_review
+        - field_arv_maint_anchor
+        - field_arv_run_meta
+        - field_arv_repo_criteria
+        - field_arv_indicators_default
+      label: 'Machine data - seeded from the artifact, do not edit'
+      region: content
+      parent_name: 'group_tab_overview'
+      weight: 1
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: true
+id: node.appverse_review.default
+targetEntityType: node
+bundle: appverse_review
+mode: default
+content:
+  title:
+    type: string_textfield
+    weight: 0
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  moderation_state:
+    type: moderation_state_default
+    weight: 100
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_maint_level:
+    type: options_select
+    weight: 10
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_maint_summary:
+    type: string_textfield
+    weight: 11
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_maint_level_note:
+    type: text_textarea
+    weight: 12
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_repo:
+    type: entity_reference_autocomplete
+    weight: 20
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_sha:
+    type: string_textfield
+    weight: 21
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_ref:
+    type: string_textfield
+    weight: 22
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_reviewed_at:
+    type: datetime_timestamp
+    weight: 23
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_tool_version:
+    type: string_textfield
+    weight: 24
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_repo_shape:
+    type: options_select
+    weight: 25
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_recommendation:
+    type: options_select
+    weight: 26
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_recommendation_note:
+    type: text_textarea
+    weight: 27
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_report_md:
+    type: file_generic
+    weight: 28
+    region: content
+    settings:
+      progress_indicator: throbber
+    third_party_settings: {  }
+  field_arv_report_pdf:
+    type: file_generic
+    weight: 29
+    region: content
+    settings:
+      progress_indicator: throbber
+    third_party_settings: {  }
+  field_arv_report_html:
+    type: file_generic
+    weight: 30
+    region: content
+    settings:
+      progress_indicator: throbber
+    third_party_settings: {  }
+  field_arv_prior_review:
+    type: entity_reference_autocomplete
+    weight: 31
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_maint_anchor:
+    type: string_textfield
+    weight: 32
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_run_meta:
+    type: string_textarea
+    weight: 33
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_repo_criteria:
+    type: string_textarea
+    weight: 34
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_indicators_default:
+    type: string_textarea
+    weight: 35
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_verdicts:
+    type: paragraphs
+    weight: 40
+    region: content
+    settings:
+      title: Verdict
+      title_plural: Verdicts
+      edit_mode: open
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: review_verdict
+      features:
+        collapse_edit_all: collapse_edit_all
+        duplicate: '0'
+        add_above: '0'
+    third_party_settings: {  }
+  field_arv_repo_findings:
+    type: paragraphs
+    weight: 50
+    region: content
+    settings:
+      title: Finding
+      title_plural: Findings
+      edit_mode: closed
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: review_finding
+      features:
+        collapse_edit_all: collapse_edit_all
+        duplicate: '0'
+        add_above: '0'
+    third_party_settings: {  }
+  field_arv_assigned_reviewer:
+    type: entity_reference_autocomplete
+    weight: 60
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_moderator_notes:
+    type: text_textarea
+    weight: 61
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_assessment:
+    type: text_textarea
+    weight: 62
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+hidden: 
+  created: true
+  langcode: true
+  path: true
+  promote: true
+  sticky: true
+  uid: true
+  url_redirects: true

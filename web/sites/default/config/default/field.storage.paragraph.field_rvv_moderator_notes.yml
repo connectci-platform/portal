@@ -1,0 +1,18 @@
+uuid: 0f7190de-1397-4e71-bd6d-05482304a891
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_moderator_notes
+field_name: field_rvv_moderator_notes
+entity_type: paragraph
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

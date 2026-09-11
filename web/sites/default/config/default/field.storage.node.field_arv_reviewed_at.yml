@@ -1,0 +1,18 @@
+uuid: 2bf5908e-c280-490a-a03c-a35154f6e146
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_reviewed_at
+field_name: field_arv_reviewed_at
+entity_type: node
+type: timestamp
+settings: {  }
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

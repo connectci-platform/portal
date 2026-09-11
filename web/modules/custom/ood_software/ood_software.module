@@ -1075,6 +1075,10 @@ function ood_software_node_update(NodeInterface $node): void {
     }
     \Drupal::service('ood_software.repo_notifier')
       ->notifyTransition($node, $previousState, $extras);
+
+    // Dispatch AI review when entering ready_for_review.
+    \Drupal::service('ood_software.review_dispatcher')
+      ->onTransition($node, $previousState);
   }
 }
 
@@ -1677,6 +1681,78 @@ function _ood_software_hub_badge(string $state): array {
 }
 
 /**
+ * Maps a review recommendation to a badge label + modifier for the hub card.
+ */
+function _ood_software_hub_review_badge(?string $recommendation): array {
+  $map = [
+    'accepted' => ['label' => t('Accepted'), 'modifier' => 'success'],
+    'accepted_with_suggestions' => ['label' => t('Suggestions'), 'modifier' => 'warning'],
+    'changes_requested' => ['label' => t('Changes needed'), 'modifier' => 'error'],
+    'rejected' => ['label' => t('Rejected'), 'modifier' => 'error'],
+  ];
+  if ($recommendation === NULL) {
+    return ['label' => '', 'modifier' => ''];
+  }
+  return $map[$recommendation] ?? ['label' => t('@r', ['@r' => ucfirst($recommendation)]), 'modifier' => 'muted'];
+}
+
+/**
+ * Maps a review status to a badge label + modifier.
+ */
+function _ood_software_hub_review_status_badge(?string $status): array {
+  $map = [
+    'pending' => ['label' => t('Review pending'), 'modifier' => 'muted', 'icon' => 'bi-hourglass-split'],
+    'in_progress' => ['label' => t('Review running'), 'modifier' => 'warning', 'icon' => 'bi-gear-wide-connected'],
+    'complete' => ['label' => t('Review complete'), 'modifier' => 'success', 'icon' => 'bi-check-circle'],
+    'error' => ['label' => t('Review failed'), 'modifier' => 'error', 'icon' => 'bi-exclamation-triangle'],
+  ];
+  if ($status === NULL) {
+    return ['label' => '', 'modifier' => '', 'icon' => ''];
+  }
+  return $map[$status] ?? ['label' => t('@s', ['@s' => ucfirst($status)]), 'modifier' => 'muted', 'icon' => ''];
+}
+
+/**
+ * Builds the review info block for a hub card.
+ */
+function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array {
+  $reviewStatus = $repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty()
+    ? $repo->get('field_review_status')->value
+    : NULL;
+  $recommendation = $repo->hasField('field_review_recommendation') && !$repo->get('field_review_recommendation')->isEmpty()
+    ? $repo->get('field_review_recommendation')->value
+    : NULL;
+
+  $reportUrl = NULL;
+  if ($repo->hasField('field_review_report') && !$repo->get('field_review_report')->isEmpty()) {
+    $file = $repo->get('field_review_report')->entity;
+    if ($file) {
+      $reportUrl = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
+    }
+  }
+
+  $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
+  $reReviewAction = NULL;
+  if ($isAdmin && in_array($reviewStatus, ['complete', 'error'], TRUE)) {
+    $reReviewAction = _ood_software_hub_action_form(
+      'appverse/repo/' . $repo->id() . '/re-review',
+      t('Re-review'),
+      'bi-arrow-repeat',
+      'primary'
+    );
+  }
+
+  return [
+    'status' => $reviewStatus,
+    'status_badge' => _ood_software_hub_review_status_badge($reviewStatus),
+    'recommendation' => $recommendation,
+    'recommendation_badge' => _ood_software_hub_review_badge($recommendation),
+    'report_url' => $reportUrl,
+    're_review_action' => $reReviewAction,
+  ];
+}
+
+/**
  * Loads the member appverse_app nodes for a repo (indexed query).
  *
  * Memoized per repo id for the request: the row builder and the cache-meta
@@ -1895,6 +1971,8 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'unresolved' => $discoveryUnresolved,
   ];
 
+  $review = _ood_software_hub_review_info($repo);
+
   return [
     'repo_id' => (int) $repo->id(),
     'title' => $repo->label(),
@@ -1919,6 +1997,7 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'actions' => _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished()),
     'discovery_tags' => $discoveryTags,
     'single_app_tags' => $singleAppTags,
+    'review' => $review,
     'apps' => $apps,
   ];
 }

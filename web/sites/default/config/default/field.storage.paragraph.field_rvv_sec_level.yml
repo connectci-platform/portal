@@ -1,0 +1,30 @@
+uuid: 66db6aa1-cd9d-446c-8a64-77979afdad7f
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+    - options
+id: paragraph.field_rvv_sec_level
+field_name: field_rvv_sec_level
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: solid
+      label: Solid
+    -
+      value: some_notes
+      label: 'Some notes'
+    -
+      value: needs_attention
+      label: 'Needs attention'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

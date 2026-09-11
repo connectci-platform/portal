@@ -1,0 +1,21 @@
+uuid: ceac4a7a-9ed5-4158-b98d-1221b76df9dc
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_port_summary
+field_name: field_rvv_port_summary
+entity_type: paragraph
+type: string
+settings:
+  max_length: 255
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

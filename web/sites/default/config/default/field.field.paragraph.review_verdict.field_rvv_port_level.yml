@@ -1,0 +1,21 @@
+uuid: 16c9bfb3-1eb1-4258-a50f-f250827ae299
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_port_level
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - options
+id: paragraph.review_verdict.field_rvv_port_level
+field_name: field_rvv_port_level
+entity_type: paragraph
+bundle: review_verdict
+label: 'Portability level'
+description: "Published level for the portability indicator. Seeded from the tool's derived default; the reviewer may change it freely, with a justification note required and the adjustment marked publicly."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

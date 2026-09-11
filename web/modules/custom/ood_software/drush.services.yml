@@ -9,3 +9,8 @@ services:
     arguments: ['@entity_type.manager', '@ood_software.repo_sync', '@ood_software.gh', '@logger.factory']
     tags:
       - { name: drush.command }
+  ood_software.commands.review_seed:
+    class: \Drupal\ood_software\Commands\AppverseReviewSeedCommands
+    arguments: ['@ood_software.review_seeder']
+    tags:
+      - { name: drush.command }

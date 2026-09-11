@@ -4,11 +4,14 @@ status: true
 dependencies:
   config:
     - node.type.appverse_app
+    - node.type.appverse_review
     - workflows.workflow.appverse_editorial
+    - workflows.workflow.appverse_review_workflow
   module:
     - content_moderation
     - domain_access
     - node
+    - ood_software
 id: appverse_pm
 label: 'Appverse PM'
 weight: 31
@@ -22,6 +25,7 @@ permissions:
   - 'delete appverse_app revisions'
   - 'delete own appverse_app content'
   - 'edit any appverse_app content'
+  - 'edit any appverse_review content'
   - 'edit own appverse_app content'
   - 'revert appverse_app revisions'
   - 'submit appverse repo'
@@ -30,9 +34,20 @@ permissions:
   - 'use appverse_editorial transition archived_draft'
   - 'use appverse_editorial transition archived_published'
   - 'use appverse_editorial transition create_new_draft'
+  - 'use appverse_editorial transition decline'
   - 'use appverse_editorial transition publish'
   - 'use appverse_editorial transition request_adjustment'
+  - 'use appverse_editorial transition restore_declined'
   - 'use appverse_editorial transition review_to_review'
   - 'use appverse_editorial transition send_for_review'
   - 'use appverse_editorial transition unpublish'
+  - 'use appverse_review_workflow transition begin_review'
+  - 'use appverse_review_workflow transition publish'
+  - 'use appverse_review_workflow transition request_contributor_input'
+  - 'use appverse_review_workflow transition resume_review'
+  - 'use appverse_review_workflow transition return_to_draft'
+  - 'use appverse_review_workflow transition unpublish'
+  - 'view any unpublished content'
   - 'view appverse_app revisions'
+  - 'view appverse_review revisions'
+  - 'view latest version'
