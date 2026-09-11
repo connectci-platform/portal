@@ -1,0 +1,14 @@
+uuid: 3a6b0e2b-2b8e-4c19-9c3f-6b3f2e6c9a4d
+langcode: en
+status: true
+dependencies:
+  config:
+    - user.role.ondemand_pm
+  module:
+    - user
+id: user_add_role_action.ondemand_pm
+label: 'Add the OnDemand PM role to the selected user(s)'
+type: user
+plugin: user_add_role_action
+configuration:
+  rid: ondemand_pm
