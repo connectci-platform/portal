@@ -1,0 +1,80 @@
+Compare RegistrationType against the enum, not against strings.
+
+3.0.0 changed RegistrationCreationService::getRegistrationType() to return a
+\Drupal\recurring_events_registration\Enum\RegistrationType instead of a string,
+but three comparison sites were left comparing against the old string values. A
+backed enum is never loosely equal to its own string value, so each of these
+silently takes the wrong branch:
+
+ - recurring_events_registration.module: the [eventinstance:reg_type] token
+   always renders "event", even for series-scoped registration.
+ - recurring_events_views.module (twice): the registrant list view always
+   filters and titles by series, so instance-scoped registration lists show
+   every registrant in the series rather than the ones for that instance.
+
+Report upstream and drop this patch once fixed there.
+
+--- a/modules/recurring_events_registration/recurring_events_registration.module
++++ b/modules/recurring_events_registration/recurring_events_registration.module
+@@ -23,6 +23,7 @@
+ use Drupal\recurring_events\Entity\EventSeries;
+ use Drupal\recurring_events_registration\Entity\Registrant;
+ use Drupal\recurring_events_registration\Entity\RegistrantInterface;
++use Drupal\recurring_events_registration\Enum\RegistrationType;
+ use Drupal\recurring_events_registration\Form\RegistrantForm;
+ use Drupal\recurring_events_registration\Plugin\ComputedField\AvailabilityCount;
+ use Drupal\recurring_events_registration\Plugin\ComputedField\RegistrationCount;
+@@ -734,7 +735,7 @@
+           break;
+ 
+         case 'reg_type':
+-          $replacements[$original] = $creation_service->getRegistrationType() == 'series' ? t('series') : t('event');
++          $replacements[$original] = $creation_service->getRegistrationType() === RegistrationType::Series ? t('series') : t('event');
+           break;
+       }
+     }
+--- a/modules/recurring_events_views/recurring_events_views.module
++++ b/modules/recurring_events_views/recurring_events_views.module
+@@ -9,6 +9,7 @@
+ 
+ use Drupal\Component\Utility\Html;
+ use Drupal\Core\Routing\RouteMatchInterface;
++use Drupal\recurring_events_registration\Enum\RegistrationType;
+ use Drupal\views\Plugin\views\query\QueryPluginBase;
+ use Drupal\views\ViewExecutable;
+ use Symfony\Component\Routing\Exception\RouteNotFoundException;
+@@ -80,14 +81,14 @@
+           $service = \Drupal::service('recurring_events_registration.creation_service');
+           $service->setEventInstance($eventinstance);
+           switch ($service->getRegistrationType()) {
+-            case 'instance':
++            case RegistrationType::Instance:
+               $field = 'registrant.eventinstance_id';
+               $value = [
+                 $eventinstance->id(),
+               ];
+               break;
+ 
+-            case 'series':
++            case RegistrationType::Series:
+             default:
+               $field = 'registrant.eventseries_id';
+               $value = [
+@@ -128,7 +129,7 @@
+           $format = $config->get('date_format');
+           $name = $eventinstance->title->value;
+           switch ($service->getRegistrationType()) {
+-            case 'instance':
++            case RegistrationType::Instance:
+               $timezone = new \DateTimeZone(date_default_timezone_get());
+               $title = t('Registrations for %name on %date', [
+                 '%name' => $name,
+@@ -136,7 +137,7 @@
+               ]);
+               break;
+ 
+-            case 'series':
++            case RegistrationType::Series:
+             default:
+               $title = t('Registrations for series: %name', [
+                 '%name' => $name,
