@@ -33,7 +33,7 @@ describe('test affinity group request form', () => {
     cy.get('input[name="affinity_group_name"]').type('affinity group galaxy quest 3800');
     cy.get('#edit-short-description').type('TEST');
     cy.get('textarea[name="project_description"]').type('TEST');
-    cy.get('.form-item-tags input.select2-search__field').type('login{enter}');
+    cy.get('.form-item-tags .select2-search__field').type('login{enter}');
 
     // adding force because these elements are covering each other.
     cy.get('#edit-ask-ci-locale-url').type('http://1.com', { force: true });
