@@ -54,7 +54,7 @@ describe("Admin user uses form to create a KB Resource", () => {
     // tag "finite-element-analysis" is selected
     cy.get('span[data-tid="588"]').click();
 
-    cy.get('.form-item-domain').find('input').type('ACCESS{enter}');
+    cy.get('.form-item-domain').find('.select2-search__field').type('ACCESS{enter}');
 
     // submit
     cy.get("#edit-submit").click();
