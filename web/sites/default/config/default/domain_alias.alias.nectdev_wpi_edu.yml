@@ -1,9 +1,0 @@
-uuid: 6228fe70-2ff1-486b-9c4b-e1dbd9143e7c
-langcode: en
-status: true
-dependencies: {  }
-id: nectdev_wpi_edu
-domain_id: nectd8_wpi_edu
-pattern: nectdev.wpi.edu
-redirect: 0
-environment: development

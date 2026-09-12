@@ -6,33 +6,47 @@
   campuschampionsadmin roles. It filters to mentorships in the
   "Campus Champions AI Mentorship" program.
 
-  Fixture users (sanitized local DB, emails are user+{uid}@localhost.localdomain):
-    uid 5292 — champions_mentorship_admin only
-    uid 746  — campuschampionsadmin only
-    uid 519  — ccmnet_pm only (no access)
-    uid 100  — ccmnet_pm + administrator (full admin, not tested here)
+  Users and content come from amp_dev fixtures (not prod accounts, whose roles
+  drift when the CI DB is rebuilt from prod):
+    test_mentorship_admin — champions_mentorship_admin (can view)
+    test_cc_admin         — campuschampionsadmin (can view)
+    test_ccmnet_pm_only   — ccmnet_pm only (no access to cc-status)
+  The fixture mentorship "[CC-AI] AMP Test Mentorship" is tagged to the ccmnet
+  domain and the Campus Champions AI Mentorship program, so it appears in the
+  listing on ccmnet.ddev.site.
 */
 
 const STATUS_PATH = "/mentorships/cc-status";
 const BASE_STATUS_PATH = "/mentorships/status";
 
-// One of the 5 known CC mentorship titles present on local
-const KNOWN_CC_TITLE = "[CC-AI] Campus Champions AI Mentorship";
+// The amp_dev fixture mentorship, present in the cc-status listing.
+const KNOWN_CC_TITLE = "[CC-AI] AMP Test Mentorship";
 
 /**
- * Log in as a user by uid via drush user:login (one-time login URL).
- * Uses cy.exec so it runs on the host where ddev is available.
+ * Log in as a fixture user by name via drush user:login (one-time login URL).
+ * Runs on the host via cy.exec (ddev). Asserts the resulting session is
+ * actually that user, so a missing/misnamed fixture fails loudly instead of
+ * silently logging in as uid 1 (drush falls back to the superuser when the
+ * name does not resolve, which would pass access tests for the wrong reason).
  */
-function loginByUid(uid) {
+function loginByName(name) {
   const uri = Cypress.config("baseUrl");
   cy.exec(
-    `ddev drush user:login --uid=${uid} --uri=${uri} /`,
+    `ddev drush user:login --name=${name} --uri=${uri} /`,
     { failOnNonZeroExit: false }
   ).then((result) => {
     // The URL is the last non-empty line of stdout
     const url = result.stdout.trim().split("\n").pop();
     cy.visit(url);
   });
+  // Confirm login actually succeeded. A failed drush user:login (missing/wrong
+  // --name) yields no valid one-time-login URL and the visit lands on the login
+  // form; a successful one lands on the user's own account page. Assert we are
+  // NOT on the login page, so a mis-provisioned fixture fails loudly here rather
+  // than silently running the access test as the wrong (or anonymous) user.
+  cy.visit("/user");
+  cy.url().should("not.include", "/user/login");
+  cy.get("body").should("have.class", "logged_in");
 }
 
 describe("CC Mentorship Status page — access control", () => {
@@ -50,27 +64,31 @@ describe("CC Mentorship Status page — access control", () => {
       .should("eq", 307);
   });
 
-  it("champions_mentorship_admin (uid 5292) can view /mentorships/cc-status", () => {
-    loginByUid(5292);
+  it("champions_mentorship_admin can view /mentorships/cc-status", () => {
+    loginByName("test_mentorship_admin");
     cy.visit(STATUS_PATH);
 
     // Page title contains "Campus Champions"
     cy.get("h1").should("contain.text", "Campus Champions");
 
-    // At least the known CC mentorship appears in the listing
-    cy.get("body").should("contain", KNOWN_CC_TITLE);
+    // Load-bearing: the fixture must appear as a ROW in the results table, not
+    // just anywhere on the page — an authorized-but-empty listing must fail,
+    // not pass (the h1 renders on any authorized 200 regardless of rows).
+    cy.get(".views-element-container table")
+      .should("contain", KNOWN_CC_TITLE);
   });
 
-  it("campuschampionsadmin (uid 746) can view /mentorships/cc-status", () => {
-    loginByUid(746);
+  it("campuschampionsadmin can view /mentorships/cc-status", () => {
+    loginByName("test_cc_admin");
     cy.visit(STATUS_PATH);
 
     cy.get("h1").should("contain.text", "Campus Champions");
-    cy.get("body").should("contain", KNOWN_CC_TITLE);
+    cy.get(".views-element-container table")
+      .should("contain", KNOWN_CC_TITLE);
   });
 
-  it("ccmnet_pm-only user (uid 519) gets 403 at /mentorships/cc-status", () => {
-    loginByUid(519);
+  it("ccmnet_pm-only user gets 403 at /mentorships/cc-status", () => {
+    loginByName("test_ccmnet_pm_only");
     cy.request({
       url: STATUS_PATH,
       failOnStatusCode: false,
@@ -79,8 +97,8 @@ describe("CC Mentorship Status page — access control", () => {
     });
   });
 
-  it("regression: ccmnet_pm-only user (uid 519) can still load /mentorships/status", () => {
-    loginByUid(519);
+  it("regression: ccmnet_pm-only user can still load /mentorships/status", () => {
+    loginByName("test_ccmnet_pm_only");
     cy.request(BASE_STATUS_PATH).its("status").should("eq", 200);
   });
 

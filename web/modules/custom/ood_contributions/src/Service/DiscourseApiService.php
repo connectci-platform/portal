@@ -51,7 +51,7 @@ class DiscourseApiService {
    * @param string $username
    *   The Discourse username.
    *
-   * @return array
+   * @return array<string, mixed>
    *   The user data or error information.
    */
   public function getUserByUsername(string $username): array {
@@ -88,14 +88,20 @@ class DiscourseApiService {
    * @param string $end_date
    *   End date in YYYY-MM-DD format.
    *
-   * @return array
-   *   The report data or error information.
+   * @return array<string, mixed>
+   *   A response envelope: ['error' => bool, 'data' => ..., 'message' => ...].
    */
   public function getDailyPostStats(string $start_date, string $end_date): array {
     try {
       $counts = [];
       $start_dt = new \DateTime($start_date);
+      // A bare Y-m-d string parses to midnight (00:00:00). Without this, the
+      // end-day boundary would reject every post made later than midnight on
+      // $end_date (e.g. a 18:36 post is > the 00:00 end), so an incremental
+      // run where start == end == today drops the whole day and records 0.
+      // Extend to the end of the day so the full end date is inclusive.
       $end_dt = new \DateTime($end_date);
+      $end_dt->setTime(23, 59, 59);
       $before_id = NULL;
       $page = 0;
 
@@ -113,7 +119,16 @@ class DiscourseApiService {
         }
 
         $oldest_date = NULL;
+        $min_id = NULL;
         foreach ($posts as $post) {
+          // Track the lowest post ID on this page for reliable backward
+          // pagination. Don't rely on array order (end($posts)) being strictly
+          // oldest-first — an explicit minimum id is order-independent and
+          // avoids skipping or looping if the API ordering ever varies.
+          if (isset($post['id']) && ($min_id === NULL || $post['id'] < $min_id)) {
+            $min_id = $post['id'];
+          }
+
           if (empty($post['created_at'])) {
             continue;
           }
@@ -141,9 +156,14 @@ class DiscourseApiService {
           break;
         }
 
-        // Set up pagination: use the lowest post ID on this page.
-        $last_post = end($posts);
-        $before_id = $last_post['id'];
+        // Guard against a page with no usable ids (would otherwise loop
+        // forever re-requesting the same page).
+        if ($min_id === NULL) {
+          break;
+        }
+
+        // Paginate backward using the lowest post ID on this page.
+        $before_id = $min_id;
 
         $page++;
         $this->logger->info('Discourse posts.json: fetched page @page (before=@before)', [
@@ -195,7 +215,7 @@ class DiscourseApiService {
    * @param string $url
    *   The API URL.
    *
-   * @return array
+   * @return array<string, mixed>
    *   The decoded JSON response.
    *
    * @throws \GuzzleHttp\Exception\GuzzleException

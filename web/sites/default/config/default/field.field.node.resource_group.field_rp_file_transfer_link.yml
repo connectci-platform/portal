@@ -1,0 +1,23 @@
+uuid: 711abefe-010a-5e0c-abc3-f533a1c1642c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_file_transfer_link
+    - node.type.resource_group
+  module:
+    - link
+id: node.resource_group.field_rp_file_transfer_link
+field_name: field_rp_file_transfer_link
+entity_type: node
+bundle: resource_group
+label: 'RP source documentation for File Transfer'
+description: 'Fallback: used by child Resources that leave this field empty.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  title: 0
+  link_type: 16
+field_type: link

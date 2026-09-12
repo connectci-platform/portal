@@ -1,4 +1,4 @@
 _core:
   default_config_hash: mscwW1HCPdgGv7coeRm159VuABZn_Hbx2T6ZjSrBXjY
-overwrite_internal_link_target_access: false
+overwrite_internal_link_target_access: true
 inherit_parent_access: true

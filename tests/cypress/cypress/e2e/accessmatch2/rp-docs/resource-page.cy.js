@@ -134,9 +134,9 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
         // CPU core count is parenthesized like the GPU vRAM.
         cy.contains("AMD EPYC 7763 (64 cores)");
       });
-    // CPU-only queue shows a dash for GPU, never "0 …".
+    // CPU-only queue shows the empty-cell placeholder "N/A" for GPU, never "0 …".
     cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
-      .parent("tr").should("contain", "—").and("not.contain", "0 NVIDIA");
+      .parent("tr").should("contain", "N/A").and("not.contain", "0 NVIDIA");
     // gpu-cloud has GPU type + vRAM but no per-node count: render type/vRAM
     // without a leading count, not an em-dash.
     cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
@@ -173,16 +173,22 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
   });
 
   it("renders the per-partition Nodes column", () => {
-    cy.get(".rp-queue-specs").contains("th", "Nodes");
+    cy.get(".rp-queue-specs").contains("th", "Num nodes");
     // gpu-standard has field_rp_node_count = 100 in the fixture.
     cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-standard")
       .parent("tr").should("contain", "100");
     // cpu-shared has field_rp_node_count = 200.
     cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
       .parent("tr").should("contain", "200");
-    // gpu-cloud has an unknown node count: em-dash, not 0.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
-      .parent("tr").find("td").eq(2).should("contain", "—");
+    // gpu-cloud has an unknown node count: the cell reads "N/A", not 0.
+    // Resolve the Num nodes column index from the header so the assertion
+    // survives column reordering, then check that column in gpu-cloud's row.
+    cy.get(".rp-queue-specs table thead th").then(($ths) => {
+      const nodesCol = [...$ths].findIndex((th) => th.textContent.trim() === "Num nodes");
+      expect(nodesCol, "Num nodes column present").to.be.greaterThan(-1);
+      cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
+        .parent("tr").find("td").eq(nodesCol).should("contain", "N/A");
+    });
   });
 
   it("renders top software table", () => {
@@ -249,7 +255,7 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
 
   it("QA bot has resource group context", () => {
     cy.get(".embedded-qa-bot")
-      .should("have.attr", "data-resource-context", "test-resource-group");
+      .should("have.attr", "data-scope-slug", "test-resource-group");
   });
 
 });
@@ -275,8 +281,17 @@ describe("Resource Documentation Page — Beta (sparse data, in Test Resource Gr
     cy.get(".rp-login").should("not.exist");
   });
 
-  it("does not render the jump-to anchor nav when every section is empty", () => {
-    cy.get(".rp-jump-to").should("not.exist");
+  it("jump-to anchor nav lists only the sections Beta actually has", () => {
+    // Beta's only main-content section is Software (inherited software_list_url
+    // from the Group, per the section test above), so the nav renders with just
+    // that one link — not absent, and not listing the empty sections.
+    cy.get(".rp-jump-to").should("exist");
+    cy.get(".rp-jump-to").contains("Software");
+    cy.get(".rp-jump-to").should("not.contain.text", "Login");
+    cy.get(".rp-jump-to").should("not.contain.text", "File Transfer");
+    cy.get(".rp-jump-to").should("not.contain.text", "Storage");
+    cy.get(".rp-jump-to").should("not.contain.text", "Jobs");
+    cy.get(".rp-jump-to").should("not.contain.text", "Datasets");
   });
 
   it("does not show MFA or account badges", () => {
@@ -362,7 +377,46 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
 
   it("QA bot falls back to resource title (short_name post-load-hook) when not in a group", () => {
     cy.get(".embedded-qa-bot")
-      .should("have.attr", "data-resource-context", "gamma");
+      .should("have.attr", "data-scope-slug", "gamma");
+  });
+
+});
+
+describe("Resource Documentation Page — expandable intro", () => {
+
+  it("clamps Alpha's long multi-block intro with a working toggle", () => {
+    cy.visit("/documentation/resources/alpha");
+    cy.get(".rp-description .expandable-text").should("exist");
+    cy.get(".rp-description .expandable-text.is-collapsed").should("exist");
+    cy.get(".rp-description .expandable-text__toggle")
+      .should("have.attr", "aria-expanded", "false")
+      .and("contain.text", "More");
+    // The trailing paragraph is present but clipped via the content wrapper's
+    // inline max-height + overflow:hidden (set by expandable-text.js) while
+    // collapsed. The clipped paragraph can still report a nonzero
+    // offsetHeight/Width to jQuery's :visible check (it's clipped by an
+    // ancestor's max-height, not its own display/visibility), so assert on
+    // the DOM state the JS actually toggles instead: the inline max-height
+    // and the is-collapsed class.
+    cy.contains(".rp-description p", "Consult the scheduler notes").should("exist");
+    cy.get(".rp-description .expandable-text__content")
+      .should("have.attr", "style")
+      .and("match", /max-height/);
+    cy.get(".rp-description .expandable-text__toggle").click();
+    cy.get(".rp-description .expandable-text").should("not.have.class", "is-collapsed");
+    cy.get(".rp-description .expandable-text__toggle")
+      .should("have.attr", "aria-expanded", "true")
+      .and("contain.text", "Less");
+    cy.get(".rp-description .expandable-text__content")
+      .invoke("attr", "style")
+      .should("satisfy", (style) => !style || !/max-height/.test(style));
+    cy.contains(".rp-description p", "Consult the scheduler notes").should("be.visible");
+  });
+
+  it("shows no toggle for Beta's short intro", () => {
+    cy.visit("/documentation/resources/beta");
+    // Beta's description is a single short paragraph (< 4 lines).
+    cy.get(".rp-description .expandable-text__toggle").should("not.exist");
   });
 
 });

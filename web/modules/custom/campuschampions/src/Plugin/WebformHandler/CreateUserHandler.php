@@ -138,15 +138,20 @@ class CreateUserHandler extends WebformHandlerBase {
     $default_role = 'research_computing_facilitator';
     $carnegie_code = $data['carnegie_classification'];
 
-    $query = $this->database->select('carnegie_codes', 'cc');
-    $query->condition('cc.unitid', $carnegie_code, '=');
-    $query->fields('cc', ['instnm']);
-    $result = $query->execute();
-    $record = $result->fetch();
-    $institution = $record ? $record->instnm : '';
-
-    // Try to find a matching ACCESS Organization by institution name.
-    $access_org_id = $this->findAccessOrganization($institution);
+    // The applicant selects their ACCESS Organization directly on the form, so
+    // use that node id rather than deriving it from the Carnegie code. "Other"
+    // (node 3695) means the org is not in the list; fall back to matching the
+    // hand-entered institution name so those applicants still get linked when
+    // possible.
+    $access_org_id = $data['field_access_organization'] ?? NULL;
+    $institution = '';
+    if (empty($access_org_id) || (string) $access_org_id === '3695') {
+      $access_org_id = NULL;
+      $institution = $data['user_institution']['institution_name'] ?? '';
+      if ($institution !== '') {
+        $access_org_id = $this->findAccessOrganization($institution);
+      }
+    }
 
     /** @var \Drupal\user\Entity\User $user */
     $user = User::create();

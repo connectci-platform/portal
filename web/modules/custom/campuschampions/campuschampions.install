@@ -1285,3 +1285,183 @@ function campuschampions_update_10007() {
 
   return t('Converted @count state names to abbreviations and refreshed stats.', ['@count' => $updated]);
 }
+
+/**
+ * Reconcile Join Campus Champions submission ownership and backfill statuses.
+ *
+ * Sturdy backfill for the change-institution work:
+ * 1. Point each submission's owner (uid) at the real champion account,
+ *    resolved by the same email-then-username logic the approval action uses,
+ *    so uid becomes the authoritative account link for all historical rows.
+ * 2. Per champion, mark every approved submission except their newest as
+ *    'superseded' (prior organizations).
+ * 3. Mark approved submissions whose account is no longer a champion
+ *    (field_is_cc = 0) as 'removed'.
+ *
+ * Runs in a single pass — the join submission set is small (a few hundred rows),
+ * so no batching is needed. Ownership is resolved against the current account
+ * matching each submission's email/username, which is the intended behaviour for
+ * this one-time historical backfill.
+ */
+function campuschampions_update_10008() {
+  $storage = \Drupal::entityTypeManager()->getStorage('webform_submission');
+
+  // Group all join submissions by resolved champion account.
+  $sids = $storage->getQuery()
+    ->condition('webform_id', 'join_campus_champions')
+    ->accessCheck(FALSE)
+    ->execute();
+
+  // uid => [['sid' => int, 'created' => int, 'status' => string], ...].
+  $by_user = [];
+  $reowned = 0;
+  foreach ($storage->loadMultiple($sids) as $submission) {
+    $data = $submission->getData();
+    // Resolve the real account: email first, then username (mirrors
+    // ApproveCCAction so ownership matches how identity is reconciled there).
+    $account = FALSE;
+    if (!empty($data['user_email'])) {
+      $account = user_load_by_mail($data['user_email']);
+    }
+    if (!$account && !empty($data['username'])) {
+      $account = user_load_by_name($data['username']);
+    }
+    if (!$account) {
+      // Fall back to the current owner if it is a real, non-anonymous account.
+      $owner = $submission->getOwner();
+      if ($owner && !$owner->isAnonymous()) {
+        $account = $owner;
+      }
+    }
+    if (!$account) {
+      continue;
+    }
+
+    $uid = (int) $account->id();
+    if ((int) $submission->getOwnerId() !== $uid) {
+      $submission->setOwnerId($uid);
+      $submission->resave();
+      $reowned++;
+    }
+
+    $by_user[$uid][] = [
+      'sid' => (int) $submission->id(),
+      'created' => (int) $submission->getCreatedTime(),
+      'status' => $data['status'] ?? '',
+    ];
+  }
+
+  $superseded = 0;
+  $removed = 0;
+  foreach ($by_user as $uid => $rows) {
+    $account = \Drupal\user\Entity\User::load($uid);
+    $is_champion = $account && $account->hasField('field_is_cc') && (bool) $account->get('field_is_cc')->value;
+
+    // Approved rows only, newest first.
+    $approved = array_filter($rows, fn($r) => $r['status'] === 'approved');
+    usort($approved, fn($a, $b) => $b['created'] <=> $a['created']);
+
+    foreach ($approved as $index => $row) {
+      $submission = $storage->load($row['sid']);
+      if (!$submission) {
+        continue;
+      }
+      if (!$is_champion) {
+        // Account is no longer in the program: every approved row is removed.
+        $submission->setElementData('status', 'removed');
+        $submission->resave();
+        $removed++;
+      }
+      elseif ($index > 0) {
+        // Still a champion: keep the newest approved, supersede the rest.
+        $submission->setElementData('status', 'superseded');
+        $submission->resave();
+        $superseded++;
+      }
+    }
+  }
+
+  return t('Reconciled @reowned submission owners; superseded @sup prior organizations; marked @rem as removed.', [
+    '@reowned' => $reowned,
+    '@sup' => $superseded,
+    '@rem' => $removed,
+  ]);
+}
+
+/**
+ * Clean up non-numeric Carnegie codes on legacy Join Campus Champions rows.
+ *
+ * Some older submissions stored a Carnegie *classification* string (e.g. "R1",
+ * "R2:Doctoral Universities…", or free text like "UCLA") in the numeric
+ * carnegie_classification field, from before the field became org-derived.
+ * Re-derive the real code from the submitter account's ACCESS Organization
+ * where possible; blank it when the account has no organization. Also delete a
+ * known test submission from a sweetandfizzy tester.
+ */
+function campuschampions_update_10009() {
+  $db = \Drupal::database();
+  $storage = \Drupal::entityTypeManager()->getStorage('webform_submission');
+
+  // Delete the known test submission (guarded by both sid and email so it can
+  // never match anything else).
+  $test_sid = 5980;
+  $test = $storage->load($test_sid);
+  $deleted = 0;
+  if ($test && $test->getWebform()->id() === 'join_campus_champions') {
+    $email = $test->getElementData('user_email');
+    if (is_string($email) && strtolower($email) === 'sdepaula@sweetandfizzy.com') {
+      $test->delete();
+      $deleted = 1;
+    }
+  }
+
+  // Find join submissions whose carnegie value is non-empty and non-numeric.
+  $sids = $db->select('webform_submission_data', 'd')
+    ->fields('d', ['sid'])
+    ->condition('d.name', 'carnegie_classification')
+    ->condition('d.value', '', '<>')
+    ->where("d.value NOT REGEXP '^[0-9]+$'")
+    ->execute()->fetchCol();
+
+  $fixed = 0;
+  $blanked = 0;
+  foreach ($storage->loadMultiple($sids) as $submission) {
+    if ($submission->getWebform()->id() !== 'join_campus_champions') {
+      continue;
+    }
+    // Resolve the submitter account: email first, then username (matches how
+    // the approval action reconciles identity elsewhere).
+    $data = $submission->getData();
+    $account = FALSE;
+    if (!empty($data['user_email'])) {
+      $account = user_load_by_mail($data['user_email']);
+    }
+    if (!$account && !empty($data['username'])) {
+      $account = user_load_by_name($data['username']);
+    }
+
+    $code = '';
+    if ($account && $account->hasField('field_access_organization')
+      && !$account->get('field_access_organization')->isEmpty()) {
+      $org = $account->get('field_access_organization')->entity;
+      if ($org && $org->hasField('field_carnegie_code')) {
+        $code = (string) $org->get('field_carnegie_code')->value;
+      }
+    }
+
+    $submission->setElementData('carnegie_classification', $code);
+    $submission->resave();
+    if ($code === '') {
+      $blanked++;
+    }
+    else {
+      $fixed++;
+    }
+  }
+
+  return t('Deleted @del test submission; re-derived Carnegie code on @fixed rows; blanked @blank with no resolvable organization.', [
+    '@del' => $deleted,
+    '@fixed' => $fixed,
+    '@blank' => $blanked,
+  ]);
+}

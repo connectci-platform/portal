@@ -7,3 +7,13 @@ assets:
   js:
     js/odometer.min.js: {}
     js/campuschampions.js: {}
+
+join-org-toggle:
+  version: 1.x
+  js:
+    js/join-org-toggle.js: {}
+  dependencies:
+    - core/jquery
+    - core/once
+    - core/drupal
+    - core/jquery.ui.autocomplete

@@ -1,0 +1,11 @@
+name: Domain Menu Access for core menu blocks
+type: module
+description: Applies domain_menu_access filtering to core's system_menu_block, which domain_menu_access itself does not cover.
+core_version_requirement: ^10 || ^11
+package: Custom
+# domain_menu_access is deliberately NOT a hard dependency. Declaring it here
+# makes Drupal install it as soon as this module is enabled, which on a site
+# still running menu_item_extras happens before the deploy hooks can remove
+# that module — and domain_menu_access's install hook then fails silently,
+# leaving it registered with no domain fields. The deploy hooks install it in
+# the right order instead.

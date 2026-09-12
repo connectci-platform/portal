@@ -932,7 +932,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         type:
           id: type
           table: eventinstance_field_data
@@ -1090,7 +1090,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         created_1:
           id: created_1
           table: eventinstance_field_data
@@ -1140,7 +1140,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         status:
           id: status
           table: eventinstance_field_data
@@ -2007,7 +2007,7 @@ display:
       use_more_always: true
       use_more_text: 'All Events'
       link_display: custom_url
-      link_url: '/events?f[0]=custom_event_affiliation%3AACCESS %26 NAIRR Office Hours'
+      link_url: '/events?f[0]=affiliation%3AACCESS %26 NAIRR Office Hours'
       header:
         area_text_custom:
           id: area_text_custom
@@ -2031,7 +2031,7 @@ display:
           plugin_id: text
           empty: false
           content:
-            value: '<a class="text-sm text-black uppercase underline hover--text-dark-teal hover--no-underline" href="/events?f[0]=custom_event_affiliation%3AACCESS %26 NAIRR Office Hours">See all</a>'
+            value: '<a class="text-sm text-black uppercase underline hover--text-dark-teal hover--no-underline" href="/events?f[0]=affiliation%3AACCESS %26 NAIRR Office Hours">See all</a>'
             format: full_html
           tokenize: false
       display_extenders:
@@ -3113,7 +3113,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_choose_where_to_share_this_value:
           id: field_choose_where_to_share_this_value
           table: eventseries__field_choose_where_to_share_this
@@ -5019,7 +5019,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:

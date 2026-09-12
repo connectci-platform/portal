@@ -3,10 +3,31 @@ description: 'Run PHPUnit tests using DDEV'
 author: 'connectci-platform'
 
 inputs:
-  group:
-    description: 'PHPUnit @group filter'
-    required: true
-    default: 'access_affinitygroup'
+  paths:
+    description: >-
+      Space-separated phpunit target paths for this matrix shard (relative to
+      repo root). When shard_dir is set, this is ignored and the target files
+      are discovered from shard_dir instead.
+    required: false
+    default: ''
+  shard_dir:
+    description: >-
+      A directory of *Test.php files to shard by round-robin position. When set,
+      the action lists the .php test files under it (recursively, excluding the
+      abstract *TestBase.php base classes), sorts them deterministically, and
+      runs only those whose 0-based position modulo shard_total equals
+      shard_index. New files in the directory auto-enroll into a shard — there is
+      no filename list to rot. Leave blank to use `paths` instead.
+    required: false
+    default: ''
+  shard_index:
+    description: '0-based index of this shard within shard_dir (requires shard_dir).'
+    required: false
+    default: ''
+  shard_total:
+    description: 'Total number of shards splitting shard_dir (requires shard_dir).'
+    required: false
+    default: ''
   database:
     description: 'Custom database URL (optional)'
     required: false
@@ -49,14 +70,125 @@ runs:
         # so it may not exist on a fresh checkout. Create it empty.
         mkdir -p web/profiles
 
+    - name: Resolve shard target paths
+      id: targets
+      shell: bash
+      run: |
+        # Two ways to target tests for this shard:
+        #  * paths      — a fixed set of directories/files (used by the
+        #                 "other-modules" shard, which is fast enough to run whole).
+        #  * shard_dir  — a directory sharded by round-robin file position. The
+        #                 action lists the actual *Test.php files under it, sorts
+        #                 them, and keeps only those at position i where
+        #                 i % shard_total == shard_index. This is what splits the
+        #                 large access_events kernel suite across three shards.
+        #
+        # Round-robin position (not first-letter, not a hand-written file list) is
+        # deliberate: a NEW test file added to the directory auto-enrolls into
+        # exactly one shard, so coverage can never silently drop; and the split
+        # stays balanced no matter how class names cluster (21 of the events
+        # classes start with "Event", which would wreck an alphabetical split).
+        if [ -n "${{ inputs.shard_dir }}" ]; then
+          dir="${{ inputs.shard_dir }}"
+          idx="${{ inputs.shard_index }}"
+          total="${{ inputs.shard_total }}"
+          if [ -z "$idx" ] || [ -z "$total" ]; then
+            echo "::error::shard_dir requires shard_index and shard_total."
+            exit 1
+          fi
+          if [ ! -d "$dir" ]; then
+            echo "::error::shard_dir '$dir' does not exist."
+            exit 1
+          fi
+          # All runnable test files: *Test.php, minus abstract *TestBase.php bases.
+          # Kept portable (no mapfile / associative arrays) so it does not depend
+          # on the runner's bash version. Round-robin by 0-based line number:
+          # keep line n iff (n-1) % total == idx. awk does the split and prints
+          # this shard's files space-separated; total_count / selected_count come
+          # back on stderr for the guard below.
+          total_count=$(find "$dir" -type f -name '*Test.php' ! -name '*TestBase.php' | grep -c .)
+          if [ "$total_count" -eq 0 ]; then
+            echo "::error::No *Test.php files found under '$dir' — nothing to shard."
+            exit 1
+          fi
+          selected=$(find "$dir" -type f -name '*Test.php' ! -name '*TestBase.php' \
+            | LC_ALL=C sort \
+            | awk -v total="$total" -v idx="$idx" '((NR-1)%total)==idx {n++; printf "%s ", $0} END {print n+0 > "/dev/stderr"}' \
+            2> /tmp/phpunit-shard-count.txt)
+          selected_count=$(cat /tmp/phpunit-shard-count.txt)
+          echo "Shard $idx/$total selected $selected_count of $total_count files under $dir:"
+          printf '  %s\n' $selected
+          if [ "$selected_count" -eq 0 ]; then
+            # A shard that resolves to zero files means shard_total exceeds the
+            # file count, or the round-robin math is wrong. Fail loud rather than
+            # report a green shard that ran nothing.
+            echo "::error::Shard $idx/$total resolved to 0 files. Reduce shard_total or check the split."
+            exit 1
+          fi
+          printf '%s' "$selected" > /tmp/phpunit-targets.txt
+        else
+          if [ -z "${{ inputs.paths }}" ]; then
+            echo "::error::Neither paths nor shard_dir was provided."
+            exit 1
+          fi
+          printf '%s' "${{ inputs.paths }}" > /tmp/phpunit-targets.txt
+        fi
+
     - name: Run PHPUnit tests
       shell: bash
       run: |
-        ddev exec 'SIMPLETEST_DB=mysql://db:db@db/db phpunit \
+        # Run the phpunit target paths for THIS matrix shard (resolved above).
+        # Coverage is by path, not by @group — a test is covered iff it lives
+        # under one of the shard's target paths.
+        #
+        # The JUnit log is the source of truth for pass/fail, NOT phpunit's exit
+        # code: some passing suites still exit non-zero on a Drupal deprecation
+        # notice (e.g. installSchema()), which would otherwise turn a green run
+        # red. We capture the exit code, then fail the step only if the JUnit XML
+        # actually records failures or errors — OR if it recorded zero tests.
+        #
+        # --log-junit MUST be an ABSOLUTE path: with `-c web/core`, phpunit's
+        # relative-path base is not the repo root, so a relative log path is
+        # silently written somewhere the outer shell can't find (or not at all).
+        targets="$(cat /tmp/phpunit-targets.txt)"
+        junit="/tmp/phpunit-results.xml"
+        ddev exec "SIMPLETEST_DB=mysql://db:db@db/db phpunit \
           -c web/core \
-          --group=${{ inputs.group }} \
           --testdox \
-          web/modules/custom/access/modules/access_affinitygroup/tests/'
+          --log-junit $junit \
+          $targets" && phpunit_rc=0 || phpunit_rc=$?
+        echo "phpunit exited with $phpunit_rc"
+
+        # ddev exec runs in the container; copy the log out to the runner.
+        ddev exec "cat $junit" > phpunit-results.xml 2>/dev/null || true
+        if [ ! -s phpunit-results.xml ]; then
+          echo "::error::No JUnit results file was produced — the run did not complete."
+          exit 1
+        fi
+        # failures= and errors= are summed across all <testsuite> entries; a
+        # child suite's failures roll up but summing them all still counts each
+        # actual failure at least once, so any real failure yields a positive sum.
+        fails=$(grep -oE 'failures="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+        errs=$(grep -oE 'errors="[0-9]+"' phpunit-results.xml | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+        # Count executed test methods by counting <testcase> elements. This is
+        # structure-independent: phpunit emits exactly one <testcase> per method
+        # run, whether or not it wraps the per-file <testsuite> entries in a root
+        # <testsuites> aggregate. (Summing the tests= attributes double-counts
+        # when there is a rollup, and taking the max under-counts to a single
+        # file's total when there is not — this run proved the latter.)
+        tests=$(grep -oE '<testcase\b' phpunit-results.xml | wc -l | tr -d ' ')
+        echo "JUnit totals — tests: $tests, failures: $fails, errors: $errs"
+        # A shard that ran ZERO tests is a coverage hole masquerading as green
+        # (a bad path, a filter that matched nothing, a broken split). Fail it.
+        if [ "$tests" -eq 0 ]; then
+          echo "::error::PHPUnit ran 0 tests for this shard — coverage hole, failing."
+          exit 1
+        fi
+        if [ "$fails" -gt 0 ] || [ "$errs" -gt 0 ]; then
+          echo "::error::PHPUnit reported $fails failure(s) and $errs error(s)."
+          exit 1
+        fi
+        echo "Shard passed: $tests tests, 0 failures, 0 errors (phpunit exit $phpunit_rc ignored)."
 
     - name: Show test results
       if: always()

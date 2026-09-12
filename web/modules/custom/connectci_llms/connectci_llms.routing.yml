@@ -1,0 +1,7 @@
+connectci_llms.llms_txt:
+  path: '/llms.txt'
+  defaults:
+    _controller: 'Drupal\connectci_llms\Controller\LlmsTxtController::content'
+    _title: 'llms.txt'
+  requirements:
+    _access: 'TRUE'

@@ -1,0 +1,11 @@
+uuid: b2755542-00c4-4c35-ab56-41e53d6da9c8
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.connectcidev_wpi_edu
+id: connectcidev_wpi_edu
+label: 'Connect CI sitemap'
+description: 'Sitemap variant for domain: Connect CI'
+type: connectcidev_wpi_edu
+weight: 0

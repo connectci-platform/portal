@@ -32,6 +32,7 @@ permissions:
   - 'use editorial transition publish'
   - 'use editorial transition request_adjustment'
   - 'use editorial_eventinstance transition archive'
+  - 'use editorial_eventinstance transition archived_archived'
   - 'use editorial_eventinstance transition archived_draft'
   - 'use editorial_eventinstance transition archived_published'
   - 'use editorial_eventinstance transition create_new_draft'

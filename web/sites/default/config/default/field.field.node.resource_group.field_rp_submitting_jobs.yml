@@ -1,0 +1,23 @@
+uuid: b5bccd1f-3bc0-5225-b807-79a7008bfcab
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_submitting_jobs
+    - node.type.resource_group
+  module:
+    - link
+id: node.resource_group.field_rp_submitting_jobs
+field_name: field_rp_submitting_jobs
+entity_type: node
+bundle: resource_group
+label: 'RP source documentation for Submitting Jobs'
+description: 'Fallback: used by child Resources that leave this field empty.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  title: 0
+  link_type: 16
+field_type: link

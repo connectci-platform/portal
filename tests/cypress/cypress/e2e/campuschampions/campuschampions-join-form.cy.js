@@ -32,7 +32,9 @@ describe("Test registration page for becoming a campus champion", { retries: { r
     cy.get('#edit-champion-user-type-user-champion').check();
     cy.get('input[name="supervisor_name"]').type('Bob');
     cy.get('input[name="supervisor_email"]').type('bob@no-reply.com');
-    cy.get('input[name="carnegie_classification"]').type('167394');
+    cy.get('input[name="field_access_organization"]').type('Arkansas for Medical');
+    cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+      .contains('University of Arkansas for Medical Sciences').click();
     cy.get('#webform-submission-join-campus-champions-add-form > #edit-actions > #edit-submit').contains('Submit').click();
     cy.contains('Campus Champions Application Submitted', { timeout: 30000 });
   });

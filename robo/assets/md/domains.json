@@ -56,7 +56,7 @@
     {
         "id": "connectcidev_wpi_edu",
         "name": "Connect CI",
-        "hostname": "connect.cyberinfrastructure.org",
+        "hostname": "connectci.org",
         "scheme": "https",
         "status": "Active",
         "is_default": "",

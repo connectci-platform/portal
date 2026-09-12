@@ -2,26 +2,33 @@
 
 /**
  * @file
+ * Hooks and helpers for the Campus Champions module.
  */
 
 use Drupal\campuschampions\Plugin\CarnegieCodesLookup;
 use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\user\Entity\User;
+use Drupal\user\UserInterface;
 use Drupal\views\ResultRow;
+use Drupal\webform\Entity\WebformSubmission;
+use Drupal\webform\WebformSubmissionInterface;
 use Drupal\views\ViewExecutable;
 
 /**
- *
+ * Implements hook_form_alter().
  */
 function campuschampions_form_alter(&$form, &$form_state, $form_id) {
   if ($form_id == 'user_form') {
     $form['field_carnegie_code']['widget'][0]['value']['#autocomplete_route_name'] = 'campuschampions.autocomplete';
 
-    // Add validation for Carnegie code field
+    // Add validation for Carnegie code field.
     $form['#validate'][] = 'campuschampions_user_form_validate';
   }
   global $user;
@@ -42,17 +49,40 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
       $form['elements']['user_first_name']['#attributes'] = ['readonly' => 'readonly'];
       $form['elements']['user_last_name']['#attributes'] = ['readonly' => 'readonly'];
       $form['elements']['user_email']['#attributes'] = ['readonly' => 'readonly'];
+
+      // Prefill the organization from the account when one is set, so a
+      // returning user starts from their current organization (and can change
+      // it). Left editable, unlike the locked identity fields above.
+      if ($account->hasField('field_access_organization')
+        && !$account->get('field_access_organization')->isEmpty()) {
+        $org = $account->get('field_access_organization')->entity;
+        if ($org) {
+          $form['elements']['field_access_organization']['#default_value'] = $org;
+        }
+      }
+
+      // A returning champion (already approved) is updating their membership,
+      // not joining. Retitle the form and add a short explainer. Pending
+      // applicants never reach this form — they are redirected to edit their
+      // in-review submission — so only new vs. approved apply here.
+      $is_champion = $account->hasField('field_is_cc') && (bool) $account->get('field_is_cc')->value;
+      if ($is_champion) {
+        $form['#title'] = t('Update Your Campus Champions Membership');
+        $form['elements']['returning_champion_intro'] = [
+          '#type' => 'webform_markup',
+          '#markup' => '<p>' . t("You're already a Campus Champion. Use this form to update your membership, for example if you've changed institutions. Select your new organization below and submit a new Letter of Collaboration from that institution. Your information will update once your new application is approved.") . '</p>',
+          '#weight' => -100,
+        ];
+      }
     }
 
     $form['elements']['carnegie_classification']['#autocomplete_route_name'] = 'campuschampions.autocomplete';
 
-    // Reorder form.
-    $user_institution = $form['elements']['user_institution'];
-    unset($form['elements']['user_institution']);
-    $form['elements']['user_institution'] = $user_institution;
+    // Reveal institution + Carnegie fields when "Other" org is selected.
+    $form['#attached']['library'][] = 'campuschampions/join-org-toggle';
 
-    if ($form['#validate'] != 'validate_form') {
-      $form['#validate'][] = 'validate_form';
+    if ($form['#validate'] != 'campuschampions_join_form_validate') {
+      $form['#validate'][] = 'campuschampions_join_form_validate';
     }
   }
 
@@ -72,9 +102,10 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
       $form['field_is_cc']['widget']['#access'] = FALSE;
     }
 
-    // Don't allow people to join Campus Champions field unless the is_cc field is checked.
-    if ($form['#validate'] != 'validate_user_form') {
-      $form['#validate'][] = 'validate_user_form';
+    // Don't allow people to join the Campus Champions field unless the is_cc
+    // field is checked.
+    if ($form['#validate'] != 'campuschampions_user_region_validate') {
+      $form['#validate'][] = 'campuschampions_user_region_validate';
     }
   }
 
@@ -99,14 +130,114 @@ function campuschampions_form_alter(&$form, &$form_state, $form_id) {
   if (@substr_compare($form_id, $start, 0, strlen($start)) == 0) {
     $form['actions']['preview']['#access'] = FALSE;
   }
+
+  // Once the organization has been set, only administrators may change it.
+  // Everyone else gets a read-only widget with a link to request a change.
+  // Campus Champions domain only -- the Letter of Collaboration is what ties
+  // the organization to the account here.
+  $is_cc_domain = \Drupal::service('access_misc.sitetools')->getDomainId() == 'campuschampions_cyberinfrastructure_org';
+  if ($is_cc_domain
+    && in_array($form_id, ['user_form', 'user_register_form'], TRUE)
+    && isset($form['field_access_organization']['widget'][0]['target_id'])) {
+    $element = &$form['field_access_organization']['widget'][0]['target_id'];
+    $is_admin = in_array('administrator', \Drupal::currentUser()->getRoles());
+    $has_value = FALSE;
+    $form_object = $form_state->getFormObject();
+    if ($form_object instanceof EntityFormInterface) {
+      $account = $form_object->getEntity();
+      $has_value = $account instanceof UserInterface
+        && !$account->get('field_access_organization')->isEmpty();
+    }
+
+    if ($has_value && !$is_admin) {
+      $element['#attributes']['readonly'] = 'readonly';
+      // #disabled makes the form API ignore any submitted value and keep
+      // the stored one, so the readonly attribute cannot be bypassed.
+      $element['#disabled'] = TRUE;
+      // Prevent the autocomplete from offering replacement values.
+      $element['#autocomplete_route_name'] = NULL;
+    }
+
+    $element['#suffix'] = ($element['#suffix'] ?? '') . '<div class="description mb-3">'
+      . Link::fromTextAndUrl(t('Update Letter of Collaboration'), Url::fromUri('internal:/form/join-campus-champions'))->toString()
+      . '</div>';
+    unset($element);
+  }
 }
 
-if (!function_exists('validate_form')) {
+/**
+ * Implements hook_ENTITY_TYPE_presave() for webform_submission.
+ *
+ * On the Join Campus Champions form the applicant selects their ACCESS
+ * Organization directly. When that organization is a real one (not "Other"),
+ * copy its Carnegie code onto the submission's carnegie_classification value
+ * so downstream consumers (the applications export, reporting) keep reading a
+ * populated code without a lossy name-to-org lookup. When "Other" is chosen
+ * the applicant enters the code by hand, so it is left as submitted.
+ */
+function campuschampions_webform_submission_presave(WebformSubmissionInterface $submission) {
+  if ($submission->getWebform()->id() !== 'join_campus_champions') {
+    return;
+  }
+  $org_id = $submission->getElementData('field_access_organization');
+  // "Other" (node 3695) has no real code; keep the hand-entered value.
+  if (empty($org_id) || (string) $org_id === '3695') {
+    return;
+  }
+  $org = Node::load($org_id);
+  if ($org instanceof NodeInterface && $org->hasField('field_carnegie_code')) {
+    $code = $org->get('field_carnegie_code')->value;
+    // A "0" placeholder means the org has no applicable Carnegie code (a
+    // company or a non-US institution); store it as-is, matching the field.
+    $submission->setElementData('carnegie_classification', (string) $code);
+  }
+}
+
+/**
+ * Sets the status of a champion's approved Join Campus Champions submissions.
+ *
+ * The submission owner (uid) is the authoritative link to the champion's
+ * account — the approval action reconciles it, and update 9001 backfilled it
+ * for historical rows — so this keys on uid rather than the mutable email or
+ * username stored in the submission data.
+ *
+ * @param int $uid
+ *   The champion's account id.
+ * @param string $new_status
+ *   The status to set (e.g. 'superseded', 'removed').
+ * @param int|null $exclude_sid
+ *   A submission id to leave untouched (the just-approved one when
+ *   superseding its predecessors).
+ *
+ * @return int
+ *   The number of submissions updated.
+ */
+function _campuschampions_set_champion_submission_status(int $uid, string $new_status, ?int $exclude_sid = NULL): int {
+  $query = \Drupal::entityTypeManager()->getStorage('webform_submission')->getQuery()
+    ->condition('webform_id', 'join_campus_champions')
+    ->condition('uid', $uid)
+    ->accessCheck(FALSE);
+  if ($exclude_sid !== NULL) {
+    $query->condition('sid', $exclude_sid, '<>');
+  }
+  $sids = $query->execute();
+  $count = 0;
+  foreach (WebformSubmission::loadMultiple($sids) as $submission) {
+    if ($submission->getElementData('status') === 'approved') {
+      $submission->setElementData('status', $new_status);
+      $submission->resave();
+      $count++;
+    }
+  }
+  return $count;
+}
+
+if (!function_exists('campuschampions_join_form_validate')) {
 
   /**
-   *
+   * Validates the Campus Champions join form for duplicate email/username.
    */
-  function validate_form(array &$form, FormStateInterface $form_state) {
+  function campuschampions_join_form_validate(array &$form, FormStateInterface $form_state) {
     $user_email = $form_state->getValue('user_email');
     $username = $form_state->getValue('username');
 
@@ -133,17 +264,12 @@ if (!function_exists('validate_form')) {
 
 }
 
-/**
- * Implements validate_user_form().
- *
- * Require is_cc field to assign Campus Champions Program.
- */
-if (!function_exists('validate_user_form')) {
+if (!function_exists('campuschampions_user_region_validate')) {
 
   /**
-   *
+   * Requires the is_cc field before assigning the Campus Champions program.
    */
-  function validate_user_form(array &$form, FormStateInterface $form_state) {
+  function campuschampions_user_region_validate(array &$form, FormStateInterface $form_state) {
     $programs = $form_state->getValue('field_region');
     $is_cc = $form_state->getValue('field_is_cc');
     // 572 is Campus Champions
@@ -181,9 +307,6 @@ function campuschampions_theme() {
  * Send mail to approved campus champions.
  */
 function campuschampions_mail($key, &$message, $params) {
-  $options = [
-    'langcode' => $message['langcode'],
-  ];
   switch ($key) {
     case 'approve_campuschampion':
       $message['from'] = 'leadership@campuschampions.org';
@@ -194,7 +317,6 @@ function campuschampions_mail($key, &$message, $params) {
     case 'join-cc':
       $message['from'] = 'leadership@campuschampions.org';
       $message['subject'] = $params['title'];
-      ;
       $message['body'][] = $params['body'];
       break;
   }
@@ -220,7 +342,7 @@ function campuschampions_mail_alter(&$message) {
       // case 'status_canceled':
     case 'approve_campuschampion':
       $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed; delsp=yes';
-      foreach ($message['body'] as $key => &$body) {
+      foreach ($message['body'] as &$body) {
         $body = new FormattableMarkup($body, []);
       }
       break;
@@ -253,12 +375,12 @@ function campuschampions_redirect_to_profile_page_form_submit($form, &$form_stat
 }
 
 /**
- * Implements HOOK_views_data_export_row_alter().
+ * Implements hook_views_data_export_row_alter().
  *
- * Fill out data about the associated intstitution (Carnegie code).
+ * Fill out data about the associated institution (Carnegie code).
  */
 function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, ViewExecutable $view) {
-  // Static cache for the Carnegie lookup instance and lat/lon data
+  // Static cache for the Carnegie lookup instance and lat/lon data.
   static $carnegie_db = NULL;
   static $org_locations = NULL;
 
@@ -266,7 +388,7 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
 
     $cc = (string) $row['field_carnegie_code'];
 
-    $row['field_carnegie_code'] = t('');
+    $row['field_carnegie_code'] = '';
     $row['field_carnegie_code_location'] = '';
     $row['field_carnegie_code_classification'] = '';
     $row['field_carnegie_code_hbcu'] = '';
@@ -284,9 +406,10 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
     $row['field_carnegie_code_lat'] = '';
     $row['field_carnegie_code_lon'] = '';
 
-    // Only get Carnegie data if a code exists - don't try to populate missing ones.
+    // Only get Carnegie data if a code exists - don't try to populate missing
+    // ones.
     if (!empty($cc)) {
-      // Initialize static caches
+      // Initialize static caches.
       if ($carnegie_db === NULL) {
         $carnegie_db = new CarnegieCodesLookup(\Drupal::database());
       }
@@ -344,13 +467,15 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
         );
         $row['field_carnegie_code_type'] = CarnegieCodesLookup::type($row['field_carnegie_code_type_id']);
 
-        // Try to retrieve the LAT and LON from the ACCESS organization (with caching)
+        // Try to retrieve the LAT and LON from the ACCESS organization (with
+        // caching).
         if (isset($org_locations[$cc])) {
-          // Use cached values
+          // Use cached values.
           $row['field_carnegie_code_lat'] = $org_locations[$cc]['lat'];
           $row['field_carnegie_code_lon'] = $org_locations[$cc]['lon'];
-        } else {
-          // Look it up and cache it
+        }
+        else {
+          // Look it up and cache it.
           $nids = \Drupal::entityQuery('node')
             ->condition('type', 'access_organization')
             ->condition('field_carnegie_code', $cc, '=')
@@ -365,11 +490,12 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
               $lon = $org->field_longitude ? $org->field_longitude->value : NULL;
               $row['field_carnegie_code_lat'] = $lat;
               $row['field_carnegie_code_lon'] = $lon;
-              // Cache for future rows
+              // Cache for future rows.
               $org_locations[$cc] = ['lat' => $lat, 'lon' => $lon];
             }
-          } else {
-            // Cache that we found nothing for this code
+          }
+          else {
+            // Cache that we found nothing for this code.
             $org_locations[$cc] = ['lat' => NULL, 'lon' => NULL];
           }
         }
@@ -387,6 +513,9 @@ function campuschampions_views_data_export_row_alter(&$row, ResultRow $result, V
  * Implements hook_views_pre_view().
  */
 function campuschampions_views_pre_view(ViewExecutable $view, $display_id, array &$args) {
+  if ($view->id() == 'cc_applications') {
+    _campuschampions_scrub_carried_duplicate_filter($view);
+  }
   if ($view->id() == 'access_news' && $display_id === 'block_1') {
     $view_filters = $view->display_handler->getOption('filters');
     $domain = \Drupal::service('access_misc.sitetools')->getDomainId();
@@ -394,21 +523,90 @@ function campuschampions_views_pre_view(ViewExecutable $view, $display_id, array
     $view_filters['field_domain_access_target_id']['value'] = [];
     $view_filters['field_domain_access_target_id']['value'][$domain] = $domain;
 
-    //field_domain_access_target_id
+    // field_domain_access_target_id.
     $view->display_handler->setOption('filters', $view_filters);
+  }
+}
+
+/**
+ * Drops a carried "Duplicate names only" filter that the user never submitted.
+ *
+ * The cc_applications exposed filter is a GET form, so once cc_duplicate_name=1
+ * lands in the URL it rides along on every subsequent request that reconstructs
+ * the query: the Views Bulk Operations redirect after an approve/decline
+ * (ViewsBulkOperationsBulkForm rebuilds the redirect from the current request
+ * query, so the checkbox value survives the action), the VBO form's own action
+ * attribute, the mini-pager links, and any bookmark of a filtered URL. The
+ * DuplicateSubmissionName filter faithfully honours whatever cc_duplicate_name
+ * it sees in \Drupal::request()->query, so a carried value silently re-checks
+ * the box and hides every uniquely-named applicant — e.g. an approved champion
+ * vanishes from the approved list. Vanessa hit exactly this.
+ *
+ * There is no request-level flag that separates a genuine "user checked the box
+ * and clicked Apply" GET from a carried one: the exposed submit button is
+ * #name='' (it never reaches the query) and a GET form carries no form_id,
+ * build id, or token, so the genuine URL and a bookmark of it are byte-for-byte
+ * identical. The one signal that still partitions the paths cleanly is the
+ * Referer: the two LEGITIMATE carriers (the user's own Apply submit and the
+ * pager links) are navigations from the applications page itself, while the
+ * illegitimate carriers arrive from elsewhere — the VBO redirect refers from
+ * /batch, and a bookmark or typed URL sends no Referer at all.
+ *
+ * So: when cc_duplicate_name is present but the request did not originate from
+ * this view's own page, remove it from the live request query before the filter
+ * reads it. The filter (valueForm() #default_value and acceptExposedInput())
+ * reads \Drupal::request()->query directly, so scrubbing it here turns the box
+ * off and renders it unchecked. Genuine submits and pager clicks keep their
+ * Referer and are untouched. The failure mode — a genuine submit whose Referer
+ * a privacy tool stripped — degrades to the unfiltered default view (the user
+ * simply re-checks the box), never to hidden or altered data.
+ */
+function _campuschampions_scrub_carried_duplicate_filter(ViewExecutable $view): void {
+  $request = \Drupal::request();
+  if (!$request->query->has('cc_duplicate_name')) {
+    return;
+  }
+
+  // The applications page lives at /cc-applications; a legitimate submit or
+  // pager click refers from that same path on this same host. getPath() can
+  // return FALSE when no page display is resolved, so fall back to the known
+  // route path. A referer from another host never counts as legitimate even
+  // if its path matches, so require the host to match before trusting the path
+  // (query string and scheme are irrelevant and ignored).
+  $path = $view->getPath();
+  $view_path = '/' . ltrim($path ?: 'cc-applications', '/');
+  $referer = $request->headers->get('referer', '');
+  $referer_host = $referer !== '' ? parse_url($referer, PHP_URL_HOST) : NULL;
+  $referer_path = $referer !== '' ? parse_url($referer, PHP_URL_PATH) : NULL;
+  $from_view_page = $referer_host === $request->getHost() && $referer_path === $view_path;
+
+  if (!$from_view_page) {
+    $request->query->remove('cc_duplicate_name');
+  }
+}
+
+/**
+ * Implements hook_preprocess_views_view().
+ *
+ * Attach the module CSS to the applications admin view so its exposed filters
+ * render on one compact row.
+ */
+function campuschampions_preprocess_views_view(array &$variables) {
+  if (($variables['view']->id() ?? NULL) === 'cc_applications') {
+    $variables['#attached']['library'][] = 'campuschampions/assets';
   }
 }
 
 /**
  * Validate Carnegie code field on user forms.
  */
-function campuschampions_user_form_validate(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+function campuschampions_user_form_validate(array &$form, FormStateInterface $form_state) {
   $carnegie_code = $form_state->getValue('field_carnegie_code');
 
   if (!empty($carnegie_code) && !empty($carnegie_code[0]['value'])) {
     $code = $carnegie_code[0]['value'];
 
-    // Validate that the Carnegie code exists in the database
+    // Validate that the Carnegie code exists in the database.
     $query = \Drupal::database()
       ->select('carnegie_codes', 'cc')
       ->fields('cc', ['unitid'])
@@ -431,9 +629,10 @@ function campuschampions_cron() {
   $currentTime = \Drupal::time()->getCurrentTime();
   $lastRun = \Drupal::state()->get('cc_stats_last_update', 0);
 
-  // Run if it's been more than 24 hours since last update
+  // Run if it's been more than 24 hours since last update.
   $secondsSinceLastRun = $currentTime - $lastRun;
-  $hoursInterval = 24; // Update every 24 hours
+  // Update every 24 hours.
+  $hoursInterval = 24;
 
   if ($secondsSinceLastRun >= ($hoursInterval * 3600)) {
     \Drupal::logger('campuschampions')->info('Updating Campus Champions stats via cron');

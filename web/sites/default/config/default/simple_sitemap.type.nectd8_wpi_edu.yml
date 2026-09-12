@@ -1,0 +1,18 @@
+uuid: 7a2b4d28-96ae-4cb6-8069-fe23ae439ff6
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: nectd8_wpi_edu
+id: nectd8_wpi_edu
+label: 'Northeast Cyberteam sitemap'
+description: 'Sitemap type for domain: Northeast Cyberteam'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

@@ -1,9 +1,0 @@
-uuid: b21e6b4f-50a0-4bb6-bb1e-c3e8e6c06b4c
-langcode: en
-status: true
-dependencies: {  }
-id: campuschampionsdev_wpi_edu
-domain_id: campuschampions_cyberinfrastructure_org
-pattern: campuschampionsdev.wpi.edu
-redirect: 0
-environment: development

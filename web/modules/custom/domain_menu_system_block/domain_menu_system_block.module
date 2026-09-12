@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * @file
+ * Applies domain_menu_access filtering to core's system_menu_block.
+ */
+
+use Drupal\domain_menu_system_block\Plugin\Block\DomainSystemMenuBlock;
+
+/**
+ * Implements hook_block_alter().
+ *
+ * domain_menu_access only filters by domain inside its own block plugins, so
+ * core menu blocks show every link on every domain. Repointing the
+ * system_menu_block derivatives at our subclass applies the filtering
+ * everywhere without touching the placed block configuration.
+ *
+ * This is the approach core documents for exactly this case; see the
+ * hook_block_alter() example in block.api.php.
+ *
+ * Only `class` is altered, deliberately. Setting `provider` as well would make
+ * PluginDependencyTrait record this module as a config dependency of every
+ * placed menu block the next time one is saved (it reads
+ * $definition['provider'], and BlockPluginTrait writes it back from the
+ * settings form). Uninstalling this module would then delete those blocks.
+ *
+ * @param array<string, mixed> $definitions
+ *   Block plugin definitions, keyed by plugin id.
+ */
+function domain_menu_system_block_block_alter(array &$definitions): void {
+  foreach (array_keys($definitions) as $id) {
+    if (str_starts_with($id, 'system_menu_block:')) {
+      $definitions[$id]['class'] = DomainSystemMenuBlock::class;
+    }
+  }
+}
+
+/**
+ * Implements hook_module_preuninstall().
+ *
+ * Placed blocks keep pointing at DomainSystemMenuBlock until the plugin
+ * definitions are rebuilt. Uninstalling invalidates discovery cache tags, but
+ * clearing explicitly avoids a window where a cached definition names a class
+ * that is no longer autoloadable — which surfaces as a WSOD rather than a
+ * graceful fallback, since BlockPluginCollection only swallows the exception
+ * when the configured provider is itself uninstalled.
+ *
+ * @param string $module
+ *   The module being uninstalled.
+ */
+function domain_menu_system_block_module_preuninstall(string $module): void {
+  if ($module === 'domain_menu_system_block') {
+    \Drupal::service('plugin.manager.block')->clearCachedDefinitions();
+  }
+}

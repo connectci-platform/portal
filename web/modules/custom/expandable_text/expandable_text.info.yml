@@ -1,0 +1,5 @@
+name: 'Expandable Text'
+type: module
+description: 'Clamp a block of rendered HTML to N lines with a More/Less toggle. Theme-independent; usable from a Twig template or a render array.'
+core_version_requirement: ^10 || ^11
+package: Custom

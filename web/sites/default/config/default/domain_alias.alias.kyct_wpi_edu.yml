@@ -1,9 +1,0 @@
-uuid: 4eba783c-cdc9-44a7-89e5-d7d8a0f519a1
-langcode: en
-status: true
-dependencies: {  }
-id: kyct_wpi_edu
-domain_id: kycyberteam_cyberinfrastructure_org
-pattern: kyct.wpi.edu
-redirect: 0
-environment: staging

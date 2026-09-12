@@ -1,9 +1,0 @@
-uuid: b66ca3ca-7dcd-4579-bdfc-0c9be820a8e2
-langcode: en
-status: true
-dependencies: {  }
-id: connectcidev_wpi_edu
-domain_id: connectcidev_wpi_edu
-pattern: connectcidev.wpi.edu
-redirect: 0
-environment: default

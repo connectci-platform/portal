@@ -1,9 +1,0 @@
-uuid: a0c718c0-b41b-4eb5-a50d-0fad5770926e
-langcode: en
-status: true
-dependencies: {  }
-id: greatplains_wpi_edu
-domain_id: greatplains_wpi_edu
-pattern: greatplains.wpi.edu
-redirect: 0
-environment: staging

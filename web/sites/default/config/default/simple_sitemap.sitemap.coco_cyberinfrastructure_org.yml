@@ -1,0 +1,11 @@
+uuid: a31ff1ef-b5f5-40d6-a566-acc5ef6489f0
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.coco_cyberinfrastructure_org
+id: coco_cyberinfrastructure_org
+label: 'CoCo sitemap'
+description: 'Sitemap variant for domain: CoCo'
+type: coco_cyberinfrastructure_org
+weight: 0

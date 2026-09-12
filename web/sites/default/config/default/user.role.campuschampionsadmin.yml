@@ -34,6 +34,7 @@ permissions:
   - 'use editorial transition review_to_review'
   - 'use editorial transition send_for_review'
   - 'use editorial_eventinstance transition archive'
+  - 'use editorial_eventinstance transition archived_archived'
   - 'use editorial_eventinstance transition archived_draft'
   - 'use editorial_eventinstance transition archived_published'
   - 'use editorial_eventinstance transition create_new_draft'

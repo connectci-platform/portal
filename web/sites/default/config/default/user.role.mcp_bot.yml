@@ -5,18 +5,10 @@ dependencies:
   module:
     - access
     - actions_permissions
-    - content_moderation
-    - node
-    - recurring_events
 id: mcp_bot
 label: mcp-bot
 weight: 31
 is_admin: null
 permissions:
-  - 'administer nodes'
-  - 'create access_news content'
-  - 'delete any access_news content'
-  - 'edit any access_news content'
   - 'execute node_assign_owner_action node'
   - 'use content assist api'
-  - 'view any unpublished content'

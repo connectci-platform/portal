@@ -1,0 +1,11 @@
+uuid: 6f356da3-8711-4ae6-9451-31b706e62d66
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.careersct_cyberinfrastucture_org
+id: careersct_cyberinfrastucture_org
+label: 'CAREERS Cyberteam sitemap'
+description: 'Sitemap variant for domain: CAREERS Cyberteam'
+type: careersct_cyberinfrastucture_org
+weight: 0

@@ -1,0 +1,11 @@
+uuid: 61d6054e-e91b-4fa4-a3d4-568fdf911752
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.pasciencedmz_connectci_org
+id: pasciencedmz_connectci_org
+label: 'PA Science sitemap'
+description: 'Sitemap variant for domain: PA Science'
+type: pasciencedmz_connectci_org
+weight: 0

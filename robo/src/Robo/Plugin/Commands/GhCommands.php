@@ -119,6 +119,8 @@ class GhCommands extends Tasks {
     // List available workflows/runs to debug
     $this->_exec("gh run list -R github.com/connectci-platform/portal -L 5");
 
+    $date = date('ymd-H.i');
+
     // Create a temporary directory for download to avoid path traversal issues
     // (GitHub CLI v2.63.1+ has stricter path validation that can cause false positives)
     $downloadDir = 'artifact-download-tmp';
@@ -146,7 +148,14 @@ class GhCommands extends Tasks {
     // Remove existing files directory if it exists
     $prev_files = 'web/sites/default/files';
     if (file_exists($prev_files)) {
-      $this->_exec("rm -fR $prev_files");
+      $result = $this->_exec("mv $prev_files /tmp/files-$date 2>/dev/null || sudo mv $prev_files /tmp/files-$date");
+      if ($result->getExitCode() !== 0) {
+        $this->_exec("sudo rm -rf $prev_files");
+        $this->say("Old files removed (mv to /tmp failed).");
+      }
+      else {
+        $this->say("Old files moved to /tmp/files-$date");
+      }
     }
 
     // Extract and move files

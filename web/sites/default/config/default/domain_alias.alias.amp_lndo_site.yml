@@ -1,9 +1,0 @@
-uuid: b59dff50-4018-4ce1-a338-1b4f5c6aae9e
-langcode: en
-status: true
-dependencies: {  }
-id: amp_lndo_site
-domain_id: amp_cyberinfrastructure_org
-pattern: amp.lndo.site
-redirect: 0
-environment: default

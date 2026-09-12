@@ -27,7 +27,7 @@ type_settings:
       label: 'Needs Adjustment'
       weight: 7
       published: false
-      default_revision: true
+      default_revision: false
     published:
       label: Published
       weight: 0
@@ -43,6 +43,12 @@ type_settings:
       label: Archive
       from:
         - published
+      to: archived
+      weight: 2
+    archived_archived:
+      label: 'Keep archived'
+      from:
+        - archived
       to: archived
       weight: 2
     archived_draft:
@@ -70,6 +76,7 @@ type_settings:
       label: Publish
       from:
         - draft
+        - needs_adjustment
         - published
         - ready_for_review
       to: published
@@ -77,7 +84,6 @@ type_settings:
     request_adjustment:
       label: 'Request Adjustment'
       from:
-        - published
         - ready_for_review
       to: needs_adjustment
       weight: 6

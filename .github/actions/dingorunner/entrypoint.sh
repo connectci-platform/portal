@@ -148,7 +148,14 @@ then
   echo 'Add new files'
   git add .
   echo 'Commit changes'
-  git commit -m "$message"
+  # A config/code-only branch can produce no build-artifact changes, in which
+  # case there is nothing to commit. Skip the commit rather than let git's
+  # non-zero exit abort the deploy (which would leave the multidev uncreated).
+  if git diff --cached --quiet; then
+    echo 'No build changes to commit; pushing existing branch state.'
+  else
+    git commit -m "$message"
+  fi
   echo 'status'
   git status
   echo 'push'

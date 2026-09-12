@@ -36,7 +36,9 @@ describe('Campus Champions Applications Admin', () => {
     cy.get('#edit-champion-user-type-user-champion').check();
     cy.get('input[name="supervisor_name"]').type('Test Supervisor');
     cy.get('input[name="supervisor_email"]').type('supervisor@test.com');
-    cy.get('input[name="carnegie_classification"]').type('167394');
+    cy.get('input[name="field_access_organization"]').type('Arkansas for Medical');
+    cy.get('.ui-autocomplete .ui-menu-item', { timeout: 10000 })
+      .contains('University of Arkansas for Medical Sciences').click();
     cy.get('#webform-submission-join-campus-champions-add-form > #edit-actions > #edit-submit').click();
     cy.contains('Campus Champions Application Submitted', { timeout: 30000 });
   });

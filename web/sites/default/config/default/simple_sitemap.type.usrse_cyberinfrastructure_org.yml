@@ -1,0 +1,18 @@
+uuid: 9ffd0a39-fd22-4996-bb7c-53e937ba1282
+langcode: en
+status: true
+dependencies:
+  module:
+    - domain_simple_sitemap
+third_party_settings:
+  domain_simple_sitemap:
+    sitemap_domain: usrse_cyberinfrastructure_org
+id: usrse_cyberinfrastructure_org
+label: 'USRSE sitemap'
+description: 'Sitemap type for domain: USRSE'
+sitemap_generator: default
+url_generators:
+  - domain_entity
+  - arbitrary
+  - custom
+  - entity_menu_link_content

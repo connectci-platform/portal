@@ -1,9 +1,0 @@
-uuid: dd292dfa-7f54-4d17-a951-81c5fd434efd
-langcode: en
-status: true
-dependencies: {  }
-id: usrse_wpi_edu
-domain_id: usrse_cyberinfrastructure_org
-pattern: usrse.wpi.edu
-redirect: 0
-environment: default

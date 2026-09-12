@@ -1,0 +1,11 @@
+uuid: 846287de-c0c4-4701-ab60-57eefc949f95
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.amp_cyberinfrastructure_org
+id: amp_cyberinfrastructure_org
+label: 'ACCESS Support sitemap'
+description: 'Sitemap variant for domain: ACCESS Support'
+type: amp_cyberinfrastructure_org
+weight: 0

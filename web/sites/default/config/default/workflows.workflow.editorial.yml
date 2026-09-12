@@ -4,7 +4,6 @@ status: true
 dependencies:
   config:
     - node.type.access_news
-    - recurring_events.eventinstance_type.default
     - recurring_events.eventseries_type.default
   module:
     - content_moderation
@@ -97,8 +96,6 @@ type_settings:
       to: ready_for_review
       weight: 5
   entity_types:
-    eventinstance:
-      - default
     eventseries:
       - default
     node:

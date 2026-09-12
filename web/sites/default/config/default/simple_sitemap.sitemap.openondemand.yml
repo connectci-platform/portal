@@ -1,0 +1,11 @@
+uuid: 3ba4879a-3c50-434a-ac02-fcc61f19b697
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.openondemand
+id: openondemand
+label: 'Open OnDemand sitemap'
+description: 'Sitemap variant for domain: Open OnDemand'
+type: openondemand
+weight: 0

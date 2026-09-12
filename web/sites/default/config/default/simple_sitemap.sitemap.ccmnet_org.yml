@@ -1,0 +1,11 @@
+uuid: eac8725d-aaaf-4a51-b0c0-775472af3f9c
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.ccmnet_org
+id: ccmnet_org
+label: 'CCMNet sitemap'
+description: 'Sitemap variant for domain: CCMNet'
+type: ccmnet_org
+weight: 0

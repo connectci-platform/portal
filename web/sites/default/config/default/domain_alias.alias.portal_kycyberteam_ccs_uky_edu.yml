@@ -1,9 +1,0 @@
-uuid: b663beee-4f74-4566-bec1-ebac9f048d53
-langcode: en
-status: true
-dependencies: {  }
-id: portal_kycyberteam_ccs_uky_edu
-domain_id: kycyberteam_cyberinfrastructure_org
-pattern: portal.kycyberteam.ccs.uky.edu
-redirect: 0
-environment: default

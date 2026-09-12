@@ -18,7 +18,7 @@ describe("For an authenticated user tests account, interest/skills pages", () =>
     cy.contains('Last Name');
     //cy.get('#edit-field-user-preferred-pronouns-0-value').should('have.value', 'they/them');
 
-    cy.get('.field--name-field-user-bio .ck-content').should('contain', 'I am a pie');
+    cy.get('.field--name-field-user-bio .ck-content').should('contain', 'research computing facilitator');
 
     cy.contains('Picture');
     cy.get('#edit-field-access-organization-0-target-id').should('have.value', 'MGHPCC (4300)');

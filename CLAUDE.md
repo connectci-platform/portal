@@ -27,13 +27,25 @@ vendor/bin/robo cypress <folder>    # Run Cypress E2E tests on folder: accessmat
 # Run PHPCS on a specific module
 vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,inc,install,test,profile,theme,info,txt,md,yml docroot/modules/custom/access
 # Run PHPStan on a specific module
-vendor/bin/phpstan analyse -l 0 docroot/modules/custom/<module>
+vendor/bin/phpstan analyse --memory-limit=1G -l 6 docroot/modules/custom/<module>
 # Run PHPUnit for a specific module
 cd docroot/modules/custom/<module> && ../../../../vendor/bin/phpunit
+
+# Interacting with Jira
+acli
 
 # When changing composer patches, be sure to run:
 composer patches-relock
 composer patches-repatch
 ```
+## Writing Jira tickets
+
+When drafting a Jira ticket, structure the description with these sections:
+
+- **Why** — one or two sentences on the goal and who it is for. This is what makes "done" reviewable.
+- **What** — the specific change, with a checklist of concrete behaviors or visual items when it helps.
+- **Testing** — the automated coverage expected before review. Decide the layer from what changed (see the "What to test where" section of the README): PHP logic (access/visibility gating, services, query builders, cache tags) gets a named kernel or unit test; a user-visible flow gets a named Cypress test; presentation-only changes (CSS, tailwind, Twig markup, spacing, color, font) get no automated test and are verified in the browser. Name the specific assertions, not "add tests" — the test is the acceptance check.
+- **Related PRs / Multidev** — links to the portal and sub-repo PRs and the multidev instance.
+
 # General Instructions
 - do not commit any code, leave all git work to the developers

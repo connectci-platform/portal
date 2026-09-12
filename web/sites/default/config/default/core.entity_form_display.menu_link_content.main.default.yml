@@ -2,11 +2,9 @@ uuid: b2574702-0a0b-4a97-9383-675f670b42a9
 langcode: en
 status: true
 dependencies:
-  config:
-    - system.menu.main
   module:
     - link
-    - menu_item_extras
+    - menu_link_content
 id: menu_link_content.main.default
 targetEntityType: menu_link_content
 bundle: main
@@ -52,9 +50,11 @@ content:
       placeholder: ''
     third_party_settings: {  }
   view_mode:
-    type: menu_item_extras_view_mode_selector_select
-    weight: 2
+    type: string_textfield
+    weight: 31
     region: content
-    settings: {  }
+    settings:
+      size: 60
+      placeholder: ''
     third_party_settings: {  }
 hidden: {  }

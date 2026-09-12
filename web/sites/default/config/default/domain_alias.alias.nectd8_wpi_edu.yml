@@ -1,9 +1,0 @@
-uuid: 7f8ffa7e-8766-447c-9de4-7a8031cd37c9
-langcode: en
-status: true
-dependencies: {  }
-id: nectd8_wpi_edu
-domain_id: nectd8_wpi_edu
-pattern: nectd8.wpi.edu
-redirect: 0
-environment: staging

@@ -2,3 +2,12 @@ services:
   cc.getStats:
     class: Drupal\campuschampions\Plugin\StoreStats
     arguments: ['@renderer']
+  campuschampions.join_form_redirect_subscriber:
+    class: Drupal\campuschampions\EventSubscriber\JoinFormRedirectSubscriber
+    arguments: ['@current_user', '@entity_type.manager', '@current_route_match']
+    tags:
+      - { name: event_subscriber }
+  campuschampions.title_resolver:
+    class: Drupal\campuschampions\NonRecursiveTitleResolver
+    decorates: title_resolver
+    arguments: ['@campuschampions.title_resolver.inner']

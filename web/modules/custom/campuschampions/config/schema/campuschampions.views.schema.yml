@@ -1,0 +1,17 @@
+views.filter.campuschampions_duplicate_submission_name:
+  type: views_filter
+  label: 'Duplicate applicant name'
+  mapping:
+    webform_id:
+      type: string
+      label: 'Webform ID'
+    first_name_element:
+      type: string
+      label: 'First name element key'
+    last_name_element:
+      type: string
+      label: 'Last name element key'
+
+views.filter_value.campuschampions_duplicate_submission_name:
+  type: string
+  label: 'Duplicate applicant name'

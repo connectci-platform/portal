@@ -1,0 +1,11 @@
+uuid: fd90b337-52f3-439e-8410-49a75438bbaf
+langcode: en
+status: true
+dependencies:
+  config:
+    - simple_sitemap.type.nectd8_wpi_edu
+id: nectd8_wpi_edu
+label: 'Northeast Cyberteam sitemap'
+description: 'Sitemap variant for domain: Northeast Cyberteam'
+type: nectd8_wpi_edu
+weight: 0

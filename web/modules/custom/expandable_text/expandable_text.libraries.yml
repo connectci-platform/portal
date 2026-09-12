@@ -1,0 +1,10 @@
+expandable_text:
+  version: 1.0.0
+  css:
+    component:
+      css/expandable-text.css: {}
+  js:
+    js/expandable-text.js: {}
+  dependencies:
+    - core/drupal
+    - core/once

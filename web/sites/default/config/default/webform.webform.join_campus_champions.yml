@@ -22,6 +22,8 @@ elements: |-
       new: new
       approved: approved
       declined: declined
+      superseded: superseded
+      removed: removed
     '#default_value': new
     '#access_create_roles': {  }
     '#access_update_roles':
@@ -62,20 +64,6 @@ elements: |-
       - anonymous
     '#text': '<h2>Account Details</h2><p>Do you have an ACCESS ID you''d like to use?</p><p><a class="btn btn-primary rounded-pill" href="/login">Login with ACCESS CI</a></p>'
     '#format': full_html
-  carnegie_classification:
-    '#type': textfield
-    '#title': 'Carnegie Classification'
-    '#description': 'Enter your institution name to lookup your Carnegie Code.'
-    '#states':
-      required:
-        - ':input[name="i_can_t_find_my_carnegie_code"]':
-            empty: true
-        - or
-        - ':input[name="i_can_t_find_my_carnegie_code"]':
-            unchecked: true
-  i_can_t_find_my_carnegie_code:
-    '#type': checkbox
-    '#title': "I can't find my Carnegie Code"
   username:
     '#type': textfield
     '#title': Username
@@ -94,6 +82,52 @@ elements: |-
     '#title': Email
     '#description': '<span style="-webkit-text-stroke-width:0px; background-color:#ffffff; color:#6c757d; display:inline !important; float:none; font-family:museo-sans,sans-serif; font-size:12.8px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; orphans:2; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-indent:0px; text-transform:none; white-space:normal; widows:2; word-spacing:0px">A valid email address. All emails from the system will be sent to this address. The email address is not made public and will only be used if you wish to receive a new password or wish to receive certain news or notifications by email.</span>'
     '#required': true
+  field_access_organization:
+    '#type': entity_autocomplete
+    '#title': 'ACCESS Organization'
+    '#description': 'Select your institution. If it is not listed, choose "Other" and enter it below.'
+    '#target_type': node
+    '#selection_handler': 'default:node'
+    '#selection_settings':
+      target_bundles:
+        access_organization: access_organization
+    '#required': true
+  user_institution:
+    '#type': webform_section
+    '#title': Institution
+    '#title_tag': h5
+    '#states':
+      visible:
+        ':input[name="field_access_organization"]':
+          value: '3695'
+    '#attributes':
+      class:
+        - 'card mb-4'
+    institution_name:
+      '#type': textfield
+      '#title': 'Name of Institution'
+      '#required': true
+    institution_street_address:
+      '#type': webform_address
+      '#title': 'Street Address'
+      '#address__required': true
+      '#address_2__access': false
+      '#city__required': true
+      '#state_province__required': true
+      '#postal_code__required': true
+      '#country__required': true
+      '#required': true
+  carnegie_classification:
+    '#type': textfield
+    '#title': 'Carnegie Classification'
+    '#description': 'Enter your institution name to lookup your Carnegie Code.'
+    '#states':
+      visible:
+        ':input[name="field_access_organization"]':
+          value: '3695'
+      required:
+        ':input[name="field_access_organization"]':
+          value: '3695'
   student_info:
     '#type': webform_section
     '#title': 'Student Champion'
@@ -152,31 +186,6 @@ elements: |-
     supervisor_email:
       '#type': email
       '#title': 'Supervisor Email'
-      '#required': true
-  user_institution:
-    '#type': webform_section
-    '#title': Institution
-    '#title_tag': h5
-    '#states':
-      visible:
-        ':input[name="i_can_t_find_my_carnegie_code"]':
-          checked: true
-    '#attributes':
-      class:
-        - 'card mb-4'
-    institution_name:
-      '#type': textfield
-      '#title': 'Name of Institution'
-      '#required': true
-    institution_street_address:
-      '#type': webform_address
-      '#title': 'Street Address'
-      '#address__required': true
-      '#address_2__access': false
-      '#city__required': true
-      '#state_province__required': true
-      '#postal_code__required': true
-      '#country__required': true
       '#required': true
 css: ''
 javascript: ''

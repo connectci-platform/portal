@@ -1,9 +1,0 @@
-uuid: 96723aa8-23fe-4781-8ccc-df9f6a229d14
-langcode: en
-status: true
-dependencies: {  }
-id: campuschampions_wpi_edu
-domain_id: campuschampions_cyberinfrastructure_org
-pattern: campuschampions.wpi.edu
-redirect: 0
-environment: staging

@@ -2447,6 +2447,7 @@ display:
                   collapsible: false
                   is_secondary: false
                 select_all_none: false
+                soft_limit_include_children: false
       filters:
         status:
           id: status

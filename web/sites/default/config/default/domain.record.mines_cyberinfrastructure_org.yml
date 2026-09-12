@@ -1,6 +1,6 @@
 uuid: aae0c659-f7a4-411f-860b-0be21bc16587
 langcode: en
-status: true
+status: false
 dependencies: {  }
 id: mines_cyberinfrastructure_org
 domain_id: 7265765

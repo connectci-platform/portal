@@ -83,6 +83,13 @@ final class AddRepoForm extends FormBase {
     return 'ood_software_add_repo';
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $stage = $form_state->get('stage') ?? 'url';
 
@@ -90,6 +97,16 @@ final class AddRepoForm extends FormBase {
     $form['#suffix'] = '</div>';
     // Reuse the existing library; do not invent a new one.
     $form['#attached']['library'][] = 'ood_software/appverse_app_form';
+
+    // Render messenger output inside the AJAX-replaced wrapper. The submit
+    // handlers (submitFetch, submitForm) report failures via
+    // messenger()->addError() then setRebuild(), and the #ajax callback
+    // replaces this wrapper with the rebuilt form. Without a status_messages
+    // element inside the wrapper, those errors are not injected into the AJAX
+    // response — they silently defer to the next full page load, so the user
+    // sees a generic "did not respond" failure instead of the real reason
+    // (e.g. no appverse.yml/manifest.yml at the repo root).
+    $form['messages'] = ['#type' => 'status_messages', '#weight' => -100];
 
     $form['stage'] = ['#type' => 'hidden', '#value' => $stage];
 
@@ -100,6 +117,13 @@ final class AddRepoForm extends FormBase {
     };
   }
 
+  /**
+   * Build the URL-paste stage of the form.
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   private function buildUrlStage(array $form, FormStateInterface $form_state): array {
     $form['intro'] = [
       '#type' => 'item',
@@ -129,6 +153,11 @@ final class AddRepoForm extends FormBase {
     return $form;
   }
 
+  /**
+   * Fetch the repo from GitHub, detect shape, advance to the preview stage.
+   *
+   * @param array<string, mixed> $form
+   */
   public function submitFetch(array &$form, FormStateInterface $form_state): void {
     $url = trim((string) $form_state->getValue('repo_url'));
 
@@ -185,7 +214,7 @@ final class AddRepoForm extends FormBase {
       }
       elseif (!$this->currentUser->hasPermission('administer appverse content')) {
         // Cross-owner non-admin — block.
-        $ownerName = $existing->getOwner()?->getDisplayName() ?? '(unknown)';
+        $ownerName = $existing->getOwner()->getDisplayName();
         $this->messenger()->addError(
           $this->t('This repo was already submitted by @owner. Ask @owner to add you as a contributor, or contact an Appverse admin if you need to take over maintenance.', ['@owner' => $ownerName]),
         );
@@ -196,7 +225,7 @@ final class AddRepoForm extends FormBase {
         // Cross-owner admin — fall through (admin takeover path, matches legacy).
         // Catalog has no co-maintainer concept yet, so admin override is the only
         // way to reassign a repo (e.g., when a maintainer leaves a project).
-        $ownerName = $existing->getOwner()?->getDisplayName() ?? '(unknown)';
+        $ownerName = $existing->getOwner()->getDisplayName();
         $this->messenger()->addWarning($this->t(
           'This repo is currently maintained by @owner. As an admin, submitting will reassign maintenance to you. Cancel here if that is not your intent.',
           ['@owner' => $ownerName],
@@ -206,7 +235,7 @@ final class AddRepoForm extends FormBase {
 
     // Shape detection.
     if ($this->github->isEmptyRepo()) {
-      $this->messenger()->addError($this->t('This repo has neither a root <code>appverse.yml</code> nor a root <code>manifest.yml</code>. Nothing to register.'));
+      $this->messenger()->addError($this->t('This repo has no <code>appverse.yml</code> or <code>manifest.yml</code> at its root, so there is nothing to register. If your Open OnDemand app files live in a subdirectory, add a root <code>appverse.yml</code> that points at that subdirectory, or move the app files to the repository root. See the <a href=":url">contributor documentation</a> for how to structure your repo.', [':url' => '/appverse-contributor-documentation']));
       $form_state->setRebuild();
       return;
     }
@@ -218,6 +247,13 @@ final class AddRepoForm extends FormBase {
     $form_state->setRebuild();
   }
 
+  /**
+   * Build the preview stage shown before the final confirm/sync.
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   private function buildPreviewStage(array $form, FormStateInterface $form_state): array {
     $url = (string) $form_state->get('repo_url');
     $shape = (string) $form_state->get('shape');
@@ -261,15 +297,32 @@ final class AddRepoForm extends FormBase {
     return $form;
   }
 
+  /**
+   * Return from the preview stage to the URL-paste stage.
+   *
+   * @param array<string, mixed> $form
+   */
   public function submitBack(array &$form, FormStateInterface $form_state): void {
     $form_state->set('stage', 'url');
     $form_state->setRebuild();
   }
 
+  /**
+   * AJAX callback: replace the form wrapper with the rebuilt form.
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   public function ajaxReplace(array &$form, FormStateInterface $form_state): array {
     return $form;
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $url = (string) $form_state->get('repo_url');
     $shape = (string) $form_state->get('shape');
@@ -291,6 +344,8 @@ final class AddRepoForm extends FormBase {
 
   /**
    * Build the metadata array passed into RepoSyncService::resolveRepo().
+   *
+   * @return array<string, mixed>
    */
   private function buildRepoMetadata(): array {
     return [
@@ -325,6 +380,8 @@ final class AddRepoForm extends FormBase {
    * apps[] list. We treat any of software / app_type / title / description
    * at the root as the signal that the contributor meant to register one app
    * here, rather than an empty repo with nothing to sync.
+   *
+   * @param array<string, mixed> $parsedRootYml
    */
   private function rootDeclaresSingleApp(array $parsedRootYml): bool {
     foreach (['software', 'app_type', 'title', 'description'] as $key) {
@@ -340,6 +397,8 @@ final class AddRepoForm extends FormBase {
    *
    * Replaced the legacy procedural declared-submit handler that lived in
    * ood_software.module (removed during the dedicated-repo-submit-form work).
+   *
+   * @param array<string, mixed> $repoMetadata
    */
   private function submitDeclared(string $url, array $repoMetadata, FormStateInterface $form_state): void {
     // Prefer the canonical URL that GitHubService normalized; same rationale
@@ -440,6 +499,8 @@ final class AddRepoForm extends FormBase {
    * Differs from declared: no Batch, no Reconcile op, redirect to the
    * contributor's hub (not the Repo node) since the member app is the
    * thing they just created.
+   *
+   * @param array<string, mixed> $repoMetadata
    */
   private function submitInferred(string $url, array $repoMetadata, FormStateInterface $form_state): void {
     // Prefer canonical URL (same rationale as submitDeclared).
@@ -500,7 +561,7 @@ final class AddRepoForm extends FormBase {
     if ($this->currentUser->hasPermission('administer appverse content')) {
       return TRUE;
     }
-    $ownerName = $repo->getOwner()?->getDisplayName() ?? '(unknown)';
+    $ownerName = $repo->getOwner()->getDisplayName();
     $this->messenger()->addError($this->t(
       'This repo was already submitted by @owner. Ask @owner to add you as a contributor, or contact an Appverse admin if you need to take over maintenance.',
       ['@owner' => $ownerName],

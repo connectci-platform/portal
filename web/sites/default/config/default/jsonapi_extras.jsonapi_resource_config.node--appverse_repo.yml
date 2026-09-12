@@ -114,3 +114,9 @@ resourceFields:
     publicName: field_repo_shape
     enhancer:
       id: ''
+  field_repo_unresolved_tags:
+    disabled: false
+    fieldName: field_repo_unresolved_tags
+    publicName: field_repo_unresolved_tags
+    enhancer:
+      id: ''

@@ -1,0 +1,23 @@
+uuid: 1fc64667-2ab9-49f9-aac6-8465bf4209d5
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_software_link
+    - node.type.access_active_resources_from_cid
+  module:
+    - link
+id: node.access_active_resources_from_cid.field_rp_software_link
+field_name: field_rp_software_link
+entity_type: node
+bundle: access_active_resources_from_cid
+label: 'RP source documentation for Software'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  title: 0
+  link_type: 16
+field_type: link

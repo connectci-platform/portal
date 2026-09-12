@@ -1,0 +1,93 @@
+uuid: 47186c87-47ca-434e-8a15-e6196db0688d
+langcode: en
+status: true
+dependencies:
+  module:
+    - contact
+    - jsonapi_defaults
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 50
+id: contact_form--contact_form
+disabled: true
+path: contact_form/contact_form
+resourceType: contact_form--contact_form
+resourceFields:
+  uuid:
+    disabled: false
+    fieldName: uuid
+    publicName: uuid
+    enhancer:
+      id: ''
+  langcode:
+    disabled: false
+    fieldName: langcode
+    publicName: langcode
+    enhancer:
+      id: ''
+  status:
+    disabled: false
+    fieldName: status
+    publicName: status
+    enhancer:
+      id: ''
+  dependencies:
+    disabled: false
+    fieldName: dependencies
+    publicName: dependencies
+    enhancer:
+      id: ''
+  third_party_settings:
+    disabled: false
+    fieldName: third_party_settings
+    publicName: third_party_settings
+    enhancer:
+      id: ''
+  _core:
+    disabled: false
+    fieldName: _core
+    publicName: _core
+    enhancer:
+      id: ''
+  id:
+    disabled: false
+    fieldName: id
+    publicName: id
+    enhancer:
+      id: ''
+  label:
+    disabled: false
+    fieldName: label
+    publicName: label
+    enhancer:
+      id: ''
+  recipients:
+    disabled: false
+    fieldName: recipients
+    publicName: recipients
+    enhancer:
+      id: ''
+  reply:
+    disabled: false
+    fieldName: reply
+    publicName: reply
+    enhancer:
+      id: ''
+  weight:
+    disabled: false
+    fieldName: weight
+    publicName: weight
+    enhancer:
+      id: ''
+  message:
+    disabled: false
+    fieldName: message
+    publicName: message
+    enhancer:
+      id: ''
+  redirect:
+    disabled: false
+    fieldName: redirect
+    publicName: redirect
+    enhancer:
+      id: ''

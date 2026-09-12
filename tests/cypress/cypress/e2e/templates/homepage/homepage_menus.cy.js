@@ -21,7 +21,9 @@ describe("For anonymous & authenticated user, the Menu Items test.", () => {
   });
 
   it('should navigate to Tags page', () => {
-    cy.get(':nth-child(7) > .hide-ccmnet').contains('Tags').click();
+    // Domain visibility is decided server-side now, so the link no longer
+    // carries a hide-ccmnet class to select on. See D8-2795.
+    cy.get('.nav-link[href="/tags"]').click();
     cy.contains('Tags');
   });
 });
@@ -50,7 +52,9 @@ context('Authenticated user', () => {
   });
 
   it('should navigate to Tags page', () => {
-    cy.get(':nth-child(7) > .hide-ccmnet').contains('Tags').click();
+    // Domain visibility is decided server-side now, so the link no longer
+    // carries a hide-ccmnet class to select on. See D8-2795.
+    cy.get('.nav-link[href="/tags"]').click();
     cy.contains('Tags');
   });
 });
