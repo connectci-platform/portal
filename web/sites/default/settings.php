@@ -96,7 +96,7 @@ if (isset($env)) {
       }
 
       $config['environment_indicator.indicator']['bg_color'] = '#005A70';
-      $config['environment_indicator.indicator']['fg_color'] = '#000000';
+      $config['environment_indicator.indicator']['fg_color'] = '#FFFFFF';
       $config['environment_indicator.indicator']['name'] = 'Local';
       break;
 
