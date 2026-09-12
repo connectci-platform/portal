@@ -45,6 +45,20 @@ describe('Accessibility Testing - reports all violations without failing CI (ini
     checkA11y('/community/overview');
   });
 
+  it('Documentation', () => {
+    checkMultipleUrls([
+      '/documentation/resources/anvil-cpu',
+      '/documentation/resources/jetstream2-gpu',
+      '/documentation/resources/aces-0',
+      '/documentation/schedulers'
+    ]);
+  });
+
+  it('Documentation - logged in', () => {
+    cy.loginAs('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    checkA11y('/documentation');
+  });
+
   it('Affinity Groups', () => {
     checkMultipleUrls([
       '/affinity-groups',
