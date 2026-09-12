@@ -1,5 +1,5 @@
 {
-    "_hash": "1f3352a4bed02e237a47ddaef98d69240c4742efebdc64e3dfcbff1867bdc388",
+    "_hash": "2129f2ffc313907e1a6b658cb6a447e7c4efa29d128ee769e7ce63d8ee0d515f",
     "patches": {
         "drupal/core": [
             {
@@ -39,6 +39,36 @@
                 "description": "Creating requests causes failures on Drupal 10.3",
                 "url": "https://www.drupal.org/files/issues/2024-08-07/3466281-2--for-2.0.8.patch",
                 "sha256": "05427143e48282862434ee60519677a56ab83cdd15dd17dbc0d772d4d3e7ec5d",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/facets",
+                "description": "Missing Drupal\\Core\\Url import in WidgetPluginBase causes fatal on /facets-block-ajax",
+                "url": "patches/facets-widgetpluginbase-missing-url-import.patch",
+                "sha256": "e9aaa98dda581dff36cb1c3d096a2aca711ae5ba5d4245eadd7259e025293a36",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/facets",
+                "description": "Facet AJAX URLs built from a query-string-less page URL come back as /path?https%3A%2F%2F... - https://www.drupal.org/i/3509670",
+                "url": "patches/facets-views-ajax-url-parse-3509670.patch",
+                "sha256": "8f75e640ac74cf5e6715363700729ed3f07165d4538d68298c7ef4ca0ccc5299",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/facets",
+                "description": "Facet block AJAX refresh uses a stale wrapper id, wiping Drupal.views.instances and locking up later facet clicks",
+                "url": "patches/facets-views-ajax-stale-block-selector.patch",
+                "sha256": "8d2bcaae6c9a99398e97de9b436dffd550f77f389e2cf2acd164cde65a89da92",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

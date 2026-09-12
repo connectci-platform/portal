@@ -1,3 +1,5 @@
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
+
 describe('Test the registration feature', () => {
 
   before(() => {
@@ -6,8 +8,7 @@ describe('Test the registration feature', () => {
 
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     // Delete all existing registrations
@@ -43,8 +44,7 @@ describe('Test the registration feature', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
     cy.contains('Register').click()
 
@@ -92,8 +92,7 @@ describe('Test the registration feature', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
     cy.contains('Register').click()
     cy.contains('Please confirm your registration below')
@@ -122,8 +121,7 @@ describe('Test the registration feature', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     cy.contains('Registrations').click()
@@ -134,8 +132,7 @@ describe('Test the registration feature', () => {
     cy.loginAs("walnut@pie.org", "Walnut");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
 
     cy.contains('Approved: Yes')
@@ -159,8 +156,7 @@ describe('Test the registration feature', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
     cy.visit('/events')
-    cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'example');
     cy.contains('cypress-example-event').click()
     cy.contains('Registrations').click()
 

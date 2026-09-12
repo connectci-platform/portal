@@ -33,44 +33,33 @@ describe("Test people page Card view for anonymous users", () => {
     cy.get('#program-308').should('not.exist');
     cy.get('#program-reset-all').should('not.exist');
     cy.get('#organization-cyberteam-people-1931').should('not.exist');
-    cy.get('#block-nect-organizationcyberteampeople').should('not.exist');
+    // By facet alias, not by id or block class: a block wrapper id picks up an
+    // AJAX suffix once the view re-renders, and the `block-facet-block<id>`
+    // classes only exist in some themes, either of which would make this
+    // negative assertion pass vacuously.
+    cy.get('ul[data-drupal-facet-alias="organization_cyberteam_people"]').should('not.exist');
 
     // Test search functionality (should work for anonymous users)
-    cy.get('#edit-search-api-fulltext--2').type('testing123', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'testing123');
     cy.contains('No matches found')
 
-    cy.get('#edit-search-api-fulltext--2').clear()
-    cy.wait(1000)
-    cy.get('#edit-search-api-fulltext--2').type('julie', { delay: 0 })
-    cy.wait(1000)
+    cy.clearSearchAndWait('[data-drupal-selector="edit-search-api-fulltext"]');
+    cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'julie');
     cy.contains('Julie Ma')
 
-    cy.get('#edit-search-api-fulltext--2').clear()
-    cy.wait(1000)
+    cy.clearSearchAndWait('[data-drupal-selector="edit-search-api-fulltext"]');
 
-    // Test Skills facet (should be available to anonymous users)
-    cy.get('body').then($body => {
-      // Check if the skills facet show more link exists
-      if ($body.find('#block-nect-userskillscyberteampeople .facets-soft-limit-link').length > 0) {
-        cy.get('#block-nect-userskillscyberteampeople .facets-soft-limit-link').click();
-      }
-      
-      // Check if specific skill filters exist
-      if ($body.find('#user-skills-cyberteam-people-llm').length > 0) {
-        cy.get('#user-skills-cyberteam-people-llm').click();
-        cy.contains('llm')
-        
-        if ($body.find('#user-skills-cyberteam-people-bash').length > 0) {
-          cy.get('#user-skills-cyberteam-people-bash').click();
-        }
-        
-        // Reset skills if reset exists
-        if ($body.find('#user-skills-cyberteam-people-reset-all').length > 0) {
-          cy.get('#user-skills-cyberteam-people-reset-all').click();
-        }
-      }
-    })
+    // Test Skills facet (should be available to anonymous users), the only
+    // facet anonymous users get. Each click is an AJAX round trip that
+    // re-renders the block, so the branch on a `$body` snapshot taken before
+    // the first click went stale; cy.clickFacetAndWait waits for the widget
+    // binding and for the refresh to land instead.
+    cy.expandFacetSoftLimit('user_skills_cyberteam_people');
+
+    cy.clickFacetAndWait('#user-skills-cyberteam-people-llm:visible');
+    cy.contains('llm')
+    cy.clickFacetAndWait('#user-skills-cyberteam-people-bash:visible');
+    cy.clickFacetAndWait('#user-skills-cyberteam-people-reset-all:visible');
   });
 
   it("Anonymous user verifies restricted content messaging", () => {

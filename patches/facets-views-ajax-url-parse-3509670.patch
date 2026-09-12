@@ -1,0 +1,50 @@
+Build facet AJAX URLs with the native URL object instead of parseQueryString.
+
+addExposedFiltersToFacetsUrl() fed window.location.href to
+Drupal.Views.parseQueryString(), which only strips the path when the string
+contains a "?". On a clean URL such as https://example.com/people the whole URL
+became a parameter name, and the rebuilt href came back as
+
+  /people?https%3A%2F%2Fexample.com%2Fpeople=&search_api_fulltext=julie
+
+Every facet link on an AJAX view was then built from that href, so the links
+still filtered but the address bar filled with nonsense. Parsing with
+`new URL()` makes the no-query-string case produce empty search params.
+
+Based on the RTBC merge request on https://www.drupal.org/i/3509670, with one
+change: that version skips a parameter when the URL already carries it, which
+lets a stale keyword in the URL win over the live exposed-form value and drops
+the second value of any multi-value field. Here each name the form supplies is
+cleared from the URL once, then every submitted value is appended, so the form
+stays authoritative and multi-value fields survive.
+
+Present in 2.0.10 and on 2.0.x HEAD. Gone in 3.0.x, which rewrote views AJAX
+handling and no longer ships this file.
+
+diff --git a/js/facets-views-ajax.js b/js/facets-views-ajax.js
+--- a/js/facets-views-ajax.js
++++ b/js/facets-views-ajax.js
+@@ -207,13 +207,20 @@
+   var addExposedFiltersToFacetsUrl = function (href, view_name, view_display_id) {
+     var $exposed_form = $('form#views-exposed-form-' + view_name.replace(/_/g, '-') + '-' + view_display_id.replace(/_/g, '-'));
+ 
+-    var params = Drupal.Views.parseQueryString(href);
++    var url = new URL(href);
++    var cleared = [];
+ 
+     $.each($exposed_form.serializeArray(), function () {
+-      params[this.name] = this.value;
++      // Drop whatever the URL already holds for this name the first time we
++      // see it, so the exposed form wins, then append every submitted value.
++      if (cleared.indexOf(this.name) === -1) {
++        cleared.push(this.name);
++        url.searchParams.delete(this.name);
++      }
++      url.searchParams.append(this.name, this.value);
+     });
+ 
+-    return href.split('?')[0] + '?' + $.param(params);
++    return url.toString();
+   };
+ 
+ })(jQuery, Drupal, once);

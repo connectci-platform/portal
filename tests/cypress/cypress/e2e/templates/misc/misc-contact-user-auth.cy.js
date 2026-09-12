@@ -1,10 +1,15 @@
 describe("As an authenticated visitor test the Contact Page", () => {
   it("Authenticated user tests the contact user page", () => {
     cy.loginUser("authenticated@amptesting.com", "6%l7iF}6(4tI");
-    cy.visit('/people/list');
-    cy.get('.order-2 [data-drupal-selector="edit-search-api-fulltext"]').type('Julie Ma');
-    cy.wait(500);
+    // Reach the profile through the faceted people page rather than
+    // /people/list. That page places one exposed form per people_list_view
+    // display and the old `.order-2` scope pointed at the duplicate
+    // exposed-form block that has been removed, leaving the search input
+    // ambiguous. /people carries a single exposed form and runs on AJAX.
+    cy.visit('/people');
+    cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'Julie Ma');
     cy.contains('Julie Ma');
+    cy.get('a[href="/community-persona/100"]').click();
     cy.contains('Julie').click();
     cy.contains('Julie Ma');
     cy.contains('Send Email').click();

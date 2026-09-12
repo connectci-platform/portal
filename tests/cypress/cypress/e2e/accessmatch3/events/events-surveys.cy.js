@@ -22,6 +22,7 @@
      - Should render HTML properly (not escaped)
 */
 
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Event Registration Surveys and Reminders', () => {
 
   // Test event name used across tests
@@ -180,8 +181,7 @@ describe('Event Registration Surveys and Reminders', () => {
       cy.loginAs("walnut@pie.org", "Walnut");
 
       cy.visit('/events');
-      cy.get('#edit-search-api-fulltext--2').type('survey-test', { delay: 0 });
-      cy.wait(1000);
+      cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
       cy.contains(testEventName).click();
 
       // Register for the event
@@ -220,8 +220,7 @@ describe('Event Registration Surveys and Reminders', () => {
       cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
 
       cy.visit('/events');
-      cy.get('#edit-search-api-fulltext--2').type('survey-test', { delay: 0 });
-      cy.wait(1000);
+      cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
       cy.contains(testEventName).click();
 
       // Navigate to registrations and approve
@@ -256,8 +255,7 @@ describe('Event Registration Surveys and Reminders', () => {
 
       // Get the event instance ID first
       cy.visit('/events');
-      cy.get('#edit-search-api-fulltext--2').type('survey-test', { delay: 0 });
-      cy.wait(1000);
+      cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
       cy.contains(testEventName).click();
 
       // Get the event instance ID from the URL
@@ -281,8 +279,7 @@ describe('Event Registration Surveys and Reminders', () => {
 
       // Navigate to the event to get the ID
       cy.visit('/events');
-      cy.get('#edit-search-api-fulltext--2').type('survey-test', { delay: 0 });
-      cy.wait(1000);
+      cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
       cy.contains(testEventName).click();
 
       // Get event instance ID and user ID
@@ -599,8 +596,7 @@ describe('Event Registration Surveys and Reminders', () => {
 
       // Clean up survey test event registrations
       cy.visit('/events');
-      cy.get('#edit-search-api-fulltext--2').type('survey-test', { delay: 0 });
-      cy.wait(1000);
+      cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
 
       cy.get('body').then($body => {
         if ($body.text().includes(testEventName)) {
@@ -645,8 +641,8 @@ describe('Event Registration Surveys and Reminders', () => {
 
           // Delete the event series
           cy.visit('/events');
-          cy.get('#edit-search-api-fulltext--2').clear().type('survey-test', { delay: 0 });
-          cy.wait(1000);
+          cy.clearSearchAndWait(EVENTS_SEARCH);
+          cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
           cy.contains(testEventName).click();
           cy.get('.region-content').contains('Edit').click();
           cy.contains('a', 'Edit the series').click();
@@ -659,8 +655,8 @@ describe('Event Registration Surveys and Reminders', () => {
 
       // Clean up past survey event (use /events/past since it's a past event)
       cy.visit('/events/past');
-      cy.get('#edit-search-api-fulltext--2').clear().type('past-survey-event', { delay: 0 });
-      cy.wait(1000);
+      cy.clearSearchAndWait(EVENTS_SEARCH);
+      cy.searchAndWait(EVENTS_SEARCH, 'past-survey-event');
 
       cy.get('body').then($body => {
         if ($body.text().includes('cypress-past-survey-event')) {
@@ -705,8 +701,8 @@ describe('Event Registration Surveys and Reminders', () => {
 
           // Delete the series (use /events/past for past events)
           cy.visit('/events/past');
-          cy.get('#edit-search-api-fulltext--2').clear().type('past-survey-event', { delay: 0 });
-          cy.wait(1000);
+          cy.clearSearchAndWait(EVENTS_SEARCH);
+          cy.searchAndWait(EVENTS_SEARCH, 'past-survey-event');
           cy.contains('cypress-past-survey-event').click();
           cy.get('.region-content').contains('Edit').click();
           cy.contains('a', 'Edit the series').click();
@@ -717,8 +713,8 @@ describe('Event Registration Surveys and Reminders', () => {
 
       // Clean up reminder HTML test event (future event)
       cy.visit('/events');
-      cy.get('#edit-search-api-fulltext--2').clear().type('reminder-html-event', { delay: 0 });
-      cy.wait(1000);
+      cy.clearSearchAndWait(EVENTS_SEARCH);
+      cy.searchAndWait(EVENTS_SEARCH, 'reminder-html-event');
 
       cy.get('body').then($body => {
         if ($body.text().includes('cypress-reminder-html-event')) {
@@ -761,8 +757,8 @@ describe('Event Registration Surveys and Reminders', () => {
 
           // Delete the event series
           cy.visit('/events');
-          cy.get('#edit-search-api-fulltext--2').clear().type('reminder-html-event', { delay: 0 });
-          cy.wait(1000);
+          cy.clearSearchAndWait(EVENTS_SEARCH);
+          cy.searchAndWait(EVENTS_SEARCH, 'reminder-html-event');
           cy.contains('cypress-reminder-html-event').click();
           cy.get('.region-content').contains('Edit').click();
           cy.contains('a', 'Edit the series').click();

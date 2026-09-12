@@ -1892,11 +1892,6 @@ table.sticky-header th {
   display: none;
 }
 
-#block-nect-exposedformcssn-directorypage-1-2 .form-item-search-api-fulltext,
-#block-nect-exposedformcssn-directorypage-1 .form-item-items-per-page{
-  display: none;
-}
-
 .cssn-photo img {
   height: 100px;
   width: 90px;
@@ -2460,10 +2455,6 @@ button.copyclip:has(:hover, + details.search-ci-links summary:hover) {
   display: none;
 }
 
-#block-nect-exposedformccmnet-memberspage-1 .form-item-items-per-page,
-#block-nect-exposedformccmnet-memberspage-1-2 .form-item-search-api-fulltext {
-  display: none;
-}
 .cssn-photo {
   margin-bottom: 10px;
 }
@@ -2604,19 +2595,6 @@ details.tags label {
   z-index: 10;
 }
 
-.order-2 #views-exposed-form-cyberteam-people-facets-page-1 {
-  margin-top: 2rem;
-
-  .js-form-type-select {
-    display: none;
-  }
-}
-
-.order-1 #views-exposed-form-cyberteam-people-facets-page-1 {
-  .js-form-type-textfield {
-    display: none;
-  }
-}
 .user-skills a:nth-of-type(1n+6) {
   display: none !important;
 }
