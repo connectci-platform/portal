@@ -1,5 +1,5 @@
 {
-    "_hash": "1f3352a4bed02e237a47ddaef98d69240c4742efebdc64e3dfcbff1867bdc388",
+    "_hash": "fc06eefd7ae1653cc0dfd61e32321d52496e0b79710b20a2b291b30e4ad93314",
     "patches": {
         "drupal/core": [
             {
@@ -95,6 +95,26 @@
                 "description": "Compare RegistrationType against the enum, not strings (reg_type token and registrant list view filter/title)",
                 "url": "patches/recurring_events-registration-type-enum-comparisons.patch",
                 "sha256": "41cde45fb7ab4ff45536eba95cfeae392faefd9a857f6458aa138dde24f46d54",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "Clone the shared computed date object before converting its timezone",
+                "url": "patches/recurring_events-clone-shared-date-object.patch",
+                "sha256": "e966bad6e367181cface8e179d211a27ad4bee046513f147e93df96e31b85c4a",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "Resolve the generation timezone from the event rather than the saving user",
+                "url": "patches/recurring_events-generation-event-timezone.patch",
+                "sha256": "c2984a58bd74dafeee370b02b5b1f404730f1b9be13ac657a8449d8b4d652267",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

@@ -1,0 +1,22 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.eventseries.field_event_in_person
+    - recurring_events.eventseries_type.default
+id: eventseries.default.field_event_in_person
+field_name: field_event_in_person
+entity_type: eventseries
+bundle: default
+label: 'This event has a physical venue'
+description: 'Tick this for an in-person event. Times will be shown in the venue''s timezone rather than converted to each viewer''s. Leave unticked for online events.'
+required: false
+translatable: false
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: 'In person'
+  off_label: Online
+field_type: boolean
