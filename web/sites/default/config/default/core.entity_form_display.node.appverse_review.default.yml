@@ -1,11 +1,13 @@
-uuid: null
+uuid: 8987927d-057f-4214-a46a-49d22550b942
 langcode: en
 status: true
 dependencies:
   config:
     - field.field.node.appverse_review.field_arv_assessment
     - field.field.node.appverse_review.field_arv_assigned_reviewer
+    - field.field.node.appverse_review.field_arv_contributor_response
     - field.field.node.appverse_review.field_arv_indicators_default
+    - field.field.node.appverse_review.field_arv_internal_notes
     - field.field.node.appverse_review.field_arv_maint_anchor
     - field.field.node.appverse_review.field_arv_maint_level
     - field.field.node.appverse_review.field_arv_maint_level_note
@@ -36,110 +38,7 @@ dependencies:
     - text
 third_party_settings:
   field_group:
-    group_review_tabs:
-      children:
-        - group_tab_overview
-        - group_tab_verdicts
-        - group_tab_repo_findings
-        - group_tab_notes
-      label: 'Review'
-      region: content
-      parent_name: ''
-      weight: 2
-      format_type: tabs
-      format_settings:
-        classes: ''
-        show_empty_fields: false
-        id: ''
-        label_as_html: false
-        direction: horizontal
-        width_breakpoint: 640
-    group_tab_overview:
-      children:
-        - group_repo_signal
-        - group_machine_data
-      label: 'Overview'
-      region: content
-      parent_name: 'group_review_tabs'
-      weight: 3
-      format_type: tab
-      format_settings:
-        classes: ''
-        show_empty_fields: false
-        id: ''
-        label_as_html: false
-        formatter: open
-        description: ''
-        required_fields: true
-    group_tab_verdicts:
-      children:
-        - field_arv_verdicts
-      label: 'Verdicts'
-      region: content
-      parent_name: 'group_review_tabs'
-      weight: 4
-      format_type: tab
-      format_settings:
-        classes: ''
-        show_empty_fields: false
-        id: ''
-        label_as_html: false
-        formatter: closed
-        description: ''
-        required_fields: true
-    group_tab_repo_findings:
-      children:
-        - field_arv_repo_findings
-      label: 'Repo findings'
-      region: content
-      parent_name: 'group_review_tabs'
-      weight: 5
-      format_type: tab
-      format_settings:
-        classes: ''
-        show_empty_fields: false
-        id: ''
-        label_as_html: false
-        formatter: closed
-        description: ''
-        required_fields: true
-    group_tab_notes:
-      children:
-        - field_arv_assigned_reviewer
-        - field_arv_moderator_notes
-        - field_arv_assessment
-      label: 'Notes'
-      region: content
-      parent_name: 'group_review_tabs'
-      weight: 6
-      format_type: tab
-      format_settings:
-        classes: ''
-        show_empty_fields: false
-        id: ''
-        label_as_html: false
-        formatter: closed
-        description: ''
-        required_fields: true
-    group_repo_signal:
-      children:
-        - field_arv_maint_level
-        - field_arv_maint_summary
-        - field_arv_maint_level_note
-      label: 'Repo signal - Maintenance'
-      region: content
-      parent_name: 'group_tab_overview'
-      weight: 0
-      format_type: details
-      format_settings:
-        classes: ''
-        show_empty_fields: false
-        id: ''
-        label_as_html: false
-        open: true
-        description: ''
-        required_fields: true
-    group_machine_data:
+    group_overview_meta:
       children:
         - field_arv_repo
         - field_arv_sha
@@ -149,17 +48,17 @@ third_party_settings:
         - field_arv_repo_shape
         - field_arv_recommendation
         - field_arv_recommendation_note
+        - field_arv_prior_review
         - field_arv_report_md
         - field_arv_report_pdf
         - field_arv_report_html
-        - field_arv_prior_review
         - field_arv_maint_anchor
         - field_arv_run_meta
         - field_arv_repo_criteria
         - field_arv_indicators_default
-      label: 'Machine data - seeded from the artifact, do not edit'
+      label: 'Overview - machine-seeded review metadata (do not edit)'
       region: content
-      parent_name: 'group_tab_overview'
+      parent_name: ''
       weight: 1
       format_type: details
       format_settings:
@@ -170,50 +69,75 @@ third_party_settings:
         open: false
         description: ''
         required_fields: true
+    group_maintenance:
+      children:
+        - field_arv_maint_level
+        - field_arv_maint_summary
+        - field_arv_maint_level_note
+        - field_arv_repo_findings
+      label: 'Maintenance (repo-level)'
+      region: content
+      parent_name: ''
+      weight: 3
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
+    group_response:
+      children:
+        - field_arv_contributor_response
+        - field_arv_assessment
+      label: 'Response to contributor'
+      region: content
+      parent_name: ''
+      weight: 5
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
+    group_internal_notes:
+      children:
+        - field_arv_internal_notes
+        - field_arv_assigned_reviewer
+      label: 'Internal notes - never visible to the contributor or the public'
+      region: content
+      parent_name: ''
+      weight: 6
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: true
+        description: ''
+        required_fields: true
 id: node.appverse_review.default
 targetEntityType: node
 bundle: appverse_review
 mode: default
 content:
-  title:
-    type: string_textfield
-    weight: 0
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  moderation_state:
-    type: moderation_state_default
-    weight: 100
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_arv_maint_level:
-    type: options_select
-    weight: 10
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_arv_maint_summary:
-    type: string_textfield
-    weight: 11
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_maint_level_note:
+  field_arv_assessment:
     type: text_textarea
-    weight: 12
+    weight: 51
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
-  field_arv_repo:
+  field_arv_assigned_reviewer:
     type: entity_reference_autocomplete
-    weight: 20
+    weight: 61
     region: content
     settings:
       match_operator: CONTAINS
@@ -221,106 +145,9 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_arv_sha:
-    type: string_textfield
-    weight: 21
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_ref:
-    type: string_textfield
-    weight: 22
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_reviewed_at:
-    type: datetime_timestamp
-    weight: 23
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_arv_tool_version:
-    type: string_textfield
-    weight: 24
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_repo_shape:
-    type: options_select
-    weight: 25
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_arv_recommendation:
-    type: options_select
-    weight: 26
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_arv_recommendation_note:
+  field_arv_contributor_response:
     type: text_textarea
-    weight: 27
-    region: content
-    settings:
-      rows: 5
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_report_md:
-    type: file_generic
-    weight: 28
-    region: content
-    settings:
-      progress_indicator: throbber
-    third_party_settings: {  }
-  field_arv_report_pdf:
-    type: file_generic
-    weight: 29
-    region: content
-    settings:
-      progress_indicator: throbber
-    third_party_settings: {  }
-  field_arv_report_html:
-    type: file_generic
-    weight: 30
-    region: content
-    settings:
-      progress_indicator: throbber
-    third_party_settings: {  }
-  field_arv_prior_review:
-    type: entity_reference_autocomplete
-    weight: 31
-    region: content
-    settings:
-      match_operator: CONTAINS
-      match_limit: 10
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_maint_anchor:
-    type: string_textfield
-    weight: 32
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_run_meta:
-    type: string_textarea
-    weight: 33
-    region: content
-    settings:
-      rows: 5
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_repo_criteria:
-    type: string_textarea
-    weight: 34
+    weight: 50
     region: content
     settings:
       rows: 5
@@ -328,34 +155,114 @@ content:
     third_party_settings: {  }
   field_arv_indicators_default:
     type: string_textarea
-    weight: 35
+    weight: 25
     region: content
     settings:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
-  field_arv_verdicts:
+  field_arv_internal_notes:
     type: paragraphs
-    weight: 40
+    weight: 60
     region: content
     settings:
-      title: Verdict
-      title_plural: Verdicts
+      title: Note
+      title_plural: Notes
       edit_mode: open
       closed_mode: summary
       autocollapse: none
       closed_mode_threshold: 0
-      add_mode: dropdown
+      add_mode: button
       form_display_mode: default
-      default_paragraph_type: review_verdict
+      default_paragraph_type: review_note
       features:
+        add_above: '0'
         collapse_edit_all: collapse_edit_all
         duplicate: '0'
-        add_above: '0'
+    third_party_settings: {  }
+  field_arv_maint_anchor:
+    type: string_textfield
+    weight: 22
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_maint_level:
+    type: options_select
+    weight: 40
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_maint_level_note:
+    type: text_textarea
+    weight: 42
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_maint_summary:
+    type: string_textfield
+    weight: 41
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_prior_review:
+    type: entity_reference_autocomplete
+    weight: 18
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_recommendation:
+    type: options_select
+    weight: 16
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_recommendation_note:
+    type: text_textarea
+    weight: 17
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_ref:
+    type: string_textfield
+    weight: 12
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_repo:
+    type: entity_reference_autocomplete
+    weight: 10
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_repo_criteria:
+    type: string_textarea
+    weight: 24
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
     third_party_settings: {  }
   field_arv_repo_findings:
     type: paragraphs
-    weight: 50
+    weight: 43
     region: content
     settings:
       title: Finding
@@ -368,38 +275,115 @@ content:
       form_display_mode: default
       default_paragraph_type: review_finding
       features:
+        add_above: '0'
         collapse_edit_all: collapse_edit_all
         duplicate: '0'
-        add_above: '0'
     third_party_settings: {  }
-  field_arv_assigned_reviewer:
-    type: entity_reference_autocomplete
-    weight: 60
+  field_arv_repo_shape:
+    type: options_select
+    weight: 15
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_report_html:
+    type: file_generic
+    weight: 21
     region: content
     settings:
-      match_operator: CONTAINS
-      match_limit: 10
+      progress_indicator: throbber
+    third_party_settings: {  }
+  field_arv_report_md:
+    type: file_generic
+    weight: 19
+    region: content
+    settings:
+      progress_indicator: throbber
+    third_party_settings: {  }
+  field_arv_report_pdf:
+    type: file_generic
+    weight: 20
+    region: content
+    settings:
+      progress_indicator: throbber
+    third_party_settings: {  }
+  field_arv_reviewed_at:
+    type: datetime_timestamp
+    weight: 13
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_arv_run_meta:
+    type: string_textarea
+    weight: 23
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_arv_sha:
+    type: string_textfield
+    weight: 11
+    region: content
+    settings:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_arv_moderator_notes:
-    type: text_textarea
-    weight: 61
+  field_arv_tool_version:
+    type: string_textfield
+    weight: 14
     region: content
     settings:
-      rows: 5
+      size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_arv_assessment:
-    type: text_textarea
-    weight: 62
+  field_arv_verdicts:
+    type: paragraphs
+    weight: 30
     region: content
     settings:
-      rows: 5
+      title: Verdict
+      title_plural: Verdicts
+      edit_mode: open
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: review_verdict
+      features:
+        add_above: '0'
+        collapse_edit_all: collapse_edit_all
+        duplicate: '0'
+    third_party_settings: {  }
+  moderation_state:
+    type: moderation_state_default
+    weight: 100
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  simple_sitemap:
+    weight: 10
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  status:
+    type: boolean_checkbox
+    weight: 120
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
+  title:
+    type: string_textfield
+    weight: 0
+    region: content
+    settings:
+      size: 60
       placeholder: ''
     third_party_settings: {  }
-hidden: 
+hidden:
   created: true
+  field_arv_moderator_notes: true
   langcode: true
   path: true
   promote: true

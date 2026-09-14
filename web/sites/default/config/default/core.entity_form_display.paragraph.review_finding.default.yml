@@ -1,4 +1,4 @@
-uuid: null
+uuid: 77271c1d-af23-4cb0-b0c4-f0eaa33164c4
 langcode: en
 status: true
 dependencies:
@@ -52,31 +52,37 @@ targetEntityType: paragraph
 bundle: review_finding
 mode: default
 content:
-  field_rvf_summary:
+  field_rvf_anchor:
     type: string_textfield
-    weight: 0
+    weight: 19
     region: content
     settings:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_rvf_reviewer_prose:
-    type: text_textarea
-    weight: 1
+  field_rvf_app_id:
+    type: string_textfield
+    weight: 17
     region: content
     settings:
-      rows: 5
+      size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_rvf_severity:
+  field_rvf_aspect:
     type: options_select
-    weight: 10
+    weight: 14
     region: content
     settings: {  }
     third_party_settings: {  }
-  field_rvf_rule:
+  field_rvf_category:
+    type: options_select
+    weight: 15
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvf_defect_key:
     type: string_textfield
-    weight: 11
+    weight: 18
     region: content
     settings:
       size: 60
@@ -97,15 +103,25 @@ content:
     settings:
       placeholder: ''
     third_party_settings: {  }
-  field_rvf_aspect:
-    type: options_select
-    weight: 14
+  field_rvf_reviewer_prose:
+    type: text_textarea
+    weight: 1
     region: content
-    settings: {  }
+    settings:
+      rows: 5
+      placeholder: ''
     third_party_settings: {  }
-  field_rvf_category:
+  field_rvf_rule:
+    type: string_textfield
+    weight: 11
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_severity:
     type: options_select
-    weight: 15
+    weight: 10
     region: content
     settings: {  }
     third_party_settings: {  }
@@ -117,28 +133,14 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_rvf_app_id:
+  field_rvf_summary:
     type: string_textfield
-    weight: 17
+    weight: 0
     region: content
     settings:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_rvf_defect_key:
-    type: string_textfield
-    weight: 18
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_anchor:
-    type: string_textfield
-    weight: 19
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-hidden: {  }
+hidden:
+  created: true
+  status: true

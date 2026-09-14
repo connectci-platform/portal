@@ -1,0 +1,10 @@
+uuid: 014667d3-a6bc-4764-a9ce-95dd742e6986
+langcode: en
+status: true
+dependencies: {  }
+id: review_note
+label: 'Review Note'
+icon_uuid: null
+icon_default: null
+description: "One internal note in a review's log: author, time, text. Reviewer-to-reviewer continuity; never shown to contributors or the public."
+behavior_plugins: {  }
