@@ -1,0 +1,18 @@
+uuid: 148730a1-3a43-4a03-af00-e982db1120ed
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_contributor_response
+field_name: field_arv_contributor_response
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

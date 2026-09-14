@@ -161,3 +161,45 @@ resourceFields:
     publicName: field_arv_moderator_notes
     enhancer:
       id: ''
+  field_arv_maint_level:
+    disabled: false
+    fieldName: field_arv_maint_level
+    publicName: field_arv_maint_level
+    enhancer:
+      id: ''
+  field_arv_maint_summary:
+    disabled: false
+    fieldName: field_arv_maint_summary
+    publicName: field_arv_maint_summary
+    enhancer:
+      id: ''
+  field_arv_maint_anchor:
+    disabled: false
+    fieldName: field_arv_maint_anchor
+    publicName: field_arv_maint_anchor
+    enhancer:
+      id: ''
+  field_arv_maint_level_note:
+    disabled: true
+    fieldName: field_arv_maint_level_note
+    publicName: field_arv_maint_level_note
+    enhancer:
+      id: ''
+  field_arv_indicators_default:
+    disabled: true
+    fieldName: field_arv_indicators_default
+    publicName: field_arv_indicators_default
+    enhancer:
+      id: ''
+  field_arv_contributor_response:
+    disabled: true
+    fieldName: field_arv_contributor_response
+    publicName: field_arv_contributor_response
+    enhancer:
+      id: ''
+  field_arv_internal_notes:
+    disabled: true
+    fieldName: field_arv_internal_notes
+    publicName: field_arv_internal_notes
+    enhancer:
+      id: ''

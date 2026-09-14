@@ -1,4 +1,4 @@
-uuid: null
+uuid: 6562ddd4-480e-4453-91f3-cd554c9daf43
 langcode: en
 status: true
 dependencies:
@@ -19,51 +19,50 @@ dependencies:
   module:
     - options
     - text
-third_party_settings: {  }
 id: paragraph.review_finding.default
 targetEntityType: paragraph
 bundle: review_finding
 mode: default
 content:
-  field_rvf_severity:
-    type: list_default
-    weight: 0
-    region: content
-    label: inline
-    settings: {  }
-    third_party_settings: {  }
-  field_rvf_rule:
+  field_rvf_evidence:
     type: string
-    weight: 1
-    region: content
     label: inline
     settings:
       link_to_entity: false
     third_party_settings: {  }
+    weight: 3
+    region: content
+  field_rvf_reviewer_prose:
+    type: text_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_rvf_rule:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_rvf_severity:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
   field_rvf_summary:
     type: string
-    weight: 2
-    region: content
     label: hidden
     settings:
       link_to_entity: false
     third_party_settings: {  }
-  field_rvf_evidence:
-    type: string
-    weight: 3
+    weight: 2
     region: content
-    label: inline
-    settings:
-      link_to_entity: false
-    third_party_settings: {  }
-  field_rvf_reviewer_prose:
-    type: text_default
-    weight: 4
-    region: content
-    label: above
-    settings: {  }
-    third_party_settings: {  }
-hidden: 
+hidden:
   field_rvf_anchor: true
   field_rvf_app_id: true
   field_rvf_aspect: true
@@ -71,3 +70,4 @@ hidden:
   field_rvf_defect_key: true
   field_rvf_line: true
   field_rvf_stable_id: true
+  search_api_excerpt: true
