@@ -1,0 +1,18 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.eventseries.field_event_timezone
+    - recurring_events.eventseries_type.default
+id: eventseries.default.field_event_timezone
+field_name: field_event_timezone
+entity_type: eventseries
+bundle: default
+label: 'Event timezone'
+description: 'The timezone the event''s times are given in. Defaults to your account timezone.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
