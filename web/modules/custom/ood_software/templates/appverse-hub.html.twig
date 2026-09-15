@@ -7,7 +7,8 @@
  *
  * Header cluster, left→right:
  *   [status badge] | [pencil — inferred+can_edit] | Submitted <ts>
- *   | [github] | [catalog] | [owner name][email — admin] | [lifecycle icons]
+ *   | [github] | [catalog] | [owner name][email — admin]
+ *   | [resync + lifecycle icons]
  */
 #}
 <article class="appverse-hub-card state-{{ hub.moderation_state }}">
@@ -77,6 +78,7 @@
           <i class="bi bi-pencil-square" aria-hidden="true"></i>
         </a>
       {% endif %}
+      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
       {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
       {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
       {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}

@@ -262,7 +262,7 @@ header:has(> .appverse-hub-add-repo) {
     2.5rem               /* github */
     12rem                /* owner (blank on own hub) */
     9rem                 /* status */
-    9rem;                /* edit pencil + lifecycle actions */
+    11rem;               /* edit pencil + resync + lifecycle actions */
   align-items: center;
   column-gap: 1.25rem;
   row-gap: 0.5rem;

@@ -325,10 +325,11 @@ describe('Appverse Maintenance Hub', () => {
           return;
         }
         // Header icon affordances exist on the first card. (The catalog icon
-        // was dropped as redundant — the card title links to the catalog —
-        // and the inline resync icon was removed, so github is the only
-        // header icon now; the submitted date is shown as text, not an icon.)
+        // was dropped as redundant — the card title links to the catalog — so
+        // github is the header link; resync sits with the lifecycle actions;
+        // the submitted date is shown as text, not an icon.)
         cy.get('.appverse-hub-card').first().within(() => {
+          cy.get('.appverse-hub-card__cell--actions .bi-arrow-clockwise').should('exist');
           cy.get('.bi-github').should('exist');
           cy.get('.appverse-hub-card__submitted').should('exist')
             .invoke('text').should('match', /^\s*Submitted/);
@@ -360,6 +361,27 @@ describe('Appverse Maintenance Hub', () => {
         // No owner block and no delete (danger) icon on the contributor's own hub.
         cy.get('.appverse-hub-card__owner').should('not.exist');
         cy.get('.appverse-hub-card__icon-btn--danger').should('not.exist');
+      });
+    });
+  });
+
+  describe('Re-sync via inline icon', () => {
+    // Seed a Collection owned by the contributor so their hub renders a card
+    // with the inline Re-sync form.
+    let contributorUid;
+    beforeEach(() => {
+      cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
+      seedRepo({ title: 'Re-sync Collection', state: 'published' });
+      resolveContributorUid().then((uid) => { contributorUid = uid; });
+    });
+
+    it('exposes an inline Re-sync action', () => {
+      cy.visit(`/user/${contributorUid}/my-appverse`, { failOnStatusCode: false });
+      cy.get('.appverse-hub-card', { timeout: 10000 }).first().within(() => {
+        cy.get('.appverse-hub-card__cell--actions form[action*="/resync"]').should('exist');
+        cy.get('form[action*="/resync"] button[type="submit"]')
+          .should('have.attr', 'aria-label', 'Re-sync from GitHub');
+        cy.get('form[action*="/resync"] .bi-arrow-clockwise').should('exist');
       });
     });
   });

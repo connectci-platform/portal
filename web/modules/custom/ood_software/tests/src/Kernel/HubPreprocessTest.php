@@ -312,8 +312,7 @@ class HubPreprocessTest extends KernelTestBase {
   }
 
   public function testContributorActionSetDraft(): void {
-    // Non-admin owner of a draft repo: sees send_for_review, not publish, and
-    // no resync action (the card no longer offers an inline resync).
+    // Non-admin owner of a draft repo: sees resync + send_for_review, not publish.
     // (uid 1 is burned in setUp(), so this user is genuinely non-admin.)
     $owner = $this->createUser([], 'contributor');
     \Drupal::currentUser()->setAccount($owner);
@@ -325,7 +324,7 @@ class HubPreprocessTest extends KernelTestBase {
     $this->assertNotNull($hub['actions']['send_for_review']);
     $this->assertNull($hub['actions']['publish']);
     $this->assertNull($hub['actions']['request_changes']);
-    $this->assertArrayNotHasKey('resync', $hub['actions']);
+    $this->assertNotNull($hub['actions']['resync']);
   }
 
   public function testNonAdminGetsNoAdminActions(): void {
