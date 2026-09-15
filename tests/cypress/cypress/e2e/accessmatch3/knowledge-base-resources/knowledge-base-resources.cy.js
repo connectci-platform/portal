@@ -34,8 +34,8 @@ describe("Unauthenticated user tests the KB Resources Page", () => {
     // cy.visit("/knowledge-base/ci-links");
 
     //Searching for Cypress Created CI Link
-    cy.searchAndWait(EVENTS_SEARCH, "dummy-ci-link-for-testing-knowledge-base");
+    cy.searchAndWait(EVENTS_SEARCH, "dummy link for testing knowledge base");
     cy.get(".view-search-ci-links details summary")
-      .contains("dummy-ci-link-for-testing-knowledge-base")
+      .contains("dummy link for testing knowledge base")
   });
 });
