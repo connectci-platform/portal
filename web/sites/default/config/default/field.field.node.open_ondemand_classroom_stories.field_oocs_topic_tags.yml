@@ -1,0 +1,29 @@
+uuid: 1af6eac8-5295-46c1-9cbe-a8dbfeeeda86
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_topic_tags
+    - node.type.open_ondemand_classroom_stories
+    - taxonomy.vocabulary.tags
+id: node.open_ondemand_classroom_stories.field_oocs_topic_tags
+field_name: field_oocs_topic_tags
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: 'Topic Tags'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:taxonomy_term'
+  handler_settings:
+    target_bundles:
+      tags: tags
+    sort:
+      field: name
+      direction: asc
+    auto_create: false
+    auto_create_bundle: ''
+field_type: entity_reference
