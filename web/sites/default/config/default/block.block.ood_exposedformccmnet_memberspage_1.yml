@@ -1,0 +1,28 @@
+uuid: 075a8ef6-3188-4b48-90d0-215982a04c9d
+langcode: en
+status: true
+dependencies:
+  config:
+    - views.view.ccmnet_members
+  module:
+    - system
+    - views
+  theme:
+    - ood
+id: ood_exposedformccmnet_memberspage_1
+theme: ood
+region: primary_sidebar
+weight: -40
+provider: null
+plugin: 'views_exposed_filter_block:ccmnet_members-page_1'
+settings:
+  id: 'views_exposed_filter_block:ccmnet_members-page_1'
+  label: ''
+  label_display: '0'
+  provider: views
+  views_label: ''
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /members
