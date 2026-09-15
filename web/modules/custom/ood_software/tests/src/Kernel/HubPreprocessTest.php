@@ -157,6 +157,20 @@ class HubPreprocessTest extends KernelTestBase {
     $this->assertSame('Published', (string) $hub['status']['label']);
   }
 
+  /**
+   * Submitted date comes from the repo's created time, not last_synced.
+   */
+  public function testSubmittedDateComesFromCreatedTime(): void {
+    $repo = $this->makeRepo(['title' => 'Submitted Repo']);
+    $repo->setCreatedTime(1700000000)->save();
+
+    $hub = _ood_software_build_hub_row($repo);
+
+    $expected = \Drupal::service('date.formatter')->format(1700000000, 'custom', 'm-d-y H:i');
+    $this->assertSame($expected, $hub['submitted']);
+    $this->assertArrayNotHasKey('last_synced', $hub);
+  }
+
   public function testBadgeMappingForEveryState(): void {
     $expected = [
       'published' => ['Published', 'success'],
