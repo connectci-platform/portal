@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f21d83d5c4ffcc7a177e76baa51e5aa2",
+    "content-hash": "266871056bfa76609b436fa614c8a5a7",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -24667,7 +24667,6 @@
     "stability-flags": {
         "access/drupal_seamless_cilogon": 20,
         "access/infrastructure_news": 20,
-        "access/operations_cider": 20,
         "connectci/access": 20,
         "connectci/amp_dev": 20,
         "connectci/asp-theme": 20,

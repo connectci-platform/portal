@@ -36,8 +36,9 @@ function ood_general_theme() {
  * Implements hook_entity_bundle_field_info_alter().
  *
  * Limits the Open OnDemand Classroom Stories project summary to 200
- * characters. The field is a string_long field, which has no max_length
- * storage setting, so the limit is enforced with a validation constraint.
+ * characters, and the headline (node title) to 75. Both fields have no
+ * max_length storage setting, so the limits are enforced with validation
+ * constraints.
  */
 function ood_general_entity_bundle_field_info_alter(&$fields, EntityTypeInterface $entity_type, $bundle) {
   if ($entity_type->id() === 'node'
@@ -50,6 +51,15 @@ function ood_general_entity_bundle_field_info_alter(&$fields, EntityTypeInterfac
       'Length' => ['max' => 200],
     ]);
   }
+
+  if ($entity_type->id() === 'node'
+    && $bundle === 'open_ondemand_classroom_stories'
+    && isset($fields['title'])
+    && $fields['title'] instanceof FieldConfigInterface) {
+    $fields['title']->addPropertyConstraints('value', [
+      'Length' => ['max' => 75],
+    ]);
+  }
 }
 
 /**
@@ -57,6 +67,7 @@ function ood_general_entity_bundle_field_info_alter(&$fields, EntityTypeInterfac
  */
 function ood_general_form_node_open_ondemand_classroom_stories_form_alter(&$form, $form_state) {
   _ood_general_limit_project_summary($form);
+  _ood_general_limit_title($form);
   _ood_general_add_tag_suggester($form);
 }
 
@@ -65,6 +76,7 @@ function ood_general_form_node_open_ondemand_classroom_stories_form_alter(&$form
  */
 function ood_general_form_node_open_ondemand_classroom_stories_edit_form_alter(&$form, $form_state) {
   _ood_general_limit_project_summary($form);
+  _ood_general_limit_title($form);
   _ood_general_add_tag_suggester($form);
 }
 
@@ -74,6 +86,15 @@ function ood_general_form_node_open_ondemand_classroom_stories_edit_form_alter(&
 function _ood_general_limit_project_summary(array &$form) {
   if (isset($form['field_oocs_project_summary']['widget'][0]['value'])) {
     $form['field_oocs_project_summary']['widget'][0]['value']['#attributes']['maxlength'] = 200;
+  }
+}
+
+/**
+ * Sets the HTML maxlength on the headline (title) field for live feedback.
+ */
+function _ood_general_limit_title(array &$form) {
+  if (isset($form['title']['widget'][0]['value'])) {
+    $form['title']['widget'][0]['value']['#attributes']['maxlength'] = 75;
   }
 }
 

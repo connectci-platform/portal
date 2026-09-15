@@ -33,6 +33,13 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
   const FALLBACK_PHOTO = '/themes/contrib/asp-theme/images/user-picture.svg';
 
   /**
+   * Node ID of the "Other" organization.
+   *
+   * See PersonaBlock::build() for the same hardcode.
+   */
+  const ORG_OTHER_NID = 3695;
+
+  /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
@@ -90,7 +97,7 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     }
 
     // Author = the person referenced by field_oocs_name, with Role and
-    // Institution taken from the node's own fields. Suppressed when no person
+    // Institution taken from the referenced user. Suppressed when no person
     // is referenced.
     $person = NULL;
     if ($node->hasField('field_oocs_name') && !$node->get('field_oocs_name')->isEmpty()) {
@@ -144,8 +151,8 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
   /**
    * Builds the author profile card data.
    *
-   * The person's photo and name come from the referenced user; Role and
-   * Institution come from the story node's own fields.
+   * The person's photo, name, Role and Institution all come from the
+   * referenced user.
    *
    * @param \Drupal\node\NodeInterface $node
    *   The story node.
@@ -190,9 +197,13 @@ class OocsStoryBlock extends BlockBase implements ContainerFactoryPluginInterfac
     }
 
     $institution = '';
+    if ($user->hasField('field_institution') && !$user->get('field_institution')->isEmpty()) {
+      $institution = $user->get('field_institution')->value;
+    }
+
     if ($user->hasField('field_access_organization') && !$user->get('field_access_organization')->isEmpty()) {
       $organization = $user->get('field_access_organization')->entity;
-      if ($organization) {
+      if ($organization && (int) $organization->id() !== self::ORG_OTHER_NID) {
         $institution = $organization->label();
         $author_cache_tags = Cache::mergeTags($author_cache_tags, $organization->getCacheTags());
       }

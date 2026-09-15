@@ -1432,6 +1432,14 @@ body.page-batch [role="banner"] {
       background: #fff;
     }
   }
+  .science-domain-tags {
+    min-height: 85px;
+
+    a {
+      background: #fff;
+      border: 1px solid var(--ood-purple);
+    }
+  }
 }
 
 div:has(>#best-practices-classroom):not(.layout-builder-block),
@@ -1490,6 +1498,12 @@ main a:has(> .oocs-app__fallback) {
   .square-tags {
     a {
       background: #fff;
+    }
+  }
+  .science-domain-tags {
+    a {
+      background: #fff;
+      border: 1px solid var(--ood-purple);
     }
   }
 }

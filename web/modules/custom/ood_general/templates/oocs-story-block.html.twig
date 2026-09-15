@@ -16,11 +16,11 @@
 <div class="bg-ood-light-gray p-3">
   {% if author %}
     <div class="oocs-author">
-      <img class="oocs-author__photo rounded-circle mb-3"
+      <img class="oocs-author__photo rounded-circle mb-4"
            style="height:150px; width:150px; object-fit: cover;"
            src="{{ author.photo_url }}"
            alt="{{ author.first_name }} {{ author.last_name }} profile photo" />
-      <div class="oocs-author__meta mb-3">
+      <div class="oocs-author__meta mb-4">
         {% if author.first_name or author.last_name %}
           <h2 class="oocs-author__name mb-0" style="line-height: 1;">{{ author.first_name }} {{ author.last_name }}</h2>
         {% endif %}
@@ -36,13 +36,21 @@
     </div>
   {% endif %}
 
-  {% if implementation_tags or science_domain_tags %}
+  {% if implementation_tags %}
     <h2>Implementation Tags</h2>
     <div class="square-tags tag-list">
       <ul>
         {% for tag in implementation_tags %}
           <li><a href="#main-content" class="bg-white">{{ tag.label }}</a></li>
         {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if science_domain_tags %}
+    <h2 class="mt-4">Science Domains</h2>
+    <div class="square-tags science-domain-tags tag-list">
+      <ul>
         {% for tag in science_domain_tags %}
           <li><a href="#main-content" class="bg-white">{{ tag.label }}</a></li>
         {% endfor %}

@@ -2941,8 +2941,9 @@ details.vertical-tabs__pane > .details-wrapper {
   }
 }
 
-/* Tag-suggester disclosure widget (details.tags) only — scoped so these
-   styles don't leak to every <details>/<summary> on the site. */
+/* Shortcode accordion (details.shortcode-accordion) on nect-theme sites,
+   which do not compile the accordion template's Tailwind classes. Scoped so
+   these rules don't leak to every <details> on the site. */
 details.shortcode-accordion {
   background-color: #fff;
   padding: 0 1.5rem;

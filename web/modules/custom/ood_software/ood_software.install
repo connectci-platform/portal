@@ -473,12 +473,7 @@ function ood_software_update_10506(): TranslatableMarkup {
  * Reuses the uuid and weight the manual placement already has, so the
  * component is identical across environments.
  *
- * Also disables jsonapi_extras' "Validate config integrity" setting, which
- * blocks `drush deploy` here with a field/resource-config mismatch. This is
- * only a temporary local override of the active config: the value exported
- * in config sync stays TRUE, so the next config:import turns it back on.
- *
- * Finally, re-asserts the weight of every "content" region component in
+ * Also re-asserts the weight of every "content" region component in
  * section 0, not just the new one. The first version of this hook only set
  * a weight on the new component and left the rest alone, trusting they'd
  * already be 0/2/3/4/6/7 — but on a `robo did` DB reload the view block came
@@ -487,21 +482,16 @@ function ood_software_update_10506(): TranslatableMarkup {
  * happened to already be on the other components.
  */
 function ood_software_update_10507(): TranslatableMarkup {
-  \Drupal::configFactory()
-    ->getEditable('jsonapi_extras.settings')
-    ->set('validate_configuration_integrity', FALSE)
-    ->save();
-
   $plugin_id = 'views_block:oocs_classroom_stories_slideshow-block_1';
 
   $node = Node::load(12116);
   if (!$node || !$node->hasField('layout_builder__layout')) {
-    return t('Disabled jsonapi_extras config integrity validation. Node 12116 not found or has no layout override; nothing else to do.');
+    return t('Node 12116 not found or has no layout override; nothing else to do.');
   }
 
   $sections = $node->get('layout_builder__layout')->getSections();
   if (!$sections) {
-    return t('Disabled jsonapi_extras config integrity validation. Node 12116 has no layout sections; nothing else to do.');
+    return t('Node 12116 has no layout sections; nothing else to do.');
   }
 
   $section = $sections[0];
@@ -551,5 +541,5 @@ function ood_software_update_10507(): TranslatableMarkup {
   $node->setNewRevision(FALSE);
   $node->save();
 
-  return t('Added the "Classroom Stories" slideshow view block to node 12116 (or reasserted its position), and disabled jsonapi_extras config integrity validation.');
+  return t('Added the "Classroom Stories" slideshow view block to node 12116 (or reasserted its position).');
 }

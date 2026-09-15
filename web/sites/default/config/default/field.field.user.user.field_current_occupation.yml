@@ -26,16 +26,16 @@ third_party_settings:
     user_additional_register_form:
       authenticated: 0
       student: 0
-      mentor: 0
-      researcher: 0
+      mentor: mentor
+      researcher: researcher
       representative: 0
       research_computing_facilitator: 0
       research_software_engineer: 0
       ci_systems_engineer: 0
       student_champion: 0
       domain_champion: 0
-      ccmnet: 0
-      ondemand: 0
+      ccmnet: ccmnet
+      ondemand: ondemand
       pascience: 0
 id: user.user.field_current_occupation
 field_name: field_current_occupation

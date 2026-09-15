@@ -25,5 +25,5 @@ settings:
       field: name
       direction: asc
     auto_create: false
-    auto_create_bundle: appverse_science_domains
+    auto_create_bundle: ''
 field_type: entity_reference

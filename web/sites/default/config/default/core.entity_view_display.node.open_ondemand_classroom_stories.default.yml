@@ -176,7 +176,7 @@ content:
     weight: 103
     region: content
   field_oocs_class_context:
-    type: basic_string
+    type: text_default
     label: above
     settings: {  }
     third_party_settings: {  }
