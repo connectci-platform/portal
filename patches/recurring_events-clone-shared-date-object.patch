@@ -1,0 +1,41 @@
+diff --git a/src/EventInstanceListBuilder.php b/src/EventInstanceListBuilder.php
+index 3f28672..0b45757 100644
+--- a/src/EventInstanceListBuilder.php
++++ b/src/EventInstanceListBuilder.php
+@@ -91,8 +91,14 @@ class EventInstanceListBuilder extends EntityListBuilder {
+     ];
+     $config = $this->configFactory->get('recurring_events.eventinstance.config');
+     $timezone = new \DateTimeZone(date_default_timezone_get());
+-    $entity->date->start_date->setTimezone($timezone);
+-    $row['date'] = $entity->date->start_date->format($config->get('date_format'));
++    // Clone before converting: date->start_date is the entity's cached
++    // DateTimeComputed object and setTimezone() mutates it in place, leaking
++    // the conversion into every later reader in this request. Format off the
++    // clone rather than re-fetching the property, which would read the
++    // unconverted object.
++    $row['date'] = (clone $entity->date->start_date)
++      ->setTimezone($timezone)
++      ->format($config->get('date_format'));
+     $row['author']['data'] = [
+       '#theme' => 'username',
+       '#account' => $entity->getOwner(),
+diff --git a/src/Hook/RecurringEventsTokensHooks.php b/src/Hook/RecurringEventsTokensHooks.php
+index df8a278..d01b692 100644
+--- a/src/Hook/RecurringEventsTokensHooks.php
++++ b/src/Hook/RecurringEventsTokensHooks.php
+@@ -115,11 +115,13 @@ class RecurringEventsTokensHooks {
+             break;
+ 
+           case 'date':
+-            $replacements[$original] = $event_instance->date->start_date->setTimezone($timezone)->format($date_format);
++            // Clone: the computed date object is shared with every other
++            // reader in this request and setTimezone() mutates in place.
++            $replacements[$original] = (clone $event_instance->date->start_date)->setTimezone($timezone)->format($date_format);
+             break;
+ 
+           case 'end_date':
+-            $replacements[$original] = $event_instance->date->end_date->setTimezone($timezone)->format($date_format);
++            $replacements[$original] = (clone $event_instance->date->end_date)->setTimezone($timezone)->format($date_format);
+             break;
+ 
+           case 'url':
