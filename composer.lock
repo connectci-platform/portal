@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4d2752c8c1cf22e30e7a326c5464ea60",
+    "content-hash": "345641129924461a68fe9e526fba4416",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -8977,6 +8977,10 @@
                 {
                     "name": "richgerdes",
                     "homepage": "https://www.drupal.org/user/3437973"
+                },
+                {
+                    "name": "robloach",
+                    "homepage": "https://www.drupal.org/user/61114"
                 },
                 {
                     "name": "tekante",
@@ -24698,5 +24702,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
