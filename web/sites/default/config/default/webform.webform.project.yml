@@ -137,7 +137,7 @@ elements: |-
   status:
     '#type': select
     '#title': Status
-    '#description': '<p data-pm-slice="1 1 []">Choose &ldquo;Recruiting&rdquo; to enable &ldquo;I&rsquo;m interested&rdquo; button on project page</p>'
+    '#description': '<p data-pm-slice="1 1 []">Choose “Recruiting” to enable “I’m interested” button on project page</p>'
     '#options':
       Recruiting: Recruiting
       'Reviewing Applicants': 'Reviewing Applicants'
@@ -146,6 +146,7 @@ elements: |-
       'Finishing Up': 'Finishing Up'
       Complete: Complete
       Halted: Halted
+      Declined: Declined
     '#states':
       visible:
         ':input[name="approved_milestones"]':
