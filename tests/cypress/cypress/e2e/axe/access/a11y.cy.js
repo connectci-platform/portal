@@ -76,7 +76,11 @@ describe('Accessibility Testing - reports all violations without failing CI (ini
   it('RP Documentation', () => {
     checkMultipleUrls([
       '/documentation/resources',
-      '/documentation/resources/anvil-ai'
+      '/documentation/resources/anvil-ai',
+      // The Alpha fixture is the only page guaranteed to carry a multi-row
+      // queue group, so it is what exercises the queue table's rowgroup/row
+      // headers and its deliberately empty cells.
+      '/documentation/resources/alpha'
     ]);
   });
 
