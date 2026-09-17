@@ -1,3 +1,4 @@
+uuid: de2d665b-f70c-405d-9423-d56cc9edd6ac
 langcode: en
 status: true
 dependencies:
@@ -9,7 +10,7 @@ field_name: field_event_timezone
 entity_type: eventseries
 bundle: default
 label: 'Event timezone'
-description: 'The timezone the event''s times are given in. Defaults to your account timezone.'
+description: "The timezone the event's times are given in. Defaults to your account timezone."
 required: false
 translatable: false
 default_value: {  }
