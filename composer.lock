@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dc51222dd8630fcfe854028634d937db",
+    "content-hash": "dbe88006db02108cfea54746f4b860b2",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -706,12 +706,13 @@
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-d8-2813",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "0e1fd26654c7e4bc930efbb2d7d2e408b174b275"
+                "reference": "57389f980e79b65977397bf7c1cff01758a2f5a8"
             },
+            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -727,16 +728,17 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-12T00:44:51+00:00"
+            "time": "2026-09-17T23:26:41+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
-            "version": "dev-d8-2813",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "38dd45c9ed84e2db11a00909281488b861ee6d12"
+                "reference": "93e4a5c086fe88a8159c1dd508fbcc0f67eb036a"
             },
+            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "Apache License, Version 2.0"
@@ -752,7 +754,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-09-10T18:38:58+00:00"
+            "time": "2026-09-17T23:29:11+00:00"
         },
         {
             "name": "connectci/operations_cider",
@@ -24702,5 +24704,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
