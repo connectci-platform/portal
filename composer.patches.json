@@ -35,6 +35,9 @@
         },
         "drupal/domain_simple_sitemap": {
             "Long domain machine names exceed the 32 char sitemap ID limit and break generation": "patches/domain_simple_sitemap-sitemap-id-max-length.patch"
+        },
+        "drupal/better_exposed_filters": {
+            "Autosubmit: skip the blur-driven re-submit of an unchanged text field and the stale cursor restore that scrambles typing on AJAX views": "patches/bef-autosubmit-blur-resubmit-and-stale-cursor.patch"
         }
     }
 }

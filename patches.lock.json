@@ -1,5 +1,5 @@
 {
-    "_hash": "28865edf69dfe0bb27d15c8903da42713ebe7a9f2d42be91e696be9e5ac29b21",
+    "_hash": "3904a6452734f866175b414d28cc5f6efa14e9816c879ed0fb53a2b840c32b58",
     "patches": {
         "drupal/core": [
             {
@@ -193,6 +193,18 @@
                 "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
                 "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
                 "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/better_exposed_filters": [
+            {
+                "package": "drupal/better_exposed_filters",
+                "description": "Autosubmit: skip the blur-driven re-submit of an unchanged text field and the stale cursor restore that scrambles typing on AJAX views",
+                "url": "patches/bef-autosubmit-blur-resubmit-and-stale-cursor.patch",
+                "sha256": "f314c2787f0f159b7431170971dec23d03f165263080478f9c24a984187961af",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

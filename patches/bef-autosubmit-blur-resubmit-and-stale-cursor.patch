@@ -1,0 +1,77 @@
+--- a/js/auto_submit.js
++++ b/js/auto_submit.js
+@@ -88,8 +88,14 @@
+                 if (currentBase === lastTriggeredBase ||
+                     currentSelector.startsWith(lastTriggeredBase + '-')) {
+                   $el.focus();
+-                  // Restore cursor position for text inputs.
+-                  if ($el.is(':text, textarea') && typeof lastCursorPosition === 'number') {
++                  // Restore cursor position for text inputs, but only while the
++                  // value is still what was submitted. If the user kept typing
++                  // while the request was in flight, moving the cursor back to
++                  // the saved position drops later keystrokes into the middle
++                  // of the word (e.g. "smi" + "th" becomes "smiht").
++                  const valueAtSubmit = settings.bef_autosubmit_value_at_submit;
++                  const valueUnchanged = typeof valueAtSubmit !== 'string' || $el.val() === valueAtSubmit;
++                  if (valueUnchanged && $el.is(':text, textarea') && typeof lastCursorPosition === 'number') {
+                     try {
+                       $el[0].setSelectionRange(lastCursorPosition, lastCursorPosition);
+                     }
+@@ -194,8 +200,24 @@
+ 
+         // Don't submit on changes to excluded elements,submit elements, or select2 autocomplete.
+         if ($target.is('[data-bef-auto-submit-exclude], :submit, .select2-search__field, .chosen-search-input')) {
++          return true;
++        }
++
++        // Text fields already autosubmit on keyup. The change event that fires
++        // when such a field loses focus would submit the same value a second
++        // time; on AJAX views that duplicate request races whatever caused the
++        // blur (for example a facet click) and can overwrite its result with a
++        // stale one. Skip the change event when nothing has changed since the
++        // last autosubmit of this field.
++        const isTextTarget = $target.is(':text:not(.hasDatepicker), textarea');
++        const baseSelector = (sel) => (sel || '').replace(/-[a-z0-9]{11}$/, '');
++        const lastSubmitted = settings.bef_autosubmit_last_submitted;
++        if (isTextTarget && e.type === 'change' && lastSubmitted
++          && baseSelector(lastSubmitted.selector) === baseSelector($target.attr('data-drupal-selector'))
++          && lastSubmitted.value === $target.val()) {
+           return true;
+         }
++        let clicked = false;
+ 
+         // Submit only if this is a non-datepicker textfield and if the
+         // incoming keycode is not one of the excluded values, and it has a
+@@ -211,22 +233,32 @@
+           && !e.shiftKey
+         ) {
+           $submit.click();
++          clicked = true;
+         }
+         // Only trigger submit if a change was the trigger (no keyup).
+         else if (e.type === 'change') {
+           let target = $target.is(':text:not(.hasDatepicker), textarea');
+           if (target && textfieldHasMinimumLength) {
+             $submit.click();
++            clicked = true;
+           }
+           else if (!target) {
+             $submit.click();
++            clicked = true;
+           }
+         }
++        if (clicked && isTextTarget) {
++          settings.bef_autosubmit_last_submitted = {
++            selector: $target.attr('data-drupal-selector'),
++            value: $target.val(),
++          };
++        }
+ 
+         // Store the selector string (not the element) so it persists after AJAX refresh.
+         settings.bef_autosubmit_triggered_selector = $target.attr('data-drupal-selector');
+         // Store cursor position for text inputs to restore after AJAX.
+         if ($target.is(':text, textarea')) {
++          settings.bef_autosubmit_value_at_submit = $target.val();
+           try {
+             settings.bef_autosubmit_cursor_position = $target[0].selectionStart;
+           }
