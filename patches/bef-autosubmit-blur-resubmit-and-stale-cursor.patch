@@ -17,12 +17,10 @@
                      try {
                        $el[0].setSelectionRange(lastCursorPosition, lastCursorPosition);
                      }
-@@ -194,8 +200,24 @@
- 
-         // Don't submit on changes to excluded elements,submit elements, or select2 autocomplete.
+@@ -196,6 +202,55 @@
          if ($target.is('[data-bef-auto-submit-exclude], :submit, .select2-search__field, .chosen-search-input')) {
-+          return true;
-+        }
+           return true;
+         }
 +
 +        // Text fields already autosubmit on keyup. The change event that fires
 +        // when such a field loses focus would submit the same value a second
@@ -36,28 +34,62 @@
 +        if (isTextTarget && e.type === 'change' && lastSubmitted
 +          && baseSelector(lastSubmitted.selector) === baseSelector($target.attr('data-drupal-selector'))
 +          && lastSubmitted.value === $target.val()) {
-           return true;
-         }
++          return true;
++        }
 +        let clicked = false;
++
++        // Core's Drupal.Ajax silently ignores a click on the submit button
++        // while its previous request is still in flight. On a slow request
++        // that means the last keystrokes never get searched and the results
++        // stay on the earlier value. Instead of losing that submit, wait for
++        // the in-flight request to finish and submit the current value then.
++        const submitAjax = (Drupal.ajax.instances || []).find((i) => i && i.element === $submit[0]);
++        const clickSubmit = () => {
++          if (submitAjax && submitAjax.ajaxing) {
++            if (!settings.bef_autosubmit_retry_pending) {
++              settings.bef_autosubmit_retry_pending = true;
++              const targetBase = baseSelector($target.attr('data-drupal-selector'));
++              const retry = () => {
++                if (submitAjax.ajaxing) {
++                  $(document).one('ajaxComplete', retry);
++                  return;
++                }
++                settings.bef_autosubmit_retry_pending = false;
++                // The form may have been re-rendered; find the current element.
++                const el = $('[data-drupal-selector]').filter(function () {
++                  return baseSelector($(this).attr('data-drupal-selector')) === targetBase;
++                }).get(0);
++                if (el) {
++                  triggerSubmit({ target: el, type: 'keyup' });
++                }
++              };
++              $(document).one('ajaxComplete', retry);
++            }
++            return false;
++          }
++          $submit.click();
++          return true;
++        };
  
          // Submit only if this is a non-datepicker textfield and if the
          // incoming keycode is not one of the excluded values, and it has a
-@@ -211,22 +233,32 @@
+@@ -210,23 +265,30 @@
+           && !e.ctrlKey
            && !e.shiftKey
          ) {
-           $submit.click();
-+          clicked = true;
+-          $submit.click();
++          clicked = clickSubmit();
          }
          // Only trigger submit if a change was the trigger (no keyup).
          else if (e.type === 'change') {
            let target = $target.is(':text:not(.hasDatepicker), textarea');
            if (target && textfieldHasMinimumLength) {
-             $submit.click();
-+            clicked = true;
+-            $submit.click();
++            clicked = clickSubmit();
            }
            else if (!target) {
-             $submit.click();
-+            clicked = true;
+-            $submit.click();
++            clicked = clickSubmit();
            }
          }
 +        if (clicked && isTextTarget) {

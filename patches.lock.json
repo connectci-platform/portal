@@ -1,5 +1,5 @@
 {
-    "_hash": "3904a6452734f866175b414d28cc5f6efa14e9816c879ed0fb53a2b840c32b58",
+    "_hash": "0b4088526f125e4eb0d196f77764ed33f886a0101eed1f2a18415eb0f23a0ce3",
     "patches": {
         "drupal/core": [
             {
@@ -204,7 +204,7 @@
                 "package": "drupal/better_exposed_filters",
                 "description": "Autosubmit: skip the blur-driven re-submit of an unchanged text field and the stale cursor restore that scrambles typing on AJAX views",
                 "url": "patches/bef-autosubmit-blur-resubmit-and-stale-cursor.patch",
-                "sha256": "f314c2787f0f159b7431170971dec23d03f165263080478f9c24a984187961af",
+                "sha256": "72a413be57e157ab04dcee1405a1fc8bcd5753d03b65b95d36d841b01d4a602a",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
