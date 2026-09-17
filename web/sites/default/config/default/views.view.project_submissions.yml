@@ -1995,18 +1995,14 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: webform_submission_select_filter
-          operator: in
+          operator: 'not in'
           value:
-            Recruiting: Recruiting
-            'Reviewing Applicants': 'Reviewing Applicants'
-            'In Progress': 'In Progress'
-            'On Hold': 'On Hold'
-            'Finishing Up': 'Finishing Up'
+            Halted: Halted
           group: 1
           exposed: true
           expose:
             operator_id: webform_submission_value_1_op
-            label: Status
+            label: 'Status hidden'
             description: ''
             use_operator: false
             operator: webform_submission_value_1_op
