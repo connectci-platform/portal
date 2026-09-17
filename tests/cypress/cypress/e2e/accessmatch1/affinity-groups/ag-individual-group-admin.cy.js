@@ -122,7 +122,7 @@ function create_dummy_ci_link() {
   });
   // tag "ACCESS-account" is selected
   cy.get('span[data-tid="733"]').click();
-  cy.get('.form-item-domain').find('input').type('ACCESS{enter}');
+  cy.get('.form-item-domain').find('.select2-search__field').type('ACCESS{enter}');
   cy.get('#edit-submit').click();
 }
 
