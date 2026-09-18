@@ -345,7 +345,7 @@ display:
           type: image
           settings:
             image_link: ''
-            image_style: thumbnail
+            image_style: medium
             image_loading:
               attribute: lazy
             svg_attributes:
