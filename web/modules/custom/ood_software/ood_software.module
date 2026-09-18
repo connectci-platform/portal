@@ -88,8 +88,8 @@ function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type,
 function ood_software_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
   // Exposed date filters render as plain textfields with no format hint.
   // Upgrade their value/min/max inputs to HTML5 date pickers so the expected
-  // YYYY-MM-DD shape is obvious. Matches the 'date' filter plugin (timestamp
-  // fields are re-typed to it via ood_software_views_data_alter below).
+  // YYYY-MM-DD shape is obvious. Applies to any view's exposed 'date' filter,
+  // not just this module's.
   if (str_starts_with($form_id, 'views_exposed_form')) {
     $view = $form_state->getStorage()['view'] ?? NULL;
     if ($view instanceof \Drupal\views\ViewExecutable) {
@@ -2097,15 +2097,10 @@ function ood_software_preprocess_views_view(array &$variables): void {
 /**
  * Implements hook_views_data_alter().
  *
- * Two manage-repos exposed filters get the wrong filter plugin from core's
- * field-storage discovery:
- *
- * - field_appverse_software_implemen_target_id is an integer column, typed
- *   as a numeric filter. Override to entity_reference so it renders as an
- *   autocomplete bound to appverse_software titles.
- * - field_repo_last_synced is a timestamp column, typed as a numeric filter
- *   (raw int input). Override to the date filter so it accepts human date
- *   input; the exposed form-alter then upgrades it to an HTML5 date picker.
+ * The manage-repos "Software used" exposed filter gets the wrong filter plugin
+ * from core's field-storage discovery: its target_id is an integer column, so
+ * it is typed as a numeric filter. Override it to entity_reference so it
+ * renders as an autocomplete bound to appverse_software titles.
  *
  * @param array<string, mixed> $data
  */
@@ -2113,9 +2108,6 @@ function ood_software_views_data_alter(array &$data): void {
   if (isset($data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter'])) {
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['id'] = 'entity_reference';
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['entity_type'] = 'node';
-  }
-  if (isset($data['node__field_repo_last_synced']['field_repo_last_synced_value']['filter'])) {
-    $data['node__field_repo_last_synced']['field_repo_last_synced_value']['filter']['id'] = 'date';
   }
 }
 

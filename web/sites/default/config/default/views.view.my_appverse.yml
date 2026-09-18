@@ -409,7 +409,7 @@ display:
           entity_field: status
           plugin_id: boolean
           operator: '='
-          value: '0'
+          value: All
           group: 1
           exposed: true
           expose:
@@ -427,48 +427,7 @@ display:
             remember_roles:
               authenticated: authenticated
               anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              representative: '0'
               administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
-              research_computing_facilitator: '0'
-              research_software_engineer: '0'
-              ci_systems_engineer: '0'
-              mentee: '0'
-              student_champion: '0'
-              domain_champion: '0'
-              cssn: '0'
-              affinity_group_leader: '0'
-              match_pm: '0'
-              sc: '0'
-              lt: '0'
-              ra: '0'
-              coco_pm: '0'
-              cnctci_pm: '0'
-              news_pm: '0'
-              kb_pm: '0'
-              careers_sc: '0'
-              rp_documentation_manager: '0'
-              ccmnet_pm: '0'
-              consultant: '0'
-              match_sc: '0'
-              cip: '0'
-              site_developer: '0'
-              ccmnet: '0'
-              ccmnet_admin: '0'
-              ondemand: '0'
-              champions_mentorship_admin: '0'
-              pascience: '0'
-              pascience_manager: '0'
-              appverse_pm: '0'
-              mcp_bot: '0'
-              mcp_service: '0'
           is_grouped: false
           group_info:
             label: ''
@@ -483,7 +442,7 @@ display:
             group_items: {  }
         moderation_state:
           id: moderation_state
-          table: content_moderation_state_field_revision
+          table: node_field_data
           field: moderation_state
           relationship: none
           group_type: group
@@ -492,8 +451,8 @@ display:
           plugin_id: moderation_state_filter
           operator: in
           value:
-            ready_for_review: ready_for_review
-            needs_adjustment: needs_adjustment
+            appverse_editorial-ready_for_review: appverse_editorial-ready_for_review
+            appverse_editorial-needs_adjustment: appverse_editorial-needs_adjustment
           group: 1
           exposed: true
           expose:
@@ -525,34 +484,29 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-        field_repo_last_synced_value:
-          id: field_repo_last_synced_value
-          table: node__field_repo_last_synced
-          field: field_repo_last_synced_value
+        uid:
+          id: uid
+          table: node_field_data
+          field: uid
           relationship: none
           group_type: group
           admin_label: ''
-          plugin_id: date
-          operator: '>='
-          value:
-            min: ''
-            max: ''
-            value: ''
-            type: date
+          entity_type: node
+          entity_field: uid
+          plugin_id: user_name
+          operator: in
+          value: {  }
           group: 1
           exposed: true
           expose:
-            operator_id: field_repo_last_synced_value_op
-            label: 'Last synced'
+            operator_id: uid_op
+            label: Contributor
             description: ''
-            use_operator: true
-            operator: field_repo_last_synced_value_op
-            operator_limit_selection: true
-            operator_list:
-              '<': '<'
-              '>': '>'
-              '=': '='
-            identifier: last_synced
+            use_operator: false
+            operator: uid_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: contributor
             required: false
             remember: false
             multiple: false
@@ -560,6 +514,7 @@ display:
               authenticated: authenticated
               anonymous: '0'
               administrator: '0'
+            reduce: false
           is_grouped: false
           group_info:
             label: ''
