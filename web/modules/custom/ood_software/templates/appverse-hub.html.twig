@@ -69,6 +69,18 @@
       {% if hub.has_validation_issues %}
         <span class="badge badge-error">{{ 'Validation errors'|t }}</span>
       {% endif %}
+      {% if hub.review.status %}
+        <span class="badge badge-{{ hub.review.status_badge.modifier }}"
+              title="{{ hub.review.status_badge.label }}">
+          {% if hub.review.status_badge.icon %}<i class="bi {{ hub.review.status_badge.icon }}" aria-hidden="true"></i>{% endif %}
+          {{ hub.review.status_badge.label }}
+        </span>
+        {% if hub.review.recommendation %}
+          <span class="badge badge-{{ hub.review.recommendation_badge.modifier }}">
+            {{ hub.review.recommendation_badge.label }}
+          </span>
+        {% endif %}
+      {% endif %}
     </div>
 
     <div class="appverse-hub-card__cell appverse-hub-card__cell--actions">
@@ -87,6 +99,13 @@
           <i class="bi bi-chat-left-text" aria-hidden="true"></i>
         </a>
       {% endif %}
+      {% if hub.review.report_url %}
+        <a href="{{ hub.review.report_url }}" class="appverse-hub-card__icon-btn" target="_blank" rel="noopener"
+           title="{{ 'View review report'|t }}" aria-label="{{ 'View review report for @t'|t({'@t': hub.title}) }}">
+          <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+      {% if hub.review.re_review_action %}{{ hub.review.re_review_action }}{% endif %}
       {% if hub.actions.delete %}
         <a href="{{ hub.actions.delete.url }}" class="appverse-hub-card__icon-btn appverse-hub-card__icon-btn--danger"
            title="{{ 'Delete'|t }}" aria-label="{{ 'Delete @t'|t({'@t': hub.title}) }}">

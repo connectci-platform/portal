@@ -1,0 +1,18 @@
+uuid: 4f004acb-0961-4234-aa03-45318b47ba1d
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_recommendation_note
+field_name: field_arv_recommendation_note
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

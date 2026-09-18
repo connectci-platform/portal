@@ -1,0 +1,27 @@
+uuid: b2151479-af59-48cf-bc12-76ba1dd88e5f
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_review_report
+    - node.type.appverse_repo
+  module:
+    - file
+id: node.appverse_repo.field_review_report
+field_name: field_review_report
+entity_type: node
+bundle: appverse_repo
+label: 'Review report'
+description: 'PDF report from the most recent AI review.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:file'
+  handler_settings: {  }
+  file_directory: appverse-reviews
+  file_extensions: pdf
+  max_filesize: '10 MB'
+  description_field: false
+field_type: file

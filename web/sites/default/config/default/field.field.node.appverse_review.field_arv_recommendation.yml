@@ -1,0 +1,21 @@
+uuid: 4bebdba0-db87-482d-b0fe-170cbb543987
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_recommendation
+    - node.type.appverse_review
+  module:
+    - options
+id: node.appverse_review.field_arv_recommendation
+field_name: field_arv_recommendation
+entity_type: node
+bundle: appverse_review
+label: 'Tool recommendation'
+description: "The tool's machine-generated recommendation. Read-only — the human decision is the per-app verdict conclusion, not this field."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

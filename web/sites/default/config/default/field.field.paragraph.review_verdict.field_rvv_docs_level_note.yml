@@ -1,0 +1,20 @@
+uuid: 8a708d2f-80d7-4fd5-adb2-228710485101
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_docs_level_note
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_docs_level_note
+field_name: field_rvv_docs_level_note
+entity_type: paragraph
+bundle: review_verdict
+label: 'Documentation level note'
+description: "Justification for overriding the tool's derived documentation level. Required when the published level differs from the seeded default (enforced in form validation). Never shown publicly; the public sees only a reviewer-adjusted marker."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

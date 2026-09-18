@@ -1,0 +1,28 @@
+uuid: a64a096b-3bc7-4e3d-b1dc-e0030b57de16
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_app_ref
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_app_ref
+field_name: field_rvv_app_ref
+entity_type: paragraph
+bundle: review_verdict
+label: App
+description: 'The Appverse app this verdict is for.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:node'
+  handler_settings:
+    target_bundles:
+      appverse_app: appverse_app
+    sort:
+      field: _none
+      direction: ASC
+    auto_create: false
+    auto_create_bundle: ''
+field_type: entity_reference

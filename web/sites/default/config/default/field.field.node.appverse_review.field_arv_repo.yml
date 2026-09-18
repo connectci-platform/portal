@@ -1,0 +1,25 @@
+uuid: 5d1fefd8-5fb9-4a91-bed0-90e251177065
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_repo
+    - node.type.appverse_repo
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_repo
+field_name: field_arv_repo
+entity_type: node
+bundle: appverse_review
+label: 'Reviewed repo'
+description: 'The Appverse repo this review covers.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:node'
+  handler_settings:
+    target_bundles:
+      appverse_repo: appverse_repo
+    auto_create: false
+field_type: entity_reference

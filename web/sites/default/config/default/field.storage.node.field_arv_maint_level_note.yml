@@ -1,0 +1,18 @@
+uuid: 3b2eaaa3-fa40-481e-a9ba-65a63f2b4dc5
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_maint_level_note
+field_name: field_arv_maint_level_note
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

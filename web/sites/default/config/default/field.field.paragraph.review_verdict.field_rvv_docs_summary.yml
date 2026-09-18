@@ -1,0 +1,19 @@
+uuid: bfef99e3-064b-4d77-bc7c-4c33f4f93143
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_docs_summary
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_docs_summary
+field_name: field_rvv_docs_summary
+entity_type: paragraph
+bundle: review_verdict
+label: 'Documentation summary'
+description: 'One-line evidence phrase for the documentation indicator, shown on the public chip hover. Seeded from the artifact; reviewer-editable.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

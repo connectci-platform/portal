@@ -1,0 +1,19 @@
+uuid: 38f84cc6-1285-4a1d-9624-dc5001bb7250
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_defect_key
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_defect_key
+field_name: field_rvf_defect_key
+entity_type: paragraph
+bundle: review_finding
+label: 'Defect key'
+description: 'The specific defect identifier including mechanism tag. Part of the stable ID formula.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

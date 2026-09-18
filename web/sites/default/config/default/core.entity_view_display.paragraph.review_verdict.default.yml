@@ -1,0 +1,114 @@
+uuid: null
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_verdict.field_rvv_app_id
+    - field.field.paragraph.review_verdict.field_rvv_app_ref
+    - field.field.paragraph.review_verdict.field_rvv_conclusion
+    - field.field.paragraph.review_verdict.field_rvv_criteria
+    - field.field.paragraph.review_verdict.field_rvv_docs_anchor
+    - field.field.paragraph.review_verdict.field_rvv_docs_level
+    - field.field.paragraph.review_verdict.field_rvv_docs_level_note
+    - field.field.paragraph.review_verdict.field_rvv_docs_summary
+    - field.field.paragraph.review_verdict.field_rvv_findings
+    - field.field.paragraph.review_verdict.field_rvv_indicators_default
+    - field.field.paragraph.review_verdict.field_rvv_moderator_notes
+    - field.field.paragraph.review_verdict.field_rvv_port_anchor
+    - field.field.paragraph.review_verdict.field_rvv_port_level
+    - field.field.paragraph.review_verdict.field_rvv_port_level_note
+    - field.field.paragraph.review_verdict.field_rvv_port_summary
+    - field.field.paragraph.review_verdict.field_rvv_sec_anchor
+    - field.field.paragraph.review_verdict.field_rvv_sec_level
+    - field.field.paragraph.review_verdict.field_rvv_sec_level_note
+    - field.field.paragraph.review_verdict.field_rvv_sec_summary
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - options
+    - paragraphs
+third_party_settings: {  }
+id: paragraph.review_verdict.default
+targetEntityType: paragraph
+bundle: review_verdict
+mode: default
+content:
+  field_rvv_app_ref:
+    type: entity_reference_label
+    weight: 0
+    region: content
+    label: inline
+    settings:
+      link: true
+    third_party_settings: {  }
+  field_rvv_conclusion:
+    type: list_default
+    weight: 1
+    region: content
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_sec_level:
+    type: list_default
+    weight: 2
+    region: content
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_sec_summary:
+    type: string
+    weight: 3
+    region: content
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+  field_rvv_port_level:
+    type: list_default
+    weight: 4
+    region: content
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_port_summary:
+    type: string
+    weight: 5
+    region: content
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+  field_rvv_docs_level:
+    type: list_default
+    weight: 6
+    region: content
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+  field_rvv_docs_summary:
+    type: string
+    weight: 7
+    region: content
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+  field_rvv_findings:
+    type: entity_reference_revisions_entity_view
+    weight: 8
+    region: content
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+hidden: 
+  field_rvv_app_id: true
+  field_rvv_criteria: true
+  field_rvv_docs_anchor: true
+  field_rvv_docs_level_note: true
+  field_rvv_indicators_default: true
+  field_rvv_moderator_notes: true
+  field_rvv_port_anchor: true
+  field_rvv_port_level_note: true
+  field_rvv_sec_anchor: true
+  field_rvv_sec_level_note: true

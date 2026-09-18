@@ -1,0 +1,19 @@
+uuid: 7facf9b9-e63a-4f5d-8be2-4bfa9f0594d6
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_criteria
+field_name: field_rvv_criteria
+entity_type: paragraph
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

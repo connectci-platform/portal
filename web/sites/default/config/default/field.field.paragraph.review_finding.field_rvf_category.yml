@@ -1,0 +1,21 @@
+uuid: 6ed0ccb6-cbf2-47d2-a89d-286521f477c6
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_category
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_category
+field_name: field_rvf_category
+entity_type: paragraph
+bundle: review_finding
+label: 'Signal category'
+description: 'Which public signal category this finding maps to.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

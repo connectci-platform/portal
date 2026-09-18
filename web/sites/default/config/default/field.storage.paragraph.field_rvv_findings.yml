@@ -1,0 +1,20 @@
+uuid: b9ecb4a9-a6e2-4f18-90ac-be27f65054b4
+langcode: en
+status: true
+dependencies:
+  module:
+    - entity_reference_revisions
+    - paragraphs
+id: paragraph.field_rvv_findings
+field_name: field_rvv_findings
+entity_type: paragraph
+type: entity_reference_revisions
+settings:
+  target_type: paragraph
+module: entity_reference_revisions
+locked: false
+cardinality: -1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -1,0 +1,21 @@
+uuid: cc441618-8832-4533-844e-0fa0e4bff3c7
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_conclusion
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - options
+id: paragraph.review_verdict.field_rvv_conclusion
+field_name: field_rvv_conclusion
+entity_type: paragraph
+bundle: review_verdict
+label: Conclusion
+description: "The reviewer's accept/reject conclusion for this app, which the reviewer applies to the app's catalog state as a separate action."
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string
