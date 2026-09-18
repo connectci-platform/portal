@@ -8,6 +8,8 @@
 
 describe("PA Science - My Project Submissions", () => {
 
+  let myProjectUrl;
+
   it("Authenticated user can view their project submissions", () => {
     // Create a project as authenticated user
     cy.loginUser("authenticated@amptesting.com", "6%l7iF}6(4tI");
@@ -26,6 +28,9 @@ describe("PA Science - My Project Submissions", () => {
     // Verify project was created
     cy.url().should('include', '/project/');
     cy.contains('My Test Project for Submissions View');
+    cy.url().then((url) => {
+      myProjectUrl = url;
+    });
 
     // Visit My Project Submissions page
     cy.visit('/user/project-submissions');
@@ -67,6 +72,33 @@ describe("PA Science - My Project Submissions", () => {
 
     // Verify we DON'T see the admin's project
     cy.contains('Admin Project - Should Not Appear').should('not.exist');
+  });
+
+  it("Submitter sees Declined status on their own submission", () => {
+    // Submitters can edit their own project's status (known gap: `status`
+    // carries no #access_*_roles, so the select renders for the owner).
+    const sid = myProjectUrl.match(/\/project\/(\d+)/)[1];
+
+    cy.loginUser("authenticated@amptesting.com", "6%l7iF}6(4tI");
+    cy.visit(`/webform/project/submissions/${sid}/edit`);
+    // The status select is visually hidden by its #states gate on
+    // approved_milestones (unchecked by default here), but the value still
+    // submits — force the select rather than asserting visibility.
+    cy.get('select[name="status"]').select('Declined', { force: true });
+    cy.get('input#edit-actions-01-submit').click();
+
+    cy.visit('/user/project-submissions');
+    cy.contains('My Test Project for Submissions View')
+      .should('be.visible')
+      .closest('tr')
+      .contains('Declined')
+      .should('be.visible');
+
+    // Absent from the public /projects listing — but that's because this
+    // project was never approved (approved = 0), not because of its
+    // Declined status. front_projects gates solely on approved = 1.
+    cy.visit('/projects');
+    cy.contains('My Test Project for Submissions View').should('not.exist');
   });
 
   it("Cleanup - Delete test projects", () => {
