@@ -375,9 +375,11 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
     });
   });
 
-  it("QA bot falls back to resource title (short_name post-load-hook) when not in a group", () => {
+  it("QA bot falls back to the resource display name when not in a group", () => {
+    // Gamma is not in a group, so the slug comes from the resource's own
+    // display name ("Gamma AI System" since amp_dev #11), not the raw title.
     cy.get(".embedded-qa-bot")
-      .should("have.attr", "data-scope-slug", "gamma");
+      .should("have.attr", "data-scope-slug", "gamma-ai-system");
   });
 
 });
