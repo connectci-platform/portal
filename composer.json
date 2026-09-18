@@ -156,7 +156,7 @@
         "drupal/redirect": "^1.8",
         "drupal/redis": "^1.8",
         "drupal/rel_to_abs": "^2.2",
-        "drupal/reroute_email": "^2.2",
+        "drupal/reroute_email": "^2.3@rc",
         "drupal/restui": "^1.20",
         "drupal/role_delegation": "^1.1",
         "drupal/search404": "^2.0",

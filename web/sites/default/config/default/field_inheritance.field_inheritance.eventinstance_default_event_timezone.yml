@@ -1,0 +1,14 @@
+uuid: f78ab2aa-bc2a-460e-b047-deaf37147767
+langcode: en
+status: true
+dependencies: {  }
+id: eventinstance_default_event_timezone
+label: 'Event timezone'
+type: inherit
+sourceEntityType: eventseries
+sourceEntityBundle: default
+sourceField: field_event_timezone
+destinationEntityType: eventinstance
+destinationEntityBundle: default
+destinationField: ''
+plugin: default_inheritance

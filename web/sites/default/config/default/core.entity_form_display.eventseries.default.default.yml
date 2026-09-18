@@ -180,6 +180,13 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
+  field_event_in_person:
+    type: boolean_checkbox
+    weight: 4
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
   field_event_speakers:
     type: string_textfield
     weight: 14
@@ -187,6 +194,14 @@ content:
     settings:
       size: 60
       placeholder: 'i. e. Jean Smith, Organization Name'
+    third_party_settings: {  }
+  field_event_timezone:
+    type: string_textfield
+    weight: 4
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
     third_party_settings: {  }
   field_event_type:
     type: options_buttons
