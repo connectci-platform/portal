@@ -143,10 +143,18 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
       // an individual hardware row inside a multi-row group.
       cy.get(".rp-queue-specs table tr.rp-queue-group__row svg").should("not.exist");
       cy.get(".rp-queue-specs table tr.rp-queue-group__row").each(($row) => {
+        // The cell carries only the visually-hidden note for screen readers,
+        // never a job count of its own.
         cy.wrap($row).children().eq(jobsCol).invoke("text").then((text) => {
-          expect(text.trim()).to.equal("");
+          expect(text.trim()).to.equal("See queue heading");
         });
       });
+
+      // A heading row's hardware cells are likewise empty apart from the
+      // hidden note, so a screen reader is told why rather than hitting a
+      // run of silent cells.
+      cy.get(".rp-queue-specs table tr.rp-queue-group__heading .sr-only")
+        .should("contain", "Varies by node type");
 
       // Exactly one job-count value per queue (5 total), each on the
       // heading/single row rather than a hardware sub-row.
