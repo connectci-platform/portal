@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dbe88006db02108cfea54746f4b860b2",
+    "content-hash": "8e332509105a559f4015bc67fe9ec609",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -8630,29 +8630,32 @@
         },
         {
             "name": "drupal/reroute_email",
-            "version": "2.2.1",
+            "version": "2.3.0-rc2",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/reroute_email.git",
-                "reference": "2.2.1"
+                "reference": "2.3.0-rc2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/reroute_email-2.2.1.zip",
-                "reference": "2.2.1",
-                "shasum": "4dd10cf981fb184cf075399a52dd24cfb2c2605e"
+                "url": "https://ftp.drupal.org/files/projects/reroute_email-2.3.0-rc2.zip",
+                "reference": "2.3.0-rc2",
+                "shasum": "ba990ebfcc62395c818775519ac4080a6eb2f544"
             },
             "require": {
-                "drupal/core": "^9.4 || ^10"
+                "drupal/core": "^10.2 || ^11"
+            },
+            "require-dev": {
+                "drupal/symfony_mailer": "^1.4"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.2.1",
-                    "datestamp": "1730150467",
+                    "version": "2.3.0-rc2",
+                    "datestamp": "1730150435",
                     "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
+                        "status": "not-covered",
+                        "message": "RC releases are not covered by Drupal security advisories."
                     }
                 }
             },
@@ -8662,24 +8665,24 @@
             ],
             "authors": [
                 {
-                    "name": "b-prod",
-                    "homepage": "https://www.drupal.org/user/407852"
+                    "name": "Khalid Baheyeldin",
+                    "homepage": "https://www.drupal.org/u/kbahey"
                 },
                 {
-                    "name": "bohart",
-                    "homepage": "https://www.drupal.org/user/289861"
+                    "name": "Devaraj Johnson",
+                    "homepage": "https://www.drupal.org/u/devaraj-johnson"
                 },
                 {
-                    "name": "Devaraj johnson",
-                    "homepage": "https://www.drupal.org/user/2698767"
+                    "name": "Randy Fay",
+                    "homepage": "https://www.drupal.org/u/rfay"
                 },
                 {
-                    "name": "dydave",
-                    "homepage": "https://www.drupal.org/user/467284"
+                    "name": "Bohdan Artemchuk",
+                    "homepage": "https://www.drupal.org/u/bohart"
                 },
                 {
-                    "name": "kbahey",
-                    "homepage": "https://www.drupal.org/user/4063"
+                    "name": "Pravin Gaikwad",
+                    "homepage": "https://www.drupal.org/u/rajeshreeputra"
                 },
                 {
                     "name": "rajeshreeputra",
@@ -24691,6 +24694,7 @@
         "drupal/openapi_rest": 5,
         "drupal/openapi_ui": 5,
         "drupal/realname": 10,
+        "drupal/reroute_email": 5,
         "drupal/search_exclude": 10,
         "drupal/ultimate_cron": 10,
         "drupal/views_data_export": 5,
