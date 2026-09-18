@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "03e3d463cd859ef4467078014fd58c0f22a81dbb"
+                "reference": "e5b5edf96b1a14f2952c4c0f75dbecc19a149385"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -701,7 +701,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-09-18T18:08:52+00:00"
+            "time": "2026-09-18T21:43:08+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -24701,5 +24701,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
