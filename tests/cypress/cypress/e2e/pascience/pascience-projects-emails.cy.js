@@ -21,7 +21,18 @@ describe("PA Science Project Email Notifications", () => {
   before(() => {
     // Set up PA Science manager role for user 2000
     // This ensures consistent test behavior regardless of existing data
-    cy.drush('user:role:add', ['pascience_manager', 'user+2000@localhost.localdomain']);
+    //
+    // Note: `drush user:role:add`'s positional argument is a comma-delimited
+    // list of user *names*, not emails/uids - passing an email there silently
+    // fails to match (drush reports "Unable to find a matching user" for any
+    // lookup on an email containing "+"), so `cy.drush` here previously ran
+    // with `failOnNonZeroExit: false` and never actually granted the role.
+    // That left the pascience_manager role with no members, so the
+    // 'Project Created'/'Project Updated'/interest-expressed emails - which
+    // go to that role - were never sent, and cy.waitForEmail() timed out
+    // waiting on Mailpit for mail that was never dispatched. Use --mail to
+    // look the user up by email instead.
+    cy.drush('user:role:add', ['pascience_manager'], { mail: 'user+2000@localhost.localdomain' });
   });
 
   beforeEach(() => {
