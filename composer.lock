@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dbe88006db02108cfea54746f4b860b2",
+    "content-hash": "54bf3199a4669f8d606306a24e59a1f2",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -706,13 +706,12 @@
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-main",
+            "version": "dev-D8-2850",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "89e8c59faef25072119fccd22c06497c97f8e509"
+                "reference": "aa552f8d3f7dd547865a59264123bf03417aba73"
             },
-            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -728,7 +727,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-11T20:56:45+00:00"
+            "time": "2026-09-11T16:41:35+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -19210,7 +19209,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "1dc6984b22732b130846c744a4e6865c26ea826d"
+                "reference": "45f2cb75282a0d44284930e26b5f4591f7c93373"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -19222,7 +19221,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-08-14T18:00:44+00:00"
+            "time": "2026-09-17T23:45:00+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
@@ -24700,5 +24699,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }

@@ -68,6 +68,33 @@ describe("Resource Group — listing page", () => {
     });
   });
 
+  it("shows the Display Name instead of the CiDeR short name", () => {
+    cy.visit("/documentation/resources");
+    cy.contains("Gamma AI System");
+  });
+
+  it("does not render the bare short name as a standalone resource list title", () => {
+    cy.visit("/documentation/resources");
+    cy.get(".rp-resource-list-title").each(($title) => {
+      expect($title.text().trim()).to.not.eq("Gamma");
+    });
+  });
+
+  it("falls back to the short name when no Display Name is set", () => {
+    cy.visit("/documentation/resources");
+    cy.get(".rp-resource-list-title").then(($titles) => {
+      const texts = [...$titles].map((el) => el.textContent.trim());
+      expect(texts).to.include("Alpha");
+    });
+  });
+
+  it("display name change does not alter the resource URL alias", () => {
+    cy.visit("/documentation/resources");
+    cy.contains("a", "Gamma AI System")
+      .should("have.attr", "href")
+      .and("include", "/documentation/resources/gamma");
+  });
+
 });
 
 describe("Resource Group — individual (ungrouped) resource rendering", () => {
@@ -76,8 +103,8 @@ describe("Resource Group — individual (ungrouped) resource rendering", () => {
     cy.visit("/documentation/resources");
     // Gamma is ungrouped with field_rp_listing checked, so it should show.
     cy.get(".rp-individual-resource-row").should("have.length.greaterThan", 0);
-    // Listing view h2 uses short_name ("Gamma") rather than full title.
-    cy.contains("h2", "Gamma");
+    // Listing view h2 uses the resolved display name, not the full CiDeR title.
+    cy.contains("h2", "Gamma AI System");
     cy.get(".rp-individual-resource-list .rp-resource-list-item").should("exist");
   });
 
