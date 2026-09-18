@@ -1,0 +1,14 @@
+uuid: 700a99d0-bfe1-4b69-a9ca-05fb4e4acb58
+langcode: en
+status: true
+dependencies: {  }
+id: eventinstance_default_event_in_person
+label: 'Event has a physical venue'
+type: inherit
+sourceEntityType: eventseries
+sourceEntityBundle: default
+sourceField: field_event_in_person
+destinationEntityType: eventinstance
+destinationEntityBundle: default
+destinationField: ''
+plugin: default_inheritance

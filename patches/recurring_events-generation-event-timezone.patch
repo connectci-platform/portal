@@ -1,0 +1,278 @@
+diff --git a/recurring_events.module b/recurring_events.module
+index 6a08714..f5b33bb 100644
+--- a/recurring_events.module
++++ b/recurring_events.module
+@@ -559,6 +559,15 @@ function recurring_events_recurring_events_event_instances_pre_create_alter(arra
+   $exclude = array_filter(array_merge($global_exclude, $event_exclude));
+   $include = array_filter(array_merge($global_include, $event_include));
+ 
++  // Excluded/included dates are bare calendar dates, so turning them into an
++  // instant needs a zone. Parsing without one uses the ambient zone of whoever
++  // is saving, which slides the window by their offset and changes whether an
++  // instance is dropped. Anchor it to the event's own zone instead.
++  $window_timezone = ($event instanceof \Drupal\recurring_events\Entity\EventSeries
++    && method_exists($event, 'getGenerationTimezoneName'))
++      ? new \DateTimeZone($event->getGenerationTimezoneName())
++      : new \DateTimeZone(date_default_timezone_get());
++
+   if (!empty($exclude)) {
+     foreach ($event_instances as $key => $dates) {
+       $start = $dates['start_date']->getTimestamp();
+@@ -569,9 +578,9 @@ function recurring_events_recurring_events_event_instances_pre_create_alter(arra
+           // Ignore incomplete date ranges.
+           continue;
+         }
+-        $exclude_start = DrupalDateTime::createFromFormat(DateTimeItemInterface::DATETIME_STORAGE_FORMAT, $date['value'] . 'T00:00:00');
++        $exclude_start = DrupalDateTime::createFromFormat(DateTimeItemInterface::DATETIME_STORAGE_FORMAT, $date['value'] . 'T00:00:00', $window_timezone);
+         $exclude_start = $exclude_start->getTimestamp();
+-        $excluded_end = DrupalDateTime::createFromFormat(DateTimeItemInterface::DATETIME_STORAGE_FORMAT, $date['end_value'] . 'T23:59:59');
++        $excluded_end = DrupalDateTime::createFromFormat(DateTimeItemInterface::DATETIME_STORAGE_FORMAT, $date['end_value'] . 'T23:59:59', $window_timezone);
+         $excluded_end = $excluded_end->getTimestamp();
+ 
+         if ($start >= $exclude_start && $start <= $excluded_end) {
+diff --git a/src/Entity/EventSeries.php b/src/Entity/EventSeries.php
+index d8894cc..d05879d 100644
+--- a/src/Entity/EventSeries.php
++++ b/src/Entity/EventSeries.php
+@@ -451,6 +451,45 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+     return $this->get('recur_type')->value;
+   }
+ 
++  /**
++   * The timezone this series' dates should be resolved in.
++   *
++   * Historically every getter below used date_default_timezone_get(), the
++   * ambient zone of whoever's request was running, so a series authored in one
++   * zone and later edited from another resolved to different dates. The
++   * series' own field is the authority where set; ambient stays the fallback so
++   * a series with no zone behaves exactly as it did before.
++   *
++   * An invalid stored value falls back rather than throwing: these getters run
++   * inside insert/update hooks, where an unhandled
++   * DateInvalidTimeZoneException would abort the save.
++   *
++   * @return \DateTimeZone
++   *   The zone to resolve this series' boundary dates in.
++   */
++  protected function resolveTimezone() {
++    if ($this->hasField('field_event_timezone')) {
++      $stored = trim((string) ($this->get('field_event_timezone')->value ?? ''));
++      if ($stored !== '' && in_array($stored, \DateTimeZone::listIdentifiers(), TRUE)) {
++        return new \DateTimeZone($stored);
++      }
++    }
++    return new \DateTimeZone(date_default_timezone_get());
++  }
++
++  /**
++   * The resolved generation timezone as an IANA name.
++   *
++   * Field classes need the name rather than the object so they can carry it
++   * through the config array that calculateInstances() receives.
++   *
++   * @return string
++   *   A valid IANA timezone name.
++   */
++  public function getGenerationTimezoneName() {
++    return $this->resolveTimezone()->getName();
++  }
++
+   /**
+    * Get consecutive recurring start date.
+    *
+@@ -460,9 +499,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getConsecutiveStartDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('consecutive_recurring_date')->start_date)) {
+-      return $this->get('consecutive_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('consecutive_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -476,9 +515,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getConsecutiveEndDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('consecutive_recurring_date')->end_date)) {
+-      return $this->get('consecutive_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('consecutive_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -554,9 +593,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getDailyStartDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('daily_recurring_date')->start_date)) {
+-      return $this->get('daily_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('daily_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -570,9 +609,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getDailyEndDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('daily_recurring_date')->end_date)) {
+-      return $this->get('daily_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('daily_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -627,9 +666,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getWeeklyStartDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('weekly_recurring_date')->start_date)) {
+-      return $this->get('weekly_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('weekly_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -643,9 +682,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getWeeklyEndDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('weekly_recurring_date')->end_date)) {
+-      return $this->get('weekly_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('weekly_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -747,9 +786,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getMonthlyStartDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('monthly_recurring_date')->start_date)) {
+-      return $this->get('monthly_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('monthly_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -763,9 +802,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getMonthlyEndDate(): ?DrupalDateTime {
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $this->resolveTimezone();
+     if (!empty($this->get('monthly_recurring_date')->end_date)) {
+-      return $this->get('monthly_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return (clone $this->get('monthly_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -863,9 +902,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getYearlyStartDate(): ?DrupalDateTime {
+-    $userTimezone = new \DateTimeZone(date_default_timezone_get());
++    $userTimezone = $this->resolveTimezone();
+     if (!empty($this->get('yearly_recurring_date')->start_date)) {
+-      return $this->get('yearly_recurring_date')->start_date->setTimezone($userTimezone)->setTime(0, 0, 0);
++      return (clone $this->get('yearly_recurring_date')->start_date)->setTimezone($userTimezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+@@ -879,9 +918,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @throws \DateInvalidTimeZoneException
+    */
+   public function getYearlyEndDate(): ?DrupalDateTime {
+-    $userTimezone = new \DateTimeZone(date_default_timezone_get());
++    $userTimezone = $this->resolveTimezone();
+     if (!empty($this->get('yearly_recurring_date')->end_date)) {
+-      return $this->get('yearly_recurring_date')->end_date->setTimezone($userTimezone)->setTime(0, 0, 0);
++      return (clone $this->get('yearly_recurring_date')->end_date)->setTimezone($userTimezone)->setTime(0, 0, 0);
+     }
+     return NULL;
+   }
+diff --git a/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php b/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
+index ab3a802..962c4da 100644
+--- a/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
++++ b/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
+@@ -134,6 +134,10 @@ class ConsecutiveRecurringDate extends DateRangeItem implements RecurringEventsF
+     $buffer = $event->getConsecutiveBuffer() ?? 0;
+     $config['buffer'] = $buffer >= 0 ? $buffer : NULL;
+     $config['buffer_units'] = $event->getConsecutiveBufferUnits();
++    // Carry the resolved zone so findSlotsBetweenTimes() computes the day's
++    // ceiling in the same zone the start date came from. Without it the
++    // ceiling falls back to ambient and the slot count depends on who saved.
++    $config['event_timezone'] = $event->getGenerationTimezoneName();
+     return $config;
+   }
+ 
+@@ -340,7 +344,13 @@ class ConsecutiveRecurringDate extends DateRangeItem implements RecurringEventsF
+     $count = 0;
+ 
+     $max_time = clone $date;
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    // The day's end time sets this loop's bound, so it decides how many slots
++    // the day produces. It must be computed in the same zone the start date
++    // came from — resolving it in the ambient zone instead desynchronises the
++    // ceiling from the start and the day generates the wrong number of slots.
++    $user_timezone = !empty($form_data['event_timezone'])
++      ? new \DateTimeZone($form_data['event_timezone'])
++      : new \DateTimeZone(date_default_timezone_get());
+     $utc_timezone = new \DateTimeZone(DateTimeItemInterface::STORAGE_TIMEZONE);
+ 
+     $time_parts = static::convertTimeTo24hourFormat($form_data['end_time']);
+diff --git a/src/Plugin/Field/FieldType/YearlyRecurringDate.php b/src/Plugin/Field/FieldType/YearlyRecurringDate.php
+index a7ed000..93ac1b3 100644
+--- a/src/Plugin/Field/FieldType/YearlyRecurringDate.php
++++ b/src/Plugin/Field/FieldType/YearlyRecurringDate.php
+@@ -106,6 +106,9 @@ class YearlyRecurringDate extends MonthlyRecurringDate {
+ 
+     $config['year_interval'] = $event->getYearlyInterval();
+     $config['months'] = $event->getYearlyMonths();
++    // Carry the resolved zone so the month/year filter judges occurrences in
++    // the event's zone rather than the saving user's.
++    $config['event_timezone'] = $event->getGenerationTimezoneName();
+     return $config;
+   }
+ 
+@@ -193,8 +196,14 @@ class YearlyRecurringDate extends MonthlyRecurringDate {
+ 
+     $recurrenceMonths = $form_data['months'] ?: [];
+     $yearInterval = !empty($form_data['year_interval']) ? intval($form_data['year_interval']) : 1;
+-    $userTimezone = new \DateTimeZone(date_default_timezone_get());
+-    $recurrenceYears = static::findYearsBetweenDates($form_data['start_date'], $form_data['end_date'], $yearInterval);
++    // This filter reads format('M')/format('Y') off the re-zoned start, so the
++    // zone decides which months an occurrence is judged to fall in. Resolving
++    // it in ambient rather than the event's zone drops occurrences from the
++    // configured months and silently keeps the wrong ones.
++    $userTimezone = !empty($form_data['event_timezone'])
++      ? new \DateTimeZone($form_data['event_timezone'])
++      : new \DateTimeZone(date_default_timezone_get());
++    $recurrenceYears = static::findYearsBetweenDates($form_data['start_date'], $form_data['end_date'], $yearInterval, $userTimezone);
+ 
+     foreach ($eventsToCreate as $key => $dates) {
+       /** @var \Drupal\Core\Datetime\DrupalDateTime $startDate */
+@@ -224,9 +233,12 @@ class YearlyRecurringDate extends MonthlyRecurringDate {
+    * @return array
+    *   An array of matching years.
+    */
+-  public static function findYearsBetweenDates(DrupalDateTime $startDate, DrupalDateTime $endDate, int $interval = 1) {
++  public static function findYearsBetweenDates(DrupalDateTime $startDate, DrupalDateTime $endDate, int $interval = 1, ?\DateTimeZone $timezone = NULL) {
+     $years = [];
+-    $userTimezone = new \DateTimeZone(date_default_timezone_get());
++    // Defaults to ambient so existing callers keep working; generation passes
++    // the event's zone so the year boundary is judged in the same zone the
++    // months are.
++    $userTimezone = $timezone ?: new \DateTimeZone(date_default_timezone_get());
+ 
+     $start = clone $startDate;
+     $start->setTimezone($userTimezone);
