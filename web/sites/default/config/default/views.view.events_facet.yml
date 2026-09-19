@@ -535,7 +535,7 @@ display:
             general:
               autosubmit: true
               autosubmit_exclude_textfield: false
-              autosubmit_textfield_delay: 500
+              autosubmit_textfield_delay: 800
               autosubmit_textfield_minimum_length: 3
               autosubmit_hide: true
               input_required: false
@@ -797,7 +797,7 @@ display:
           contextual_filters_or: false
       relationships: {  }
       css_class: ''
-      use_ajax: false
+      use_ajax: true
       header:
         area_text_custom:
           id: area_text_custom

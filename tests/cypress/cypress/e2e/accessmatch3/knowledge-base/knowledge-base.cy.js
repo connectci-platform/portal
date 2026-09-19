@@ -90,12 +90,12 @@ describe("Tests of the knowledge-base page", () => {
 function create_dummy_ci_link() {
   cy.visit('/form/resource');
   cy.get('#edit-approved').check();
-  cy.get('#edit-title').type('dummy-ci-link-for-testing-knowledge-base', { delay: 0 });
+  cy.get('#edit-title').type('dummy link for testing knowledge base', { delay: 0 });
   cy.get('#edit-category').select('Learning');
   cy.get('#edit-skill-level-304').check();  // beginner level
   cy.get('.form-item-description-html-value .ck-content').then(el => {
     const editor = el[0].ckeditorInstance
-    editor.setData("Dummy description for ci-link 'dummy-ci-link-for-testing-knowledge-base'")
+    editor.setData("Dummy description for ci-link 'dummy link for testing knowledge base'")
   });
   // tag "ACCESS-account" is selected
   cy.get('.tags').contains('ACCESS-account').click();

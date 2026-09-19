@@ -1,0 +1,25 @@
+Add the missing Drupal\Core\Url import to WidgetPluginBase.
+
+WidgetPluginBase::build() calls `new Url(...)` when rebuilding a facet whose
+result URL is routed to facets.block.ajax, but the class is never imported, so
+PHP resolves it as Drupal\facets\Widget\Url and fatals with:
+
+  Class "Drupal\facets\Widget\Url" not found
+
+This only surfaces on /facets-block-ajax requests for facets sourced from a
+views block, which is why it does not appear on normal page loads.
+
+Present in 2.0.10 and on 2.0.x HEAD.
+
+diff --git a/src/Widget/WidgetPluginBase.php b/src/Widget/WidgetPluginBase.php
+--- a/src/Widget/WidgetPluginBase.php
++++ b/src/Widget/WidgetPluginBase.php
+@@ -6,7 +6,8 @@
+ use Drupal\Component\Utility\NestedArray;
+ use Drupal\Core\Form\FormStateInterface;
+ use Drupal\Core\Link;
+ use Drupal\Core\Plugin\PluginBase;
++use Drupal\Core\Url;
+ use Drupal\facets\FacetInterface;
+ use Drupal\facets\Result\Result;
+ use Drupal\facets\Result\ResultInterface;

@@ -4,6 +4,7 @@
     the Register button is no longer displayed.
 */
 
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Past events should not show registration button', () => {
   const pastEventName = 'cypress-past-event-no-register';
 
@@ -60,8 +61,7 @@ describe('Past events should not show registration button', () => {
   it('Should show Register button for future event', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
     cy.visit('/events');
-    cy.get('#edit-search-api-fulltext--2').type(pastEventName, { delay: 0 });
-    cy.wait(1000);
+    cy.searchAndWait(EVENTS_SEARCH, pastEventName);
     cy.contains(pastEventName).click();
 
     // Verify Register button is visible for future event
@@ -71,8 +71,7 @@ describe('Past events should not show registration button', () => {
   it('Should NOT show Register button for past event', () => {
     cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
     cy.visit('/events');
-    cy.get('#edit-search-api-fulltext--2').type(pastEventName, { delay: 0 });
-    cy.wait(1000);
+    cy.searchAndWait(EVENTS_SEARCH, pastEventName);
     cy.contains(pastEventName).click();
 
     // Get event instance ID from URL and change date to past
@@ -112,8 +111,7 @@ describe('Past events should not show registration button', () => {
     cy.contains('Past Events').click();
     cy.wait(1000);
 
-    cy.get('#edit-search-api-fulltext--2').type(pastEventName, { delay: 0 });
-    cy.wait(1000);
+    cy.searchAndWait(EVENTS_SEARCH, pastEventName);
 
     // Only try to delete if the event exists
     cy.get('body').then($body => {

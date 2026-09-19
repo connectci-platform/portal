@@ -9,6 +9,8 @@
     Event Affiliation and Skill Level facets are only available to authenticated users.
 
 */
+
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Unauthenticated user tests the Events Page', () => {
   it('Should test the Events page for unauthenticated user', () => {
     cy.visit('/events')
@@ -49,13 +51,11 @@ describe('Unauthenticated user tests the Events Page', () => {
     cy.get('#custom-event-type-reset-all').check()
     cy.wait(1000)
 
-    cy.get('#edit-search-api-fulltext--2').type('Random string', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait(EVENTS_SEARCH, 'Random string');
     cy.contains('No Events Found')
 
-    cy.get('#edit-search-api-fulltext--2').clear()
-    cy.wait(1000)
-    cy.get('#edit-search-api-fulltext--2').type('cypress anonymous', { delay: 0 })
+    cy.clearSearchAndWait(EVENTS_SEARCH);
+    cy.searchAndWait(EVENTS_SEARCH, 'cypress anonymous');
 
     // The event is created by events-add.cy.js and must be indexed by search_api
     // before it appears in these fulltext results. With index_directly the index
