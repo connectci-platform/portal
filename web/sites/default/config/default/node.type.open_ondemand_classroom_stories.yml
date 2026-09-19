@@ -1,0 +1,17 @@
+uuid: 1abd8171-4e36-4fd9-ad56-78d56c21ad43
+langcode: en
+status: true
+dependencies:
+  module:
+    - menu_ui
+third_party_settings:
+  menu_ui:
+    available_menus: {  }
+    parent: ''
+name: 'Open OnDemand Classroom Stories'
+type: open_ondemand_classroom_stories
+description: null
+help: null
+new_revision: true
+preview_mode: 0
+display_submitted: false

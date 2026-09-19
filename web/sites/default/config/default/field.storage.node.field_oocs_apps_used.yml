@@ -1,0 +1,19 @@
+uuid: 6a6ac6b2-a71e-4b7c-bf08-87d2c582d40f
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_oocs_apps_used
+field_name: field_oocs_apps_used
+entity_type: node
+type: entity_reference
+settings:
+  target_type: node
+module: core
+locked: false
+cardinality: -1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false
