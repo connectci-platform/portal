@@ -33,6 +33,12 @@ resourceFields:
     publicName: field_cider_resources
     enhancer:
       id: ''
+  field_current_occupation:
+    disabled: true
+    fieldName: field_current_occupation
+    publicName: field_current_occupation
+    enhancer:
+      id: ''
   field_github_graph:
     disabled: true
     fieldName: field_github_graph
