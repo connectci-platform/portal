@@ -8,6 +8,8 @@
     Verifying links load in,
     And CI Links go to the correct page
 */
+
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe("Unauthenticated user tests the KB Resources Page", () => {
   it("Should test the KB Resources page for unauthenticated user", () => {
     cy.visit("/knowledge-base/resources");
@@ -32,8 +34,8 @@ describe("Unauthenticated user tests the KB Resources Page", () => {
     // cy.visit("/knowledge-base/ci-links");
 
     //Searching for Cypress Created CI Link
-    cy.get("#edit-search-api-fulltext--2").type("dummy-ci-link-for-testing-knowledge-base", { delay: 0 });
+    cy.searchAndWait(EVENTS_SEARCH, "dummy link for testing knowledge base");
     cy.get(".view-search-ci-links details summary")
-      .contains("dummy-ci-link-for-testing-knowledge-base")
+      .contains("dummy link for testing knowledge base")
   });
 });

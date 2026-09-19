@@ -1,0 +1,19 @@
+uuid: 8aa9c65f-3ec5-4fe3-8738-35c006aa747d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_oocs_project_summary
+    - node.type.open_ondemand_classroom_stories
+id: node.open_ondemand_classroom_stories.field_oocs_project_summary
+field_name: field_oocs_project_summary
+entity_type: node
+bundle: open_ondemand_classroom_stories
+label: 'Project Summary'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

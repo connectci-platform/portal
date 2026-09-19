@@ -271,7 +271,7 @@ describe("Verify the the community-outreach tag page", () => {
         editor.setData("Dummy description for ci-link 'dummy-ci-link-for-testing-community-outreach-tag'")
       });
       cy.get('.tags').contains('community-outreach').click();
-      cy.get('.form-item-domain').find('input').type('ACCESS{enter}', { delay: 0 });
+      cy.get('.form-item-domain').find('.select2-search__field').type('ACCESS{enter}', { delay: 0 });
       cy.get('#edit-submit').click();
     }
   });

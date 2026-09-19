@@ -1,3 +1,11 @@
+// The search input is addressed by data-drupal-selector, never by id: the view
+// runs on AJAX, so the exposed form's duplicate-id counter changes after the
+// first interaction. Facet items are placed twice (desktop and a collapsed
+// mobile copy) under the same ids, so `:visible` picks the one a user can
+// actually click, and a facet's "Show more" link is reached by the facet's URL
+// alias rather than by a theme-specific block class.
+const SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
+
 describe("test people page w/ filters", () => {
   it("Authenticated user tests the people page and filter", () => {
     cy.loginUser("authenticated@amptesting.com", "6%l7iF}6(4tI");
@@ -7,31 +15,31 @@ describe("test people page w/ filters", () => {
     cy.contains('Skills');
     cy.contains('Organization');
 
-    cy.get('#edit-search-api-fulltext--2').type('testing123', { delay: 0 });
-    cy.wait(1000);
+    cy.searchAndWait(SEARCH, 'testing123');
     cy.contains('No matches found');
 
-    cy.get('#edit-search-api-fulltext--2').clear();
-    cy.wait(1000);
-    cy.get('#edit-search-api-fulltext--2').type('julie');
-    cy.wait(1000);
+    cy.clearSearchAndWait(SEARCH);
+    cy.searchAndWait(SEARCH, 'julie');
     cy.contains('Julie Ma');
 
-    cy.get('#edit-search-api-fulltext--2').clear();
-    cy.wait(1000);
+    cy.clearSearchAndWait(SEARCH);
 
-    cy.get('#program-308').click();
+    // Facet clicks go through cy.clickFacetAndWait: it waits for the widget's
+    // `facets_filter` binding before clicking, and for the view plus the facet
+    // blocks to settle after. A reset click re-renders the whole facet block,
+    // so the "Show more" link that follows only exists once that lands.
+    cy.clickFacetAndWait('#program-308:visible');
     cy.contains('Programs Northeast');
-    cy.get('#program-reset-all').click();
+    cy.clickFacetAndWait('#program-reset-all:visible');
 
-    cy.get('#block-nect-organizationcyberteampeople .facets-soft-limit-link').click();
-    cy.get('#organization-cyberteam-people-1931').click();
+    cy.expandFacetSoftLimit('organization_cyberteam_people');
+    cy.clickFacetAndWait('#organization-cyberteam-people-1931:visible');
     cy.contains('Harvard University');
-    cy.get('#organization-cyberteam-people-reset-all').click();
+    cy.clickFacetAndWait('#organization-cyberteam-people-reset-all:visible');
 
-    cy.get('#block-nect-userskillscyberteampeople .facets-soft-limit-link').click();
-    cy.get('#user-skills-cyberteam-people-llm').click();
+    cy.expandFacetSoftLimit('user_skills_cyberteam_people');
+    cy.clickFacetAndWait('#user-skills-cyberteam-people-llm:visible');
     cy.contains('llm');
-    cy.get('#user-skills-cyberteam-people-bash').click();
+    cy.clickFacetAndWait('#user-skills-cyberteam-people-bash:visible');
   });
 });

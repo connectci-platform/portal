@@ -51,6 +51,7 @@ jobs:
               web/modules/custom/connectci_llms/tests/
               web/modules/custom/domain_menu_system_block/tests/
               web/modules/custom/expandable_text/tests/
+              web/modules/custom/ood_general/tests/
               web/modules/custom/ood_software/tests/
               web/modules/custom/operations_cider/tests/
           - name: events-1
