@@ -9,6 +9,7 @@
     Test breadcrumbs and authenticated-only functionality
 */
 
+const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Authenticated user tests the Events Page', () => {
     beforeEach(() => {
         cy.loginAs('authenticated@amptesting.com', '6%l7iF}6(4tI')
@@ -60,14 +61,11 @@ describe('Authenticated user tests the Events Page', () => {
         cy.visit('/events')
 
         // Test search functionality
-        cy.get('#edit-search-api-fulltext--2').type('Random string', { delay: 0 })
-        cy.wait(1000)
+        cy.searchAndWait(EVENTS_SEARCH, 'Random string');
         cy.contains('No Events Found')
 
-        cy.get('#edit-search-api-fulltext--2').clear()
-        cy.wait(1000)
-        cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-        cy.wait(1000)
+        cy.clearSearchAndWait(EVENTS_SEARCH);
+        cy.searchAndWait(EVENTS_SEARCH, 'example');
         cy.contains('cypress-example-event')
           .closest('.views-row')
           .within(() => {
@@ -85,8 +83,7 @@ describe('Authenticated user tests the Events Page', () => {
     it('Should test individual event page for authenticated user', () => {
         cy.visit('/events')
         
-        cy.get('#edit-search-api-fulltext--2').type('example', { delay: 0 })
-        cy.wait(1000)
+        cy.searchAndWait(EVENTS_SEARCH, 'example');
         cy.contains('cypress-example-event').click()
 
         // Event Date

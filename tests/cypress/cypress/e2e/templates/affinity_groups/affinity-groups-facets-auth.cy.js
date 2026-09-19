@@ -30,9 +30,11 @@ describe("Test Affinity Groups page facets for authenticated users", () => {
 
     // Test search functionality. The type/clear triggers Facets/Views AJAX that
     // re-renders the facet block, so wait for the list to settle before touching it.
-    cy.get('#edit-search-api-fulltext--2').type('test search', { delay: 0 })
+    // Search input by data-drupal-selector, not id: the id carries a form-build
+    // counter that changes when facet AJAX rebuilds the exposed form.
+    cy.get('[data-drupal-selector="edit-search-api-fulltext"]').type('test search', { delay: 0 })
     cy.get('ul[data-drupal-facet-alias="affinity_search_tags"]').should('be.visible')
-    cy.get('#edit-search-api-fulltext--2').clear()
+    cy.get('[data-drupal-selector="edit-search-api-fulltext"]').clear()
     cy.get('ul[data-drupal-facet-alias="affinity_search_tags"]').should('be.visible')
 
     // Test Tags facet (available to all users).

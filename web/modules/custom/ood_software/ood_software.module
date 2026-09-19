@@ -88,8 +88,8 @@ function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type,
 function ood_software_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
   // Exposed date filters render as plain textfields with no format hint.
   // Upgrade their value/min/max inputs to HTML5 date pickers so the expected
-  // YYYY-MM-DD shape is obvious. Matches the 'date' filter plugin (timestamp
-  // fields are re-typed to it via ood_software_views_data_alter below).
+  // YYYY-MM-DD shape is obvious. Applies to any view's exposed 'date' filter,
+  // not just this module's.
   if (str_starts_with($form_id, 'views_exposed_form')) {
     $view = $form_state->getStorage()['view'] ?? NULL;
     if ($view instanceof \Drupal\views\ViewExecutable) {
@@ -1820,7 +1820,6 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
   $githubUrl = $repoLinkValues[0]['uri'] ?? '';
 
   $validationSt = $repo->get('field_repo_validation_st')->value ?? '';
-  $lastSyncedTs = $repo->get('field_repo_last_synced')->value ?? NULL;
 
   $isInferred = $shape === 'inferred';
   $apps = [];
@@ -1911,7 +1910,10 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'status' => _ood_software_hub_badge($moderationState),
     'has_validation_issues' => in_array($validationSt, ['degraded', 'stale_invalid'], TRUE),
     'validation_st' => $validationSt,
-    'last_synced' => $lastSyncedTs ? \Drupal::service('date.formatter')->format((int) $lastSyncedTs, 'custom', 'm-d-y H:i') : '',
+    // The card shows when the repo was submitted (node created time) rather
+    // than the former last-sync timestamp, which is now surfaced only via
+    // the exposed "Last synced" views filter.
+    'submitted' => \Drupal::service('date.formatter')->format($repo->getCreatedTime(), 'custom', 'm-d-y H:i'),
     'unpublished_after_publish' => !$repo->isPublished() && $moderationState === 'published',
     'moderation_comment' => $moderationComment,
     'edit_url' => $editUrl,
@@ -2095,15 +2097,10 @@ function ood_software_preprocess_views_view(array &$variables): void {
 /**
  * Implements hook_views_data_alter().
  *
- * Two manage-repos exposed filters get the wrong filter plugin from core's
- * field-storage discovery:
- *
- * - field_appverse_software_implemen_target_id is an integer column, typed
- *   as a numeric filter. Override to entity_reference so it renders as an
- *   autocomplete bound to appverse_software titles.
- * - field_repo_last_synced is a timestamp column, typed as a numeric filter
- *   (raw int input). Override to the date filter so it accepts human date
- *   input; the exposed form-alter then upgrades it to an HTML5 date picker.
+ * The manage-repos "Software used" exposed filter gets the wrong filter plugin
+ * from core's field-storage discovery: its target_id is an integer column, so
+ * it is typed as a numeric filter. Override it to entity_reference so it
+ * renders as an autocomplete bound to appverse_software titles.
  *
  * @param array<string, mixed> $data
  */
@@ -2111,9 +2108,6 @@ function ood_software_views_data_alter(array &$data): void {
   if (isset($data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter'])) {
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['id'] = 'entity_reference';
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['entity_type'] = 'node';
-  }
-  if (isset($data['node__field_repo_last_synced']['field_repo_last_synced_value']['filter'])) {
-    $data['node__field_repo_last_synced']['field_repo_last_synced_value']['filter']['id'] = 'date';
   }
 }
 
