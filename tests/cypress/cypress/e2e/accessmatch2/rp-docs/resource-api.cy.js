@@ -106,7 +106,14 @@ describe("Resource Documentation API", () => {
       expect(project.summary).to.eq("10 TB, 5,000,000 files");
 
       expect(body.queue_specs).to.be.an("array");
-      expect(body.queue_specs).to.have.length(5);
+      // One entry per paragraph (7 rows over 5 queues in the fixture). The
+      // page groups repeated queue names into one row group; the API does not
+      // — it stays a flat list and leaves grouping to the consumer.
+      expect(body.queue_specs).to.have.length(7);
+      expect(body.queue_specs.map((q) => q.name)).to.deep.eq([
+        "gpu-standard", "gpu-standard", "gpu-large", "gpu-large",
+        "debug", "cpu-shared", "gpu-cloud",
+      ]);
       // Structured queue fields stay raw and typed (GB), with a derived summary.
       const gpuStandard = body.queue_specs[0];
       expect(gpuStandard.name).to.eq("gpu-standard");
