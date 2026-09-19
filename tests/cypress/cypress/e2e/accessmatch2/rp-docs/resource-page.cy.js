@@ -464,7 +464,7 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
   });
 
   it("renders RP Account Setup CTA in the sidebar", () => {
-    // Sidebar uses CIDeR short_name ("Gamma") rather than the long descriptive title.
+    // Sidebar uses the resolved display name, not the long descriptive title.
     cy.get(".rp-sidebar").contains("GET AN ACCOUNT ON GAMMA");
     cy.get(".rp-sidebar").contains("Set up your Gamma account");
   });
@@ -486,9 +486,11 @@ describe("Resource Documentation Page — Gamma (partial data)", () => {
     });
   });
 
-  it("QA bot falls back to resource title (short_name post-load-hook) when not in a group", () => {
+  it("QA bot falls back to the resource display name when not in a group", () => {
+    // Gamma is not in a group, so the slug comes from the resource's own
+    // display name ("Gamma AI System" since amp_dev #11), not the raw title.
     cy.get(".embedded-qa-bot")
-      .should("have.attr", "data-scope-slug", "gamma");
+      .should("have.attr", "data-scope-slug", "gamma-ai-system");
   });
 
 });
