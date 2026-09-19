@@ -1,4 +1,4 @@
-uuid: 600b3a82-092e-4f02-97ac-263c27311b88
+uuid: 075a8ef6-3188-4b48-90d0-215982a04c9d
 langcode: en
 status: true
 dependencies:
@@ -8,11 +8,11 @@ dependencies:
     - system
     - views
   theme:
-    - pascience
-id: pascience_exposedformccmnet_memberspage_1_2
-theme: pascience
-region: below_main_content
-weight: 0
+    - ood
+id: ood_exposedformccmnet_memberspage_1
+theme: ood
+region: primary_sidebar
+weight: -40
 provider: null
 plugin: 'views_exposed_filter_block:ccmnet_members-page_1'
 settings:

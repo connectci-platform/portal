@@ -2,8 +2,7 @@ describe("Tested as an authenticated user the Individual Profile Page showcases"
 
   it("Authenticated user tests the individual people page", () => {
     cy.visit('/people');
-    cy.get('#edit-search-api-fulltext--2').type('julie', { delay: 0 })
-    cy.wait(1000)
+    cy.searchAndWait('[data-drupal-selector="edit-search-api-fulltext"]', 'julie');
     cy.contains('Julie Ma')
     cy.get('a[href="/community-persona/100"]').click();
     cy.contains('Julie Ma')

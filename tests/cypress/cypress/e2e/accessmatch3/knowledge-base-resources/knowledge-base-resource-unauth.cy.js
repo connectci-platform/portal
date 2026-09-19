@@ -15,18 +15,18 @@ describe("Unauthenticated user tests the Individual KB Resource Page", () => {
   it("Should test Individual KB Resource page for unauthenticated user", () => {
     //Naviagting To Indie CI Link
     cy.visit("/knowledge-base/resources");
-    cy.contains("dummy-ci-link-for-testing-knowledge-base")
+    cy.contains("dummy link for testing knowledge base")
       .click()
       .then(() => {
         //CI Link Title
         // cy.get(".page-title").contains(
-        //   "dummy-ci-link-for-testing-knowledge-base"
+        //   "dummy link for testing knowledge base"
         // );
         //Tags
         cy.contains("ACCESS-account");
         //Description
         cy.contains(
-          "Dummy description for ci-link 'dummy-ci-link-for-testing-knowledge-base'"
+          "Dummy description for ci-link 'dummy link for testing knowledge base'"
         );
         //CI Link Category and Skill Level
         cy.get(".md--col-span-1 div:nth-child(2)")

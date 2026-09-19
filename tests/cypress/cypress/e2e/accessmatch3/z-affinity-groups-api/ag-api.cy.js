@@ -43,7 +43,7 @@ describe("Test Affinity Group API", () => {
     cy.request('/api/1.0/kb/test.group.api')
       .then((response) => {
         const ag = response.body;
-        expect(ag[0].title).to.eq('dummy-ci-link-for-testing-knowledge-base');
+        expect(ag[0].title).to.eq('dummy link for testing knowledge base');
       });
 
   });
