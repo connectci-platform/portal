@@ -24,6 +24,7 @@ dependencies:
     - content_moderation
     - datetime_range
     - field_group
+    - field_inheritance
     - link
     - media_library
     - text
@@ -121,6 +122,13 @@ content:
       placeholder_url: ''
       placeholder_title: ''
     third_party_settings: {  }
+  field_inheritance:
+    type: field_inheritance_default
+    weight: 0
+    region: content
+    settings:
+      elements: both
+    third_party_settings: {  }
   field_location:
     type: text_textfield
     weight: 12
@@ -217,6 +225,11 @@ content:
   moderation_state:
     type: moderation_state_default
     weight: 4
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  simple_sitemap:
+    weight: 10
     region: content
     settings: {  }
     third_party_settings: {  }

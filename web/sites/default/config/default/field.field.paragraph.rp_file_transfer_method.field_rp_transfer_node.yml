@@ -9,7 +9,7 @@ id: paragraph.rp_file_transfer_method.field_rp_transfer_node
 field_name: field_rp_transfer_node
 entity_type: paragraph
 bundle: rp_file_transfer_method
-label: 'Data Transfer Node'
+label: 'Data Transfer Node / Globus Collection'
 description: ''
 required: null
 translatable: null

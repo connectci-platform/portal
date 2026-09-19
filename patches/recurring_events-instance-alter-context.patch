@@ -1,18 +1,37 @@
+Pass $event as context to hook_recurring_events_event_instance_alter(), and drop
+moderation_state before adding a translation.
+
+1. EventCreationService::createEventInstance() invokes the alter with only the
+   $data array, so an implementation cannot tell which series an instance is
+   being created for. access_events needs that context to decide the birth state
+   of the instance (a published parent yields a published instance).
+
+2. When translating a series, $data still carries the moderation_state computed
+   for the default-language instance. Passing it into addTranslation() re-runs
+   the content_moderation transition against the translation and can reset the
+   instance state. Unset it so the translation inherits the default revision's
+   state instead.
+
+Still required as of 3.0.0.
+
 --- a/src/EventCreationService.php
 +++ b/src/EventCreationService.php
-@@ -550,7 +550,7 @@ public function createEventInstance(EventSeries $event, DrupalDateTime $start_da
+@@ -496,7 +496,7 @@
        'uid' => $event->getOwnerId(),
      ];
-
+ 
 -    $this->moduleHandler->alter('recurring_events_event_instance', $data);
 +    $this->moduleHandler->alter('recurring_events_event_instance', $data, $event);
-
+ 
      $storage = $this->entityTypeManager->getStorage('eventinstance');
-     if ($event->isDefaultTranslation()) {
-@@ -577,6 +577,7 @@ public function createEventInstance(EventSeries $event, DrupalDateTime $start_da
+     $entity = NULL;
+@@ -524,6 +524,10 @@
          $entity = $storage->load(reset($entity_ids));
          // Only add a translation if we do not already have one.
          if (!$entity->hasTranslation($event->language()->getId())) {
++          // The moderation state of the default-language instance governs the
++          // whole entity; passing it into addTranslation() re-runs the
++          // content_moderation state transition and can reset the instance.
 +          unset($data['moderation_state']);
            $entity->addTranslation($event->language()->getId(), $data);
          }

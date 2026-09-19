@@ -232,7 +232,9 @@ describe("Resource Documentation API", () => {
   it("Partial resource (Gamma) returns only populated sections", () => {
     cy.request(`/api/1.0/resources/${FIXTURES.gamma.resource_id}`).then((response) => {
       expect(response.status).to.eq(200);
-      expect(response.body.title).to.eq("Gamma");
+      // title resolves field_rp_display_name first, then the CiDeR short name.
+      expect(response.body.title).to.eq("Gamma AI System");
+      expect(response.body.short_name).to.eq("Gamma");
       expect(response.body.storage).to.have.length(2);
       expect(response.body.file_transfer).to.have.length(0);
       expect(response.body.queue_specs).to.have.length(0);
