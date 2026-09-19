@@ -566,7 +566,11 @@ describe('Appverse Maintenance Hub', () => {
       });
 
       it('emails the contributor AND cascade-unpublishes member apps', () => {
-        cy.visit('/appverse/manage-repos?status=All&moderation_state=All', { failOnStatusCode: false });
+        // Narrow to this collection by title: the queue sorts published
+        // repos after awaiting-review and oldest first within each state, so
+        // a freshly seeded published collection lands past the 20-row pager
+        // on a database with real content.
+        cy.visit(`/appverse/manage-repos?status=All&moderation_state=All&title=${encodeURIComponent(COLLECTION_TITLE)}`, { failOnStatusCode: false });
         cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
           .within(() => {
             // Request changes is now a direct inline icon link (no kebab).
