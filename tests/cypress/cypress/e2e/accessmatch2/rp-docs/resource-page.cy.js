@@ -112,12 +112,110 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
 
   it("renders queue specs table", () => {
     cy.contains("h2", "Jobs");
-    cy.get(".rp-queue-specs table tbody tr").should("have.length", 5);
-    cy.contains("td", "gpu-standard");
-    cy.contains("td", "gpu-large");
-    cy.contains("td", "debug");
-    cy.contains("td", "cpu-shared");
-    cy.contains("td", "gpu-cloud");
+    // One tbody.rp-queue-group per queue now, not one tr per queue.
+    cy.get(".rp-queue-specs table tbody.rp-queue-group").should("have.length", 5);
+    cy.contains("th", "gpu-standard");
+    cy.contains("th", "gpu-large");
+    cy.contains("th", "debug");
+    cy.contains("th", "cpu-shared");
+    cy.contains("th", "gpu-cloud");
+  });
+
+  it("groups hardware rows under their queue", () => {
+    cy.get(".rp-queue-specs table tbody.rp-queue-group").should("have.length", 5);
+
+    // Multi-row queues (gpu-standard, gpu-large) get a rowgroup heading th;
+    // single-row queues (debug, cpu-shared, gpu-cloud) get a scope=row th —
+    // both in fixture order.
+    cy.get(".rp-queue-specs table th[scope=rowgroup]").should("have.length", 2);
+    cy.get(".rp-queue-specs table th[scope=rowgroup]").eq(0).should("contain", "gpu-standard");
+    cy.get(".rp-queue-specs table th[scope=rowgroup]").eq(1).should("contain", "gpu-large");
+    cy.get(".rp-queue-specs table th[scope=row]").should("have.length", 3);
+    cy.get(".rp-queue-specs table th[scope=row]").eq(0).should("contain", "debug");
+    cy.get(".rp-queue-specs table th[scope=row]").eq(1).should("contain", "cpu-shared");
+    cy.get(".rp-queue-specs table th[scope=row]").eq(2).should("contain", "gpu-cloud");
+
+    cy.get(".rp-queue-specs table thead th").then(($ths) => {
+      const jobsCol = [...$ths].findIndex((th) => th.textContent.trim().startsWith("Number of jobs run"));
+      expect(jobsCol, "Number of jobs run column present").to.be.greaterThan(-1);
+
+      // Sparklines and job counts belong to the queue as a whole — never to
+      // an individual hardware row inside a multi-row group.
+      cy.get(".rp-queue-specs table tr.rp-queue-group__row svg").should("not.exist");
+      cy.get(".rp-queue-specs table tr.rp-queue-group__row").each(($row) => {
+        // The cell carries only the visually-hidden note for screen readers,
+        // never a job count of its own.
+        cy.wrap($row).children().eq(jobsCol).invoke("text").then((text) => {
+          expect(text.trim()).to.equal("See queue heading");
+        });
+      });
+
+      // A heading row's hardware cells are likewise empty apart from the
+      // hidden note, so a screen reader is told why rather than hitting a
+      // run of silent cells.
+      cy.get(".rp-queue-specs table tr.rp-queue-group__heading .sr-only")
+        .should("contain", "Varies by node type");
+
+      // Exactly one job-count value per queue (5 total), each on the
+      // heading/single row rather than a hardware sub-row.
+      cy.get(".rp-queue-specs table tbody.rp-queue-group").each(($tbody) => {
+        cy.wrap($tbody).find("tr.rp-queue-group__heading, tr.rp-queue-group__single")
+          .children().eq(jobsCol).invoke("text").then((text) => {
+            expect(text.trim()).to.not.equal("");
+          });
+      });
+    });
+
+    // gpu-standard: two hardware rows in editor order (A100 first, H100
+    // second), and its shared purpose appears exactly once — in the heading.
+    cy.contains("th[scope=rowgroup]", "gpu-standard").closest("tbody").within(() => {
+      cy.get("tr.rp-queue-group__row").should("have.length", 2);
+      cy.get("tr.rp-queue-group__row").eq(0).should("contain", "NVIDIA A100");
+      cy.get("tr.rp-queue-group__row").eq(1).should("contain", "NVIDIA H100");
+      cy.get("tr.rp-queue-group__heading .rp-queue-group__purpose")
+        .should("have.length", 1)
+        .and("contain", "General purpose GPU jobs with up to 4 GPUs per node.");
+    });
+
+    // gpu-large: the two hardware rows disagree on purpose, so each keeps
+    // its own text and the heading has no shared purpose to show.
+    cy.contains("th[scope=rowgroup]", "gpu-large").closest("tbody").within(() => {
+      cy.get("tr.rp-queue-group__heading .rp-queue-group__purpose").should("not.exist");
+      cy.get("tr.rp-queue-group__row").eq(0).should("contain", "Large-scale multi-node GPU jobs requiring 8+ GPUs.");
+      cy.get("tr.rp-queue-group__row").eq(1).should("contain", "Full-node jobs on the newer H100 partition.");
+    });
+
+    // gpu-standard's rows share one max wall (48h) so the limit shows on the
+    // heading; gpu-large's rows disagree (120h vs 72h) so the heading shows
+    // no limit and each hardware row carries its own figure instead.
+    cy.get(".rp-queue-specs table thead th").then(($ths) => {
+      const wallCol = [...$ths].findIndex((th) => th.textContent.trim() === "Max wallclock");
+      expect(wallCol, "Max wallclock column present").to.be.greaterThan(-1);
+
+      cy.contains("th[scope=rowgroup]", "gpu-standard").parent("tr").should("contain", "limit 48h");
+      cy.contains("th[scope=rowgroup]", "gpu-large").parent("tr").within(() => {
+        cy.contains("limit").should("not.exist");
+      });
+      cy.contains("th[scope=rowgroup]", "gpu-large").closest("tbody")
+        .find("tr.rp-queue-group__row").eq(0).children().eq(wallCol).should("contain", "120h");
+      cy.contains("th[scope=rowgroup]", "gpu-large").closest("tbody")
+        .find("tr.rp-queue-group__row").eq(1).children().eq(wallCol).should("contain", "72h");
+    });
+
+    // Collapsed (before clicking More): the clamp never cuts a queue in
+    // half — every inert row lives in a tbody where every row is inert.
+    cy.get(".rp-queue-specs .expandable-text[data-rows]").should("exist");
+    // The table is taller than the clamp, so something must be cut — without
+    // this the all-or-nothing check below would pass on an uncut table.
+    cy.get(".rp-queue-specs table tr[inert]").should("have.length.greaterThan", 0);
+    cy.get(".rp-queue-specs table tbody.rp-queue-group").each(($tbody) => {
+      const $rows = $tbody.find("tr");
+      const inertCount = $rows.filter("[inert]").length;
+      expect(
+        inertCount === 0 || inertCount === $rows.length,
+        "tbody rows are uniformly inert or not"
+      ).to.be.true;
+    });
   });
 
   it("renders corrected GPU and Node RAM columns", () => {
@@ -127,20 +225,19 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
     cy.get(".rp-queue-specs").contains("th", "CPU cores / node");
     cy.get(".rp-queue-specs").contains("th", "GPUs / node");
     // GPU cell: "<count> <type> (<vram> GB vRAM)" and Node RAM in GB.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-standard")
-      .parent("tr").within(() => {
-        cy.contains("4 NVIDIA A100 (80 GB vRAM)");
-        cy.contains("256 GB");
-        // CPU core count is parenthesized like the GPU vRAM.
-        cy.contains("AMD EPYC 7763 (64 cores)");
-      });
+    cy.contains("th", "gpu-standard").closest("tbody").within(() => {
+      cy.contains("4 NVIDIA A100 (80 GB vRAM)");
+      cy.contains("256 GB");
+      // CPU core count is parenthesized like the GPU vRAM.
+      cy.contains("AMD EPYC 7763 (64 cores)");
+    });
     // CPU-only queue shows the empty-cell placeholder "N/A" for GPU, never "0 …".
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
-      .parent("tr").should("contain", "N/A").and("not.contain", "0 NVIDIA");
+    cy.contains("th", "cpu-shared").closest("tbody")
+      .should("contain", "N/A").and("not.contain", "0 NVIDIA");
     // gpu-cloud has GPU type + vRAM but no per-node count: render type/vRAM
     // without a leading count, not an em-dash.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
-      .parent("tr").should("contain", "NVIDIA H100 (80 GB vRAM)")
+    cy.contains("th", "gpu-cloud").closest("tbody")
+      .should("contain", "NVIDIA H100 (80 GB vRAM)")
       .and("not.contain", "0 NVIDIA H100");
   });
 
@@ -148,46 +245,60 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
     // The wall-time limit renders as text below the sparkline ("limit <chip>",
     // compact minutes-aware form) plus a red ceiling line inside the SVG.
     // Numbers (range/avg/limit) live in the text row, not inside the chart.
-    // gpu-standard: 2880 min -> "limit 48h", drawn as a red line + text.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-standard")
+    // gpu-standard's rows share one 2880-min limit, so it shows on the
+    // heading row -> "limit 48h", drawn as a red line + text.
+    cy.contains("th[scope=rowgroup]", "gpu-standard")
       .parent("tr").within(() => {
         cy.contains("limit 48h");
         cy.get("svg line[stroke='#c0392b']").should("exist"); // red ceiling line
         cy.get("svg polyline").should("exist"); // trend not flattened
       });
-    // gpu-large: 7200 min -> "limit 120h" (the 30-day usage exceeds it — line drawn, text shown).
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-large")
-      .parent("tr").should("contain", "limit 120h");
-    // debug: 30 min -> sub-hour "limit 30m" chip + red line inside the SVG.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "debug")
-      .parent("tr").within(() => {
-        cy.contains("limit 30m");
-        cy.get("svg line[stroke='#c0392b']").should("exist"); // red ceiling line
-      });
-    // cpu-shared has no limit set -> no "limit" text, no red line.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
+    // gpu-large's rows disagree (120h vs 72h), so the heading shows no
+    // limit at all — the figures move onto each hardware row instead.
+    cy.contains("th[scope=rowgroup]", "gpu-large")
       .parent("tr").within(() => {
         cy.contains("limit").should("not.exist");
-        cy.get("svg line[stroke='#c0392b']").should("not.exist");
       });
+    cy.get(".rp-queue-specs table thead th").then(($ths) => {
+      const wallCol = [...$ths].findIndex((th) => th.textContent.trim() === "Max wallclock");
+      expect(wallCol, "Max wallclock column present").to.be.greaterThan(-1);
+      cy.contains("th[scope=rowgroup]", "gpu-large").closest("tbody")
+        .find("tr.rp-queue-group__row").eq(0).children().eq(wallCol).should("contain", "120h");
+      cy.contains("th[scope=rowgroup]", "gpu-large").closest("tbody")
+        .find("tr.rp-queue-group__row").eq(1).children().eq(wallCol).should("contain", "72h");
+    });
+    // debug: 30 min -> sub-hour "limit 30m" chip + red line inside the SVG.
+    cy.contains("th", "debug").parent("tr").within(() => {
+      cy.contains("limit 30m");
+      cy.get("svg line[stroke='#c0392b']").should("exist"); // red ceiling line
+    });
+    // cpu-shared has no limit set -> no "limit" text, no red line.
+    cy.contains("th", "cpu-shared").parent("tr").within(() => {
+      cy.contains("limit").should("not.exist");
+      cy.get("svg line[stroke='#c0392b']").should("not.exist");
+    });
   });
 
   it("renders the per-partition Nodes column", () => {
     cy.get(".rp-queue-specs").contains("th", "Num nodes");
-    // gpu-standard has field_rp_node_count = 100 in the fixture.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-standard")
-      .parent("tr").should("contain", "100");
-    // cpu-shared has field_rp_node_count = 200.
-    cy.get(".rp-queue-specs table tbody tr").contains("td", "cpu-shared")
-      .parent("tr").should("contain", "200");
-    // gpu-cloud has an unknown node count: the cell reads "N/A", not 0.
     // Resolve the Num nodes column index from the header so the assertion
-    // survives column reordering, then check that column in gpu-cloud's row.
+    // survives column reordering, then check that column per row. Use
+    // children() (not td) since a heading/single row's first cell is a th.
     cy.get(".rp-queue-specs table thead th").then(($ths) => {
       const nodesCol = [...$ths].findIndex((th) => th.textContent.trim() === "Num nodes");
       expect(nodesCol, "Num nodes column present").to.be.greaterThan(-1);
-      cy.get(".rp-queue-specs table tbody tr").contains("td", "gpu-cloud")
-        .parent("tr").find("td").eq(nodesCol).should("contain", "N/A");
+
+      // gpu-standard is a multi-row queue now: field_rp_node_count = 100
+      // lives on its (first) hardware row, not the heading row.
+      cy.contains("th[scope=rowgroup]", "gpu-standard").closest("tbody")
+        .find("tr.rp-queue-group__row").eq(0)
+        .children().eq(nodesCol).should("contain", "100");
+      // cpu-shared has field_rp_node_count = 200.
+      cy.contains("th", "cpu-shared").parent("tr")
+        .children().eq(nodesCol).should("contain", "200");
+      // gpu-cloud has an unknown node count: the cell reads "N/A", not 0.
+      cy.contains("th", "gpu-cloud").parent("tr")
+        .children().eq(nodesCol).should("contain", "N/A");
     });
   });
 
