@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2e1b6f734d8b613709134e7a666b262d",
+    "content-hash": "40e47f014ebc6f9d0bc36a2634f4c064",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -3881,6 +3881,59 @@
                 "source": "https://git.drupalcode.org/project/domain_entity.git",
                 "issues": "https://www.drupal.org/project/issues/domain_entity"
             }
+        },
+        {
+            "name": "drupal/domain_menu_access",
+            "version": "dev-3557310-incompatibility-between-domain",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/issue/domain_menu_access-3557310.git",
+                "reference": "2594665dbd1797ce1122082300ceb0c7219f611a"
+            },
+            "require": {
+                "drupal/domain": "^1.0 || ^2.0 || ^3.0RC"
+            },
+            "require-dev": {
+                "drupal/menu_block": "^1.0",
+                "phpstan/phpstan-deprecation-rules": "^1.1",
+                "phpstan/phpstan-strict-rules": "^1.5"
+            },
+            "suggest": {
+                "drupal/menu_block": "Provides configurable blocks of menu links and is needed to allow to install the submodule domain_menu_access_menu_block"
+            },
+            "type": "drupal-module",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "maciej.zgadzaj",
+                    "homepage": "https://www.drupal.org/u/maciejzgadzaj",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "Oleksandr Dekhteruk (pifagor)",
+                    "homepage": "https://www.drupal.org/u/pifagor",
+                    "role": "Co-maintainer"
+                },
+                {
+                    "name": "Sebastien MALOT (Sebastien M.)",
+                    "homepage": "https://www.drupal.org/u/sebastien-m",
+                    "role": "Co-maintainer"
+                },
+                {
+                    "name": "Tim Diels (tim-diels)",
+                    "homepage": "https://www.drupal.org/u/tim-diels",
+                    "role": "Co-maintainer"
+                }
+            ],
+            "description": "Domain-based access control for menu link.",
+            "homepage": "https://www.drupal.org/project/domain_menu_access",
+            "support": {
+                "issues": "https://drupal.org/project/issues/domain_menu_access",
+                "source": "https://git.drupalcode.org/project/domain_menu_access"
+            },
+            "time": "2026-04-23T17:55:26+00:00"
         },
         {
             "name": "drupal/domain_simple_sitemap",
@@ -24563,6 +24616,7 @@
         "drupal/auditfiles": 10,
         "drupal/crawler_rate_limit": 10,
         "drupal/datalayer": 5,
+        "drupal/domain_menu_access": 20,
         "drupal/domain_simple_sitemap": 5,
         "drupal/email_change_verification": 10,
         "drupal/inline_entity_form": 5,

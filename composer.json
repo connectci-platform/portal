@@ -9,6 +9,10 @@
         "chat": "https://www.drupal.org/node/314178"
     },
     "repositories": {
+        "domain_menu_access": {
+            "type": "vcs",
+            "url": "https://git.drupalcode.org/issue/domain_menu_access-3557310.git"
+        },
         "drupal": {
             "type": "composer",
             "url": "https://packages.drupal.org/8"
@@ -91,6 +95,7 @@
         "drupal/domain_alias": "^3.0",
         "drupal/domain_config": "^3.0",
         "drupal/domain_entity": "^2.0",
+        "drupal/domain_menu_access": "dev-3557310-incompatibility-between-domain#2594665dbd1797ce1122082300ceb0c7219f611a",
         "drupal/domain_simple_sitemap": "^3.0@RC",
         "drupal/domain_source": "^3.0",
         "drupal/domain_theme_switch": "^3.0",
