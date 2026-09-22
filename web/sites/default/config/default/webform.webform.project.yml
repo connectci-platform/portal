@@ -101,10 +101,6 @@ elements: |-
   project_image:
     '#type': webform_image_file
     '#title': 'Project Image'
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
     '#states_clear': false
     '#file_preview': 'thumbnail:image'
     '#file_extensions': 'gif jpg png svg jpeg'
@@ -112,10 +108,6 @@ elements: |-
     '#type': webform_term_checkboxes
     '#title': Tags
     '#description_display': before
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
     '#states_clear': false
     '#attributes':
       class:
@@ -129,11 +121,7 @@ elements: |-
     '#tree_delimiter': '-'
   tags_helper:
     '#type': webform_markup
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
-    '#markup': '<small class="text-muted"><span style="-webkit-text-stroke-width:0px; background-color:#f8f8f8; color:#1d1c1d; display:inline !important; float:none; font-family:Slack-Lato,appleLogo,sans-serif; font-size:13px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:common-ligatures; font-weight:400; letter-spacing:normal; orphans:2; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-indent:0px; text-transform:none; white-space:normal; widows:2; word-spacing:0px"> Select one (or more) tags that apply.</span></small>'
+    '#markup': '<p><small class="text-muted"><span style="-webkit-text-stroke-width:0px;background-color:#f8f8f8;color:#1d1c1d;display:inline !important;float:none;font-family:Slack-Lato,appleLogo,sans-serif;font-size:13px;font-style:normal;font-variant-caps:normal;font-variant-ligatures:common-ligatures;font-weight:400;letter-spacing:normal;orphans:2;text-align:left;text-decoration-color:initial;text-decoration-style:initial;text-decoration-thickness:initial;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;">Select one (or more) tags that apply.</span></small></p>'
   status:
     '#type': select
     '#title': Status
@@ -147,10 +135,6 @@ elements: |-
       Complete: Complete
       Halted: Halted
       Declined: Declined
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
     '#states_clear': false
   project_leader_info:
     '#type': webform_section
@@ -207,10 +191,6 @@ elements: |-
     '#type': webform_section
     '#title': 'Project Personnel'
     '#title_tag': h5
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
     '#states_clear': false
     '#attributes':
       class:
@@ -333,10 +313,6 @@ elements: |-
       '#type': webform_section
       '#title': 'Project Information Subsection'
       '#title_display': invisible
-      '#states':
-        visible:
-          ':input[name="approved_milestones"]':
-            checked: true
       '#states_clear': false
       project_deliverables:
         '#type': textarea
@@ -577,10 +553,6 @@ elements: |-
     '#type': webform_section
     '#title': 'Final Report'
     '#title_tag': h5
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
     '#attributes':
       class:
         - 'card mb-4'
