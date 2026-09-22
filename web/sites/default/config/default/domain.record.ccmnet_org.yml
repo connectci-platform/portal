@@ -9,3 +9,4 @@ name: CCMNet
 scheme: https
 weight: 14
 is_default: false
+path_prefix: ''
