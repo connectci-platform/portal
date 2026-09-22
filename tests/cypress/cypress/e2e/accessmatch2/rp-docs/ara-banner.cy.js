@@ -41,159 +41,145 @@ describe("ARA Recommendation Banner", () => {
 });
 
 /*
-  Structured ARA recommendations (?ara_ref=<opaque id>).
+  Structured ARA recommendations (?ara_data=<base64url JSON>).
 
-  The page fetches the full recommendation set from the ARA endpoint
-  configured in drupalSettings.aspTheme.ara.endpoint and renders this
-  resource's entry, keyed by drupalSettings.aspTheme.ara.resourceKey (the
-  node's field_access_global_resource_id — see aspTheme.theme). We don't
-  know that fixture value ahead of time, so every test here visits the page
-  once first to read it off the window, then builds the stubbed payload
-  around it and intercepts the ARA endpoint before revisiting with
-  ?ara_ref=.
+  The fixtures are the two example links the ARA team sent on D8-2762
+  (2026-09-10 and 2026-09-11), kept verbatim. Both are for Delta GPU, so the
+  matching-resource tests decode them, swap in the alpha test resource's
+  global resource id and re-encode; the verbatim payloads double as the
+  "different resource" case. Both arrive without base64 padding.
 */
-describe("ARA Recommendation Banner — structured (ara_ref)", () => {
+describe("ARA Recommendation Banner — ara_data", () => {
 
   const RP_PATH = "/documentation/resources/alpha";
-  const ARA_ENDPOINT_GLOB = "**/api/recommendations/**";
+  const ALPHA_GLOBAL_ID = "alpha.test.access-ci.org";
+
+  // Example link 1 (2026-09-10): has `blurb` but no `rp_docs_description`.
+  const EXAMPLE_1 = {
+    araContext: "Recommended for 256.0 GB Memory AMD MI210 GPU",
+    araData: "eyJnbG9iYWxfcmVzb3VyY2VfaWQiOiJkZWx0YS1ncHUubmNzYS5hY2Nlc3MtY2kub3JnIiwibmFtZSI6IkRlbHRhIEdQVSIsInNjb3JlIjoyMywicmVhc29ucyI6WyIyNTYuMCBHQiBNZW1vcnkiLCJBTUQgTUkyMTAiLCJHUFUiXSwidG9vbHRpcCI6IiIsImJsdXJiIjoiRGVsdGEgR1BVIGlzIGEgZ29vZCBmaXQgZm9yIHlvdSBiZWNhdXNlIGl0IG1hdGNoZXMgeW91ciBleGFjdCByZXF1aXJlbWVudHMgd2l0aCBpdHMgMjU2LjAgR0IgTWVtb3J5IGFuZCBBTUQgTUkyMTAgR1BVLiBXaXRoIGl0cyBtaXhlZCBhcmNoaXRlY3R1cmUgb2YgQU1EIE1JMTAwL01JMjEwIG5vZGVzLCBEZWx0YSBHUFUncyBBTUQgTUkyMTAgR1BVIHNwZWNpZmljYWxseSBhbGlnbnMgd2l0aCB5b3VyIHNwZWNpZmllZCBuZWVkIGZvciBhbiBBTUQtYmFzZWQgR1BVLiBBZGRpdGlvbmFsbHksIHRoZSBzeXN0ZW0gb2ZmZXJzIGEgcmFuZ2Ugb2Ygc29mdHdhcmUgb3B0aW1pemVkIGZvciBBSSBhbmQgbWFjaGluZSBsZWFybmluZyB0cmFpbmluZyBhbmQgaW5mZXJlbmNlLCBtYWtpbmcgaXQgd2VsbC1zdWl0ZWQgdG8gc3VwcG9ydCB5b3VyIGNvbXB1dGF0aW9uYWwgbmVlZHMuIn0",
+  };
+
+  // Example link 2 (2026-09-11): the current contract, with `rp_docs_description`.
+  const EXAMPLE_2 = {
+    araContext: "Recommended for NVIDIA H200 141 GB 256.0 GB Memory aocc-mixed GPU Biological Sciences",
+    araData: "eyJnbG9iYWxfcmVzb3VyY2VfaWQiOiJkZWx0YS1ncHUubmNzYS5hY2Nlc3MtY2kub3JnIiwibmFtZSI6IkRlbHRhIEdQVSIsInNjb3JlIjoyMzQsInJlYXNvbnMiOlsiTlZJRElBIEgyMDAgMTQxIEdCIiwiMjU2LjAgR0IgTWVtb3J5IiwiYW9jYy1taXhlZCIsIkdQVSIsIkJpb2xvZ2ljYWwgU2NpZW5jZXMiXSwidG9vbHRpcCI6IiIsImJsdXJiIjoiRGVsdGEgR1BVIGlzIGEgZ29vZCBmaXQgZm9yIHlvdSBiZWNhdXNlIGl0IHByb3ZpZGVzIHRoZSBzcGVjaWZpYyBzb2Z0d2FyZSB0aGF0IHlvdXIgcmVzZWFyY2ggcmVxdWlyZXMuIFlvdSBuZWVkIHRvIHJ1biAnYW9jYy1taXhlZCcsIHdoaWNoIGlzIGF2YWlsYWJsZSBvbiB0aGlzIHBsYXRmb3JtLCBhbmQgYWxzbyBoYXZlIGFjY2VzcyB0byBvdGhlciByZWxldmFudCBwYWNrYWdlcyBzdWNoIGFzICdhYmluaXQnIGFuZCAnYWR2aXNvcicuIEZ1cnRoZXJtb3JlLCBEZWx0YSBHUFUgZmVhdHVyZXMgYSBkaXZlcnNlIHJhbmdlIG9mIGhpZ2gtcGVyZm9ybWFuY2UgR1BVcywgaW5jbHVkaW5nIHRoZSBOVklESUEgSDIwMCB3aXRoIDE0MSBHQiBvZiBSQU0sIHdoaWNoIG1hdGNoZXMgeW91ciByZXF1aXJlbWVudCBmb3IgYXQgbGVhc3Qgb25lIEdQVSB3aXRoIHN1YnN0YW50aWFsIG1lbW9yeS4gVGhpcyBtZWV0cyB5b3VyIHNwZWNpZmllZCBuZWVkIGZvciAnTlZJRElBLUgyMDBfMTQxX29wdGlvbicsIGFuZCBhbHNvIGFsaWducyB3ZWxsIHdpdGggdGhlIGxhcmdlIGFtb3VudCBvZiBtZW1vcnkgeW91IHJlcXVlc3RlZCAoNjQtNTEyKS4gQWRkaXRpb25hbGx5LCBEZWx0YSBHUFUgaXMgcGFydGljdWxhcmx5IHN1aXRlZCB0byBiaW9sb2dpY2FsIHNjaWVuY2VzIHJlc2VhcmNoLCB3aGljaCBpcyB5b3VyIGZpZWxkIG9mIGZvY3VzLiIsInJwX2RvY3NfZGVzY3JpcHRpb24iOiJZb3UgbmVlZCBoaWdoLXBlcmZvcm1hbmNlIG1lbW9yeSBhbmQgbG9uZy10ZXJtIHN0b3JhZ2UgdG8gc3VwcG9ydCB5b3VyIHJlc2VhcmNoIGluIEJpb2xvZ2ljYWwgU2NpZW5jZXMsIGFuZCBEZWx0YSBHUFUncyAyNTYgR0IgTWVtb3J5IGFuZCAxLjUgVEIgbG9jYWwgc3RvcmFnZSBwZXIgbm9kZSB3aWxsIG1lZXQgdGhvc2UgbmVlZHMuIn0",
+  };
+
+  function decode(araData) {
+    return JSON.parse(Cypress.Buffer.from(araData.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+  }
+
+  // base64url without padding, the way the ARA sends it.
+  function encode(payload) {
+    return Cypress.Buffer.from(JSON.stringify(payload), "utf8")
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
+
+  function forAlpha(example) {
+    return { ...decode(example.araData), global_resource_id: ALPHA_GLOBAL_ID };
+  }
+
+  function visitWith(araContext, araData, options = {}) {
+    const query = new URLSearchParams({ ara_context: araContext, ara_data: araData });
+    cy.visit(`${RP_PATH}?${query}`, options);
+  }
+
+  function visitSpyingConsole(araContext, araData) {
+    visitWith(araContext, araData, {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+  }
 
   beforeEach(() => {
     cy.clearLocalStorage();
   });
 
-  function visitAndGetResourceKey() {
+  it("shows rp_docs_description and the reasons for a matching ara_data", () => {
+    const payload = forAlpha(EXAMPLE_2);
+    visitWith(EXAMPLE_2.araContext, encode(payload));
+
+    cy.get("#ara-recommendation-banner").should("be.visible");
+    cy.get("#ara-recommendation-text").should("have.text", payload.rp_docs_description);
+    cy.get("#ara-recommendation-text").should("not.contain", payload.blurb);
+    cy.get("#ara-recommendation-reasons li").should("have.length", 5);
+    payload.reasons.forEach((reason, i) => {
+      cy.get("#ara-recommendation-reasons li").eq(i).should("have.text", reason);
+    });
+  });
+
+  it("uses ara_context as the body when ara_data has no rp_docs_description", () => {
+    const payload = forAlpha(EXAMPLE_1);
+    visitWith(EXAMPLE_1.araContext, encode(payload));
+
+    cy.get("#ara-recommendation-banner").should("be.visible");
+    cy.get("#ara-recommendation-text").should("have.text", EXAMPLE_1.araContext);
+    cy.get("#ara-recommendation-reasons li").should("have.length", 3);
+    cy.get("#ara-recommendation-reasons").should("contain", "AMD MI210");
+  });
+
+  it("falls back to ara_context when ara_data is for a different resource", () => {
+    // Verbatim example link: its payload is for delta-gpu, not alpha.
+    visitWith(EXAMPLE_2.araContext, EXAMPLE_2.araData);
+
+    cy.get("#ara-recommendation-banner").should("be.visible");
+    cy.get("#ara-recommendation-text").should("have.text", EXAMPLE_2.araContext);
+    cy.get("#ara-recommendation-reasons").should("not.exist");
+  });
+
+  it("falls back to ara_context with no console errors when ara_data is not base64", () => {
+    visitSpyingConsole(EXAMPLE_2.araContext, "%%%not-base64%%%");
+
+    cy.get("#ara-recommendation-text").should("have.text", EXAMPLE_2.araContext);
+    cy.get("#ara-recommendation-reasons").should("not.exist");
+    cy.get("@consoleError").should("not.have.been.called");
+  });
+
+  it("falls back to ara_context with no console errors when ara_data is not JSON", () => {
+    // Valid base64url of truncated JSON.
+    const notJson = Cypress.Buffer.from('{"global_resource_id": "alpha', "utf8")
+      .toString("base64")
+      .replace(/=+$/, "");
+    visitSpyingConsole(EXAMPLE_2.araContext, notJson);
+
+    cy.get("#ara-recommendation-text").should("have.text", EXAMPLE_2.araContext);
+    cy.get("#ara-recommendation-reasons").should("not.exist");
+    cy.get("@consoleError").should("not.have.been.called");
+  });
+
+  it("renders payload values containing HTML as literal text", () => {
+    const markup = "<img src=x onerror=alert(1)>";
+    const payload = {
+      ...forAlpha(EXAMPLE_2),
+      rp_docs_description: `Description ${markup}`,
+      reasons: [`Reason ${markup}`],
+    };
+    visitWith(EXAMPLE_2.araContext, encode(payload));
+
+    cy.get("#ara-recommendation-text").should("have.text", `Description ${markup}`);
+    cy.get("#ara-recommendation-reasons li").should("have.text", `Reason ${markup}`);
+    cy.get("#ara-recommendation-banner img").should("not.exist");
+  });
+
+  it("keeps the ara_data banner on reload and clears it on Dismiss", () => {
+    const payload = forAlpha(EXAMPLE_2);
+    visitWith(EXAMPLE_2.araContext, encode(payload));
+    cy.get("#ara-recommendation-banner").should("be.visible");
+
     cy.visit(RP_PATH);
-    return cy.window()
-      .its("drupalSettings.aspTheme.ara.resourceKey")
-      .should("be.a", "string");
-  }
+    cy.get("#ara-recommendation-text").should("have.text", payload.rp_docs_description);
+    cy.get("#ara-recommendation-reasons li").should("have.length", 5);
 
-  it("valid ara_ref renders the structured banner with description and reasons", () => {
-    visitAndGetResourceKey().then((resourceKey) => {
-      cy.intercept("GET", ARA_ENDPOINT_GLOB, {
-        statusCode: 200,
-        body: {
-          resources: {
-            [resourceKey]: {
-              description: "Great fit for your GPU-accelerated workload.",
-              reasons: [
-                { type: "hardware", label: "Has A100 GPUs" },
-                { type: "software", label: "TensorFlow preinstalled" },
-              ],
-            },
-          },
-        },
-      }).as("araFetch");
+    cy.get("#ara-dismiss").click();
+    cy.get("#ara-recommendation-banner").should("not.be.visible");
 
-      cy.visit(`${RP_PATH}?ara_ref=rec-valid-123`);
-      cy.wait("@araFetch");
-
-      cy.get("#ara-recommendation-banner").should("be.visible");
-      cy.get("#ara-recommendation-text")
-        .should("contain", "Great fit for your GPU-accelerated workload.");
-      cy.get("#ara-recommendation-reasons").should("exist");
-      cy.get("#ara-recommendation-reasons").should("contain", "Has A100 GPUs");
-      cy.get("#ara-recommendation-reasons").should("contain", "TensorFlow preinstalled");
-    });
-  });
-
-  it("unknown ref (404) shows no banner and logs no console errors", () => {
-    visitAndGetResourceKey().then(() => {
-      cy.intercept("GET", ARA_ENDPOINT_GLOB, {
-        statusCode: 404,
-        body: "Not Found",
-      }).as("araFetch404");
-
-      cy.visit(`${RP_PATH}?ara_ref=rec-unknown`, {
-        onBeforeLoad(win) {
-          cy.stub(win.console, "error").as("consoleError");
-        },
-      });
-      cy.wait("@araFetch404");
-
-      cy.get("#ara-recommendation-banner").should("not.be.visible");
-      cy.get("@consoleError").should("not.have.been.called");
-    });
-  });
-
-  it("structured banner persists across a reload with no query param, from cache", () => {
-    visitAndGetResourceKey().then((resourceKey) => {
-      cy.intercept("GET", ARA_ENDPOINT_GLOB, {
-        statusCode: 200,
-        body: {
-          resources: {
-            [resourceKey]: {
-              description: "Recommended for large-memory jobs.",
-              reasons: [{ type: "history", label: "You used this before" }],
-            },
-          },
-        },
-      }).as("araFetch");
-
-      cy.visit(`${RP_PATH}?ara_ref=rec-persist-1`);
-      cy.wait("@araFetch");
-      cy.get("#ara-recommendation-banner").should("be.visible");
-
-      // Revisit with no ara_ref and no intercept armed — must render from
-      // the cached ara_recommendations entry, not a fresh fetch.
-      cy.visit(RP_PATH);
-      cy.get("#ara-recommendation-banner").should("be.visible");
-      cy.get("#ara-recommendation-text")
-        .should("contain", "Recommended for large-memory jobs.");
-      cy.get("#ara-recommendation-reasons").should("contain", "You used this before");
-    });
-  });
-
-  it("expired payload (expires_at in the past) shows no banner after reload", () => {
-    visitAndGetResourceKey().then((resourceKey) => {
-      cy.intercept("GET", ARA_ENDPOINT_GLOB, {
-        statusCode: 200,
-        body: {
-          expires_at: "2000-01-01T00:00:00Z",
-          resources: {
-            [resourceKey]: {
-              description: "This should never be visible.",
-              reasons: [],
-            },
-          },
-        },
-      }).as("araFetchExpired");
-
-      cy.visit(`${RP_PATH}?ara_ref=rec-expired`);
-      cy.wait("@araFetchExpired");
-
-      cy.visit(RP_PATH);
-      cy.get("#ara-recommendation-banner").should("not.be.visible");
-    });
-  });
-
-  it("renders a description and reason label containing markup as literal text", () => {
-    visitAndGetResourceKey().then((resourceKey) => {
-      const payload = '<img src=x onerror=alert(1)>';
-      cy.intercept("GET", ARA_ENDPOINT_GLOB, {
-        statusCode: 200,
-        body: {
-          resources: {
-            [resourceKey]: {
-              description: `Malicious description ${payload}`,
-              reasons: [{ type: "software", label: `Malicious reason ${payload}` }],
-            },
-          },
-        },
-      }).as("araFetchXss");
-
-      cy.visit(`${RP_PATH}?ara_ref=rec-xss`);
-      cy.wait("@araFetchXss");
-
-      cy.get("#ara-recommendation-banner").should("be.visible");
-      cy.get("#ara-recommendation-text").should("contain.text", payload);
-      cy.get("#ara-recommendation-reasons").should("contain.text", payload);
-
-      cy.get("body").then(() => {
-        expect(Cypress.$("#ara-recommendation-text img").length).to.eq(0);
-        expect(Cypress.$("#ara-recommendation-reasons img").length).to.eq(0);
-      });
-    });
+    cy.visit(RP_PATH);
+    cy.get("#ara-recommendation-banner").should("not.be.visible");
   });
 
 });

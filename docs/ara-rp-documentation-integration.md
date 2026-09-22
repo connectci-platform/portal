@@ -37,97 +37,67 @@ Link directly to an individual resource page:
 /rp-documentation/bridges-2?ara_context=Recommended+for+Python,+large+memory+jobs
 ```
 
-**Structured recommendation (preferred):**
+**With a structured payload (what the ARA sends today):**
 ```
-/rp-documentation/bridges-2?ara_ref=<opaque id>
+/rp-documentation/bridges-2?ara_context=Recommended+for+Python&ara_data=<base64url JSON>
 ```
-See "Structured Recommendations (`ara_ref`)" below. `ara_context` remains supported on the resource page as a legacy fallback — see that section for when each path is used.
+See "Structured Recommendations (`ara_data`)" below. `ara_context` is always sent alongside and is the fallback whenever `ara_data` can't be used.
 
 ## Parameter Reference
 
 | Parameter | Used On | Description |
 |-----------|---------|-------------|
-| `ara_context` | All pages | The recommendation text to display in the banner (e.g., "Recommended for Python, Earth Sciences"). On the individual resource page this is a **legacy** path — see below. |
+| `ara_context` | All pages | The recommendation text to display in the banner (e.g., "Recommended for Python, Earth Sciences"). On the individual resource page it is the fallback for `ara_data` — see below. |
 | `ara_group` | Listing page | Resource group slug(s) to highlight. Single slug or comma-separated for multiple groups sharing the same `ara_context`. |
 | `ara_recs` | Listing page | Alternative to `ara_context`+`ara_group` for multiple groups with different contexts. Format: `slug1:context1;slug2:context2` |
-| `ara_ref` | Individual resource page only | An opaque recommendation-set id. The page fetches the full structured recommendation set from ARA and renders this resource's entry. See "Structured Recommendations" below. |
+| `ara_data` | Individual resource page only | base64url JSON describing this resource's recommendation. See "Structured Recommendations" below. |
 
-## Structured Recommendations (`ara_ref`)
+## Structured Recommendations (`ara_data`)
 
-On the individual resource page only (not the resource group page, not the listing view), ARA can hand off a richer, structured recommendation instead of a single free-text string.
+On the individual resource page only (not the resource group page, not the listing view), the ARA sends a structured recommendation inline alongside `ara_context`. Handled by `js/rp-ara-banner.js`. Nothing is fetched; there is no ARA API endpoint yet.
 
-### Flow
+### Payload
 
-1. ARA links to the resource page with `?ara_ref=<opaque id>`.
-2. The page (`js/rp-ara-banner.js`) fetches the full recommendation set from a theme-configured ARA endpoint: `endpoint + encodeURIComponent(ref)`. The endpoint origin/path comes only from `drupalSettings.aspTheme.ara.endpoint` (a theme setting, `ara_endpoint`, defaulting to `https://ara.access-ci.org/api/recommendations/`) — **never** from the URL or from anything in the fetched payload, so a crafted link can't redirect the fetch elsewhere.
-3. The response is validated and cached in `localStorage` under a single `ara_recommendations` key (see below).
-4. The page looks up this resource's entry by a **resource key** and renders it.
-
-### Resource key (pending confirmation with ARA)
-
-The resource key used to look up this node's entry in the payload's `resources` map is currently assumed to be the node's `field_access_global_resource_id` value (`drupalSettings.aspTheme.ara.resourceKey`, set in `aspTheme_preprocess_node__access_active_resources_from_cid()`). **This contract is not yet confirmed with the ARA team** and may change once the API is finalized. If the node has no global resource id, `resourceKey` is `NULL` and the page falls back to the legacy `ara_context` behavior for that resource.
-
-### Payload shape
+`ara_data` is base64url (padding optional) of one JSON object for the linked resource:
 
 ```json
 {
-  "expires_at": "2026-09-25T00:00:00Z",
-  "resources": {
-    "<resourceKey>": {
-      "description": "Recommended because your project uses GPU-accelerated ML workloads.",
-      "reasons": [
-        { "type": "hardware", "label": "Has A100 GPUs" },
-        { "type": "software", "label": "TensorFlow preinstalled" },
-        { "type": "history", "label": "You used this resource before" }
-      ],
-      "score": 0.87
-    }
-  }
+  "global_resource_id": "delta-gpu.ncsa.access-ci.org",
+  "name": "Delta GPU",
+  "score": 234,
+  "reasons": ["NVIDIA H200 141 GB", "256.0 GB Memory", "aocc-mixed", "GPU", "Biological Sciences"],
+  "tooltip": "",
+  "blurb": "<long ARA-side text, not shown>",
+  "rp_docs_description": "<banner body>"
 }
 ```
 
-- `resources` is required; each entry's `reasons` must be an array of `{type, label}` string pairs and `description` must be a string. Anything that doesn't match this shape is dropped rather than rendered.
-- `reasons[].type` is mapped through a hardcoded lookup (`hardware`, `software`, `history`) to a label prefix in the UI; unknown types render the label alone. `type` is never used to build markup or a class name.
-- `score` is stored but **not currently rendered** — its meaning and any tooltip/display semantics are **pending confirmation with the ARA team**.
-- `expires_at` (ISO 8601) is optional; see Expiry below.
+- `global_resource_id` must equal the page's `field_access_global_resource_id` (passed to the JS as `drupalSettings.aspTheme.ara.globalResourceId`). Otherwise the payload is ignored.
+- Banner body: `rp_docs_description`, else `description`, else `ara_context`.
+- `reasons` are plain strings, rendered as a plain list under the body. Non-string or empty entries are dropped.
+- `blurb`, `name`, `score` and `tooltip` are not displayed.
+- There is no version, generated-at or expiry field yet.
+
+Real example links from the ARA team are on D8-2762 and are the Cypress fixtures in `tests/cypress/cypress/e2e/accessmatch2/rp-docs/ara-banner.cy.js`.
+
+### Fallback
+
+If `ara_data` is missing, isn't valid base64url, isn't a JSON object, or is for a different resource, the page silently shows the `ara_context` banner exactly as before `ara_data` existed. No console errors.
 
 ### Plain-text-only rendering
 
-Every value from the payload (`description`, reason `label`s) reaches the DOM exclusively via `textContent`/`createTextNode`. Nothing from the payload is ever assigned via `innerHTML` or interpolated into a template string that becomes markup, so HTML in a payload value (accidental or malicious) always renders as literal text, never as markup.
+Every payload value reaches the DOM via `textContent`/`createTextNode`, never `innerHTML`, so HTML in a payload renders as literal text.
 
-### `ara_recommendations` localStorage key
+### Persistence and Dismiss
 
-A single key holds the whole cached recommendation set for the current `ara_ref`:
+- `ara_recommendation_{node_id}` holds the `ara_context` string (unchanged from before).
+- `ara_data_{node_id}` holds the sanitized payload (`global_resource_id`, `reasons`, `rp_docs_description`/`description`).
+- A visit carrying either parameter replaces both keys; a visit with neither renders from them, so the banner survives a reload.
+- Dismiss removes both keys and hides the banner.
 
-```json
-{
-  "version": 1,
-  "ref": "<the ara_ref that was fetched>",
-  "fetchedAt": 1758700000000,
-  "expiresAt": 1759909600000,
-  "resources": { "...": "sanitized entries, same shape as the payload's resources map" }
-}
-```
+### Deferred: `ara_ref`
 
-A new `ara_ref` (different from the cached `ref`) or a missing/expired cache triggers a re-fetch; the same `ara_ref` reuses the cache without a network call.
-
-### Expiry and cache cap
-
-- If the payload includes `expires_at`, it is honored.
-- Independently, the cache is capped at 14 days from fetch time regardless of `expires_at` — whichever expiry is sooner wins.
-- On every read, if the current time is at or past the effective expiry, the `ara_recommendations` key is deleted and nothing is rendered for that resource.
-
-### Legacy fallback (`ara_context`)
-
-If there's no usable structured entry for this resource (no resource key, no cached entry, the fetch failed, the ref is unknown, etc.), the page falls back to the original behavior:
-- `?ara_context=<text>` from the URL is persisted to `ara_recommendation_{node_id}` and rendered as plain text.
-- Absent that, the existing `ara_recommendation_{node_id}` value (if any) is rendered.
-
-`ara_context` is **legacy but still supported** on the resource page for this reason — existing ARA links using it keep working.
-
-### Dismiss
-
-The Dismiss button clears whichever source fed the currently-visible banner — the structured entry for this resource, or the legacy `ara_recommendation_{node_id}` string — and hides the banner. Dismissal survives a reload.
+An earlier design fetched a recommendation set from an ARA API by `?ara_ref=<id>`. It is deferred until the ARA API exists and is not implemented.
 
 ## Group and Resource Slugs
 
@@ -156,5 +126,5 @@ Slugs are set by the pathauto pattern from the node title, or manually via the U
 
 ### localStorage Keys
 - Listing page: `ara_rp_recommendations` (JSON array of `{group, context}` objects)
-- Resource group page and legacy resource-page path: `ara_recommendation_{node_id}` (context string)
-- Individual resource page, structured path: `ara_recommendations` (single key, all resources — see "Structured Recommendations" above)
+- Resource group page and resource page: `ara_recommendation_{node_id}` (context string)
+- Individual resource page, structured payload: `ara_data_{node_id}` (see "Structured Recommendations" above)
