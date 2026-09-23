@@ -96,6 +96,15 @@ describe("ARA Recommendation Banner — ara_data", () => {
     });
   }
 
+  // The QA Bot in @access-ci/ui logs "QA Bot: No valid API key provided" on
+  // every page load in CI, so only errors from anything else count.
+  function expectNoBannerConsoleErrors() {
+    cy.get("@consoleError").then((spy) => {
+      const own = spy.getCalls().filter((call) => !String(call.args[0]).startsWith("QA Bot"));
+      expect(own, "console.error calls").to.be.empty;
+    });
+  }
+
   beforeEach(() => {
     cy.clearLocalStorage();
   });
@@ -137,7 +146,7 @@ describe("ARA Recommendation Banner — ara_data", () => {
 
     cy.get("#ara-recommendation-text").should("have.text", EXAMPLE_2.araContext);
     cy.get("#ara-recommendation-reasons").should("not.exist");
-    cy.get("@consoleError").should("not.have.been.called");
+    expectNoBannerConsoleErrors();
   });
 
   it("falls back to ara_context with no console errors when ara_data is not JSON", () => {
@@ -149,7 +158,7 @@ describe("ARA Recommendation Banner — ara_data", () => {
 
     cy.get("#ara-recommendation-text").should("have.text", EXAMPLE_2.araContext);
     cy.get("#ara-recommendation-reasons").should("not.exist");
-    cy.get("@consoleError").should("not.have.been.called");
+    expectNoBannerConsoleErrors();
   });
 
   it("renders payload values containing HTML as literal text", () => {
