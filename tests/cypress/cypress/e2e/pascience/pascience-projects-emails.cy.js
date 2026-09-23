@@ -47,8 +47,8 @@ describe("PA Science Project Email Notifications", () => {
 
     // Fill out basic project form (only fields visible on create)
     cy.get('input[name="project_title"]').type('Test Project Creation Email');
-    cy.get('input[name="project_leader[first]"]').type('Jane');
-    cy.get('input[name="project_leader[last]"]').type('Doe');
+    cy.get('input[name="project_leader[first]"]').clear().type('Jane');
+    cy.get('input[name="project_leader[last]"]').clear().type('Doe');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('jane.doe@test.com');
     cy.get('textarea[name="project_description"]').type('This is a test project to verify creation email.');
@@ -80,8 +80,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.visit('/form/project');
 
     cy.get('input[name="project_title"]').type('Test Project Received Email');
-    cy.get('input[name="project_leader[first]"]').type('John');
-    cy.get('input[name="project_leader[last]"]').type('Smith');
+    cy.get('input[name="project_leader[first]"]').clear().type('John');
+    cy.get('input[name="project_leader[last]"]').clear().type('Smith');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('john.smith@test.com');
     cy.get('textarea[name="project_description"]').type('Test project for received email.');
@@ -127,8 +127,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.visit('/form/project');
 
     cy.get('input[name="project_title"]').type('Test Project Update Email');
-    cy.get('input[name="project_leader[first]"]').type('Alice');
-    cy.get('input[name="project_leader[last]"]').type('Johnson');
+    cy.get('input[name="project_leader[first]"]').clear().type('Alice');
+    cy.get('input[name="project_leader[last]"]').clear().type('Johnson');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('alice.johnson@test.com');
     cy.get('textarea[name="project_description"]').type('Test project for update email.');
@@ -181,8 +181,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.visit('/form/project');
 
     cy.get('input[name="project_title"]').type('Test Project Approved Email');
-    cy.get('input[name="project_leader[first]"]').type('Bob');
-    cy.get('input[name="project_leader[last]"]').type('Williams');
+    cy.get('input[name="project_leader[first]"]').clear().type('Bob');
+    cy.get('input[name="project_leader[last]"]').clear().type('Williams');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('bob.williams@test.com');
     cy.get('textarea[name="project_description"]').type('Test project for approval email.');
@@ -235,8 +235,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.get('input[name="tags[682]"]').check(); // Login tag (or any available tag)
     cy.get('select[name="status"]').select('Recruiting'); // Set to Recruiting status
 
-    cy.get('input[name="project_leader[first]"]').type('Project');
-    cy.get('input[name="project_leader[last]"]').type('Leader');
+    cy.get('input[name="project_leader[first]"]').clear().type('Project');
+    cy.get('input[name="project_leader[last]"]').clear().type('Leader');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('projectleader@test.com');
     cy.get('textarea[name="project_description"]').type('This is a recruiting project for PA Science');
