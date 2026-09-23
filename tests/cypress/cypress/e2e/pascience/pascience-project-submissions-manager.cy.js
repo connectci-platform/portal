@@ -89,6 +89,9 @@ describe("PA Science - Project Submissions (Manager View)", () => {
     cy.get('input[name="approved_milestones"]').check();
     cy.get('input[name="approved"]').check();
     cy.get('input[name="project_title"]').type('Non-PA Science Project - Should Not Appear');
+    // The form pre-checks the PA Science program on this domain; drop it so
+    // the project belongs to At-Large only.
+    cy.get('input[name="region[933]"]').uncheck();
     cy.get('input[name="region[345]"]').check(); // At-Large region
     cy.get('select[name="status"]').select('In Progress');
     cy.get('input[name="project_leader[first]"]').type('Other');
