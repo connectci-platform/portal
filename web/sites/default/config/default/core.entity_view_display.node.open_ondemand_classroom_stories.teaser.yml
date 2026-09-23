@@ -48,4 +48,5 @@ hidden:
   field_oocs_project_summary: true
   field_oocs_science_domain_tags: true
   field_oocs_topic_tags: true
+  langcode: true
   search_api_excerpt: true
