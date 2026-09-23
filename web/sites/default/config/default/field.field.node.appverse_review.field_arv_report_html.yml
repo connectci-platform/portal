@@ -1,0 +1,27 @@
+uuid: d6719d4f-3170-4fc3-b15b-a2388ca45751
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_report_html
+    - node.type.appverse_review
+  module:
+    - file
+id: node.appverse_review.field_arv_report_html
+field_name: field_arv_report_html
+entity_type: node
+bundle: appverse_review
+label: 'Report HTML'
+description: 'HTML report with stable anchors for deep-linking. Public — hosted where the catalog front end can reach it.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:file'
+  handler_settings: {  }
+  file_directory: appverse-reviews
+  file_extensions: html
+  max_filesize: '5 MB'
+  description_field: false
+field_type: file

@@ -1,0 +1,33 @@
+uuid: dac35f04-875b-45aa-995a-1c7d64fa42f6
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvf_category
+field_name: field_rvf_category
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: security
+      label: Security
+    -
+      value: portability
+      label: Portability
+    -
+      value: documentation
+      label: Documentation
+    -
+      value: maintenance
+      label: Maintenance
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

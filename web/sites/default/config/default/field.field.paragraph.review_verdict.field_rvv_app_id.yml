@@ -1,0 +1,19 @@
+uuid: b79a0256-c5aa-416f-b44b-f83248f57725
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_app_id
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_app_id
+field_name: field_rvv_app_id
+entity_type: paragraph
+bundle: review_verdict
+label: 'App ID'
+description: "The artifact's app_id (root or subpath) for matching."
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

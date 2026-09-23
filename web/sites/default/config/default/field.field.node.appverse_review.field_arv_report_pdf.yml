@@ -1,0 +1,27 @@
+uuid: 1e52099a-424d-4eae-ba8b-f1cfafd57738
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_report_pdf
+    - node.type.appverse_review
+  module:
+    - file
+id: node.appverse_review.field_arv_report_pdf
+field_name: field_arv_report_pdf
+entity_type: node
+bundle: appverse_review
+label: 'Report PDF'
+description: 'PDF report from the review tool.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:file'
+  handler_settings: {  }
+  file_directory: appverse-reviews
+  file_extensions: pdf
+  max_filesize: '10 MB'
+  description_field: false
+field_type: file

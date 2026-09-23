@@ -1,0 +1,21 @@
+uuid: e0675fba-8258-47ec-85ac-cccc28d6eeef
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_severity
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_severity
+field_name: field_rvf_severity
+entity_type: paragraph
+bundle: review_finding
+label: Severity
+description: 'Finding severity: critical, high, medium, low, or info.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

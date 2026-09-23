@@ -1,0 +1,21 @@
+uuid: 23f09455-6fa7-4092-b98f-d84cb60ad2af
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_maint_summary
+field_name: field_arv_maint_summary
+entity_type: node
+type: string
+settings:
+  max_length: 255
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

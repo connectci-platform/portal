@@ -1,0 +1,19 @@
+uuid: 3878bbda-ee71-4550-a990-6aa5cf83aa06
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_repo
+field_name: field_arv_repo
+entity_type: node
+type: entity_reference
+settings:
+  target_type: node
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

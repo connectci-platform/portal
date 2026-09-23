@@ -1,0 +1,21 @@
+uuid: 14643260-f791-4a39-b35c-0c31a2e33832
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_sha
+field_name: field_arv_sha
+entity_type: node
+type: string
+settings:
+  max_length: 40
+  case_sensitive: true
+  is_ascii: true
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

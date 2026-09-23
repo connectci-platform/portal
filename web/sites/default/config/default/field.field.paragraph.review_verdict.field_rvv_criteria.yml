@@ -1,0 +1,19 @@
+uuid: 00233ac5-ec9e-42ff-95bc-23328fb03547
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_criteria
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_criteria
+field_name: field_rvv_criteria
+entity_type: paragraph
+bundle: review_verdict
+label: 'App criteria'
+description: 'Machine-derived pass/fail criteria for this app. Stored as JSON.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

@@ -1,0 +1,19 @@
+uuid: 0489d41c-95e3-48fb-9e06-b7e9d632588b
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_review_run_id
+    - node.type.appverse_repo
+id: node.appverse_repo.field_review_run_id
+field_name: field_review_run_id
+entity_type: node
+bundle: appverse_repo
+label: 'Review run ID'
+description: 'GitHub Actions workflow run ID for the most recent AI review. Used for artifact correlation.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: integer

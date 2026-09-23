@@ -1,0 +1,20 @@
+uuid: 77fb4e91-9ae1-4ea1-bbab-6eb437fbe48f
+langcode: en
+status: true
+dependencies:
+  module:
+    - entity_reference_revisions
+    - node
+id: node.field_arv_repo_findings
+field_name: field_arv_repo_findings
+entity_type: node
+type: entity_reference_revisions
+settings:
+  target_type: paragraph
+module: entity_reference_revisions
+locked: false
+cardinality: -1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

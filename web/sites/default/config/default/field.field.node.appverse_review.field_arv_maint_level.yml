@@ -1,0 +1,21 @@
+uuid: bc8e471d-caf5-45ba-9661-ee03fda2d070
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_maint_level
+    - node.type.appverse_review
+  module:
+    - options
+id: node.appverse_review.field_arv_maint_level
+field_name: field_arv_maint_level
+entity_type: node
+bundle: appverse_review
+label: 'Maintenance level'
+description: "Published level for the maintenance indicator. Seeded from the tool's derived default; the reviewer may change it freely, with a justification note required and the adjustment marked publicly."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

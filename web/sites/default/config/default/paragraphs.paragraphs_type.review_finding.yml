@@ -1,0 +1,10 @@
+uuid: 95067ed1-0938-427e-9b92-4824a99ee940
+langcode: en
+status: true
+dependencies: {  }
+id: review_finding
+label: 'Review Finding'
+icon_uuid: null
+icon_default: null
+description: 'A single structured finding from the review tool. Machine-seeded fields plus reviewer-editable prose.'
+behavior_plugins: {  }

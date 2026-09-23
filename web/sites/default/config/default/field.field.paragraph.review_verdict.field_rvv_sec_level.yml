@@ -1,0 +1,21 @@
+uuid: 48c57d1e-8a74-446b-81fc-99dbb67f6956
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_sec_level
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - options
+id: paragraph.review_verdict.field_rvv_sec_level
+field_name: field_rvv_sec_level
+entity_type: paragraph
+bundle: review_verdict
+label: 'Security level'
+description: "Published level for the security indicator. Seeded from the tool's derived default; the reviewer may change it freely, with a justification note required and the adjustment marked publicly."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

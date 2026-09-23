@@ -1,0 +1,29 @@
+uuid: 53844bda-eb9b-438c-a727-a85d8c52d151
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_findings
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - entity_reference_revisions
+id: paragraph.review_verdict.field_rvv_findings
+field_name: field_rvv_findings
+entity_type: paragraph
+bundle: review_verdict
+label: 'App findings'
+description: 'Structured findings for this app (security, structure, quality).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      review_finding: review_finding
+    target_bundles_drag_drop:
+      review_finding:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

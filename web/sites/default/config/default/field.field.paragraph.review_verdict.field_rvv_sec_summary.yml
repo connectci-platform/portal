@@ -1,0 +1,19 @@
+uuid: 96ed9626-feb5-4305-8161-f31c5b29010d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_sec_summary
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_sec_summary
+field_name: field_rvv_sec_summary
+entity_type: paragraph
+bundle: review_verdict
+label: 'Security summary'
+description: 'One-line evidence phrase for the security indicator, shown on the public chip hover. Seeded from the artifact; reviewer-editable.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

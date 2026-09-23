@@ -1,0 +1,20 @@
+uuid: 3a9886fb-721b-44a2-a4d8-b776b1d2677b
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_recommendation_note
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_recommendation_note
+field_name: field_arv_recommendation_note
+entity_type: node
+bundle: appverse_review
+label: 'Recommendation note'
+description: "The tool's one-paragraph rationale for its recommendation. Read-only."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

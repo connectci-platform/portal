@@ -1,0 +1,144 @@
+uuid: null
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_finding.field_rvf_anchor
+    - field.field.paragraph.review_finding.field_rvf_app_id
+    - field.field.paragraph.review_finding.field_rvf_aspect
+    - field.field.paragraph.review_finding.field_rvf_category
+    - field.field.paragraph.review_finding.field_rvf_defect_key
+    - field.field.paragraph.review_finding.field_rvf_evidence
+    - field.field.paragraph.review_finding.field_rvf_line
+    - field.field.paragraph.review_finding.field_rvf_reviewer_prose
+    - field.field.paragraph.review_finding.field_rvf_rule
+    - field.field.paragraph.review_finding.field_rvf_severity
+    - field.field.paragraph.review_finding.field_rvf_stable_id
+    - field.field.paragraph.review_finding.field_rvf_summary
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - field_group
+    - paragraphs
+    - text
+third_party_settings:
+  field_group:
+    group_fd_machine:
+      children:
+        - field_rvf_severity
+        - field_rvf_rule
+        - field_rvf_evidence
+        - field_rvf_line
+        - field_rvf_aspect
+        - field_rvf_category
+        - field_rvf_stable_id
+        - field_rvf_app_id
+        - field_rvf_defect_key
+        - field_rvf_anchor
+      label: 'Machine data - seeded from the artifact, do not edit'
+      region: content
+      parent_name: ''
+      weight: 5
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: true
+id: paragraph.review_finding.default
+targetEntityType: paragraph
+bundle: review_finding
+mode: default
+content:
+  field_rvf_summary:
+    type: string_textfield
+    weight: 0
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_reviewer_prose:
+    type: text_textarea
+    weight: 1
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_severity:
+    type: options_select
+    weight: 10
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvf_rule:
+    type: string_textfield
+    weight: 11
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_evidence:
+    type: string_textfield
+    weight: 12
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_line:
+    type: number
+    weight: 13
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_aspect:
+    type: options_select
+    weight: 14
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvf_category:
+    type: options_select
+    weight: 15
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvf_stable_id:
+    type: string_textfield
+    weight: 16
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_app_id:
+    type: string_textfield
+    weight: 17
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_defect_key:
+    type: string_textfield
+    weight: 18
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvf_anchor:
+    type: string_textfield
+    weight: 19
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+hidden: {  }
