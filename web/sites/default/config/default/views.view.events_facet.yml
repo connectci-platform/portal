@@ -9906,7 +9906,7 @@ display:
             value: today
             type: offset
           group: 1
-          exposed: false
+          exposed: true
           expose:
             operator_id: date_upcoming_op
             label: 'Upcoming Events'
