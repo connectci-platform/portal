@@ -9909,13 +9909,13 @@ display:
           exposed: true
           expose:
             operator_id: date_upcoming_op
-            label: 'Upcoming Events'
+            label: 'Upcoming only'
             description: ''
             use_operator: false
             operator: date_upcoming_op
             operator_limit_selection: false
             operator_list: {  }
-            identifier: date_upcoming
+            identifier: upcoming_only
             required: false
             remember: false
             multiple: false
