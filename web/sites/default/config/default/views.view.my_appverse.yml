@@ -701,7 +701,7 @@ display:
           admin_label: ''
           plugin_id: text_custom
           empty: false
-          content: '<p class="appverse-manage-intro">Reviewing a submission? Follow the <a href="/appverse-reviewer-checklist">Reviewer Checklist</a>.</p>'
+          content: '<p class="appverse-manage-intro">Reviewing a submission? Follow the <a href="/appverse-reviewer-checklist">Reviewer Process</a> and the <a href="/appverse-review-rubric">Review Rubric</a>.</p>'
           tokenize: false
       display_extenders: {  }
       path: appverse/manage-repos
