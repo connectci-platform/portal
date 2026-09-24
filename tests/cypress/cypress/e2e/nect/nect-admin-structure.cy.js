@@ -6,6 +6,7 @@ describe("Test Structure admin page", () => {
     cy.get('h1').should('contain', 'Block layout');
 
     // Nect Block check - truncated for memory
+    cy.visit('/structure/block/list/nect');
     cy.contains('Main navigation');
     cy.contains('Search form');
     cy.contains('User account menu');
@@ -27,7 +28,7 @@ describe("Test Structure admin page", () => {
     cy.contains('Projects - Northeast');
 
     // Campus Champions block check - truncated for memory
-    cy.get(':nth-child(3) > .tabs__link').click();
+    cy.visit('/admin/structure/block/list/champions');
     cy.contains('CC - Promotional message');
     cy.contains('Main navigation');
     cy.contains('CC Main menu');
@@ -49,6 +50,7 @@ describe("Test Structure admin page", () => {
     cy.contains('CC - Front - Community');
 
     // Access support blocks
+    cy.visit('/admin/structure/block/list/aspTheme');
     cy.get(':nth-child(4) > .tabs__link').click();
     cy.contains('Breadcrumbs');
     cy.contains('Status messages');
