@@ -284,6 +284,11 @@ class RepoNotificationServiceTest extends KernelTestBase {
    * objects that symfony_mailer's LegacyMailerHelper::formatBody() (the
    * production mailer) renders from.
    *
+   * @param string $key
+   *   The mail key (e.g. 'ready_for_review').
+   * @param array<string, mixed> $params
+   *   The mail params, including 'node'.
+   *
    * @return array<string, mixed>
    *   The built $message array.
    */
