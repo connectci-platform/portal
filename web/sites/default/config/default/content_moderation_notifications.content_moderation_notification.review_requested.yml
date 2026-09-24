@@ -8,6 +8,7 @@ transitions:
   send_for_review: send_for_review
 roles:
   match_pm: match_pm
+  ondemand_pm: ondemand_pm
 author: false
 site_mail: true
 user_fields: {  }
