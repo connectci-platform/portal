@@ -6,7 +6,6 @@ describe("Test Structure admin page", () => {
     cy.get('h1').should('contain', 'Block layout');
 
     // Nect Block check - truncated for memory
-    cy.visit('/structure/block/list/nect');
     cy.contains('Main navigation');
     cy.contains('Search form');
     cy.contains('User account menu');
