@@ -9,10 +9,12 @@ use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
@@ -1176,15 +1178,17 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@site' => $site_name,
         '@title' => $title,
       ]);
-      $message['body'][] = t('@owner submitted "@title" for review on @site.', [
+      $message['body'][] = t('<p>@owner submitted "@title" for review on @site.</p>', [
         '@owner' => $owner_name,
         '@title' => $title,
         '@site' => $site_name,
       ]);
       if ($repo) {
-        $message['body'][] = t('Repository: @repo', ['@repo' => $repo]);
+        // The ":repo" placeholder both sanitizes the URL for the href
+        // attribute and escapes it for the visible link text.
+        $message['body'][] = t('<p>Repository: <a href=":repo">:repo</a></p>', [':repo' => $repo]);
       }
-      $message['body'][] = t('Review queue: @url', ['@url' => $admin_queue]);
+      $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [':url' => $admin_queue]);
       break;
 
     case 'needs_adjustment':
@@ -1217,15 +1221,20 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@site' => $site_name,
         '@title' => $title,
       ]);
-      $message['body'][] = t('A reviewer requested changes on your repo "@title" before it can be published on @site.', [
+      $message['body'][] = t('<p>A reviewer requested changes on your repo "@title" before it can be published on @site.</p>', [
         '@title' => $title,
         '@site' => $site_name,
       ]);
       if ($comment !== '') {
-        $message['body'][] = t("Reviewer's note:\n\n@comment", ['@comment' => $comment]);
+        $message['body'][] = t("<p>Reviewer's note:</p>");
+        // Escape the comment ourselves and convert its own line breaks to
+        // <br> so multi-line notes survive — t()'s @-placeholder would
+        // escape it too, but wrapping the whole thing in a single t() call
+        // would leave the comment's newlines flattened into one line.
+        $message['body'][] = Markup::create('<p>' . nl2br(Html::escape($comment)) . '</p>');
       }
       if ($hub_link) {
-        $message['body'][] = t('Open your maintenance hub to make changes and resubmit: @url', ['@url' => $hub_link]);
+        $message['body'][] = t('<p>Open your maintenance hub to make changes and resubmit: <a href=":url">:url</a></p>', [':url' => $hub_link]);
       }
       break;
 
@@ -1238,11 +1247,11 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@site' => $site_name,
         '@title' => $title,
       ]);
-      $message['body'][] = t('Your repo "@title" has been published to the @site catalog.', [
+      $message['body'][] = t('<p>Your repo "@title" has been published to the @site catalog.</p>', [
         '@title' => $title,
         '@site' => $site_name,
       ]);
-      $message['body'][] = t('View it in the catalog: @url', ['@url' => $catalog_link]);
+      $message['body'][] = t('<p>View it in the catalog: <a href=":url">:url</a></p>', [':url' => $catalog_link]);
       break;
   }
 }

@@ -268,6 +268,58 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * Invoke ood_software_mail() directly for the given key/params.
+   *
+   * The full moderation-transition path (as used by the other tests here)
+   * captures mail through MailManager, which runs the message through the
+   * active mail plugin's format() — for the 'test_mail_collector' plugin
+   * used under kernel tests, that's the inherited core PhpMail::format(),
+   * which joins body parts and converts them to plain text before storage.
+   * That's fine for the plain substring checks the other tests do, but it
+   * throws away the raw HTML structure (the <p>/<a href> markup) that this
+   * fix is actually about — MailManager's format() runs upstream of the
+   * test_mail_collector capture, so the array of markup parts is never
+   * observable through drupalGetMails(). Calling the hook directly gives
+   * the untouched $message['body'] array of TranslatableMarkup/Markup
+   * objects that symfony_mailer's LegacyMailerHelper::formatBody() (the
+   * production mailer) renders from.
+   *
+   * @return array<string, mixed>
+   *   The built $message array.
+   */
+  protected function buildOodSoftwareMail(string $key, array $params): array {
+    $message = ['subject' => '', 'body' => []];
+    ood_software_mail($key, $message, $params);
+    return $message;
+  }
+
+  /**
+   * The raw HTML body parts for ready_for_review are well-formed.
+   *
+   * Every part is its own <p>...</p> block with real <a href> links, so mail
+   * clients cannot auto-link a bare URL into the following word.
+   */
+  public function testReadyForReviewBodyPartsAreHtmlParagraphsWithRealLinks(): void {
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $repoUrl = 'https://github.com/example/test';
+
+    $message = $this->buildOodSoftwareMail('ready_for_review', ['node' => $node]);
+
+    $this->assertIsArray($message['body']);
+    $this->assertNotEmpty($message['body']);
+    foreach ($message['body'] as $part) {
+      $partString = (string) $part;
+      $this->assertStringStartsWith('<p>', $partString, 'Every body part must be wrapped in a <p> tag.');
+      $this->assertStringEndsWith('</p>', $partString, 'Every body part must be wrapped in a <p> tag.');
+    }
+    $body = $this->mailBody($message);
+    $this->assertStringContainsString('href="' . $repoUrl . '"', $body);
+    $this->assertStringContainsString('/appverse/manage-repos"', $body);
+    $this->assertStringNotContainsString($repoUrl . 'Review', $body, 'The repo URL must not run into the following word.');
+  }
+
+  /**
    * The _ood_software_suppress_notifications runtime flag silences the
    * publish notification (used by the inferred-repo backfill, which publishes
    * many repos as a data migration and must not email each owner).
@@ -375,6 +427,45 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * A multi-line reviewer comment keeps its own line breaks as <br> tags.
+   *
+   * Checked on the raw HTML body part — see buildOodSoftwareMail() for why
+   * this is checked on the direct hook_mail() output rather than the
+   * plain-text-converted drupalGetMails() capture.
+   */
+  public function testNeedsAdjustmentMultiLineCommentPreservesLineBreaks(): void {
+    $contributor = $this->createContributor('owner@example.com');
+    $node = $this->createRepo((int) $contributor->id(), 'ready_for_review');
+
+    $message = $this->buildOodSoftwareMail('needs_adjustment', [
+      'node' => $node,
+      'comment' => "line one\nline two",
+    ]);
+
+    $body = $this->mailBody($message);
+    $this->assertMatchesRegularExpression('/line one<br\s*\/?\s*>\s*line two/', $body, 'Line breaks in the reviewer comment must become <br> tags.');
+  }
+
+  /**
+   * A reviewer comment containing markup is HTML-escaped, not rendered.
+   *
+   * Checked on the raw HTML body part.
+   */
+  public function testNeedsAdjustmentCommentIsEscaped(): void {
+    $contributor = $this->createContributor('owner@example.com');
+    $node = $this->createRepo((int) $contributor->id(), 'ready_for_review');
+
+    $message = $this->buildOodSoftwareMail('needs_adjustment', [
+      'node' => $node,
+      'comment' => '<script>alert(1)</script>',
+    ]);
+
+    $body = $this->mailBody($message);
+    $this->assertStringNotContainsString('<script>', $body, 'A malicious comment must not be rendered as raw markup.');
+    $this->assertStringContainsString('&lt;script&gt;', $body, 'A malicious comment must be HTML-escaped.');
+  }
+
+  /**
    * Publish notifies owner with catalog URL.
    */
   public function testPublishedNotifiesOwner(): void {
@@ -393,6 +484,23 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertStringContainsString('Your Repo is published', $oodMails[0]['subject']);
     $body = $this->mailBody($oodMails[0]);
     $this->assertStringContainsString('/appverse/#/repo/', $body);
+  }
+
+  /**
+   * The raw HTML body for published contains a real <a href> anchor.
+   *
+   * The href points at the catalog repo path rather than being bare link
+   * text — see buildOodSoftwareMail() for why this is checked on the direct
+   * hook_mail() output.
+   */
+  public function testPublishedBodyHasCatalogHrefAnchor(): void {
+    $contributor = $this->createContributor('owner@example.com');
+    $node = $this->createRepo((int) $contributor->id(), 'published');
+
+    $message = $this->buildOodSoftwareMail('published', ['node' => $node]);
+
+    $body = $this->mailBody($message);
+    $this->assertMatchesRegularExpression('~href="[^"]*/appverse/#/repo/[^"]*"~', $body, 'The href attribute must point at the catalog repo path.');
   }
 
   /**
