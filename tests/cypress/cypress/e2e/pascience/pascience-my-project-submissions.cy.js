@@ -81,10 +81,9 @@ describe("PA Science - My Project Submissions", () => {
 
     cy.loginUser("authenticated@amptesting.com", "6%l7iF}6(4tI");
     cy.visit(`/webform/project/submissions/${sid}/edit`);
-    // The status select is visually hidden by its #states gate on
-    // approved_milestones (unchecked by default here), but the value still
-    // submits — force the select rather than asserting visibility.
-    cy.get('select[name="status"]').select('Declined', { force: true });
+    // Status has no #states gate, so it is visible on a submission before
+    // approved_milestones is checked.
+    cy.get('select[name="status"]').should('be.visible').select('Declined');
     cy.get('input#edit-actions-01-submit').click();
 
     cy.visit('/user/project-submissions');
