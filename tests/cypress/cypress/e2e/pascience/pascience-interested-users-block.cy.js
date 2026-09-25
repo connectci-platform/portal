@@ -16,7 +16,7 @@ describe("PA Science - Interested People Block", () => {
 
   before(() => {
     // Ensure user 2000 has pascience_manager role
-    cy.drush('user:role:add', ['pascience_manager', 'user+2000@localhost.localdomain']);
+    cy.drush('user:role:add', ['pascience_manager'], { mail: 'user+2000@localhost.localdomain' });
 
     // Create a recruiting project as admin (who will be the owner)
     cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
