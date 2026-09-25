@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\Core\Config\FileStorage;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
@@ -53,6 +54,8 @@ class DeclaredAppTagsTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
+    // Provides the domain entity type field_domain_access references.
+    'domain',
     'ood_software',
   ];
 
@@ -114,6 +117,9 @@ class DeclaredAppTagsTest extends KernelTestBase {
       'field.field.node.appverse_app.field_add_implementation_tags',
       // appverse_organization taxonomy used by resolveOrganizationTerm.
       'taxonomy.vocabulary.appverse_organization',
+      // New apps are pinned to the Open OnDemand domain.
+      'field.storage.node.field_domain_access',
+      'field.field.node.appverse_app.field_domain_access',
     ]);
 
     // field_repo_shape lives in the module's config/install.
@@ -288,6 +294,12 @@ class DeclaredAppTagsTest extends KernelTestBase {
       $expected,
       $this->appTagTids($app),
       'field_add_implementation_tags must hold both impl-tag term ids.'
+    );
+    // resolveAppNode() pins new apps to Open OnDemand rather than whichever domain
+    // is active: Domain 3.x only defaults field_domain_access on entity forms.
+    self::assertSame(
+      [SiteTools::DOMAIN_OPENONDEMAND],
+      array_column($app->get('field_domain_access')->getValue(), 'target_id'),
     );
   }
 
