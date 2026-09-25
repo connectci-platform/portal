@@ -62,7 +62,7 @@
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "dev-d8-2770",
         "composer/installers": "^2.3.0",
-        "connectci/access": "dev-d8-2865-login-lock",
+        "connectci/access": "dev-d8-2770",
         "connectci/asp-theme": "dev-main",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
