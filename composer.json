@@ -60,7 +60,7 @@
     },
     "require": {
         "access/drupal_seamless_cilogon": "3.0.x-dev",
-        "access/infrastructure_news": "1.0.x-dev",
+        "access/infrastructure_news": "dev-d8-2770",
         "composer/installers": "^2.3.0",
         "connectci/access": "dev-d8-2865-login-lock",
         "connectci/asp-theme": "dev-main",

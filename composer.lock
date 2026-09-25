@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "40e47f014ebc6f9d0bc36a2634f4c064",
+    "content-hash": "579e7c0cbbb0ec091f344d73500f22a3",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -28,11 +28,11 @@
         },
         {
             "name": "access/infrastructure_news",
-            "version": "1.0.x-dev",
+            "version": "dev-d8-2770",
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/infrastructure_news",
-                "reference": "3de819690f3a0666d01a231eb6e8d6f9e89c3e42"
+                "reference": "8aab1d9c787487ec7b805582abbf52019f37f4a1"
             },
             "require": {
                 "access/operations_cider": "*",
@@ -40,7 +40,6 @@
                 "drupal/feeds_ex": "^1.0@beta",
                 "drupal/field_group": "^3.4 || ^4.0"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -60,7 +59,7 @@
                 "issues": "https://github.com/access-ci-org/infrastructure_news/issues",
                 "source": "https://github.com/access-ci-org/infrastructure_news"
             },
-            "time": "2026-06-25T17:57:15+00:00"
+            "time": "2026-09-25T15:41:36+00:00"
         },
         {
             "name": "asm89/stack-cors",
