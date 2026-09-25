@@ -172,7 +172,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             amp_cyberinfrastructure_org: amp_cyberinfrastructure_org
           group: 1

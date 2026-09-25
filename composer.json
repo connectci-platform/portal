@@ -9,6 +9,10 @@
         "chat": "https://www.drupal.org/node/314178"
     },
     "repositories": {
+        "domain_menu_access": {
+            "type": "vcs",
+            "url": "https://git.drupalcode.org/issue/domain_menu_access-3557310.git"
+        },
         "drupal": {
             "type": "composer",
             "url": "https://packages.drupal.org/8"
@@ -56,9 +60,9 @@
     },
     "require": {
         "access/drupal_seamless_cilogon": "3.0.x-dev",
-        "access/infrastructure_news": "1.0.x-dev",
+        "access/infrastructure_news": "dev-d8-2770",
         "composer/installers": "^2.3.0",
-        "connectci/access": "dev-d8-2865-login-lock",
+        "connectci/access": "dev-d8-2770",
         "connectci/asp-theme": "dev-main",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
@@ -86,16 +90,15 @@
         "drupal/ctools_views": "^4.1.0",
         "drupal/datalayer": "^2.0@RC",
         "drupal/devel_kint_extras": "^1.1",
-        "drupal/domain": "^2.0@beta",
-        "drupal/domain_access": "^2.0@beta",
-        "drupal/domain_alias": "^2.0@beta",
-        "drupal/domain_config": "^2.0@beta",
-        "drupal/domain_entity": "^1.0@RC",
-        "drupal/domain_menu_access": "^2.0",
+        "drupal/domain": "^3.0",
+        "drupal/domain_access": "^3.0",
+        "drupal/domain_alias": "^3.0",
+        "drupal/domain_config": "^3.0",
+        "drupal/domain_entity": "^2.0",
+        "drupal/domain_menu_access": "dev-3557310-incompatibility-between-domain#2594665dbd1797ce1122082300ceb0c7219f611a",
         "drupal/domain_simple_sitemap": "^3.0@RC",
-        "drupal/domain_site_settings": "^1.5",
-        "drupal/domain_source": "^2.0@beta",
-        "drupal/domain_theme_switch": "^2.0",
+        "drupal/domain_source": "^3.0",
+        "drupal/domain_theme_switch": "^3.0",
         "drupal/easy_breadcrumb": "^2.0",
         "drupal/email_change_verification": "^1.0@beta",
         "drupal/environment_indicator": "^4.0",

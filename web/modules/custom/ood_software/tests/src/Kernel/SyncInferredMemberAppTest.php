@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\Core\Config\FileStorage;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
@@ -39,6 +40,8 @@ class SyncInferredMemberAppTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
+    // Provides the domain entity type field_domain_access references.
+    'domain',
     'ood_software',
   ];
 
@@ -99,6 +102,9 @@ class SyncInferredMemberAppTest extends KernelTestBase {
       'field.field.node.appverse_app.field_appverse_app_validation_st',
       // appverse_organization taxonomy used by resolveOrganizationTerm.
       'taxonomy.vocabulary.appverse_organization',
+      // New apps are pinned to the Open OnDemand domain.
+      'field.storage.node.field_domain_access',
+      'field.field.node.appverse_app.field_domain_access',
     ]);
 
     // field_repo_shape lives in module's config/install — same pattern as
@@ -182,6 +188,12 @@ class SyncInferredMemberAppTest extends KernelTestBase {
     self::assertSame('markdown', $app->get('body')->format);
     // New inferred member apps start in draft.
     self::assertSame('draft', $app->get('moderation_state')->value);
+    // Pinned to Open OnDemand rather than whichever domain is active: Domain
+    // 3.x only defaults field_domain_access on entity forms.
+    self::assertSame(
+      [SiteTools::DOMAIN_OPENONDEMAND],
+      array_column($app->get('field_domain_access')->getValue(), 'target_id'),
+    );
   }
 
   /**
