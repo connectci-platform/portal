@@ -432,8 +432,12 @@ display:
         options:
           perm: 'access content'
       cache:
-        type: none
-        options: {  }
+        type: time
+        options:
+          results_lifespan: 21600
+          results_lifespan_custom: 0
+          output_lifespan: 21600
+          output_lifespan_custom: 0
       empty:
         area:
           id: area
@@ -4931,6 +4935,8 @@ display:
       display_description: ''
       display_comment: ''
       display_extenders:
+        jsonapi_views:
+          enabled: true
         simple_sitemap_display_extender: {  }
       block_description: 'Users with Tag | Mentors and Regional Facilitators - Global'
       block_category: UsersWithTag
