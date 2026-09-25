@@ -79,6 +79,14 @@ field_settings:
     dependencies:
       module:
         - field_inheritance
+  event_timezone:
+    label: 'Event Timezone'
+    datasource_id: 'entity:eventinstance'
+    property_path: event_timezone
+    type: string
+    dependencies:
+      module:
+        - field_inheritance
   event_type:
     label: 'Event Type'
     datasource_id: 'entity:eventinstance'
@@ -95,11 +103,6 @@ field_settings:
     dependencies:
       config:
         - field.storage.eventinstance.field_video
-  event_timezone:
-    label: 'Event Timezone'
-    datasource_id: 'entity:eventinstance'
-    property_path: event_timezone
-    type: string
   registration_capacity:
     label: 'Registration Capacity'
     property_path: search_api_registration_capacity

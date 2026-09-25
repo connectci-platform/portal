@@ -7636,7 +7636,7 @@ display:
           group_type: group
           admin_label: ''
           entity_type: eventinstance
-          plugin_id: search_api_field
+          plugin_id: search_api
           label: 'Event Timezone'
           exclude: false
           alter:
@@ -7673,25 +7673,15 @@ display:
           element_label_colon: true
           element_wrapper_type: ''
           element_wrapper_class: ''
-          element_default_classes: true
+          element_default_classes: false
           empty: ''
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          click_sort_column: value
-          type: string
-          settings:
-            link_to_entity: false
-          group_column: value
-          group_columns: {  }
-          group_rows: true
-          delta_limit: 0
-          delta_offset: 0
-          delta_reversed: false
-          delta_first_last: false
+          link_to_item: false
+          use_highlighting: false
           multi_type: separator
-          separator: ', '
-          field_api_classes: false
+          multi_separator: ', '
       pager:
         type: full
         options:
@@ -9509,7 +9499,7 @@ display:
           group_type: group
           admin_label: ''
           entity_type: eventinstance
-          plugin_id: search_api_field
+          plugin_id: search_api
           label: 'Event Timezone'
           exclude: false
           alter:
@@ -9546,25 +9536,15 @@ display:
           element_label_colon: true
           element_wrapper_type: ''
           element_wrapper_class: ''
-          element_default_classes: true
+          element_default_classes: false
           empty: ''
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          click_sort_column: value
-          type: string
-          settings:
-            link_to_entity: false
-          group_column: value
-          group_columns: {  }
-          group_rows: true
-          delta_limit: 0
-          delta_offset: 0
-          delta_reversed: false
-          delta_first_last: false
+          link_to_item: false
+          use_highlighting: false
           multi_type: separator
-          separator: ', '
-          field_api_classes: false
+          multi_separator: ', '
       pager:
         type: full
         options:
