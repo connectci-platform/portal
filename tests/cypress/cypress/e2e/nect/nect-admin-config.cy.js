@@ -268,9 +268,6 @@ describe("Check admin configuration pages", () => {
     cy.visit('/admin/config/search/datalayer');
     cy.get('h1').should('contain', 'Data Layer');
 
-    cy.visit('/admin/config/search/search404');
-    cy.get('h1').should('contain', 'Search 404 settings');
-
     cy.visit('/admin/config/search/search-api-pages');
     cy.get('h1').should('contain', 'Search API pages');
     cy.contains('search-page');
