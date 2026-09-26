@@ -79,6 +79,14 @@ field_settings:
     dependencies:
       module:
         - field_inheritance
+  event_timezone:
+    label: 'Event Timezone'
+    datasource_id: 'entity:eventinstance'
+    property_path: event_timezone
+    type: string
+    dependencies:
+      module:
+        - field_inheritance
   event_type:
     label: 'Event Type'
     datasource_id: 'entity:eventinstance'
