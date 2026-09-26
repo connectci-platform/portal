@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9f865772116814d22742a8661c98d5bb",
+    "content-hash": "f577becb6a647c61bba4900763abfb94",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -758,11 +758,11 @@
         },
         {
             "name": "connectci/operations_cider",
-            "version": "dev-d8-2858-doc-links",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "2f243bea34baf073e9183d03b38786c819d6b657"
+                "reference": "dc1f43bbafe0f459a54f1b1f16ce39983f6e313d"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -771,6 +771,7 @@
             "replace": {
                 "access/operations_cider": "self.version"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -790,7 +791,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-09-22T20:11:48+00:00"
+            "time": "2026-09-26T12:17:55+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -19212,12 +19213,13 @@
         },
         {
             "name": "connectci/amp_dev",
-            "version": "dev-d8-2858-fixture",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "c7faf4d9019be1ef9a717e1e261269e1917135c0"
+                "reference": "554f4454b1055fefe7d5822f206597a32fda8543"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0-or-later"
@@ -19227,7 +19229,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-09-22T20:12:19+00:00"
+            "time": "2026-09-25T23:49:21+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
