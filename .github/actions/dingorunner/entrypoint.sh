@@ -25,6 +25,38 @@ terminusApi () {
   terminus auth:login --machine-token=$terminus_api
 }
 
+# Poll `terminus workflow:list` for running workflows on a single environment.
+# terminus workflow:list ignores the .env suffix and returns every environment
+# on the site, so we filter the csv on the env column ourselves.
+# On timeout: exit 1 if <fatal> is non-empty, otherwise log and return 0.
+waitForWorkflows () {
+  site=$1
+  env_filter=$2
+  attempts=$3
+  fatal=$4
+
+  echo "Waiting for Pantheon workflows on $site.$env_filter to complete..."
+  i=1
+  while [ "$i" -le "$attempts" ]; do
+    running=$(terminus workflow:list "$site" --format=csv --fields=env,status 2>/dev/null | tail -n +2 | tr -d '"' | awk -F, -v e="$env_filter" '$1 == e && $2 == "running" {c++} END{print c+0}')
+    if [ "$running" = "0" ]; then
+      echo "Workflows complete."
+      return 0
+    fi
+    echo "Workflow still running on $env_filter... attempt $i/$attempts"
+    sleep 15
+    i=$((i + 1))
+  done
+
+  if [ -n "$fatal" ]; then
+    echo "ERROR: Timed out waiting for Pantheon workflows on $site.$env_filter to complete." >&2
+    exit 1
+  else
+    echo "Timed out waiting for Pantheon workflows on $site.$env_filter; continuing."
+    return 0
+  fi
+}
+
 if [ "$runner" = cron ];
 then
   #curl $dev_cron_url
@@ -44,6 +76,58 @@ if [ "$runner" = deploy ];
 then
   storeKey
   terminusApi
+
+  # Commits can't be compared directly between GitHub and the Pantheon build
+  # repo, so we wait on and verify the environment we are deploying from.
+  if [ "$env" = "test" ]; then
+    source_env=dev
+  elif [ "$env" = "live" ]; then
+    source_env=test
+  else
+    echo "ERROR: Unknown deploy target '$env'; cannot determine source environment." >&2
+    exit 1
+  fi
+
+  waitForWorkflows "$site_name" "$source_env" 40 fatal
+
+  echo "Code log for $site_name.$source_env:"
+  terminus env:code-log $site_name.$source_env
+
+  if [ -n "$expected_sha" ]; then
+    expected_sha8=$(printf '%.8s' "$expected_sha")
+    # First entry whose labels include the source env (not simply the first
+    # entry; dev commits sit above test's in the combined log).
+    result=$(terminus env:code-log $site_name.$source_env --format=json | php -r '
+      $rows = json_decode(stream_get_contents(STDIN), true);
+      $env = $argv[1];
+      foreach ($rows as $row) {
+        $labels = $row["labels"];
+        if (is_string($labels)) {
+          $labels = array_map("trim", explode(",", $labels));
+        }
+        if (is_array($labels) && in_array($env, $labels, true)) {
+          echo $row["hash"] . "\t" . $row["message"];
+          exit(0);
+        }
+      }
+    ' "$source_env")
+    actual_hash=$(printf '%s' "$result" | cut -f1)
+    actual_message=$(printf '%s' "$result" | cut -f2-)
+    expected_prefix="[gh $expected_sha8]"
+    case "$actual_message" in
+      "$expected_prefix"*) : ;;
+      *)
+        echo "ERROR: Expected commit prefix '$expected_prefix' (from $expected_sha) on $site_name.$source_env, but found message '$actual_message' (hash: $actual_hash)." >&2
+        if [ "$source_env" = "test" ]; then
+          echo "Hint: If test was deployed out of band, re-run (M) Create Release." >&2
+        else
+          echo "Hint: Dispatch main.yml on main to build a fresh dev deploy." >&2
+        fi
+        exit 1
+        ;;
+    esac
+  fi
+
   current_version=$(git describe --tags --abbrev=0)
   terminus env:deploy --note "Version: $current_version" $flags -- $site_name.$env
 fi
@@ -148,13 +232,23 @@ then
   echo 'Add new files'
   git add .
   echo 'Commit changes'
-  # A config/code-only branch can produce no build-artifact changes, in which
-  # case there is nothing to commit. Skip the commit rather than let git's
-  # non-zero exit abort the deploy (which would leave the multidev uncreated).
-  if git diff --cached --quiet; then
-    echo 'No build changes to commit; pushing existing branch state.'
+  # Prefix the commit subject with the GitHub SHA so a Pantheon commit can be
+  # traced back to the GitHub commit it was built from.
+  sha8=$(printf '%.8s' "$GITHUB_SHA")
+  commit_message="[gh $sha8] $message"
+  if [ "$branch" = "master" ]; then
+    # main always gets a commit, even with no build changes, so the marker
+    # commit is always present for the deploy runner to verify against.
+    git commit --allow-empty -m "$commit_message"
   else
-    git commit -m "$message"
+    # A config/code-only branch can produce no build-artifact changes, in which
+    # case there is nothing to commit. Skip the commit rather than let git's
+    # non-zero exit abort the deploy (which would leave the multidev uncreated).
+    if git diff --cached --quiet; then
+      echo 'No build changes to commit; pushing existing branch state.'
+    else
+      git commit -m "$commit_message"
+    fi
   fi
   echo 'status'
   git status
@@ -218,17 +312,9 @@ then
   commands=$(cat robo/assets/md/$branch | tr -d '[:space:]')
   echo $commands
   terminus env:wake accessmatch.$branch
-  # Wait for any active Pantheon workflows (sync_code/deploy quicksilver) to finish
-  echo "Waiting for Pantheon workflows to complete..."
-  for i in $(seq 1 24); do
-    running=$(terminus workflow:list accessmatch.$branch --format=csv --fields=status 2>/dev/null | grep -c "running" || true)
-    if [ "$running" = "0" ]; then
-      echo "Workflows complete."
-      break
-    fi
-    echo "Workflow still running... attempt $i"
-    sleep 15
-  done
+  # Wait for any active Pantheon workflows (sync_code/deploy quicksilver) on
+  # this multidev only, not site-wide, to finish.
+  waitForWorkflows accessmatch "$branch" 24 ""
   terminus remote:drush accessmatch.$branch -- domain:default $commands
   echo "Set domain to: $commands"
 fi
