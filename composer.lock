@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dbe88006db02108cfea54746f4b860b2",
+    "content-hash": "f577becb6a647c61bba4900763abfb94",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -762,7 +762,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "52b2606f716892cbfca75b4d2e8bade41b26b688"
+                "reference": "dc1f43bbafe0f459a54f1b1f16ce39983f6e313d"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -791,7 +791,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-09-20T00:09:11+00:00"
+            "time": "2026-09-26T12:17:55+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -19217,7 +19217,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "e82d10bd156845e9a034738ad5424c266a326a1d"
+                "reference": "554f4454b1055fefe7d5822f206597a32fda8543"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -19229,7 +19229,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-09-20T00:06:27+00:00"
+            "time": "2026-09-25T23:49:21+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
