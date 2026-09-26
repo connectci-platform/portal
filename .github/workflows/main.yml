@@ -7,6 +7,9 @@ on:
   # Lets prdelete.yml rebuild md-dev after it recreates the branch. Branch
   # pushes made with GH_TOKEN_REPO do not fire the push event above.
   workflow_dispatch:
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   deploy:
     name: Deploy site
