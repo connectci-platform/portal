@@ -7,6 +7,7 @@ use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Psr\Log\LoggerInterface;
 
@@ -83,6 +84,7 @@ class AppverseCacheService {
    * Generate and write the static JSON cache file.
    */
   public function generate(): bool {
+    $this->reviewByRepo = [];
     try {
       $software = $this->buildSoftwareData();
       $repos = $this->buildReposData($software);
@@ -373,7 +375,94 @@ class AppverseCacheService {
       'tags' => $this->getTerms($app, 'field_add_implementation_tags'),
       'organization' => $this->getTerm($app, 'field_appverse_organization'),
       'maintainerName' => $app->get('field_appverse_maintainer_name')->value ?? NULL,
+      'review' => $this->reviewForApp($app),
       'softwareId' => $softwareId,
+    ];
+  }
+
+  /**
+   * Published review data per repo nid, memoised for one generation.
+   *
+   * @var array<int, array|null>
+   */
+  protected array $reviewByRepo = [];
+
+  /**
+   * The public review object for an app, or NULL when the app's repo has no
+   * Published review or the review has no verdict for this app.
+   *
+   * Only Published reviews are read: this file is world-readable, so a Draft
+   * review's levels must never reach it. Levels are the stored field values,
+   * which already include any reviewer override.
+   */
+  protected function reviewForApp(NodeInterface $app): ?array {
+    $repo = $app->hasField('field_appverse_repo') ? $app->get('field_appverse_repo')->entity : NULL;
+    if (!$repo instanceof NodeInterface) {
+      return NULL;
+    }
+    $review = $this->publishedReviewFor($repo);
+    if ($review === NULL) {
+      return NULL;
+    }
+    $subpath = $app->hasField('field_appverse_app_subpath') ? (string) ($app->get('field_appverse_app_subpath')->value ?? '') : '';
+    $verdict = ReviewSignals::pickVerdict($review['verdicts'], (int) $app->id(), $subpath);
+    $lastCommit = $repo->get('field_repo_last_commit')->value ? (int) $repo->get('field_repo_last_commit')->value : NULL;
+    return ReviewSignals::shape($review, $verdict, $lastCommit);
+  }
+
+  /**
+   * The newest Published appverse_review for a repo, as plain arrays.
+   */
+  protected function publishedReviewFor(NodeInterface $repo): ?array {
+    $nid = (int) $repo->id();
+    if (array_key_exists($nid, $this->reviewByRepo)) {
+      return $this->reviewByRepo[$nid];
+    }
+    $storage = $this->entityTypeManager->getStorage('node');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_review')
+      ->condition('status', 1)
+      ->condition('field_arv_repo', $nid)
+      ->sort('created', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    $review = $ids ? $storage->load(reset($ids)) : NULL;
+    if (!$review instanceof NodeInterface) {
+      return $this->reviewByRepo[$nid] = NULL;
+    }
+    $reportHtml = '';
+    if ($review->hasField('field_arv_report_html') && !$review->get('field_arv_report_html')->isEmpty()) {
+      $file = $review->get('field_arv_report_html')->entity;
+      $reportHtml = $file ? $this->fileUrlGenerator->generateAbsoluteString($file->getFileUri()) : '';
+    }
+    $verdicts = [];
+    foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $axes = [];
+      foreach (['security' => 'sec', 'portability' => 'port', 'documentation' => 'docs'] as $axis => $prefix) {
+        $axes[$axis] = [
+          'level' => $verdict->get("field_rvv_{$prefix}_level")->value,
+          'summary' => (string) ($verdict->get("field_rvv_{$prefix}_summary")->value ?? ''),
+          'anchor' => (string) ($verdict->get("field_rvv_{$prefix}_anchor")->value ?? ''),
+        ];
+      }
+      $verdicts[] = [
+        'app_ref' => $verdict->get('field_rvv_app_ref')->target_id !== NULL ? (int) $verdict->get('field_rvv_app_ref')->target_id : NULL,
+        'app_id' => (string) ($verdict->get('field_rvv_app_id')->value ?? ''),
+        'axes' => $axes,
+      ];
+    }
+    return $this->reviewByRepo[$nid] = [
+      'reviewed_at' => (int) ($review->get('field_arv_reviewed_at')->value ?? $review->getCreatedTime()),
+      'sha' => (string) ($review->get('field_arv_sha')->value ?? ''),
+      'url' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString(),
+      'report_html' => $reportHtml,
+      'upkeep' => [
+        'level' => $review->get('field_arv_maint_level')->value,
+        'summary' => (string) ($review->get('field_arv_maint_summary')->value ?? ''),
+        'anchor' => (string) ($review->get('field_arv_maint_anchor')->value ?? ''),
+      ],
+      'verdicts' => $verdicts,
     ];
   }
 

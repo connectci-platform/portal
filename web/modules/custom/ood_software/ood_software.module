@@ -1111,7 +1111,9 @@ function ood_software_node_delete(NodeInterface $node): void {
  * published status, so per-app edits and publish/unpublish change its output.
  */
 function _ood_software_mark_appverse_cache_dirty(NodeInterface $node): void {
-  if (in_array($node->bundle(), ['appverse_software', 'appverse_app', 'appverse_repo'], TRUE)) {
+  // appverse_review: a publish or unpublish changes the per-app review data
+  // the cache carries (only Published reviews are read).
+  if (in_array($node->bundle(), ['appverse_software', 'appverse_app', 'appverse_repo', 'appverse_review'], TRUE)) {
     \Drupal::service('ood_software.appverse_cache')->markDirty();
   }
 }
