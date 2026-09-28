@@ -116,30 +116,69 @@ class AppverseReviewService {
       return;
     }
 
+    $this->dispatchForNode($node);
+  }
+
+  /**
+   * Starts a review for a repo node, without touching its moderation state.
+   *
+   * The one implementation behind the ready_for_review transition, the hub's
+   * Run AI review action, and any explicit caller. Resolves owner/repo from
+   * the node, sends the dispatch with a correlation id, and on success records
+   * the same timestamp on the node so the id can be recomputed when the run
+   * is polled for. A failed dispatch leaves the node untouched: marking it
+   * pending would have the poll loop wait for a run that was never created.
+   *
+   * @return bool
+   *   TRUE when GitHub accepted the dispatch.
+   */
+  public function dispatchForNode(NodeInterface $node, string $model = 'sonnet', ?string $aspectsOverride = NULL): bool {
     $repoUrl = $this->extractRepoUrl($node);
     if ($repoUrl === NULL) {
       $this->logger->warning('Cannot dispatch review for repo node @nid: no field_repo_url value.', [
         '@nid' => $node->id(),
       ]);
-      return;
+      return FALSE;
     }
-
     $ownerRepo = $this->parseOwnerRepo($repoUrl);
     if ($ownerRepo === NULL) {
       $this->logger->warning('Cannot dispatch review for repo node @nid: could not parse owner/repo from URL @url.', [
         '@nid' => $node->id(),
         '@url' => $repoUrl,
       ]);
-      return;
+      return FALSE;
     }
-
     // One timestamp for both the node and the id, so the id can be recomputed
     // from the node when the run is polled for.
     $dispatchedAt = $this->time->getRequestTime();
     $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
-    if ($this->dispatch($ownerRepo, 'sonnet', $correlationId)) {
-      $this->recordDispatch($node, $dispatchedAt);
+    if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride)) {
+      return FALSE;
     }
+    $this->recordDispatch($node, $dispatchedAt);
+    return TRUE;
+  }
+
+  /**
+   * The newest appverse_review node for a repo, or NULL.
+   *
+   * Access-checked, so a caller building a link only gets a review the
+   * current user may view.
+   */
+  public function latestReviewFor(NodeInterface $repo): ?NodeInterface {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $nids = $storage->getQuery()
+      ->accessCheck(TRUE)
+      ->condition('type', 'appverse_review')
+      ->condition('field_arv_repo', $repo->id())
+      ->sort('created', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    if ($nids === []) {
+      return NULL;
+    }
+    $review = $storage->load(reset($nids));
+    return $review instanceof NodeInterface ? $review : NULL;
   }
 
   /**

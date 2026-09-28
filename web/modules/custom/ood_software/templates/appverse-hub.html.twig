@@ -106,7 +106,13 @@
           <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
         </a>
       {% endif %}
-      {% if hub.review.re_review_action %}{{ hub.review.re_review_action }}{% endif %}
+      {% if hub.review.review_url %}
+        <a href="{{ hub.review.review_url }}" class="appverse-hub-card__icon-btn"
+           title="{{ 'Open review'|t }}" aria-label="{{ 'Open review for @t'|t({'@t': hub.title}) }}">
+          <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+      {% if hub.review.run_review_action %}{{ hub.review.run_review_action }}{% endif %}
       {% if hub.actions.delete %}
         <a href="{{ hub.actions.delete.url }}" class="appverse-hub-card__icon-btn appverse-hub-card__icon-btn--danger"
            title="{{ 'Delete'|t }}" aria-label="{{ 'Delete @t'|t({'@t': hub.title}) }}">

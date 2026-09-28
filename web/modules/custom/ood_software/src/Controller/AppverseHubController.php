@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\node\NodeInterface;
 use Drupal\user\UserInterface;
+use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Plugin\GitHubService;
@@ -33,6 +34,7 @@ final class AppverseHubController extends ControllerBase {
     protected ModerationInformationInterface $moderationInformation,
     protected RequestStack $requestStack,
     protected RepoMemberApps $repoMemberApps,
+    protected AppverseReviewService $reviewService,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -43,6 +45,7 @@ final class AppverseHubController extends ControllerBase {
       $container->get('content_moderation.moderation_information'),
       $container->get('request_stack'),
       $container->get('ood_software.repo_member_apps'),
+      $container->get('ood_software.review_dispatcher'),
     );
   }
 
@@ -441,15 +444,30 @@ final class AppverseHubController extends ControllerBase {
    * AppverseReviewService, ensuring a new review is always dispatched.
    */
   public function reReview(NodeInterface $node): RedirectResponse {
+    // Kept for existing links; the action itself no longer moves the app's
+    // moderation state (from a published repo that used to demote it).
+    return $this->runReview($node);
+  }
+
+  /**
+   * Admin action: start an AI review of a repo, whatever its editorial state.
+   *
+   * Running the tool and moving the app to Ready for review are different
+   * intents; this does only the first. The result is polled for by cron and
+   * lands as an appverse_review node linked from the hub card.
+   */
+  public function runReview(NodeInterface $node): RedirectResponse {
     if ($node->bundle() !== 'appverse_repo') {
-      $this->messenger()->addError($this->t('Re-review is only available for Repos.'));
+      $this->messenger()->addError($this->t('AI review is only available for Repos.'));
       return $this->redirectToHub();
     }
-    return $this->applyTransition(
-      $node,
-      'ready_for_review',
-      $this->t('Re-review triggered for @title.', ['@title' => $node->label()])
-    );
+    if ($this->reviewService->dispatchForNode($node)) {
+      $this->messenger()->addStatus($this->t('AI review started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full review).', ['@title' => $node->label()]));
+    }
+    else {
+      $this->messenger()->addError($this->t('Could not start the AI review for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
+    }
+    return $this->redirectToHub();
   }
 
   /**

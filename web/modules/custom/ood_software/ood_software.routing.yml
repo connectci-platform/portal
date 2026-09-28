@@ -92,6 +92,21 @@ ood_software.app_send_for_review:
 
 # --- Admin-only transitions ---
 
+ood_software.repo_run_review:
+  path: '/appverse/repo/{node}/run-review'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::runReview'
+    _title: 'Run AI review'
+  methods: [POST]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
 ood_software.repo_re_review:
   path: '/appverse/repo/{node}/re-review'
   defaults:
