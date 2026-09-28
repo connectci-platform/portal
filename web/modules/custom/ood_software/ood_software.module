@@ -51,6 +51,12 @@ function ood_software_theme(): array {
       'variables' => ['hub' => []],
       'template' => 'appverse-hub',
     ],
+    // The review page (planning #14): a form whose render array is the whole
+    // page, so the template gets the form elements and the shaped data.
+    'appverse_review_form' => [
+      'render element' => 'form',
+      'template' => 'appverse-review-form',
+    ],
     // Module-registered suggestion for the my_appverse fields row. Modules do
     // not get views-view-fields--<id> filename autodiscovery the way themes do,
     // so the suggestion must be declared with its base hook to be picked up.
@@ -1762,7 +1768,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $reviewUrl = NULL;
   $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($repo);
   if ($latest !== NULL) {
-    $reviewUrl = $latest->toUrl()->toString();
+    $reviewUrl = \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $latest->id()])->toString();
   }
 
   return [

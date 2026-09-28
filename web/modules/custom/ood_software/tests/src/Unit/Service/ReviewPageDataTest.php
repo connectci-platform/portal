@@ -1,0 +1,193 @@
+<?php
+
+namespace Drupal\Tests\ood_software\Unit\Service;
+
+use Drupal\Tests\UnitTestCase;
+use Drupal\ood_software\Service\ReviewPageData;
+
+/**
+ * Unit tests for ReviewPageData, the shaping behind the review page.
+ *
+ * Plain arrays in, plain arrays out: the form extracts them from the review
+ * node and its paragraphs, the template renders what comes back. The rules
+ * pinned here are the ones a reviewer would notice if wrong — which block a
+ * finding lands in, which records count as findings, the order of severity
+ * groups, and the "also flagged in" lookup across previous reviews.
+ *
+ * @group ood_software
+ *
+ * @coversDefaultClass \Drupal\ood_software\Service\ReviewPageData
+ */
+class ReviewPageDataTest extends UnitTestCase {
+
+  private function finding(string $rule, string $severity = 'low', string $result = 'FAIL', string $id = ''): array {
+    return [
+      'rule' => $rule, 'severity' => $severity, 'result' => $result,
+      'stable_id' => $id ?: 'id-' . $rule . '-' . $severity,
+      'summary' => 'summary for ' . $rule, 'evidence' => 'file:1', 'defect_key' => 'file:tag', 'prose' => '',
+    ];
+  }
+
+  /**
+   * Every rule family has exactly one block; nothing is left homeless.
+   *
+   * @covers ::blockFor
+   * @dataProvider blockProvider
+   */
+  public function testBlockFor(string $rule, string $expected): void {
+    $this->assertSame($expected, ReviewPageData::blockFor($rule));
+  }
+
+  public static function blockProvider(): array {
+    return [
+      'security' => ['OODT-03', 'security'],
+      'docs threshold' => ['QUA-01', 'documentation'],
+      'portability threshold' => ['QUA-02', 'portability'],
+      'error handling is code quality' => ['QUA-03', 'code_quality'],
+      'polish is code quality' => ['QUA-06', 'code_quality'],
+      'structure' => ['STR-02', 'structure'],
+      'maintenance' => ['MNT-01', 'maintenance'],
+      'unknown families do not vanish' => ['XYZ-01', 'other'],
+    ];
+  }
+
+  /**
+   * Row-per-check reporting (appverse-review#46) puts PASS and NOT CHECKED
+   * records in the findings array. They are not findings on the page.
+   *
+   * @covers ::isDefect
+   */
+  public function testOnlyFailAndWarnAreFindings(): void {
+    $this->assertTrue(ReviewPageData::isDefect($this->finding('QUA-03', 'low', 'FAIL')));
+    $this->assertTrue(ReviewPageData::isDefect($this->finding('QUA-03', 'low', 'WARN')));
+    $this->assertTrue(ReviewPageData::isDefect($this->finding('QUA-03', 'low', '')), 'a record with no result is a finding, as it always was');
+    $this->assertFalse(ReviewPageData::isDefect($this->finding('QUA-03', 'low', 'PASS')));
+    $this->assertFalse(ReviewPageData::isDefect($this->finding('OODT-01', 'medium', 'NOT CHECKED')));
+  }
+
+  /**
+   * Severity groups come worst first, only for severities present, each
+   * with its findings and count; PASS rows are already gone.
+   *
+   * @covers ::groupBySeverity
+   */
+  public function testSeverityGroupsAreWorstFirstAndOnlyPresent(): void {
+    $groups = ReviewPageData::groupBySeverity([
+      $this->finding('OODT-08', 'low'),
+      $this->finding('OODT-01', 'critical'),
+      $this->finding('OODT-05', 'medium'),
+      $this->finding('OODT-02', 'medium'),
+      $this->finding('OODT-04', 'high', 'PASS'),
+    ]);
+
+    $this->assertSame(['critical', 'medium', 'low'], array_column($groups, 'severity'));
+    $this->assertSame([1, 2, 1], array_column($groups, 'count'));
+    $this->assertSame(['OODT-05', 'OODT-02'], array_column($groups[1]['findings'], 'rule'));
+  }
+
+  /**
+   * @covers ::countLine
+   */
+  public function testCountLine(): void {
+    $this->assertSame('3 findings · 2 High · 1 Medium', ReviewPageData::countLine([
+      $this->finding('OODT-01', 'high'), $this->finding('OODT-02', 'high'), $this->finding('OODT-05', 'medium'),
+    ]));
+    $this->assertSame('1 finding · 1 Low', ReviewPageData::countLine([$this->finding('QUA-03', 'low')]));
+    $this->assertSame('No findings', ReviewPageData::countLine([]));
+  }
+
+  /**
+   * A finding carried over from earlier reviews of the same repo is marked
+   * with those reviews' labels, newest first, by stable id — not by rule.
+   *
+   * @covers ::alsoFlaggedIn
+   */
+  public function testAlsoFlaggedInMatchesByStableId(): void {
+    $previous = [
+      ['label' => '2026-09-20 · a52c443', 'stable_ids' => ['abc', 'def']],
+      ['label' => '2026-09-01 · 1111111', 'stable_ids' => ['abc']],
+    ];
+    $this->assertSame(['2026-09-20 · a52c443', '2026-09-01 · 1111111'], ReviewPageData::alsoFlaggedIn('abc', $previous));
+    $this->assertSame(['2026-09-20 · a52c443'], ReviewPageData::alsoFlaggedIn('def', $previous));
+    $this->assertSame([], ReviewPageData::alsoFlaggedIn('new', $previous));
+    $this->assertSame([], ReviewPageData::alsoFlaggedIn('', $previous), 'a finding without an id never matches');
+  }
+
+  /**
+   * @covers ::gatePills
+   */
+  public function testGatePillsKeepTheToolsOrderAndVocabulary(): void {
+    $pills = ReviewPageData::gatePills(['metadata' => 'fail', 'yaml_valid' => 'pass', 'structure' => 'not_checked', 'references' => 'warn']);
+    $this->assertSame(['metadata', 'yaml_valid', 'structure', 'references'], array_column($pills, 'key'));
+    $this->assertSame(['fail', 'pass', 'not_checked', 'warn'], array_column($pills, 'value'));
+    $this->assertSame('YAML valid', $pills[1]['label']);
+    $this->assertSame([], ReviewPageData::gatePills([]));
+  }
+
+  /**
+   * Repo-level findings are not only maintenance: in a monorepo the tool files
+   * repo-wide structure and quality findings under "root" and the assembler
+   * keeps them at repo level (appverse-review#43). The page must show them,
+   * sorted into the same blocks as an app's, without signal levels.
+   *
+   * @covers ::buildRepo
+   */
+  public function testBuildRepoKeepsNonMaintenanceRepoFindings(): void {
+    $repo = ReviewPageData::buildRepo([
+      $this->finding('MNT-03', 'info'),
+      $this->finding('STR-04', 'medium'),
+      $this->finding('QUA-06', 'low'),
+      $this->finding('MNT-02', 'info', 'PASS'),
+    ], ['level' => 'some_notes', 'summary' => 'Active', 'anchor' => '#upkeep', 'note' => '']);
+
+    $this->assertSame('1 finding · 1 Info', $repo['maintenance']['count_line']);
+    $this->assertSame('some_notes', $repo['maintenance']['level']);
+    $this->assertSame(['structure', 'code_quality'], array_keys($repo['blocks']), 'only blocks with findings, in the fixed order');
+    $this->assertSame(['STR-04'], array_column($repo['blocks']['structure']['groups'][0]['findings'], 'rule'));
+    $this->assertNull($repo['blocks']['structure']['level']);
+    $this->assertSame(3, $repo['total'], 'three findings; the PASS row is not one');
+  }
+
+  /**
+   * The per-app assembly: findings sorted into the five blocks in the fixed
+   * order, each block carrying its level, count line, severity groups, and
+   * the "also flagged" marks; PASS rows excluded everywhere.
+   *
+   * @covers ::buildApp
+   */
+  public function testBuildAppSortsFindingsIntoBlocksInOrder(): void {
+    $app = ReviewPageData::buildApp([
+      'app_id' => 'jupyter_example',
+      'name' => 'Jupyter (Example)',
+      'criteria' => ['metadata' => 'fail', 'yaml_valid' => 'pass'],
+      'conclusion' => NULL,
+      'levels' => [
+        'security' => ['level' => 'solid', 'summary' => 'No security findings', 'anchor' => '#security', 'note' => ''],
+        'portability' => ['level' => 'some_notes', 'summary' => 'Cluster hardcoded', 'anchor' => '#portability', 'note' => 'Fine for a reference app.'],
+        'documentation' => ['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '#documentation', 'note' => ''],
+      ],
+      'findings' => [
+        $this->finding('STR-02', 'high', 'FAIL', 'sid-str'),
+        $this->finding('QUA-02', 'low', 'WARN', 'sid-port'),
+        $this->finding('QUA-03', 'low', 'PASS', 'sid-pass'),
+        $this->finding('QUA-05', 'low', 'WARN', 'sid-cq'),
+      ],
+    ], [['label' => '2026-09-20 · a52c443', 'stable_ids' => ['sid-port']]]);
+
+    $this->assertSame(['structure', 'security', 'portability', 'documentation', 'code_quality'], array_keys($app['blocks']));
+    $this->assertSame('Structure', $app['blocks']['structure']['title']);
+    $this->assertSame(['metadata', 'yaml_valid'], array_column($app['blocks']['structure']['gates'], 'key'));
+    $this->assertSame('1 finding · 1 High', $app['blocks']['structure']['count_line']);
+    $this->assertSame('some_notes', $app['blocks']['portability']['level']);
+    $this->assertSame('Fine for a reference app.', $app['blocks']['portability']['note']);
+    $this->assertSame(['2026-09-20 · a52c443'], $app['blocks']['portability']['groups'][0]['findings'][0]['also_flagged_in']);
+    $this->assertSame('No findings', $app['blocks']['security']['count_line']);
+    $this->assertSame([], $app['blocks']['security']['groups']);
+    // The PASS QUA-03 row is not in code_quality; the WARN QUA-05 is.
+    $this->assertSame('1 finding · 1 Low', $app['blocks']['code_quality']['count_line']);
+    $this->assertSame(['QUA-05'], array_column($app['blocks']['code_quality']['groups'][0]['findings'], 'rule'));
+    // Code quality has no level of its own: it feeds the decision, not a signal.
+    $this->assertNull($app['blocks']['code_quality']['level']);
+  }
+
+}

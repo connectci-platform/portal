@@ -92,6 +92,19 @@ ood_software.app_send_for_review:
 
 # --- Admin-only transitions ---
 
+ood_software.review_page:
+  path: '/appverse/review/{node}'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewPageForm'
+    _title_callback: '\Drupal\ood_software\Form\ReviewPageForm::title'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _entity_access: 'node.view'
+    node: \d+
+
 ood_software.repo_run_review:
   path: '/appverse/repo/{node}/run-review'
   defaults:

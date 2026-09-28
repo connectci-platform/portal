@@ -1,0 +1,665 @@
+/* Appverse review page. Ported from appverse-planning review-system/mockups/
+   review-moderation-wireframe.html (2026-09-13); every rule is scoped under
+   .arv-page so the wireframe's generic class names stay local to this page. */
+
+.arv-page main {
+  max-width:1140px;
+  margin:0 auto;
+  padding:0 24px;
+}
+
+.arv-page header.page {
+  display:flex;
+   align-items:flex-start;
+   justify-content:space-between;
+   gap:24px;
+    padding:22px 0 16px;
+   margin-bottom:4px;
+}
+
+.arv-page h1 {
+  font-size:1.5rem;
+  margin:0 0 4px;
+  font-weight:700;
+}
+
+.arv-page .sub {
+  color:var(--gray-700);
+  font-size:.9rem;
+  max-width:60ch;
+  margin:0;
+}
+
+.arv-page .cta-info {
+  font-size:.74rem;
+  color:var(--ink);
+  text-decoration:underline;
+}
+
+.arv-page .notify-check {
+  display:flex;
+   align-items:center;
+   gap:6px;
+   font-size:.8rem;
+   color:var(--gray-700);
+   white-space:nowrap;
+   margin-bottom:10px;
+}
+
+.arv-page .notify-check input {
+  width:auto;
+}
+
+.arv-page .btn {
+  font-family:inherit;
+  font-size:.76rem;
+  font-weight:700;
+  border-radius:3px;
+  padding:6px 12px;
+    cursor:pointer;
+  border:1.5px solid var(--ink);
+  background:var(--white);
+  color:var(--ink);
+}
+
+.arv-page .btn.primary {
+  background:var(--red);
+  border-color:var(--red);
+  color:#fff;
+}
+
+.arv-page .btn.ghost {
+  border-color:var(--gray-300);
+  color:var(--gray-700);
+}
+
+.arv-page .wf-note {
+  font-family:"Courier New",monospace;
+  font-size:11px;
+  color:#fff;
+  background:var(--gray-900);
+    padding:2px 7px;
+  border-radius:2px;
+  display:inline-block;
+}
+
+.arv-page code {
+  font-family:"Courier New",monospace;
+  font-size:.86em;
+  background:var(--gray-150);
+  padding:1px 4px;
+  border-radius:2px;
+}
+
+.arv-page h2.sec {
+  font-size:.95rem;
+   font-weight:700;
+   margin:26px 0 10px;
+}
+
+.arv-page h2.sec:first-child {
+  margin-top:0;
+}
+
+.arv-page .sec-head-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:26px 0 10px;
+}
+
+.arv-page .copy-btn {
+  display:inline-flex;
+   align-items:center;
+   justify-content:center;
+   width:22px;
+   height:22px;
+    border:none;
+   background:none;
+   cursor:pointer;
+   flex:none;
+   padding:0;
+}
+
+.arv-page .copy-btn svg {
+  width:13px;
+  height:13px;
+}
+
+.arv-page .copy-btn.copied svg * {
+  stroke:var(--status-green) !important;
+}
+
+.arv-page .overview-block {
+  background:#232323;
+  padding:8px 18px;
+  margin-bottom:20px;
+  border-radius:3px;
+}
+
+.arv-page .overview-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:10px 24px;
+}
+
+.arv-page .overview-meta {
+  font-size:.85rem;
+  color:#fff;
+}
+
+.arv-page .overview-meta code {
+  font-size:.85em;
+  background:rgba(255,255,255,.15);
+  color:#fff;
+}
+
+.arv-page .overview-meta a {
+  color:#fff;
+  text-decoration:underline;
+}
+
+.arv-page .prev-reviews {
+  font-size:.83rem;
+  color:#fff;
+}
+
+.arv-page .prev-reviews a {
+  color:#fff;
+  text-decoration:underline;
+  margin-left:8px;
+}
+
+.arv-page .layout {
+  display:grid;
+  grid-template-columns:1fr 320px;
+  gap:24px;
+  align-items:start;
+}
+
+.arv-page .sidebar {
+  position:sticky;
+  top:20px;
+}
+
+.arv-page .note-add {
+  margin-bottom:14px;
+}
+
+.arv-page .note-add-btn {
+  margin-top:6px;
+  width:100%;
+}
+
+.arv-page .notes-list {
+  margin-bottom:28px;
+}
+
+.arv-page .note-entry {
+  border-top:1px solid var(--gray-150);
+  padding:10px 0;
+}
+
+.arv-page .note-entry:first-child {
+  border-top:0;
+}
+
+.arv-page .note-meta {
+  display:flex;
+  gap:8px;
+  align-items:baseline;
+  margin-bottom:3px;
+}
+
+.arv-page .note-name {
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--ink);
+}
+
+.arv-page .note-date {
+  font-family:"Courier New",monospace;
+  font-size:.7rem;
+  color:var(--gray-500);
+}
+
+.arv-page .note-text {
+  font-size:.85rem;
+  color:var(--ink);
+}
+
+.arv-page select,
+.arv-page textarea,
+.arv-page input[type=text] {
+  font-family:inherit;
+   font-size:.86rem;
+   border:1px solid var(--ink);
+   border-radius:2px;
+    padding:6px 8px;
+   width:100%;
+   background:#fff;
+   color:var(--ink);
+}
+
+.arv-page select:focus,
+.arv-page textarea:focus,
+.arv-page input[type=text]:focus {
+  outline:2px solid var(--blue);
+   outline-offset:1px;
+}
+
+.arv-page textarea {
+  resize:vertical;
+  min-height:44px;
+}
+
+.arv-page .concl-caption {
+  font-size:.76rem;
+  color:var(--gray-500);
+}
+
+.arv-page .decision-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.arv-page .sidebar-rule {
+  border:none;
+  border-top:1px solid var(--gray-300);
+  margin:20px 0;
+}
+
+.arv-page .publish-row {
+  display:flex;
+  gap:10px;
+}
+
+.arv-page .publish-row .btn.primary {
+  flex:3;
+}
+
+.arv-page .publish-row .btn.ghost {
+  flex:1;
+}
+
+.arv-page .publish-block {
+  border-top:1px solid var(--gray-150);
+  padding-top:18px;
+  margin-bottom:28px;
+}
+
+.arv-page .publish-note {
+  font-size:.76rem;
+  color:var(--gray-700);
+  margin-bottom:8px;
+}
+
+.arv-page .notes-help {
+  font-size:.78rem;
+  color:var(--gray-700);
+  margin:0 0 12px;
+}
+
+.arv-page .internal-notes-block {
+  background:var(--gray-100);
+  padding:16px 16px 18px;
+  border-radius:6px;
+  margin-top:26px;
+}
+
+.arv-page .internal-notes-block h2.sec {
+  font-size:.83rem;
+}
+
+.arv-page .internal-notes-block .notes-help {
+  font-size:.68rem;
+}
+
+.arv-page .internal-notes-block textarea {
+  font-size:.74rem;
+}
+
+.arv-page .internal-notes-block .note-add-btn {
+  font-size:.7rem;
+}
+
+.arv-page .internal-notes-block .note-name {
+  font-size:.7rem;
+}
+
+.arv-page .internal-notes-block .note-date {
+  font-size:.62rem;
+}
+
+.arv-page .internal-notes-block .note-text {
+  font-size:.75rem;
+}
+
+.arv-page .vbody {
+  padding:0;
+}
+
+.arv-page .catblock {
+  border:1px solid var(--gray-300);
+   border-radius:2px;
+   margin-bottom:14px;
+   overflow:hidden;
+}
+
+.arv-page .cat-top {
+  padding:12px 14px;
+   border-bottom:1px solid var(--gray-150);
+}
+
+.arv-page .cat-title-row {
+  display:flex;
+   align-items:center;
+   justify-content:space-between;
+   gap:12px;
+   flex-wrap:wrap;
+}
+
+.arv-page .cat-left {
+  display:flex;
+   align-items:center;
+   gap:12px;
+}
+
+.arv-page .cat-name {
+  font-weight:700;
+  font-size:1.125rem;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.arv-page .cat-count {
+  font-size:.8rem;
+  color:var(--gray-700);
+}
+
+.arv-page .cat-count .n {
+  color:var(--gray-500);
+}
+
+.arv-page .rating-badge {
+  display:inline-flex;
+   align-items:center;
+   gap:8px;
+   background:var(--gray-150);
+   border:none;
+    border-radius:999px;
+   padding:6px 14px 6px 10px;
+   cursor:pointer;
+   font-family:inherit;
+}
+
+.arv-page .rating-badge svg {
+  height:20px;
+  width:auto;
+  display:block;
+  flex:none;
+}
+
+.arv-page .icon-badge {
+  display:inline-flex;
+   align-items:center;
+   background:var(--gray-150);
+    border-radius:999px;
+   padding:6px 12px;
+}
+
+.arv-page .icon-badge svg {
+  height:20px;
+  width:auto;
+  display:block;
+}
+
+.arv-page .edit-icon-btn {
+  display:inline-flex;
+   align-items:center;
+   justify-content:center;
+   width:22px;
+   height:22px;
+    border:none;
+   background:none;
+   cursor:pointer;
+   flex:none;
+   padding:0;
+}
+
+.arv-page .edit-icon-btn svg {
+  width:13px;
+  height:13px;
+}
+
+.arv-page .rating-dot {
+  width:15px;
+  height:15px;
+  border-radius:50%;
+  border:2px solid;
+  box-sizing:border-box;
+  flex:none;
+}
+
+.arv-page .rating-dot.level-high {
+  background:var(--status-green);
+  border-color:var(--status-green);
+}
+
+.arv-page .rating-dot.level-medium {
+  background:linear-gradient(90deg,var(--status-amber) 50%,transparent 50%);
+  border-color:var(--status-amber);
+}
+
+.arv-page .rating-dot.level-low {
+  background:transparent;
+  border-color:var(--status-red);
+}
+
+.arv-page .override-box {
+  display:none;
+   border:none;
+   border-radius:2px;
+   padding:8px 10px;
+   margin-top:8px;
+    background:var(--gray-150);
+   max-width:420px;
+}
+
+.arv-page .override-box.show {
+  display:block;
+}
+
+.arv-page .sev-group {
+  border-top:1px solid var(--gray-150);
+}
+
+.arv-page .sev-head {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:8px 14px;
+  background:var(--white);
+    cursor:pointer;
+  font-size:.79rem;
+  font-weight:700;
+}
+
+.arv-page .sev-head .n {
+  color:var(--gray-500);
+  font-weight:400;
+}
+
+.arv-page .sev-head .car {
+  margin-left:auto;
+  font-family:"Courier New",monospace;
+  color:var(--gray-500);
+}
+
+.arv-page .sev-body.collapsed {
+  display:none;
+}
+
+.arv-page .finding {
+  padding:10px 14px 10px 14px;
+  border-top:1px solid var(--gray-150);
+}
+
+.arv-page .frow {
+  display:grid;
+  grid-template-columns:70px 1fr auto;
+  gap:10px;
+  align-items:start;
+  cursor:pointer;
+}
+
+.arv-page .frow .rule {
+  font-family:"Courier New",monospace;
+  font-size:.74rem;
+  color:var(--gray-700);
+  padding-top:2px;
+}
+
+.arv-page .frow .sum {
+  font-size:.86rem;
+}
+
+.arv-page .frow [contenteditable] {
+  outline:none;
+  border-bottom:1px dashed transparent;
+}
+
+.arv-page .frow [contenteditable]:hover {
+  border-bottom-color:var(--gray-300);
+}
+
+.arv-page .frow [contenteditable]:focus {
+  border-bottom-color:var(--blue);
+}
+
+.arv-page .frow .ev {
+  font-family:"Courier New",monospace;
+  font-size:.72rem;
+  color:var(--gray-500);
+  margin-top:2px;
+}
+
+.arv-page .history {
+  font-size:.72rem;
+  margin-top:3px;
+}
+
+.arv-page .history a {
+  color:var(--blue);
+  text-decoration:none;
+}
+
+.arv-page .frow .note-flag {
+  font-size:.66rem;
+  font-family:"Courier New",monospace;
+  color:var(--blue);
+  border:1px solid var(--blue);
+  border-radius:20px;
+  padding:1px 7px;
+  white-space:nowrap;
+}
+
+.arv-page .frow .expand-hint {
+  font-size:.68rem;
+  color:var(--gray-500);
+  white-space:nowrap;
+}
+
+.arv-page .frow-actions {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-self:end;
+}
+
+.arv-page .delete-btn {
+  background:none;
+  border:none;
+  cursor:pointer;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  flex:none;
+}
+
+.arv-page .delete-btn svg {
+  width:13px;
+  height:13px;
+}
+
+.arv-page .add-finding-btn {
+  display:block;
+   font-size:.78rem;
+   color:var(--blue);
+   text-decoration:underline;
+   cursor:pointer;
+    padding:10px 14px;
+   border-top:1px solid var(--gray-150);
+}
+
+.arv-page .fnote {
+  display:none;
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px dashed var(--gray-300);
+}
+
+.arv-page .fnote.open {
+  display:block;
+}
+
+.arv-page .fnote label {
+  font-size:.74rem;
+  font-weight:700;
+  display:block;
+  margin-bottom:4px;
+}
+
+.arv-page .empty-invite {
+  border:1px dashed var(--gray-500);
+  padding:14px;
+  text-align:center;
+  color:var(--gray-500);
+  font-size:.83rem;
+}
+
+/* Additions beyond the wireframe: gate pills, state pill, collapsed states,
+   monorepo app headings, report links. */
+.arv-page .arv-title { margin: 0 0 .75rem; font-size: 1.6rem; }
+.arv-page .app-name { font-size: 1.15rem; margin: 1.5rem 0 .5rem; }
+.arv-page .app-name .muted, .arv-page .muted { color: #8b9195; font-weight: 400; font-size: .9em; }
+.arv-page .state-pill { display: inline-block; padding: .05rem .5rem; border-radius: 999px; font-size: .78rem; background: #eceded; color: #2c2a29; }
+.arv-page .state-pill--published { background: #e0f3f0; color: #00857a; }
+.arv-page .state-pill--in_review { background: #e2eff6; color: #0076af; }
+.arv-page .gates { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.arv-page .gate { font-size: .76rem; padding: .1rem .5rem; border-radius: 4px; background: #eceded; color: #2c2a29; }
+.arv-page .gate b { font-weight: 600; }
+.arv-page .gate--pass b { color: #00857a; }
+.arv-page .gate--fail b { color: #c91235; }
+.arv-page .gate--warn b { color: #c98a2b; }
+.arv-page .gate--not_checked b { color: #8b9195; }
+.arv-page .cat-summary { font-size: .86rem; color: #545860; margin-top: .25rem; }
+.arv-page .override-note { font-size: .86rem; color: #2c2a29; margin-top: .35rem; padding: .4rem .6rem; background: #fff8ec; border-left: 3px solid #c98a2b; }
+.arv-page .report-link { font-size: .78rem; margin-left: .5rem; color: #0076af; text-decoration: none; }
+.arv-page .rating-label { font-size: .78rem; margin-left: .25rem; }
+.arv-page .rating-badge--none { color: #8b9195; font-size: .78rem; }
+.arv-page .rating-dot.level-none { background: #c9cdd0; }
+.arv-page .also-flagged { color: #c98a2b; }
+.arv-page .sev-body.collapsed, .arv-page .fnote.collapsed, .arv-page .override-box.collapsed { display: none; }
+.arv-page .fnote textarea, .arv-page .override-box textarea { width: 100%; }
+.arv-page .decision-app { margin-bottom: .5rem; }
+.arv-page .decision-app-name { font-size: .82rem; color: #545860; }
+.arv-page .decision-value { font-weight: 600; }
+.arv-page .tool-version { font-family: ui-monospace, monospace; font-size: .78rem; color: #8b9195; }
+.arv-page .form-item { margin: 0; }
+.arv-page .publish-row .form-actions { display: flex; gap: .5rem; }
