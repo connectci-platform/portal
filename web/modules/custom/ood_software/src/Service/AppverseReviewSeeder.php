@@ -126,7 +126,11 @@ class AppverseReviewSeeder {
     $review->set('field_arv_verdicts', $verdicts);
 
     foreach (['report_md' => 'field_arv_report_md', 'report_pdf' => 'field_arv_report_pdf', 'report_html' => 'field_arv_report_html'] as $key => $field) {
-      $file = $this->attachReport($artifact['artifacts'][$key] ?? '', $reports_dir, $sha);
+      // Each report field's storage config decides where its file lives. The
+      // MD and PDF are private so a Draft review's report is not readable at a
+      // guessable public URL; the HTML is public by config (deep-link target).
+      $scheme = $review->getFieldDefinition($field)->getSetting('uri_scheme') ?: 'private';
+      $file = $this->attachReport($artifact['artifacts'][$key] ?? '', $reports_dir, $sha, $scheme);
       if ($file !== NULL) {
         $review->set($field, $file);
       }
@@ -247,8 +251,13 @@ class AppverseReviewSeeder {
 
   /**
    * Saves a report file into managed storage and returns it, if available.
+   *
+   * @param string $scheme
+   *   The stream wrapper scheme of the field the file is for ('private' or
+   *   'public'), taken from that field's storage config so the two cannot
+   *   disagree.
    */
-  protected function attachReport(string $artifact_path, ?string $reports_dir, string $sha) {
+  protected function attachReport(string $artifact_path, ?string $reports_dir, string $sha, string $scheme) {
     if ($artifact_path === '' || $reports_dir === NULL) {
       return NULL;
     }
@@ -257,7 +266,7 @@ class AppverseReviewSeeder {
       $this->logger->warning('Report file @file not found in @dir; field left empty.', ['@file' => basename($artifact_path), '@dir' => $reports_dir]);
       return NULL;
     }
-    $directory = 'public://appverse-reviews/' . substr($sha, 0, 7);
+    $directory = $scheme . '://appverse-reviews/' . substr($sha, 0, 7);
     $this->fileSystem->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
     return $this->fileRepository->writeData(file_get_contents($source), $directory . '/' . basename($artifact_path), FileExists::Replace);
   }
