@@ -43,7 +43,7 @@ services:
 
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService
-    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system']
+    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder']
 
   ood_software.review_seeder:
     class: Drupal\ood_software\Service\AppverseReviewSeeder

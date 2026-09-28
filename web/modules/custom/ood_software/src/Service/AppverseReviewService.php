@@ -71,6 +71,7 @@ class AppverseReviewService {
     protected EntityTypeManagerInterface $entityTypeManager,
     protected TimeInterface $time,
     protected FileSystemInterface $fileSystem,
+    protected AppverseReviewSeeder $seeder,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -467,10 +468,12 @@ class AppverseReviewService {
    * Process a completed workflow run: download artifacts, update the node.
    */
   protected function processCompletedRun(NodeInterface $node, array $run, string $token): void {
-    $runId = $run['id'];
+    $runId = (int) $run['id'];
     $conclusion = $run['conclusion'] ?? 'unknown';
-
     if ($conclusion !== 'success') {
+      // Since appverse-review#43 a review that writes no output concludes
+      // red rather than green-with-no-artifact, so this is the terminal
+      // state for a failed review.
       $this->logger->warning('Review run @id for node @nid concluded with @conclusion.', [
         '@id' => $runId,
         '@nid' => $node->id(),
@@ -480,81 +483,53 @@ class AppverseReviewService {
       return;
     }
 
-    $summary = $this->downloadReviewSummary($runId, $token);
-    $pdfFile = $this->downloadReviewPdf($runId, $token, $node);
+    // Non-production environments dispatch dry-runs: the workflow writes a
+    // placeholder report and no artifact, by design.
+    if (($run['inputs']['review_aspects'] ?? '') === 'dry-run') {
+      $this->logger->notice('Review run @id for node @nid was a dry-run; nothing to seed.', [
+        '@id' => $runId,
+        '@nid' => $node->id(),
+      ]);
+      $this->updateNodeReviewStatus($node, 'complete', $runId);
+      return;
+    }
 
-    $this->updateNodeWithResults($node, $runId, $summary, $pdfFile);
+    $files = $this->downloadReviewFiles($runId, $token);
+    $artifact = isset($files['artifact']) ? Json::decode((string) file_get_contents($files['artifact'])) : NULL;
+    if (!is_array($artifact)) {
+      $this->logger->error('Review run @id for node @nid has no usable artifact JSON (files: @files); marking as error.', [
+        '@id' => $runId,
+        '@nid' => $node->id(),
+        '@files' => implode(', ', array_keys($files ?? [])) ?: 'none',
+      ]);
+      $this->cleanupReviewFiles($files);
+      $this->updateNodeReviewStatus($node, 'error', $runId);
+      return;
+    }
+
+    try {
+      // The repo node is passed explicitly: this run was dispatched for it,
+      // so there is nothing to look up by URL. force: a re-dispatched run on
+      // the same commit is a deliberate re-review and gets its own review
+      // node; the reviewer asked for it and the results will differ.
+      $review = $this->seeder->seedFromArtifact($artifact, $node, dirname($files['artifact']), TRUE);
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Failed to seed a review from run @id for node @nid: @msg', [
+        '@id' => $runId,
+        '@nid' => $node->id(),
+        '@msg' => $e->getMessage(),
+      ]);
+      $this->cleanupReviewFiles($files);
+      $this->updateNodeReviewStatus($node, 'error', $runId);
+      return;
+    }
+    $this->cleanupReviewFiles($files);
+
+    $this->recordSeededReview($node, $runId, $review, $artifact['recommendation']['decision'] ?? NULL);
   }
 
-  /**
-   * Download and parse review-summary.json from a workflow run's artifacts.
-   *
-   * @return array|null
-   *   Parsed JSON summary, or NULL on failure.
-   */
-  protected function downloadReviewSummary(int $runId, string $token): ?array {
-    $artifacts = $this->fetchArtifacts($runId, $token);
-    if ($artifacts === NULL) {
-      return NULL;
-    }
 
-    foreach ($artifacts as $artifact) {
-      $name = $artifact['name'] ?? '';
-      if (!str_starts_with($name, 'review-')) {
-        continue;
-      }
-
-      $zipContents = $this->downloadArtifactZip($artifact['archive_download_url'], $token);
-      if ($zipContents === NULL) {
-        continue;
-      }
-
-      $extracted = $this->extractFromZip($zipContents, 'review-summary.json');
-      if ($extracted !== NULL) {
-        $parsed = Json::decode($extracted);
-        if (is_array($parsed)) {
-          return $parsed;
-        }
-      }
-    }
-
-    $this->logger->warning('No review-summary.json found in artifacts for run @id.', [
-      '@id' => $runId,
-    ]);
-    return NULL;
-  }
-
-  /**
-   * Download the review PDF from a workflow run's artifacts.
-   *
-   * @return \Drupal\file\FileInterface|null
-   *   Saved file entity, or NULL on failure.
-   */
-  protected function downloadReviewPdf(int $runId, string $token, NodeInterface $node): ?\Drupal\file\FileInterface {
-    $artifacts = $this->fetchArtifacts($runId, $token);
-    if ($artifacts === NULL) {
-      return NULL;
-    }
-
-    foreach ($artifacts as $artifact) {
-      $name = $artifact['name'] ?? '';
-      if (!str_starts_with($name, 'review-')) {
-        continue;
-      }
-
-      $zipContents = $this->downloadArtifactZip($artifact['archive_download_url'], $token);
-      if ($zipContents === NULL) {
-        continue;
-      }
-
-      $pdfData = $this->extractFromZip($zipContents, '.pdf');
-      if ($pdfData !== NULL) {
-        return $this->savePdfFile($pdfData, $node);
-      }
-    }
-
-    return NULL;
-  }
 
   /**
    * Fetch the artifacts list for a workflow run.
@@ -604,121 +579,183 @@ class AppverseReviewService {
     }
   }
 
+
+
+
   /**
-   * Extract a file from a zip archive by name suffix.
+   * Maps the artifact's recommendation to the repo node's field enum.
    *
-   * @param string $zipContents
-   *   Raw zip bytes.
-   * @param string $nameSuffix
-   *   Filename or suffix to match (e.g. 'review-summary.json' or '.pdf').
-   *
-   * @return string|null
-   *   File contents, or NULL if not found.
+   * The artifact says accept / accept_with_suggestions / request_changes /
+   * reject; field_review_recommendation allows accepted /
+   * accepted_with_suggestions / changes_requested / rejected. An unknown
+   * value maps to NULL rather than a guess.
    */
-  protected function extractFromZip(string $zipContents, string $nameSuffix): ?string {
-    $tmpFile = $this->fileSystem->tempnam('temporary://', 'review_');
-    if ($tmpFile === FALSE) {
+  public static function mapRecommendation(?string $decision): ?string {
+    $map = [
+      'accept' => 'accepted',
+      'accept_with_suggestions' => 'accepted_with_suggestions',
+      'request_changes' => 'changes_requested',
+      'reject' => 'rejected',
+    ];
+    $key = strtolower(trim((string) $decision));
+    if ($key === '') {
       return NULL;
     }
-    file_put_contents($tmpFile, $zipContents);
+    if (isset($map[$key])) {
+      return $map[$key];
+    }
+    return in_array($key, $map, TRUE) ? $key : NULL;
+  }
 
+  /**
+   * Extracts the review files from a workflow-run artifact zip into $dir.
+   *
+   * GitHub packs the run's files under a nested path; only the basename
+   * matters. Returns the extracted paths keyed 'artifact' (the
+   * *.artifact.json), 'md', 'pdf', 'html' — whichever were present, in that
+   * order — and nothing else lands in $dir. Bytes that are not a zip give [].
+   */
+  public static function extractReviewFiles(string $zipContents, string $dir): array {
+    $tmpFile = tempnam(sys_get_temp_dir(), 'review_zip_');
+    if ($tmpFile === FALSE) {
+      return [];
+    }
+    file_put_contents($tmpFile, $zipContents);
     $zip = new \ZipArchive();
     if ($zip->open($tmpFile) !== TRUE) {
       @unlink($tmpFile);
-      return NULL;
+      return [];
     }
-
-    $result = NULL;
+    $found = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
-      $entryName = $zip->getNameIndex($i);
-      if (str_ends_with($entryName, $nameSuffix)) {
-        $result = $zip->getFromIndex($i);
-        if ($result === FALSE) {
-          $result = NULL;
-        }
-        break;
+      $name = basename($zip->getNameIndex($i));
+      if (str_ends_with($name, '.artifact.json')) {
+        $kind = 'artifact';
       }
+      elseif (preg_match('/\.(md|pdf|html)$/', $name, $m)) {
+        $kind = $m[1];
+      }
+      else {
+        continue;
+      }
+      if (isset($found[$kind])) {
+        continue;
+      }
+      $bytes = $zip->getFromIndex($i);
+      if ($bytes === FALSE) {
+        continue;
+      }
+      $path = rtrim($dir, '/') . '/' . $name;
+      file_put_contents($path, $bytes);
+      $found[$kind] = $path;
     }
-
     $zip->close();
     @unlink($tmpFile);
-    return $result;
+    $ordered = [];
+    foreach (['artifact', 'md', 'pdf', 'html'] as $kind) {
+      if (isset($found[$kind])) {
+        $ordered[$kind] = $found[$kind];
+      }
+    }
+    return $ordered;
   }
 
   /**
-   * Save PDF data as a Drupal file entity in private://.
+   * Downloads the run's review-* artifact and extracts the review files.
    *
-   * @return \Drupal\file\FileInterface|null
+   * @return array|null
+   *   The extracted files as extractReviewFiles() returns them, or NULL when
+   *   the run has no review-* artifact or it could not be fetched.
    */
-  protected function savePdfFile(string $pdfData, NodeInterface $node): ?\Drupal\file\FileInterface {
-    $directory = 'private://appverse-reviews';
-    $this->fileSystem->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY);
-
-    $repoUrl = $this->extractRepoUrl($node);
-    $slug = $repoUrl ? str_replace('/', '-', $this->parseOwnerRepo($repoUrl) ?? 'unknown') : 'unknown';
-    $filename = sprintf('review-%s-%s.pdf', $slug, date('Y-m-d'));
-    $destination = $directory . '/' . $filename;
-
-    $uri = $this->fileSystem->saveData($pdfData, $destination, FileSystemInterface::EXISTS_RENAME);
-    if ($uri === FALSE) {
-      $this->logger->error('Failed to save review PDF for node @nid.', [
-        '@nid' => $node->id(),
-      ]);
+  protected function downloadReviewFiles(int $runId, string $token): ?array {
+    $artifacts = $this->fetchArtifacts($runId, $token);
+    if ($artifacts === NULL) {
       return NULL;
     }
-
-    $fileStorage = $this->entityTypeManager->getStorage('file');
-    $file = $fileStorage->create([
-      'uri' => $uri,
-      'filename' => $filename,
-      'filemime' => 'application/pdf',
-      'status' => 1,
-    ]);
-    $file->save();
-    return $file;
+    foreach ($artifacts as $artifact) {
+      if (!str_starts_with($artifact['name'] ?? '', 'review-')) {
+        continue;
+      }
+      $zipContents = $this->downloadArtifactZip($artifact['archive_download_url'], $token);
+      if ($zipContents === NULL) {
+        continue;
+      }
+      $dir = $this->fileSystem->realpath('temporary://') . '/review-run-' . $runId . '-' . bin2hex(random_bytes(4));
+      if (!@mkdir($dir, 0700, TRUE)) {
+        $this->logger->error('Could not create a temp directory for run @id.', ['@id' => $runId]);
+        return NULL;
+      }
+      $files = self::extractReviewFiles($zipContents, $dir);
+      if ($files !== []) {
+        return $files;
+      }
+      @rmdir($dir);
+    }
+    $this->logger->warning('No review-* artifact with review files found for run @id.', ['@id' => $runId]);
+    return NULL;
   }
 
   /**
-   * Update an appverse_repo node with review results.
+   * Removes the extracted review files and their temp directory.
    */
-  protected function updateNodeWithResults(NodeInterface $node, int $runId, ?array $summary, ?\Drupal\file\FileInterface $pdfFile): void {
+  protected function cleanupReviewFiles(?array $files): void {
+    if (!$files) {
+      return;
+    }
+    foreach ($files as $path) {
+      @unlink($path);
+    }
+    @rmdir(dirname(reset($files)));
+  }
+
+  /**
+   * Marks the repo node complete and records the tool's recommendation.
+   *
+   * field_review_report is left alone on purpose: the review's PDF is a
+   * private file owned by the review node, and referencing it from the repo
+   * node would let anyone who can view the repo download a Draft review.
+   * The hub should link to the review node instead.
+   */
+  protected function recordSeededReview(NodeInterface $node, int $runId, NodeInterface $review, ?string $decision): void {
     try {
       $storage = $this->entityTypeManager->getStorage('node');
       $fresh = $storage->loadUnchanged($node->id());
       if (!$fresh) {
         return;
       }
-
       if ($fresh->hasField('field_review_status')) {
         $fresh->set('field_review_status', 'complete');
       }
       if ($fresh->hasField('field_review_run_id')) {
         $fresh->set('field_review_run_id', $runId);
       }
-
-      if ($summary !== NULL && $fresh->hasField('field_review_recommendation')) {
-        $recommendation = $summary['recommendation'] ?? NULL;
-        $fresh->set('field_review_recommendation', $recommendation);
+      if ($fresh->hasField('field_review_recommendation')) {
+        $mapped = self::mapRecommendation($decision);
+        if ($mapped === NULL && $decision !== NULL) {
+          $this->logger->warning('Run @id: recommendation "@decision" has no field value; left empty.', [
+            '@id' => $runId,
+            '@decision' => $decision,
+          ]);
+        }
+        $fresh->set('field_review_recommendation', $mapped);
       }
-
-      if ($pdfFile !== NULL && $fresh->hasField('field_review_report')) {
-        $fresh->set('field_review_report', ['target_id' => $pdfFile->id()]);
-      }
-
       $fresh->_ood_software_suppress_notifications = TRUE;
       if (method_exists($fresh, 'setValidationRequired')) {
         $fresh->setValidationRequired(FALSE);
       }
       $fresh->save();
 
-      $this->logger->info('Review results saved for node @nid (run @runId, recommendation: @rec).', [
+      $this->logger->notice('Seeded review @review from run @id for repo @nid (recommendation: @rec).', [
+        '@review' => $review->id(),
+        '@id' => $runId,
         '@nid' => $node->id(),
-        '@runId' => $runId,
-        '@rec' => $summary['recommendation'] ?? 'unknown',
+        '@rec' => $decision ?? 'none',
       ]);
     }
     catch (\Throwable $e) {
-      $this->logger->error('Failed to save review results for node @nid: @msg', [
+      $this->logger->error('Review @review was seeded from run @id but the repo node @nid could not be updated: @msg', [
+        '@review' => $review->id(),
+        '@id' => $runId,
         '@nid' => $node->id(),
         '@msg' => $e->getMessage(),
       ]);
