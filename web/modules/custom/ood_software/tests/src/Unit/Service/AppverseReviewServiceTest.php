@@ -117,6 +117,60 @@ class AppverseReviewServiceTest extends UnitTestCase {
   }
 
   /**
+   * The workflow-runs API returns no dispatch inputs, so the loop cannot
+   * find its run by target_repo. It sends an id it can recompute from the
+   * node (nid + dispatch time), the workflow echoes it in the run title,
+   * and the loop matches on that.
+   *
+   * @covers ::correlationId
+   */
+  public function testCorrelationIdIsRecomputableFromTheNode(): void {
+    $this->assertSame('portal-12319-1790000000', AppverseReviewService::correlationId(12319, 1790000000));
+  }
+
+  /**
+   * @covers ::runMatches
+   * @dataProvider runMatchesProvider
+   */
+  public function testRunMatches(array $run, string $id, bool $expected): void {
+    $this->assertSame($expected, AppverseReviewService::runMatches($run, $id));
+  }
+
+  public static function runMatchesProvider(): array {
+    $title = fn(string $t) => ['display_title' => $t];
+    return [
+      'the run this node dispatched' => [$title('Review o/r · all · portal-12319-1790000000'), 'portal-12319-1790000000', TRUE],
+      'a later dispatch for the same node is a different id' => [$title('Review o/r · all · portal-12319-1790000600'), 'portal-12319-1790000000', FALSE],
+      'a superstring id does not match (token boundary)' => [$title('Review o/r · all · portal-12319-17900000001'), 'portal-12319-1790000000', FALSE],
+      'a hand dispatch has no id' => [$title('Review o/r · all · '), 'portal-12319-1790000000', FALSE],
+      'an old-style run has the default title' => [$title('AppVerse App Review'), 'portal-12319-1790000000', FALSE],
+      'an empty id never matches anything' => [$title('Review o/r · all · '), '', FALSE],
+      'a run without a title' => [['id' => 1], 'portal-12319-1790000000', FALSE],
+    ];
+  }
+
+  /**
+   * The aspects the run was dispatched with come from the same title; a
+   * dry-run produces no artifact by design and must not read as an error.
+   *
+   * @covers ::runAspects
+   * @dataProvider runAspectsProvider
+   */
+  public function testRunAspects(array $run, ?string $expected): void {
+    $this->assertSame($expected, AppverseReviewService::runAspects($run));
+  }
+
+  public static function runAspectsProvider(): array {
+    return [
+      'dry-run' => [['display_title' => 'Review o/r · dry-run · portal-1-2'], 'dry-run'],
+      'all' => [['display_title' => 'Review Sweet-and-Fizzy/appverse-example-monorepo · all · portal-12319-1790000000'], 'all'],
+      'single aspect' => [['display_title' => 'Review o/r · security · '], 'security'],
+      'old-style title' => [['display_title' => 'AppVerse App Review'], NULL],
+      'no title' => [[], NULL],
+    ];
+  }
+
+  /**
    * Builds a zip archive in memory-ish (via a temp file) and returns its bytes.
    */
   private function buildZip(array $entries): string {

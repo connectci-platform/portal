@@ -133,8 +133,12 @@ class AppverseReviewService {
       return;
     }
 
-    if ($this->dispatch($ownerRepo)) {
-      $this->recordDispatch($node);
+    // One timestamp for both the node and the id, so the id can be recomputed
+    // from the node when the run is polled for.
+    $dispatchedAt = $this->time->getRequestTime();
+    $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
+    if ($this->dispatch($ownerRepo, 'sonnet', $correlationId)) {
+      $this->recordDispatch($node, $dispatchedAt);
     }
   }
 
@@ -157,7 +161,7 @@ class AppverseReviewService {
    * hook_node_update() context. Sets dispatched_at, status=pending,
    * and clears prior recommendation/report/run_id.
    */
-  protected function recordDispatch(NodeInterface $node): void {
+  protected function recordDispatch(NodeInterface $node, int $dispatchedAt): void {
     try {
       $storage = $this->entityTypeManager->getStorage('node');
       $fresh = $storage->loadUnchanged($node->id());
@@ -165,9 +169,8 @@ class AppverseReviewService {
         return;
       }
 
-      $now = $this->time->getRequestTime();
       if ($fresh->hasField('field_review_dispatched_at')) {
-        $fresh->set('field_review_dispatched_at', $now);
+        $fresh->set('field_review_dispatched_at', $dispatchedAt);
       }
       if ($fresh->hasField('field_review_status')) {
         $fresh->set('field_review_status', 'pending');
@@ -204,11 +207,14 @@ class AppverseReviewService {
    * @return bool
    *   TRUE if the dispatch succeeded (HTTP 204), FALSE otherwise.
    */
-  public function dispatch(string $targetRepo, string $model = 'sonnet'): bool {
+  public function dispatch(string $targetRepo, string $model = 'sonnet', string $correlationId = '', ?string $aspectsOverride = NULL): bool {
     // On non-production environments, only dispatch dry-run reviews to
     // avoid spending API credits on dev/staging test transitions.
+    // $aspectsOverride exists for explicit callers (drush php:eval) that
+    // want one real review from a non-production site to test the loop;
+    // the transition hook never sets it.
     $env = getenv('PANTHEON_ENVIRONMENT');
-    $aspects = ($env === 'live') ? 'all' : 'dry-run';
+    $aspects = $aspectsOverride ?? (($env === 'live') ? 'all' : 'dry-run');
     if ($aspects === 'dry-run') {
       $this->logger->info('Non-production environment (@env): dispatching dry-run review for @repo.', [
         '@env' => $env ?: 'local',
@@ -241,6 +247,7 @@ class AppverseReviewService {
             'target_branch' => '',
             'review_aspects' => $aspects,
             'model' => $model,
+            'correlation_id' => $correlationId,
           ],
         ],
       ]);
@@ -341,24 +348,23 @@ class AppverseReviewService {
         ? (int) $node->get('field_review_dispatched_at')->value
         : 0;
 
-      $repoUrl = $this->extractRepoUrl($node);
-      if ($repoUrl === NULL) {
+      if ($dispatchedAt <= 0) {
+        // Nothing to correlate on; the stale timeout below cannot fire either.
+        $this->logger->warning('Review for node @nid is pending with no dispatch time; marking as error.', ['@nid' => $node->id()]);
+        $this->updateNodeReviewStatus($node, 'error', 0);
         continue;
       }
-      $ownerRepo = $this->parseOwnerRepo($repoUrl);
-      if ($ownerRepo === NULL) {
-        continue;
-      }
+      $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
 
       // Check for a completed run first.
-      $matchedRun = $this->matchRun($completedRuns, $ownerRepo, $dispatchedAt);
+      $matchedRun = $this->matchRun($completedRuns, $correlationId, $dispatchedAt);
       if ($matchedRun !== NULL) {
         $this->processCompletedRun($node, $matchedRun, $token);
         continue;
       }
 
       // If a matching run is still in progress, update status and move on.
-      $activeRun = $this->matchRun($activeRuns, $ownerRepo, $dispatchedAt);
+      $activeRun = $this->matchRun($activeRuns, $correlationId, $dispatchedAt);
       if ($activeRun !== NULL) {
         if ($node->hasField('field_review_status') && $node->get('field_review_status')->value !== 'in_progress') {
           $this->updateNodeReviewStatus($node, 'in_progress', (int) $activeRun['id']);
@@ -434,29 +440,26 @@ class AppverseReviewService {
   }
 
   /**
-   * Match a completed run to a pending node by target_repo and timing.
+   * Match a run to a pending node by its correlation id.
    *
-   * GitHub's workflow_dispatch API doesn't return a run ID, so we
-   * correlate by checking that the run's inputs.target_repo matches
-   * and the run was created after the dispatch timestamp.
+   * GitHub's workflow_dispatch API doesn't return a run ID, and the
+   * workflow-runs API doesn't return dispatch inputs, so we correlate on
+   * the id the workflow echoes into its run title (see correlationId()).
    *
    * @return array|null
    *   The matched run object, or NULL if no match.
    */
-  protected function matchRun(array $runs, string $targetRepo, int $dispatchedAt): ?array {
+  protected function matchRun(array $runs, string $correlationId, int $dispatchedAt): ?array {
     foreach ($runs as $run) {
-      $runTargetRepo = $run['inputs']['target_repo'] ?? NULL;
-      if ($runTargetRepo !== $targetRepo) {
+      if (!self::runMatches($run, $correlationId)) {
         continue;
       }
-
       $runCreatedAt = strtotime($run['created_at'] ?? '');
       if ($runCreatedAt === FALSE) {
         continue;
       }
-
-      // Run must have been created within a reasonable window after dispatch.
-      // GitHub may take a few seconds to create the run after dispatch.
+      // Sanity check only: the id is unique per dispatch. GitHub may take a
+      // few seconds to create the run after the dispatch call returns.
       if ($runCreatedAt >= ($dispatchedAt - 60)) {
         return $run;
       }
@@ -485,7 +488,7 @@ class AppverseReviewService {
 
     // Non-production environments dispatch dry-runs: the workflow writes a
     // placeholder report and no artifact, by design.
-    if (($run['inputs']['review_aspects'] ?? '') === 'dry-run') {
+    if (self::runAspects($run) === 'dry-run') {
       $this->logger->notice('Review run @id for node @nid was a dry-run; nothing to seed.', [
         '@id' => $runId,
         '@nid' => $node->id(),
@@ -581,6 +584,47 @@ class AppverseReviewService {
 
 
 
+
+  /**
+   * The id the portal sends with a dispatch and finds in the run's title.
+   *
+   * Recomputable from the node (nid + field_review_dispatched_at), so no
+   * field is needed to remember it. The workflow-runs API does not return
+   * dispatch inputs, so the workflow echoes this id into its run-name and
+   * the loop matches on that instead of on target_repo and timing.
+   */
+  public static function correlationId(int $nid, int $dispatchedAt): string {
+    return sprintf('portal-%d-%d', $nid, $dispatchedAt);
+  }
+
+  /**
+   * Whether a run object from the workflow-runs API carries this id.
+   *
+   * Matches the id as a whole token of the title, so portal-1-10 does not
+   * match portal-1-100.
+   */
+  public static function runMatches(array $run, string $correlationId): bool {
+    if ($correlationId === '') {
+      return FALSE;
+    }
+    $title = (string) ($run['display_title'] ?? '');
+    return (bool) preg_match('/(?<![\w-])' . preg_quote($correlationId, '/') . '(?![\w-])/', $title);
+  }
+
+  /**
+   * The review_aspects the run was dispatched with, read from its title.
+   *
+   * The title is "Review <target_repo> · <aspects> · <correlation_id>";
+   * NULL when the run predates run-name or was not dispatched that way.
+   */
+  public static function runAspects(array $run): ?string {
+    $title = (string) ($run['display_title'] ?? '');
+    $parts = array_map('trim', explode(' · ', $title));
+    if (count($parts) < 2 || !str_starts_with($parts[0], 'Review ')) {
+      return NULL;
+    }
+    return $parts[1] !== '' ? $parts[1] : NULL;
+  }
 
   /**
    * Maps the artifact's recommendation to the repo node's field enum.
