@@ -1423,7 +1423,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         moderation_state:
           id: moderation_state
           table: node_field_data
@@ -2296,7 +2296,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
       filter_groups:
         operator: AND
         groups:
