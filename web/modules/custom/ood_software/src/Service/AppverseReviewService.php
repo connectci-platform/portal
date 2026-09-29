@@ -7,6 +7,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Site\Settings;
 use Drupal\key\KeyRepositoryInterface;
 use Drupal\node\NodeInterface;
 use GuzzleHttp\ClientInterface;
@@ -253,9 +254,9 @@ class AppverseReviewService {
     // want one real review from a non-production site to test the loop;
     // the transition hook never sets it.
     $env = getenv('PANTHEON_ENVIRONMENT');
-    $aspects = $aspectsOverride ?? (($env === 'live') ? 'all' : 'dry-run');
+    $aspects = $aspectsOverride ?? ($this->fullReviewsEnabled() ? 'all' : 'dry-run');
     if ($aspects === 'dry-run') {
-      $this->logger->info('Non-production environment (@env): dispatching dry-run review for @repo.', [
+      $this->logger->info('Environment @env is not allowed full reviews: dispatching dry-run review for @repo.', [
         '@env' => $env ?: 'local',
         '@repo' => $targetRepo,
       ]);
@@ -623,6 +624,29 @@ class AppverseReviewService {
 
 
 
+
+  /**
+   * Whether an environment may dispatch full (credit-spending) reviews.
+   *
+   * live always may. Any other environment must be named in the
+   * ood_software.review_full_environments setting — a Pantheon multidev
+   * that is testing the loop, say, via its settings.php. No name (local ddev)
+   * reads as "local". Everything else dispatches dry-runs, which produce a
+   * placeholder report and cost nothing.
+   */
+  public static function fullReviewsAllowed(?string $env, array $allowed): bool {
+    $env = ($env === NULL || $env === '') ? 'local' : $env;
+    return $env === 'live' || in_array($env, $allowed, TRUE);
+  }
+
+  /**
+   * fullReviewsAllowed() for this site: PANTHEON_ENVIRONMENT against the
+   * ood_software.review_full_environments setting.
+   */
+  public function fullReviewsEnabled(): bool {
+    $allowed = Settings::get('ood_software.review_full_environments', []);
+    return self::fullReviewsAllowed(getenv('PANTHEON_ENVIRONMENT') ?: NULL, is_array($allowed) ? $allowed : []);
+  }
 
   /**
    * The id the portal sends with a dispatch and finds in the run's title.

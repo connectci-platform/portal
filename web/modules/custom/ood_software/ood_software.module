@@ -1755,7 +1755,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $runReviewAction = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
     $label = $reviewStatus === NULL ? t('Run AI review') : t('Run AI review again');
-    if (getenv('PANTHEON_ENVIRONMENT') !== 'live') {
+    if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
     $runReviewAction = _ood_software_hub_action_form(

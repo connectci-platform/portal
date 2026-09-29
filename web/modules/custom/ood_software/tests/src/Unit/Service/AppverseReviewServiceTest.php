@@ -171,6 +171,31 @@ class AppverseReviewServiceTest extends UnitTestCase {
   }
 
   /**
+   * Full reviews spend API credit, so only live runs them by default. A
+   * named non-live environment (a Pantheon multidev testing the loop) can be
+   * allowed by settings; anything else is a dry-run.
+   *
+   * @covers ::fullReviewsAllowed
+   * @dataProvider fullReviewsProvider
+   */
+  public function testFullReviewsAllowed(?string $env, array $allowed, bool $expected): void {
+    $this->assertSame($expected, AppverseReviewService::fullReviewsAllowed($env, $allowed));
+  }
+
+  public static function fullReviewsProvider(): array {
+    return [
+      'live, no settings' => ['live', [], TRUE],
+      'live is always allowed' => ['live', ['other'], TRUE],
+      'multidev named in settings' => ['md-2788', ['md-2788'], TRUE],
+      'multidev not named' => ['md-2788', ['other-md'], FALSE],
+      'dev never by accident' => ['dev', [], FALSE],
+      'local (no PANTHEON_ENVIRONMENT)' => [NULL, [], FALSE],
+      'local can be named too' => [NULL, ['local'], TRUE],
+      'empty string is local' => ['', ['local'], TRUE],
+    ];
+  }
+
+  /**
    * Builds a zip archive in memory-ish (via a temp file) and returns its bytes.
    */
   private function buildZip(array $entries): string {
