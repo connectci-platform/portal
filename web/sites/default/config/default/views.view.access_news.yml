@@ -664,7 +664,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             amp_cyberinfrastructure_org: amp_cyberinfrastructure_org
           group: 1
@@ -1423,7 +1423,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         moderation_state:
           id: moderation_state
           table: node_field_data
@@ -1553,7 +1553,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             ccmnet_org: ccmnet_org
           group: 1
@@ -2296,7 +2296,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
       filter_groups:
         operator: AND
         groups:
@@ -2576,7 +2576,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             campuschampions_cyberinfrastructure_org: campuschampions_cyberinfrastructure_org
           group: 1
@@ -2971,7 +2971,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             amp_cyberinfrastructure_org: amp_cyberinfrastructure_org
           group: 1
