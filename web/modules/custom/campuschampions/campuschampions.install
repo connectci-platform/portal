@@ -1465,3 +1465,33 @@ function campuschampions_update_10009() {
     '@blank' => $blanked,
   ]);
 }
+
+/**
+ * Switch Campus Champions front-page blocks and node 151 body to full_html.
+ */
+function campuschampions_update_10010() {
+  $etm = \Drupal::entityTypeManager();
+  $targets = [
+    'block_content' => [79, 81],
+    'node' => [151],
+  ];
+
+  $updated = [];
+  foreach ($targets as $entity_type => $ids) {
+    foreach ($etm->getStorage($entity_type)->loadMultiple($ids) as $entity) {
+      if (!$entity->hasField('body') || $entity->get('body')->isEmpty()) {
+        continue;
+      }
+      if ($entity->get('body')->format === 'full_html') {
+        continue;
+      }
+      $entity->get('body')->format = 'full_html';
+      $entity->save();
+      $updated[] = $entity_type . ':' . $entity->id();
+    }
+  }
+
+  return t('Set body format to full_html on: @list', [
+    '@list' => $updated ? implode(', ', $updated) : 'none',
+  ]);
+}
