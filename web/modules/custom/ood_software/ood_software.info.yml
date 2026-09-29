@@ -3,3 +3,5 @@ type: module
 description: Provides integration with GitHub to pull in software information.
 core_version_requirement: ^10 || ^11
 package: Custom
+dependencies:
+  - access:access_misc
