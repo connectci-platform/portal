@@ -32,6 +32,14 @@ $settings['entity_update_batch_size'] = 50;
 global $content_directories;
 $content_directories['sync'] = '/datastorage/content/sync';
 
+// Non-live environments allowed to dispatch full (paid) AppVerse AI reviews;
+// live always may, every other environment dispatches dry-runs. Read by
+// AppverseReviewService::fullReviewsEnabled(). Each also needs the GitHub key
+// file in its private files: see appverse-planning review-system/GITHUB-TOKENS.md.
+// A default: the per-environment files required below may replace the list
+// (local.settings.php does, to run real reviews from ddev).
+$settings['ood_software.review_full_environments'] = ['md-2788'];
+
 $additionalSettingsFiles = [
   (DRUPAL_ROOT . "/../vendor/acquia/blt/settings/blt.settings.php"),
   (__DIR__ . "/settings.pantheon.php"),
@@ -109,12 +117,6 @@ if (isset($env)) {
       break;
   }
 }
-
-// Non-live environments allowed to dispatch full (paid) AppVerse AI reviews;
-// live always may, every other environment dispatches dry-runs. Read by
-// AppverseReviewService::fullReviewsEnabled(). Each also needs the GitHub key
-// file in its private files: see appverse-planning review-system/GITHUB-TOKENS.md.
-$settings['ood_software.review_full_environments'] = ['md-2788'];
 
 $settings['config_sync_directory'] = 'sites/default/config/default';
 
