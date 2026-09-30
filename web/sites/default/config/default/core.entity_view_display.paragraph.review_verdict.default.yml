@@ -18,10 +18,6 @@ dependencies:
     - field.field.paragraph.review_verdict.field_rvv_port_level
     - field.field.paragraph.review_verdict.field_rvv_port_level_note
     - field.field.paragraph.review_verdict.field_rvv_port_summary
-    - field.field.paragraph.review_verdict.field_rvv_sec_anchor
-    - field.field.paragraph.review_verdict.field_rvv_sec_level
-    - field.field.paragraph.review_verdict.field_rvv_sec_level_note
-    - field.field.paragraph.review_verdict.field_rvv_sec_summary
     - paragraphs.paragraphs_type.review_verdict
   module:
     - options
@@ -85,21 +81,6 @@ content:
     third_party_settings: {  }
     weight: 5
     region: content
-  field_rvv_sec_level:
-    type: list_default
-    label: inline
-    settings: {  }
-    third_party_settings: {  }
-    weight: 2
-    region: content
-  field_rvv_sec_summary:
-    type: string
-    label: inline
-    settings:
-      link_to_entity: false
-    third_party_settings: {  }
-    weight: 3
-    region: content
 hidden:
   field_rvv_app_id: true
   field_rvv_criteria: true
@@ -109,6 +90,4 @@ hidden:
   field_rvv_moderator_notes: true
   field_rvv_port_anchor: true
   field_rvv_port_level_note: true
-  field_rvv_sec_anchor: true
-  field_rvv_sec_level_note: true
   search_api_excerpt: true

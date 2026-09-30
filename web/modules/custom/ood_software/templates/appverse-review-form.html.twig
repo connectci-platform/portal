@@ -56,7 +56,7 @@
       <div class="cat-title-row">
         <div class="cat-left">
           <span class="cat-name">{{ block.title }}</span>
-          {% if block.level is not null or block.key in ['security', 'portability', 'documentation', 'maintenance'] %}
+          {% if block.level is not null or block.key in ['portability', 'documentation', 'maintenance'] %}
             {% if can_edit and level_el %}
               {{ level_el }}
             {% else %}
@@ -136,8 +136,8 @@
           {% endif %}
           <div class="vbody">
             {% for key, block in app.blocks %}
-              {% set level_el = can_edit and key in ['security', 'portability', 'documentation'] ? attribute(attribute(form.level, app.pid), key) : null %}
-              {% set note_el = can_edit and key in ['security', 'portability', 'documentation'] ? attribute(attribute(form.level_note, app.pid), key) : null %}
+              {% set level_el = can_edit and key in ['portability', 'documentation'] ? attribute(attribute(form.level, app.pid), key) : null %}
+              {% set note_el = can_edit and key in ['portability', 'documentation'] ? attribute(attribute(form.level_note, app.pid), key) : null %}
               {{ m.catblock(block, form, can_edit, page, level_el, note_el) }}
             {% endfor %}
           </div>

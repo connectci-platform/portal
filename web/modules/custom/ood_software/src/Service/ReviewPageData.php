@@ -27,8 +27,18 @@ final class ReviewPageData {
 
   /**
    * Blocks that carry a public signal level; the others only hold findings.
+   *
+   * Security is findings only (artifact schema 1.2): the tool asserts no
+   * security level, so there is none to show or override.
    */
-  const LEVEL_BLOCKS = ['security', 'portability', 'documentation'];
+  const LEVEL_BLOCKS = ['portability', 'documentation'];
+
+  /**
+   * The Security block's count line when it has no findings.
+   *
+   * The honest claim, never "safe" (appverse-review's rubric wording).
+   */
+  const SECURITY_NONE = 'No tool-detectable issues in the checked tiers';
 
   const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
@@ -111,13 +121,13 @@ final class ReviewPageData {
   }
 
   /**
-   * "3 findings · 2 High · 1 Medium", or "No findings".
+   * "3 findings · 2 High · 1 Medium", or $none when there are none.
    */
-  public static function countLine(array $findings): string {
+  public static function countLine(array $findings, string $none = 'No findings'): string {
     $groups = self::groupBySeverity($findings);
     $total = array_sum(array_column($groups, 'count'));
     if ($total === 0) {
-      return 'No findings';
+      return $none;
     }
     $parts = [sprintf('%d %s', $total, $total === 1 ? 'finding' : 'findings')];
     foreach ($groups as $group) {
@@ -182,7 +192,7 @@ final class ReviewPageData {
       'anchor' => $level['anchor'] ?? '',
       'note' => $level['note'] ?? '',
       'gates' => $gates,
-      'count_line' => self::countLine($findings),
+      'count_line' => self::countLine($findings, $key === 'security' ? self::SECURITY_NONE : 'No findings'),
       'groups' => $groups,
     ];
   }
@@ -191,8 +201,8 @@ final class ReviewPageData {
    * The per-app section: five blocks in order, findings sorted into them.
    *
    * @param array $app
-   *   app_id, name, criteria (array), conclusion, levels (security /
-   *   portability / documentation => level, summary, anchor, note), findings.
+   *   app_id, name, criteria (array), conclusion, levels (portability /
+   *   documentation => level, summary, anchor, note), findings.
    * @param array $previous
    *   Previous reviews as alsoFlaggedIn() expects them.
    */

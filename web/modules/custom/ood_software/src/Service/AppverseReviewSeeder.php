@@ -171,7 +171,8 @@ class AppverseReviewSeeder {
     }
 
     $indicators = $app['indicators'] ?? [];
-    $prefixes = ['security' => 'sec', 'portability' => 'port', 'documentation' => 'docs'];
+    // No security indicator since schema 1.2; a 1.1 artifact's is ignored.
+    $prefixes = ['portability' => 'port', 'documentation' => 'docs'];
     foreach ($prefixes as $category => $prefix) {
       if (!isset($indicators[$category])) {
         continue;

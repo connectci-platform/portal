@@ -14,7 +14,13 @@ namespace Drupal\ood_software\Service;
  */
 final class ReviewSignals {
 
-  const AXES = ['security', 'portability', 'documentation'];
+  /**
+   * The per-app axes the cache emits.
+   *
+   * No security axis: the public display shows no security level (artifact
+   * schema 1.2).
+   */
+  const AXES = ['portability', 'documentation'];
 
   /**
    * The verdict for an app: by app node first, then by the subpath the tool

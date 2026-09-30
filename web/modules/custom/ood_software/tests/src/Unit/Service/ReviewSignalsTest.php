@@ -22,7 +22,7 @@ class ReviewSignalsTest extends UnitTestCase {
 
   private function verdict(?int $appRef, string $appId, array $levels = []): array {
     $axes = [];
-    foreach (['security', 'portability', 'documentation'] as $axis) {
+    foreach (['portability', 'documentation'] as $axis) {
       $axes[$axis] = $levels[$axis] ?? ['level' => 'solid', 'summary' => $axis . ' fine', 'anchor' => '#' . $axis];
     }
     return ['app_ref' => $appRef, 'app_id' => $appId, 'axes' => $axes];
@@ -81,16 +81,18 @@ class ReviewSignalsTest extends UnitTestCase {
     ];
     $verdict = $this->verdict(12329, 'jupyter_example', [
       'documentation' => ['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '#documentation'],
-      'security' => ['level' => 'solid', 'summary' => 'No security findings', 'anchor' => ''],
+      'portability' => ['level' => 'solid', 'summary' => 'All site values in form.yml', 'anchor' => ''],
     ]);
+    // A verdict loaded from older data may still carry a security axis.
+    $verdict['axes']['security'] = ['level' => 'solid', 'summary' => 'No security findings', 'anchor' => '#security'];
 
     $out = ReviewSignals::shape($review, $verdict, 1790000500);
 
-    $this->assertSame(['reviewedAt', 'sha7', 'url', 'outOfDate', 'security', 'portability', 'documentation', 'upkeep'], array_keys($out));
+    $this->assertSame(['reviewedAt', 'sha7', 'url', 'outOfDate', 'portability', 'documentation', 'upkeep'], array_keys($out), 'no security level in the public cache (schema 1.2)');
     $this->assertSame('a52c443', $out['sha7']);
     $this->assertTrue($out['outOfDate']);
     $this->assertSame(['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => 'https://x.test/files/r.html#documentation'], $out['documentation']);
-    $this->assertSame('', $out['security']['anchor'], 'no fragment, no link');
+    $this->assertSame('', $out['portability']['anchor'], 'no fragment, no link');
     $this->assertSame('https://x.test/files/r.html#upkeep', $out['upkeep']['anchor']);
     $this->assertSame('some_notes', $out['upkeep']['level']);
     $this->assertStringNotContainsString('Some notes', json_encode($out), 'display words stay out of the cache');

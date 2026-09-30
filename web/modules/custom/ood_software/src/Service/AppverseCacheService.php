@@ -439,7 +439,7 @@ class AppverseCacheService {
     $verdicts = [];
     foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $axes = [];
-      foreach (['security' => 'sec', 'portability' => 'port', 'documentation' => 'docs'] as $axis => $prefix) {
+      foreach (['portability' => 'port', 'documentation' => 'docs'] as $axis => $prefix) {
         $axes[$axis] = [
           'level' => $verdict->get("field_rvv_{$prefix}_level")->value,
           'summary' => (string) ($verdict->get("field_rvv_{$prefix}_summary")->value ?? ''),

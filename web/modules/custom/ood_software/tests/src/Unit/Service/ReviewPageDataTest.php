@@ -94,6 +94,7 @@ class ReviewPageDataTest extends UnitTestCase {
     ]));
     $this->assertSame('1 finding · 1 Low', ReviewPageData::countLine([$this->finding('QUA-03', 'low')]));
     $this->assertSame('No findings', ReviewPageData::countLine([]));
+    $this->assertSame('Nothing', ReviewPageData::countLine([$this->finding('QUA-03', 'low', 'PASS')], 'Nothing'), 'the empty text is the caller\'s');
   }
 
   /**
@@ -162,6 +163,7 @@ class ReviewPageDataTest extends UnitTestCase {
       'criteria' => ['metadata' => 'fail', 'yaml_valid' => 'pass'],
       'conclusion' => NULL,
       'levels' => [
+        // Stale data from a 1.1 review; schema 1.2 has no security level.
         'security' => ['level' => 'solid', 'summary' => 'No security findings', 'anchor' => '#security', 'note' => ''],
         'portability' => ['level' => 'some_notes', 'summary' => 'Cluster hardcoded', 'anchor' => '#portability', 'note' => 'Fine for a reference app.'],
         'documentation' => ['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '#documentation', 'note' => ''],
@@ -181,7 +183,11 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame('some_notes', $app['blocks']['portability']['level']);
     $this->assertSame('Fine for a reference app.', $app['blocks']['portability']['note']);
     $this->assertSame(['2026-09-20 · a52c443'], $app['blocks']['portability']['groups'][0]['findings'][0]['also_flagged_in']);
-    $this->assertSame('No findings', $app['blocks']['security']['count_line']);
+    // Security is findings only: no level, and the empty state makes the
+    // honest claim rather than "No findings" (never "safe").
+    $this->assertNull($app['blocks']['security']['level'], 'no security level, even from stale data');
+    $this->assertSame('', $app['blocks']['security']['summary']);
+    $this->assertSame(ReviewPageData::SECURITY_NONE, $app['blocks']['security']['count_line']);
     $this->assertSame([], $app['blocks']['security']['groups']);
     // The PASS QUA-03 row is not in code_quality; the WARN QUA-05 is.
     $this->assertSame('1 finding · 1 Low', $app['blocks']['code_quality']['count_line']);

@@ -34,7 +34,9 @@ final class ReviewPageForm extends FormBase {
 
   const REVIEWER_PERMISSION = 'administer appverse content';
 
-  const AXES = ['security' => 'sec', 'portability' => 'port', 'documentation' => 'docs'];
+  // No security axis: security is findings only (schema 1.2), so there is no
+  // level for a reviewer to override.
+  const AXES = ['portability' => 'port', 'documentation' => 'docs'];
 
   const STATE_LABELS = [
     'draft' => 'Draft',
