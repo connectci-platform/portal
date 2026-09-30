@@ -110,6 +110,12 @@ if (isset($env)) {
   }
 }
 
+// Non-live environments allowed to dispatch full (paid) AppVerse AI reviews;
+// live always may, every other environment dispatches dry-runs. Read by
+// AppverseReviewService::fullReviewsEnabled(). Each also needs the GitHub key
+// file in its private files: see appverse-planning review-system/GITHUB-TOKENS.md.
+$settings['ood_software.review_full_environments'] = ['md-2788'];
+
 $settings['config_sync_directory'] = 'sites/default/config/default';
 
 // Load Google OAuth client_secret from private key file instead of config.
