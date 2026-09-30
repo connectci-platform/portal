@@ -10,7 +10,7 @@ entity_type: node
 type: integer
 settings:
   unsigned: true
-  size: normal
+  size: big
 module: core
 locked: false
 cardinality: 1
