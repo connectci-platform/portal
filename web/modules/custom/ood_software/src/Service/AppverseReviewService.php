@@ -54,6 +54,12 @@ class AppverseReviewService {
   const WORKFLOW_REF = 'main';
 
   /**
+   * The workflow's model input: "qwen" runs on the on-prem gateway, "sonnet"
+   * or "opus" on the Anthropic API.
+   */
+  const DEFAULT_MODEL = 'qwen';
+
+  /**
    * Drupal Key module key ID for the GitHub token.
    */
   const GITHUB_KEY_ID = 'appverse_review_github';
@@ -133,7 +139,7 @@ class AppverseReviewService {
    * @return bool
    *   TRUE when GitHub accepted the dispatch.
    */
-  public function dispatchForNode(NodeInterface $node, string $model = 'sonnet', ?string $aspectsOverride = NULL): bool {
+  public function dispatchForNode(NodeInterface $node, string $model = self::DEFAULT_MODEL, ?string $aspectsOverride = NULL): bool {
     $repoUrl = $this->extractRepoUrl($node);
     if ($repoUrl === NULL) {
       $this->logger->warning('Cannot dispatch review for repo node @nid: no field_repo_url value.', [
@@ -242,12 +248,12 @@ class AppverseReviewService {
    * @param string $targetRepo
    *   The target repo in "owner/name" format (e.g. "OSC/bc_osc_jupyter").
    * @param string $model
-   *   Claude model to use. Defaults to "sonnet".
+   *   The workflow's model input. Defaults to self::DEFAULT_MODEL.
    *
    * @return bool
    *   TRUE if the dispatch succeeded (HTTP 204), FALSE otherwise.
    */
-  public function dispatch(string $targetRepo, string $model = 'sonnet', string $correlationId = '', ?string $aspectsOverride = NULL): bool {
+  public function dispatch(string $targetRepo, string $model = self::DEFAULT_MODEL, string $correlationId = '', ?string $aspectsOverride = NULL): bool {
     // On non-production environments, only dispatch dry-run reviews to
     // avoid spending API credits on dev/staging test transitions.
     // $aspectsOverride exists for explicit callers (drush php:eval) that
