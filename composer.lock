@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "25379761374b8cfb5cbba613cd8a9ea8",
+    "content-hash": "9ce642a32cd8659bcab37d572d110e47",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -794,17 +794,16 @@
         },
         {
             "name": "connectci/webform_submission_search_api",
-            "version": "dev-main",
+            "version": "dev-d8-2877",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/webform_submission_search_api.git",
-                "reference": "a646925bf3c798ba92c3bcfe9624a6654305be1f"
+                "reference": "7bc877460c4c423973d97c2ebc844ad8d30ce6c1"
             },
             "require": {
                 "drupal/search_api": "^1.3",
                 "drupal/webform": "^6"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "MIT"
@@ -823,7 +822,7 @@
                 "issues": "https://github.com/connectci-platform/webform_submission_search_api/issues",
                 "source": "https://github.com/connectci-platform/webform_submission_search_api"
             },
-            "time": "2026-07-13T01:29:17+00:00"
+            "time": "2026-10-01T16:25:35+00:00"
         },
         {
             "name": "consolidation/annotated-command",
@@ -24634,5 +24633,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
