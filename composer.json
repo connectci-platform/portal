@@ -62,7 +62,7 @@
         "connectci/asp-theme": "dev-main",
         "connectci/campus-champions-theme": "main-dev",
         "connectci/operations_cider": "dev-main",
-        "connectci/webform_submission_search_api": "main-dev",
+        "connectci/webform_submission_search_api": "dev-d8-2877",
         "cweagans/composer-patches": "^2.0",
         "drupal/access_by_ref": "^4.0.0",
         "drupal/advanced_cors": "^1.5",
