@@ -1,0 +1,84 @@
+{#
+/**
+ * @file
+ * The public summary of a review: what a visitor sees.
+ *
+ * Same data as appverse-review-form (form['#page']), fewer details: the
+ * decision, one line per category, and the reviewer's published assessment.
+ * No evidence, no response to the contributor, no internal notes, no links to
+ * the private report files. form['#preview'] is set when a reviewer is
+ * looking at this view rather than a visitor.
+ */
+#}
+{% set page = form['#page'] %}
+{# The wireframe's dot classes rate quality: level-high is the good end (solid
+   green), level-low the poor end (red ring). #}
+{% set level_class = {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'} %}
+
+<div class="arv-page arv-summary">
+  {% if form['#preview'] %}
+    <div class="arv-preview-banner">
+      {{ 'Preview: this is what visitors see.'|t }}
+      <a href="{{ page.full_url }}">{{ 'Back to the full review'|t }}</a>
+    </div>
+  {% endif %}
+
+  <div class="overview-block">
+    <div class="overview-meta">
+      {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} {{ 'on @date'|t({'@date': page.reviewed_at}) }}{% endif %}
+      {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
+    </div>
+  </div>
+
+  {% if page.assessment %}
+    <section class="summary-assessment">
+      <h2 class="sec">{{ 'Reviewer assessment'|t }}</h2>
+      <div class="arv-text">{{ page.assessment }}</div>
+    </section>
+  {% endif %}
+
+  {% for app in page.apps %}
+    <section class="summary-app">
+      <div class="summary-app-head">
+        <h2 class="sec app-name">{{ app.name }}</h2>
+        {% if app.conclusion %}
+          <span class="decision-pill decision-pill--{{ app.conclusion }}">{{ page.conclusion_labels[app.conclusion] ?? app.conclusion }}</span>
+        {% else %}
+          <span class="decision-pill">{{ 'Not decided'|t }}</span>
+        {% endif %}
+      </div>
+      <dl class="summary-rows">
+        {% for key, block in app.blocks %}
+          <div class="summary-row">
+            <dt>{{ block.title }}</dt>
+            <dd>
+              {% if block.level %}
+                <span class="rating-badge"><span class="rating-dot level-{{ level_class[block.level] ?? 'none' }}"></span><span class="rating-label">{{ page.level_labels[block.level] ?? block.level }}</span></span>
+              {% endif %}
+              <span class="summary-line">{{ block.summary ?: block.count_line }}</span>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </section>
+  {% endfor %}
+
+  <section class="summary-app">
+    <div class="summary-app-head"><h2 class="sec app-name">{{ 'Repository upkeep'|t }}</h2></div>
+    <dl class="summary-rows">
+      <div class="summary-row">
+        <dt>{{ page.maintenance.title }}</dt>
+        <dd>
+          {% if page.maintenance.level %}
+            <span class="rating-badge"><span class="rating-dot level-{{ level_class[page.maintenance.level] ?? 'none' }}"></span><span class="rating-label">{{ page.level_labels[page.maintenance.level] ?? page.maintenance.level }}</span></span>
+          {% endif %}
+          <span class="summary-line">{{ page.maintenance.summary ?: page.maintenance.count_line }}</span>
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <p class="summary-disclaimer">{{ 'This is an automated review with human curation. It is provided without warranty of any kind and does not certify the app as secure or fit for any purpose. A listing is not an endorsement.'|t }}</p>
+
+  {{ form|without('page', 'can_edit', 'preview') }}
+</div>

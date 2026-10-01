@@ -545,6 +545,104 @@
   color: #c9cdd0;
 }
 
+/* Public summary (appverse-review-summary.html.twig): one column, one row per
+   category, no findings. */
+.arv-summary {
+  max-width: 820px;
+}
+.arv-page .arv-preview-banner {
+  font-size: .86rem;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--blue-soft);
+  border-left: 3px solid var(--blue);
+}
+.arv-page .arv-preview-banner a {
+  margin-left: .5rem;
+  color: var(--blue);
+}
+.arv-page .summary-assessment {
+  margin-bottom: 20px;
+}
+.arv-page .summary-app {
+  border: 1px solid var(--gray-300);
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+.arv-page .summary-app-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .summary-app-head .app-name {
+  margin: 0;
+}
+.arv-page .decision-pill {
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+.arv-page .decision-pill--accept,
+.arv-page .decision-pill--accept_with_suggestions {
+  background: #e0f3f0;
+  color: var(--status-green);
+}
+.arv-page .decision-pill--request_changes {
+  background: #fff8ec;
+  color: #8a5a12;
+}
+.arv-page .decision-pill--reject {
+  background: #fbe7eb;
+  color: var(--status-red);
+}
+.arv-page .summary-rows {
+  margin: 0;
+}
+.arv-page .summary-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .summary-row:first-child {
+  border-top: 0;
+}
+.arv-page .summary-row dt {
+  font-weight: 700;
+  font-size: .9rem;
+}
+.arv-page .summary-row dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.arv-page .summary-line {
+  font-size: .86rem;
+  color: var(--gray-700);
+}
+.arv-page .summary-disclaimer {
+  font-size: .76rem;
+  color: var(--gray-500);
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .arv-page .summary-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
 /* JS collapse (sev groups, finding notes, override boxes). */
 .arv-page .collapsed {
   display: none;

@@ -55,7 +55,29 @@ final class ReviewPageForm extends FormBase {
     'published' => [],
   ];
 
+  /**
+   * Who the page is rendered for (see viewModeFor()).
+   */
+  const MODE_EDIT = 'edit';
+  const MODE_CONTRIBUTOR = 'contributor';
+  const MODE_PUBLIC = 'public';
+
   protected NodeInterface $node;
+
+  /**
+   * The view a viewer gets.
+   *
+   * Reviewers get the editable page, or the public summary when they ask for
+   * it (?view=public) to see what visitors see. The repo's owner gets the full
+   * page read-only, including the response written to them. Everyone else gets
+   * the public summary: no evidence, no response, no internal notes.
+   */
+  public static function viewModeFor(bool $isReviewer, bool $isContributor, ?string $requested): string {
+    if ($isReviewer) {
+      return $requested === self::MODE_PUBLIC ? self::MODE_PUBLIC : self::MODE_EDIT;
+    }
+    return $isContributor ? self::MODE_CONTRIBUTOR : self::MODE_PUBLIC;
+  }
 
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager,
@@ -92,14 +114,27 @@ final class ReviewPageForm extends FormBase {
       throw new \InvalidArgumentException('The review page needs an appverse_review node.');
     }
     $this->node = $node;
-    $canEdit = $this->currentUser->hasPermission(self::REVIEWER_PERMISSION);
+    $isReviewer = $this->currentUser->hasPermission(self::REVIEWER_PERMISSION);
+    $repo = $node->get('field_arv_repo')->entity;
+    $isContributor = $repo instanceof NodeInterface
+      && $this->currentUser->isAuthenticated()
+      && (int) $repo->getOwnerId() === (int) $this->currentUser->id();
+    $mode = self::viewModeFor($isReviewer, $isContributor, $this->getRequest()->query->get('view'));
+    $canEdit = $mode === self::MODE_EDIT;
 
     $page = $this->buildPage($node);
-    $form['#theme'] = 'appverse_review_form';
+    $form['#theme'] = $mode === self::MODE_PUBLIC ? 'appverse_review_summary' : 'appverse_review_form';
     $form['#attached']['library'][] = 'ood_software/appverse_review';
     $form['#page'] = $page;
     $form['#can_edit'] = $canEdit;
+    // A reviewer looking at the public view (rather than a visitor) gets a
+    // banner leading back to the full page.
+    $form['#preview'] = $isReviewer && $mode === self::MODE_PUBLIC;
     $form['#tree'] = TRUE;
+    // The page differs by permission, by whether the viewer owns the repo,
+    // and by ?view=public; a cached copy must never cross those lines.
+    $form['#cache']['contexts'] = ['user.permissions', 'user', 'url.query_args:view'];
+    $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : []);
 
     if (!$canEdit) {
       return $form;
@@ -376,6 +411,8 @@ final class ReviewPageForm extends FormBase {
       'assessment' => (string) ($node->get('field_arv_assessment')->value ?? ''),
       'notes' => $notes,
       'edit_url' => Url::fromRoute('entity.node.edit_form', ['node' => $node->id()])->toString(),
+      'full_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()])->toString(),
+      'public_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()], ['query' => ['view' => self::MODE_PUBLIC]])->toString(),
     ];
   }
 

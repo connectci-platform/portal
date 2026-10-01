@@ -11,7 +11,9 @@
 #}
 {% set page = form['#page'] %}
 {% set can_edit = form['#can_edit'] %}
-{% set level_class = {'solid': 'low', 'some_notes': 'medium', 'needs_attention': 'high'} %}
+{# The wireframe's dot classes rate quality: level-high is the good end (solid
+   green), level-low the poor end (red ring). #}
+{% set level_class = {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'} %}
 
 {% macro level_badge(level, labels, level_class) %}
   {% if level %}
@@ -60,7 +62,8 @@
             {% if can_edit and level_el %}
               {{ level_el }}
             {% else %}
-              {{ m.level_badge(block.level, page.level_labels, {'solid': 'low', 'some_notes': 'medium', 'needs_attention': 'high'}) }}
+              {# Literal map: a macro cannot see the template's level_class. #}
+              {{ m.level_badge(block.level, page.level_labels, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
             {% endif %}
             {% if can_edit and note_el %}
               <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the automated rating'|t }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
@@ -114,6 +117,7 @@
         · <span class="state-pill state-pill--{{ page.state }}">{{ page.state_label }}</span>
         {% if page.report_pdf %} · <a href="{{ page.report_pdf }}">{{ 'PDF report'|t }}</a>{% endif %}
         {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
+        {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
       </div>
       <div class="prev-reviews">
         {% if page.previous is not empty %}
