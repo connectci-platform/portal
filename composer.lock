@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "27dc4bddfbd100733e06f3d554010301",
+    "content-hash": "fab75cbe4f93da48325061641471d503",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "7bc9bef21a0a08c02c19210e3df8377a10e31d25"
+                "reference": "c318d4c47c3f2ba2d474811998a9a2338599dfe2"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -701,7 +701,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-09-25T21:37:59+00:00"
+            "time": "2026-10-01T18:35:28+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -709,7 +709,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "08ba8acdc28ee2d36c9a8132d0c8b3f177d2e2b7"
+                "reference": "84bc69798d2de598b13ac2cd13e8539037956f01"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -727,7 +727,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-20T00:06:42+00:00"
+            "time": "2026-09-25T19:26:15+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -761,7 +761,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "52b2606f716892cbfca75b4d2e8bade41b26b688"
+                "reference": "dc1f43bbafe0f459a54f1b1f16ce39983f6e313d"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -790,7 +790,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-09-20T00:09:11+00:00"
+            "time": "2026-09-26T12:17:55+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -12771,16 +12771,16 @@
         },
         {
             "name": "league/commonmark",
-            "version": "2.10.0",
+            "version": "2.10.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/commonmark.git",
-                "reference": "d2d1aa8b35e072966c89bc0c66cf926e56767dc4"
+                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/d2d1aa8b35e072966c89bc0c66cf926e56767dc4",
-                "reference": "d2d1aa8b35e072966c89bc0c66cf926e56767dc4",
+                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/6efbd9c472b91db0a3350fcd601c8332c2382e1f",
+                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f",
                 "shasum": ""
             },
             "require": {
@@ -12874,7 +12874,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-08-11T16:06:25+00:00"
+            "time": "2026-09-21T13:07:34+00:00"
         },
         {
             "name": "league/config",
@@ -19216,7 +19216,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "e82d10bd156845e9a034738ad5424c266a326a1d"
+                "reference": "554f4454b1055fefe7d5822f206597a32fda8543"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -19228,7 +19228,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-09-20T00:06:27+00:00"
+            "time": "2026-09-25T23:49:21+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
@@ -24706,5 +24706,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
