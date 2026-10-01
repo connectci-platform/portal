@@ -9,6 +9,11 @@ transitions:
 roles:
   match_pm: match_pm
   ondemand_pm: ondemand_pm
+  campuschampionsadmin: campuschampionsadmin
+  ccmnet_pm: ccmnet_pm
+  coco_pm: coco_pm
+  pascience_manager: pascience_manager
+  site_developer: site_developer
 author: false
 site_mail: true
 user_fields: {  }
