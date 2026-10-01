@@ -35,17 +35,17 @@
           <div class="ev also-flagged">{{ 'Also flagged in'|t }} {{ finding.also_flagged_in|join(', ') }}</div>
         {% endif %}
       </div>
-      <div class="frow-actions">
-        <div class="expand-hint">{{ '+ add note'|t }}</div>
-      </div>
-    </div>
-    <div class="fnote">
       {% if can_edit %}
-        {{ attribute(form.prose, finding.pid) }}
-      {% elseif finding.prose %}
-        <div class="wf-note">{{ finding.prose }}</div>
+        <div class="frow-actions">
+          <button type="button" class="expand-hint">{{ '+ add note'|t }}</button>
+        </div>
       {% endif %}
     </div>
+    {% if can_edit %}
+      <div class="fnote">{{ attribute(form.prose, finding.pid) }}</div>
+    {% elseif finding.prose %}
+      <div class="fnote"><div class="arv-text">{{ finding.prose }}</div></div>
+    {% endif %}
   </div>
 {% endmacro %}
 
@@ -63,7 +63,7 @@
               {{ m.level_badge(block.level, page.level_labels, {'solid': 'low', 'some_notes': 'medium', 'needs_attention': 'high'}) }}
             {% endif %}
             {% if can_edit and note_el %}
-              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}">✎</button>
+              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the automated rating'|t }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
             {% endif %}
           {% endif %}
           {% if block.anchor and page.report_html %}
@@ -102,8 +102,7 @@
 {% import _self as m %}
 
 <div class="arv-page">
-  <h1 class="arv-title">{{ 'Review of @repo'|t({'@repo': page.title}) }}</h1>
-
+  {# No <h1> here: the page title block already renders "Review of …". #}
   <div class="overview-block">
     <div class="overview-row">
       <div class="overview-meta">
@@ -175,10 +174,10 @@
       <hr class="sidebar-rule">
 
       <div class="sec-head-row"><h2 class="sec">{{ 'Response to contributor'|t }}</h2></div>
-      {% if can_edit %}{{ form.response }}{% else %}<div class="wf-note">{{ page.response|nl2br }}</div>{% endif %}
+      {% if can_edit %}{{ form.response }}{% else %}<div class="arv-text">{{ page.response }}</div>{% endif %}
 
       <div class="sec-head-row"><h2 class="sec">{{ 'Reviewer assessment'|t }}</h2></div>
-      {% if can_edit %}{{ form.assessment }}{% else %}<div class="wf-note">{{ page.assessment|nl2br }}</div>{% endif %}
+      {% if can_edit %}{{ form.assessment }}{% else %}<div class="arv-text">{{ page.assessment }}</div>{% endif %}
 
       {% if can_edit %}
         <div class="publish-block">
