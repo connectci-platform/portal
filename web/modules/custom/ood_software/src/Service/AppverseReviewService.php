@@ -56,8 +56,12 @@ class AppverseReviewService {
   /**
    * The workflow's model input: "qwen" runs on the on-prem gateway, "sonnet"
    * or "opus" on the Anthropic API.
+   *
+   * Sonnet until Qwen is benchmarked: the first Qwen review through the
+   * portal (appverse-review run 36917068688) failed the feedback-floor and
+   * key checks on a repo Sonnet had passed the same day.
    */
-  const DEFAULT_MODEL = 'qwen';
+  const DEFAULT_MODEL = 'sonnet';
 
   /**
    * Drupal Key module key ID for the GitHub token.

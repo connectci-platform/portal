@@ -116,7 +116,7 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $this->assertSame(AppverseReviewService::correlationId(self::NID, self::NOW), $inputs['correlation_id']);
     // Not a live environment in a unit test, so the dispatch is a dry-run.
     $this->assertSame('dry-run', $inputs['review_aspects']);
-    $this->assertSame('qwen', $inputs['model']);
+    $this->assertSame('sonnet', $inputs['model']);
 
     $this->assertContains(['field_review_dispatched_at', self::NOW], $this->freshSets);
     $this->assertContains(['field_review_status', 'pending'], $this->freshSets);
