@@ -43,7 +43,9 @@ runs:
     # ones entirely, so jobs resolved to a weeks-old run whose artifact had
     # expired and failed with "no artifacts found" (portal#2212, #2217, #2218).
     - name: Download database backup
-      if: inputs.database == ''
+      # Same event guard as every step that consumes the download; in merge_group
+      # nothing below runs, so a missing artifact must not block the queue.
+      if: inputs.database == '' && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -54,11 +56,24 @@ runs:
         id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=amp-daily-backup&per_page=50" \
           --jq "[.artifacts[] | select(.expired == false and .workflow_run.head_branch == \"${BRANCH}\")] | sort_by(.created_at) | last | .id")
         if [ -z "$id" ] || [ "$id" = "null" ]; then
-          echo "::error::No unexpired amp-daily-backup artifact for branch ${BRANCH}. Run backupdb.yml on ${BRANCH} and retry."
+          if [ "$BRANCH" = "main" ]; then
+            echo "::error::No unexpired amp-daily-backup artifact on main. The nightly backupdb.yml has not succeeded in the last 5 days; check its run history."
+          else
+            echo "::error::No unexpired amp-daily-backup artifact for branch ${BRANCH}. Run backupdb.yml --ref ${BRANCH} and retry."
+          fi
           exit 1
         fi
         echo "Downloading amp-daily-backup artifact $id (branch ${BRANCH})"
-        gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > backups/amp-daily-backup.zip
+        for attempt in 1 2 3; do
+          if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > backups/amp-daily-backup.zip \
+            && unzip -tq backups/amp-daily-backup.zip >/dev/null; then
+            break
+          fi
+          echo "Download attempt ${attempt} failed; retrying."
+          rm -f backups/amp-daily-backup.zip
+          [ "$attempt" = 3 ] && exit 1
+          sleep 10
+        done
         unzip -o -q backups/amp-daily-backup.zip -d backups/
         rm backups/amp-daily-backup.zip
         ls -la backups/
