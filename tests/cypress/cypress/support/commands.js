@@ -242,9 +242,19 @@ Cypress.Commands.add("drushUli", () => {
  */
 Cypress.Commands.add("drush", (command, args = [], options = {}) => {
   cy.task("log", 'in drush, command = "' + command + '"');
-  const ee = `drush ${command} ${stringifyArguments(args)} ${stringifyOptions(
-    options
-  )} -y`;
+  // Cypress (and the `robo cypress` runner that launches it) always run on
+  // the host, not inside the DDEV web container. A bare `drush` there either
+  // isn't on PATH for the non-interactive shell cy.exec spawns, or - even
+  // when a host-side `vendor/bin/drush` is found via a personal shell alias
+  // - it can't resolve DDEV's internal DB hostname ("db"), so it fails to
+  // bootstrap and every cy.drush() call becomes a silent no-op (this hid a
+  // whole role-assignment failure behind `failOnNonZeroExit: false`). `ddev
+  // drush` proxies the command into the project's web container, where
+  // Drupal's DB host is reachable, and `ddev` itself is always on the host
+  // PATH.
+  const ee = `ddev drush ${command} ${stringifyArguments(
+    args
+  )} ${stringifyOptions(options)} -y`;
   cy.task("log", "in drush, about to exec this:  " + ee);
   return cy.exec(ee, { failOnNonZeroExit: false });
 });

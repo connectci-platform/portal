@@ -9,6 +9,10 @@ const getMailpitUrl = () => {
   return Cypress.env('MAILPIT_URL') || 'https://cyberteam-drupal.ddev.site:8026';
 };
 
+// Escape a literal string for safe embedding inside a `new RegExp(...)`
+// source string.
+const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Get all messages from mailpit
  */
@@ -182,4 +186,87 @@ Cypress.Commands.add('assertEmailContent', (message, expectations) => {
       }
     });
   }
+});
+
+/**
+ * Assert that an email renders specific links as real HTML anchors, and that
+ * the corresponding Text part places each link's URL immediately after its
+ * label, ending the line.
+ *
+ * This is deliberately stricter than assertEmailContent's bodyContains,
+ * which collapses all whitespace before comparing substrings — that check
+ * passes even when body lines are concatenated with no separator (no <p>
+ * wrapping, no <a> tags), because the collapsed strings still contain the
+ * expected substrings. assertEmailLinks instead parses the HTML with
+ * DOMParser and requires a matching <a> element, and checks the Text part
+ * line-by-line so a label glued to the previous sentence (e.g.
+ * "...Site.Repository: https://...") or a URL glued to the next label (e.g.
+ * "https://...Review queue:") fails.
+ *
+ * @param {object} message - Email message from mailpit (from waitForEmail /
+ *   searchMailpitMessages; only .ID is required — the full message is
+ *   fetched here).
+ * @param {object[]} links - Links expected in the email.
+ * @param {string} links[].label - The text immediately preceding the URL,
+ *   used to anchor the Text-part line check (e.g. "Repository:"). Internal
+ *   whitespace in the label is matched tolerantly (`\s+`), since the Text
+ *   part hard-wraps long lines at spaces.
+ * @param {string|RegExp} links[].href - Expected href. A plain string must
+ *   match the `<a href>` exactly; a RegExp is tested against it.
+ * @param {object} [opts]
+ * @param {number} [opts.minParagraphs] - If given, asserts the HTML body
+ *   contains at least this many `<p>` elements.
+ */
+Cypress.Commands.add('assertEmailLinks', (message, links, opts = {}) => {
+  return cy.getMailpitMessage(message.ID).then((fullMessage) => {
+    const html = fullMessage.HTML || '';
+    const text = fullMessage.Text || '';
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const anchors = Array.from(doc.querySelectorAll('a'));
+
+    const matchesHref = (href, candidate) => (
+      href instanceof RegExp ? href.test(candidate) : candidate === href
+    );
+
+    links.forEach(({ label, href }) => {
+      // --- HTML: a real <a> whose href matches, and whose visible text is
+      // exactly the URL (not the URL plus a swallowed trailing word).
+      const match = anchors.find((a) => matchesHref(href, a.getAttribute('href') || ''));
+      // Not `.to.exist`: Cypress overrides it for DOM elements to mean
+      // "attached to the page document", which a DOMParser node never is.
+      expect(match, `HTML: expected an <a> with href matching ${href} (label "${label}")`).to.not.equal(undefined);
+      const linkText = (match.textContent || '').trim();
+      expect(
+        matchesHref(href, linkText),
+        `HTML: <a> text "${linkText}" should equal its href, with no swallowed trailing text, for label "${label}"`
+      ).to.equal(true);
+
+      // --- Text: the label begins a line (not preceded by other text on the
+      // same line), followed by whitespace, then the URL, which itself ends
+      // the line (allowing for hard-wrap immediately after the URL).
+      if (label) {
+        const escapedLabel = label.split(/\s+/).map(escapeRegExp).join('\\s+');
+        // A RegExp href usually matches only the tail of the URL (e.g.
+        // /\/appverse\/manage-repos$/), so allow any non-space prefix
+        // (scheme + host) before it.
+        const urlPart = href instanceof RegExp
+          ? `\\S*${href.source.replace(/^\^/, '').replace(/\$$/, '')}`
+          : escapeRegExp(href);
+        const lineRe = new RegExp(`(^|\\n)\\s*${escapedLabel}\\s+${urlPart}\\s*(\\r?\\n|$)`);
+        expect(
+          lineRe.test(text),
+          `Text: expected label "${label}" to begin a line, followed by whitespace then a URL matching ${href} that ends the line.\nFull Text was:\n${text}`
+        ).to.equal(true);
+      }
+    });
+
+    if (opts.minParagraphs) {
+      const count = doc.querySelectorAll('p').length;
+      expect(
+        count,
+        `HTML: expected at least ${opts.minParagraphs} <p> elements, found ${count}`
+      ).to.be.at.least(opts.minParagraphs);
+    }
+  });
 });

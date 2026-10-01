@@ -7628,6 +7628,60 @@ display:
           plugin_id: search_api_field
           label: registration_has_waitlist
           exclude: false
+        event_timezone:
+          id: event_timezone
+          table: search_api_datasource_events_entity_eventinstance
+          field: event_timezone
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: eventinstance
+          plugin_id: search_api
+          label: 'Event Timezone'
+          exclude: false
+          alter:
+            alter_text: false
+            text: ''
+            make_link: false
+            path: ''
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: true
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: false
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          link_to_item: false
+          use_highlighting: false
+          multi_type: separator
+          multi_separator: ', '
       pager:
         type: full
         options:
@@ -8097,16 +8151,16 @@ display:
             value: today
             type: offset
           group: 1
-          exposed: false
+          exposed: true
           expose:
             operator_id: date_upcoming_op
-            label: 'Upcoming Events'
+            label: 'Earliest event date'
             description: ''
             use_operator: false
             operator: date_upcoming_op
             operator_limit_selection: false
             operator_list: {  }
-            identifier: date_upcoming
+            identifier: earliest_date
             required: false
             remember: false
             multiple: false
@@ -9437,6 +9491,60 @@ display:
           plugin_id: search_api_field
           label: registration_has_waitlist
           exclude: false
+        event_timezone:
+          id: event_timezone
+          table: search_api_datasource_events_entity_eventinstance
+          field: event_timezone
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: eventinstance
+          plugin_id: search_api
+          label: 'Event Timezone'
+          exclude: false
+          alter:
+            alter_text: false
+            text: ''
+            make_link: false
+            path: ''
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: true
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: false
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          link_to_item: false
+          use_highlighting: false
+          multi_type: separator
+          multi_separator: ', '
       pager:
         type: full
         options:
@@ -9906,16 +10014,16 @@ display:
             value: today
             type: offset
           group: 1
-          exposed: false
+          exposed: true
           expose:
             operator_id: date_upcoming_op
-            label: 'Upcoming Events'
+            label: 'Earliest event date'
             description: ''
             use_operator: false
             operator: date_upcoming_op
             operator_limit_selection: false
             operator_list: {  }
-            identifier: date_upcoming
+            identifier: earliest_date
             required: false
             remember: false
             multiple: false

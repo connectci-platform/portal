@@ -3,6 +3,10 @@
 const FIXTURES = {
   alpha: {
     resource_id: "test-alpha-9999",
+    ssh_login_docs_url: "alpha.test.example.edu/docs/ssh",
+    // Must stay ALPHABETICAL: the assertion compares against Object.keys().sort().
+    // Fixture source order is debug, gpu-standard, gpu-large, cpu-shared.
+    metrics_queues: ["cpu-shared", "debug", "gpu-large", "gpu-standard"],
     org_name: "Test University",
     ssh_hostnames: [
       "login01.alpha.test.example.edu",
@@ -27,6 +31,54 @@ const FIXTURES = {
 };
 
 describe("Resource Documentation API", () => {
+
+  it("exposes per-section documentation links, null where unset", () => {
+    cy.request(`/api/1.0/resources/${FIXTURES.alpha.resource_id}`).then((response) => {
+      const links = response.body.documentation_links;
+      expect(links, "documentation_links").to.be.an("object");
+
+      // Every section key is always present, so a consumer can read them
+      // without checking for the key first.
+      expect(Object.keys(links)).to.have.length(12);
+      expect(links).to.have.property("ssh_login");
+      expect(links).to.have.property("datasets");
+
+      expect(links.ssh_login).to.contain(FIXTURES.alpha.ssh_login_docs_url);
+      // Alpha sets only the SSH link; the rest are null rather than absent.
+      expect(links.datasets, "an unset section link").to.be.null;
+    });
+  });
+
+  it("exposes queue metrics keyed by queue name, not per queue_specs row", () => {
+    cy.request(`/api/1.0/resources/${FIXTURES.alpha.resource_id}`).then((response) => {
+      const metrics = response.body.queue_metrics;
+      expect(metrics, "queue_metrics").to.be.an("object");
+      // PHP encodes an empty array as a JSON list, so a resource with no
+      // metrics would arrive as [] without the controller's object cast.
+      // Only the encoded response shows this, which is why it is asserted here.
+      expect(Array.isArray(metrics), "queue_metrics must not be a JSON array").to.be.false;
+      expect(Object.keys(metrics).sort()).to.deep.eq(FIXTURES.alpha.metrics_queues);
+
+      expect(metrics["gpu-standard"]).to.have.property("job_count");
+      expect(metrics["gpu-standard"].daily_wait).to.be.an("array");
+      expect(response.body.queue_metrics_updated).to.be.a("string");
+
+      // The measurement lives once in queue_metrics; queue_specs rows are per
+      // node type and must not carry a copy.
+      response.body.queue_specs.forEach((spec) => {
+        expect(spec, `queue_specs row ${spec.name}`).to.not.have.property("metrics");
+      });
+    });
+  });
+
+  it("emits an empty queue_metrics object, not an array, when a resource has none", () => {
+    cy.request(`/api/1.0/resources/${FIXTURES.gamma.resource_id}`).then((response) => {
+      const metrics = response.body.queue_metrics;
+      expect(metrics, "queue_metrics").to.be.an("object");
+      expect(Array.isArray(metrics), "an empty map must encode as {} not []").to.be.false;
+      expect(Object.keys(metrics)).to.have.length(0);
+    });
+  });
 
   it("GET /api/1.0/resources returns only documented resources by default", () => {
     cy.request("/api/1.0/resources").then((response) => {
