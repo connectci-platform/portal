@@ -134,7 +134,7 @@ class AppverseReviewService {
    * Starts a review for a repo node, without touching its moderation state.
    *
    * The one implementation behind the ready_for_review transition, the hub's
-   * Run AI review action, and any explicit caller. Resolves owner/repo from
+   * Start review action, and any explicit caller. Resolves owner/repo from
    * the node, sends the dispatch with a correlation id, and on success records
    * the same timestamp on the node so the id can be recomputed when the run
    * is polled for. A failed dispatch leaves the node untouched: marking it

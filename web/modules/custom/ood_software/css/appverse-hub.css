@@ -363,6 +363,8 @@ header:has(> .appverse-hub-add-repo) {
 }
 .appverse-hub-card__icon-btn--primary { color: #0076af; }
 .appverse-hub-card__icon-btn--danger { color: #c91235; }
+/* Same green as .badge-success, so Run AI review matches "Review complete". */
+.appverse-hub-card__icon-btn--success { color: #1a7f37; }
 .appverse-hub-card__action-form { display: inline; margin: 0; }
 
 /* Draft/archived badge. */

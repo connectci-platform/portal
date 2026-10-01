@@ -1749,20 +1749,20 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   }
 
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
-  // Run AI review: on every repo an admin can see, whatever its moderation
+  // Start review: on every repo an admin can see, whatever its moderation
   // state, except while a run is already pending or in progress (the badge
   // says so). The action does not move the app's editorial state.
   $runReviewAction = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
-    $label = $reviewStatus === NULL ? t('Run AI review') : t('Run AI review again');
+    $label = $reviewStatus === NULL ? t('Start review') : t('Start review again');
     if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
     $runReviewAction = _ood_software_hub_action_form(
       'appverse/repo/' . $repo->id() . '/run-review',
       (string) $label,
-      'bi-robot',
-      'primary'
+      'bi-play-circle-fill',
+      'success'
     );
   }
 

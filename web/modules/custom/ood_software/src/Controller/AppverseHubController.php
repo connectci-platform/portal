@@ -458,14 +458,14 @@ final class AppverseHubController extends ControllerBase {
    */
   public function runReview(NodeInterface $node): RedirectResponse {
     if ($node->bundle() !== 'appverse_repo') {
-      $this->messenger()->addError($this->t('AI review is only available for Repos.'));
+      $this->messenger()->addError($this->t('Reviews are only available for Repos.'));
       return $this->redirectToHub();
     }
     if ($this->reviewService->dispatchForNode($node)) {
-      $this->messenger()->addStatus($this->t('AI review started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full review).', ['@title' => $node->label()]));
+      $this->messenger()->addStatus($this->t('Review started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full review).', ['@title' => $node->label()]));
     }
     else {
-      $this->messenger()->addError($this->t('Could not start the AI review for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
+      $this->messenger()->addError($this->t('Could not start the review for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
     }
     return $this->redirectToHub();
   }

@@ -109,7 +109,7 @@ ood_software.repo_run_review:
   path: '/appverse/repo/{node}/run-review'
   defaults:
     _controller: '\Drupal\ood_software\Controller\AppverseHubController::runReview'
-    _title: 'Run AI review'
+    _title: 'Start review'
   methods: [POST]
   options:
     parameters:
