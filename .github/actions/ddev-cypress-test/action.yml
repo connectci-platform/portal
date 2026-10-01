@@ -35,14 +35,33 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # Fetch the newest unexpired amp-daily-backup for the branch straight from
+    # the artifacts API. The previous run-listing approach (dawidd6/
+    # action-download-artifact) asked GitHub for successful backupdb runs and
+    # took the first; that endpoint's `status=success` page is not reliably
+    # ordered on a repo with hundreds of runs and sometimes omits the newest
+    # ones entirely, so jobs resolved to a weeks-old run whose artifact had
+    # expired and failed with "no artifacts found" (portal#2212, #2217, #2218).
     - name: Download database backup
       if: inputs.database == ''
-      uses: dawidd6/action-download-artifact@v20
-      with:
-        name: amp-daily-backup
-        path: backups/
-        workflow: backupdb.yml
-        branch: ${{ inputs.database_branch }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BRANCH: ${{ inputs.database_branch }}
+      run: |
+        set -euo pipefail
+        mkdir -p backups
+        id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=amp-daily-backup&per_page=50" \
+          --jq "[.artifacts[] | select(.expired == false and .workflow_run.head_branch == \"${BRANCH}\")] | sort_by(.created_at) | last | .id")
+        if [ -z "$id" ] || [ "$id" = "null" ]; then
+          echo "::error::No unexpired amp-daily-backup artifact for branch ${BRANCH}. Run backupdb.yml on ${BRANCH} and retry."
+          exit 1
+        fi
+        echo "Downloading amp-daily-backup artifact $id (branch ${BRANCH})"
+        gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > backups/amp-daily-backup.zip
+        unzip -o -q backups/amp-daily-backup.zip -d backups/
+        rm backups/amp-daily-backup.zip
+        ls -la backups/
 
     - name: Setup DDEV Base
       if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
