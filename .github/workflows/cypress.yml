@@ -11,7 +11,7 @@ on:
         default: 'main'
       sites:
         description: 'Specify which sites to test or leave the default to run all tests.'
-        default: 'accessmatch1, accessmatch2, accessmatch3, accessmatch-api, ccmnet, connectci, crct, campuschampions, coco, greatplains, kyct, nect, ondemand'
+        default: 'accessmatch1, accessmatch2, accessmatch3, accessmatch-api, ccmnet, connectci, crct, campuschampions, coco, greatplains, kyct, nect, ondemand, pascience'
         required: true
       prnum:
         description: 'Pull request number — adds a comment to a pull request (nomally empty)'
@@ -394,9 +394,26 @@ jobs:
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           slack_bot_token: ${{ secrets.SLACK_TOKEN }}
 
+  pascience:
+    name: pascience
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.sites, 'pascience') || github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/ddev-cypress-test
+        with:
+          site: "pasciencedmz"
+          directory: "pascience"
+          database: ${{ github.event.inputs.database }}
+          database_branch: ${{ github.event.inputs.database_branch || 'main' }}
+          github_token: ${{ secrets.GH_TOKEN_REPO }}
+          amp_uid: ${{ secrets.AMP_UID }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+          slack_bot_token: ${{ secrets.SLACK_TOKEN }}
+
   fail:
     name: Actions to run on fail
-    needs: [accessmatch1, accessmatch2, accessmatch3, ccmnet, connectci, crct, crct-templates-1, crct-templates-2, campuschampions, coco, greatplains, kyct, nect, ondemand]
+    needs: [accessmatch1, accessmatch2, accessmatch3, ccmnet, connectci, crct, crct-templates-1, crct-templates-2, campuschampions, coco, greatplains, kyct, nect, ondemand, pascience]
     if: failure()
     runs-on: ubuntu-latest
     steps:

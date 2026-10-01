@@ -133,11 +133,11 @@ elements: |-
       visible:
         ':input[name="approved_milestones"]':
           checked: true
-    '#markup': '<small class="text-muted"><span style="-webkit-text-stroke-width:0px; background-color:#f8f8f8; color:#1d1c1d; display:inline !important; float:none; font-family:Slack-Lato,appleLogo,sans-serif; font-size:13px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:common-ligatures; font-weight:400; letter-spacing:normal; orphans:2; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-indent:0px; text-transform:none; white-space:normal; widows:2; word-spacing:0px"> Select one (or more) tags that apply.</span></small>'
+    '#markup': '<p><small class="text-muted"><span style="-webkit-text-stroke-width:0px;background-color:#f8f8f8;color:#1d1c1d;display:inline !important;float:none;font-family:Slack-Lato,appleLogo,sans-serif;font-size:13px;font-style:normal;font-variant-caps:normal;font-variant-ligatures:common-ligatures;font-weight:400;letter-spacing:normal;orphans:2;text-align:left;text-decoration-color:initial;text-decoration-style:initial;text-decoration-thickness:initial;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;">Select one (or more) tags that apply.</span></small></p>'
   status:
     '#type': select
     '#title': Status
-    '#description': '<p data-pm-slice="1 1 []">Choose &ldquo;Recruiting&rdquo; to enable &ldquo;I&rsquo;m interested&rdquo; button on project page</p>'
+    '#description': '<p data-pm-slice="1 1 []">Choose “Recruiting” to enable “I’m interested” button on project page</p>'
     '#options':
       Recruiting: Recruiting
       'Reviewing Applicants': 'Reviewing Applicants'
@@ -146,10 +146,7 @@ elements: |-
       'Finishing Up': 'Finishing Up'
       Complete: Complete
       Halted: Halted
-    '#states':
-      visible:
-        ':input[name="approved_milestones"]':
-          checked: true
+      Declined: Declined
     '#states_clear': false
   project_leader_info:
     '#type': webform_section
