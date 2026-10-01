@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f577becb6a647c61bba4900763abfb94",
+    "content-hash": "5ca56f8f3793da9ef4624c6ead3586a8",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -8991,78 +8991,6 @@
             "homepage": "https://www.drupal.org/project/schemata",
             "support": {
                 "source": "https://git.drupalcode.org/project/schemata"
-            }
-        },
-        {
-            "name": "drupal/search404",
-            "version": "2.1.2",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/search404.git",
-                "reference": "2.1.2"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/search404-2.1.2.zip",
-                "reference": "2.1.2",
-                "shasum": "1bd271486856e33a23c394849503477b97fbe25f"
-            },
-            "require": {
-                "drupal/core": "^8 || ^9 || ^10"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "2.1.2",
-                    "datestamp": "1677067806",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "anoopjohn",
-                    "homepage": "https://www.drupal.org/user/188049"
-                },
-                {
-                    "name": "binnythomas",
-                    "homepage": "https://www.drupal.org/user/3123091"
-                },
-                {
-                    "name": "emilymathew",
-                    "homepage": "https://www.drupal.org/user/2921997"
-                },
-                {
-                    "name": "jijojoseph_zyxware",
-                    "homepage": "https://www.drupal.org/user/3561263"
-                },
-                {
-                    "name": "larssg",
-                    "homepage": "https://www.drupal.org/user/655"
-                },
-                {
-                    "name": "varunity",
-                    "homepage": "https://www.drupal.org/user/273530"
-                },
-                {
-                    "name": "vimaljoseph",
-                    "homepage": "https://www.drupal.org/user/817380"
-                },
-                {
-                    "name": "zyxware",
-                    "homepage": "https://www.drupal.org/user/222163"
-                }
-            ],
-            "description": "Automatically search for the keywords in URLs that result in 404 errors and show results instead of Page-Not-Found.",
-            "homepage": "https://www.drupal.org/project/search404",
-            "support": {
-                "source": "https://git.drupalcode.org/project/search404"
             }
         },
         {
