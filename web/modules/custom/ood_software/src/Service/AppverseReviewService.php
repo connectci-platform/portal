@@ -19,7 +19,7 @@ use Psr\Log\LoggerInterface;
  *
  * Triggered from ood_software_node_update() alongside RepoNotificationService.
  * Fires a workflow_dispatch on Sweet-and-Fizzy/appverse-review, which runs the
- * Claude-based review pipeline and produces a PDF report + JSON summary.
+ * LLM-based review pipeline and produces a PDF report + JSON summary.
  *
  * This is fire-and-forget: a dispatch failure never blocks the Drupal
  * moderation transition. Errors are logged for admin visibility.
@@ -366,18 +366,27 @@ class AppverseReviewService {
   /**
    * Poll GitHub Actions for completed review runs and process results.
    *
-   * Called from CronManager. Finds appverse_repo nodes with
-   * field_review_status=pending, checks for matching completed workflow
-   * runs, downloads artifacts, and updates the nodes.
+   * Called from CronManager. Finds appverse_repo nodes whose review is
+   * pending or in progress, checks for matching completed workflow runs,
+   * downloads artifacts, and updates the nodes.
+   *
+   * Every pass that has a review to poll logs one line per node saying what
+   * it found and a summary line, so a cron run can be read back from the
+   * log; a pass with nothing to poll logs only at debug level.
    */
   public function pollForResults(): void {
     $token = $this->getToken();
     if ($token === NULL) {
+      $this->logger->error('Review poll: no GitHub token found (tried keys @primary, @fallback); nothing polled.', [
+        '@primary' => self::GITHUB_KEY_ID,
+        '@fallback' => self::GITHUB_KEY_FALLBACK,
+      ]);
       return;
     }
 
     $pendingNodes = $this->getPendingReviewNodes();
     if (empty($pendingNodes)) {
+      $this->logger->debug('Review poll: no pending or in-progress reviews.');
       return;
     }
 
@@ -388,6 +397,7 @@ class AppverseReviewService {
     $activeRuns = $this->fetchWorkflowRuns($token, 'in_progress') ?? [];
 
     $now = $this->time->getRequestTime();
+    $outcomes = [];
 
     foreach ($pendingNodes as $node) {
       $dispatchedAt = $node->hasField('field_review_dispatched_at')
@@ -398,23 +408,39 @@ class AppverseReviewService {
         // Nothing to correlate on; the stale timeout below cannot fire either.
         $this->logger->warning('Review for node @nid is pending with no dispatch time; marking as error.', ['@nid' => $node->id()]);
         $this->updateNodeReviewStatus($node, 'error', 0);
+        $outcomes['error'] = ($outcomes['error'] ?? 0) + 1;
         continue;
       }
       $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
+      $minutes = (int) round(($now - $dispatchedAt) / 60);
 
-      // Check for a completed run first.
+      // Check for a completed run first. processCompletedRun() logs what it
+      // did with the run (seeded, dry-run, failed).
       $matchedRun = $this->matchRun($completedRuns, $correlationId, $dispatchedAt);
       if ($matchedRun !== NULL) {
+        $this->logger->info('Review poll: node @nid matched completed run @id (@conclusion), dispatched @min min ago.', [
+          '@nid' => $node->id(),
+          '@id' => $matchedRun['id'],
+          '@conclusion' => $matchedRun['conclusion'] ?? 'unknown',
+          '@min' => $minutes,
+        ]);
         $this->processCompletedRun($node, $matchedRun, $token);
+        $outcomes['completed'] = ($outcomes['completed'] ?? 0) + 1;
         continue;
       }
 
       // If a matching run is still in progress, update status and move on.
       $activeRun = $this->matchRun($activeRuns, $correlationId, $dispatchedAt);
       if ($activeRun !== NULL) {
+        $this->logger->info('Review poll: node @nid run @id is still running, dispatched @min min ago.', [
+          '@nid' => $node->id(),
+          '@id' => $activeRun['id'],
+          '@min' => $minutes,
+        ]);
         if ($node->hasField('field_review_status') && $node->get('field_review_status')->value !== 'in_progress') {
           $this->updateNodeReviewStatus($node, 'in_progress', (int) $activeRun['id']);
         }
+        $outcomes['running'] = ($outcomes['running'] ?? 0) + 1;
         continue;
       }
 
@@ -427,12 +453,37 @@ class AppverseReviewService {
           '@hours' => round(($now - $dispatchedAt) / 3600, 1),
         ]);
         $this->updateNodeReviewStatus($node, 'error', 0);
+        $outcomes['timed out'] = ($outcomes['timed out'] ?? 0) + 1;
+        continue;
       }
+      // Queued runs are not fetched, so a run GitHub has not started yet
+      // lands here too.
+      $this->logger->info('Review poll: node @nid has no completed or running run titled @cid yet, dispatched @min min ago.', [
+        '@nid' => $node->id(),
+        '@cid' => $correlationId,
+        '@min' => $minutes,
+      ]);
+      $outcomes['waiting'] = ($outcomes['waiting'] ?? 0) + 1;
     }
+
+    $parts = [];
+    foreach ($outcomes as $outcome => $count) {
+      $parts[] = $count . ' ' . $outcome;
+    }
+    $this->logger->info('Review poll: @n review(s) to poll against @c completed and @a running run(s): @outcomes.', [
+      '@n' => count($pendingNodes),
+      '@c' => count($completedRuns),
+      '@a' => count($activeRuns),
+      '@outcomes' => implode(', ', $parts),
+    ]);
   }
 
   /**
-   * Find appverse_repo nodes with a pending review dispatch.
+   * Find appverse_repo nodes whose review is pending or in progress.
+   *
+   * Both, not just pending: the loop moves a node to in_progress when it
+   * first sees the run running, and the node still needs polling until the
+   * run completes (or the stale timeout fires).
    *
    * @return \Drupal\node\NodeInterface[]
    */
@@ -440,7 +491,7 @@ class AppverseReviewService {
     $storage = $this->entityTypeManager->getStorage('node');
     $nids = $storage->getQuery()
       ->condition('type', 'appverse_repo')
-      ->condition('field_review_status', 'pending')
+      ->condition('field_review_status', ['pending', 'in_progress'], 'IN')
       ->accessCheck(FALSE)
       ->execute();
 
