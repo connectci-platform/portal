@@ -1,0 +1,159 @@
+uuid: bce7aaca-3d08-4d9d-a349-016eb51b59c8
+langcode: en
+status: true
+dependencies:
+  config:
+    - core.entity_view_mode.node.text
+    - field.field.node.match_engagement.body
+    - field.field.node.match_engagement.field_hpc_resources_needed
+    - field.field.node.match_engagement.field_institution
+    - field.field.node.match_engagement.field_preferred_semester
+    - field.field.node.match_engagement.field_programming_skill_level
+    - field.field.node.match_engagement.field_project_deliverables
+    - field.field.node.match_engagement.field_qualifications
+    - field.field.node.match_engagement.field_requested_engagement
+    - field.field.node.match_engagement.field_status
+    - field.field.node.match_engagement.field_tags
+    - node.type.match_engagement
+  module:
+    - options
+    - text
+    - user
+third_party_settings:
+  layout_builder:
+    enabled: false
+    allow_custom: false
+id: node.match_engagement.text
+targetEntityType: node
+bundle: match_engagement
+mode: text
+content:
+  body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_hpc_resources_needed:
+    type: basic_string
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_institution:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 8
+    region: content
+  field_preferred_semester:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 5
+    region: content
+  field_programming_skill_level:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_project_deliverables:
+    type: basic_string
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_qualifications:
+    type: basic_string
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_requested_engagement:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 6
+    region: content
+  field_status:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 7
+    region: content
+  field_tags:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: false
+    third_party_settings: {  }
+    weight: 9
+    region: content
+hidden:
+  content_moderation_control: true
+  field_actual_completion_date_1: true
+  field_actual_completion_date_2: true
+  field_actual_completion_date_3: true
+  field_actual_completion_date_4: true
+  field_completion_date_goal_1: true
+  field_completion_date_goal_2: true
+  field_completion_date_goal_3: true
+  field_completion_date_goal_4: true
+  field_consultant: true
+  field_domain_access: true
+  field_domain_all_affiliates: true
+  field_domain_source: true
+  field_education: true
+  field_email_user: true
+  field_git_contribution: true
+  field_is_there_an_impact_on_info: true
+  field_is_there_an_impact_on_inst: true
+  field_is_there_an_impact_on_soci: true
+  field_is_there_an_impact_on_tech: true
+  field_is_there_an_impact_physica: true
+  field_launch_presentation: true
+  field_launch_presentation_date: true
+  field_lessons_learned: true
+  field_match_interested_users: true
+  field_match_office_hours: true
+  field_match_steering_committee_m: true
+  field_mentor: true
+  field_milestone_actual_date: true
+  field_milestone_completion_date: true
+  field_milestone_description: true
+  field_milestone_description_1: true
+  field_milestone_description_2: true
+  field_milestone_description_3: true
+  field_milestone_description_4: true
+  field_node_type: true
+  field_notes: true
+  field_notes_to_author: true
+  field_overall_results: true
+  field_planned_portal_contributio: true
+  field_planned_publications: true
+  field_project_image: true
+  field_researcher: true
+  field_student_learning: true
+  field_students: true
+  field_urgency: true
+  field_what_is_the_impact_on_othe: true
+  field_what_is_the_impact_on_the_: true
+  field_what_match_will_learn: true
+  field_wrap_presentation: true
+  field_wrap_presentation_date: true
+  langcode: true
+  layout_builder__layout: true
+  links: true
+  search_api_excerpt: true
+

@@ -32,7 +32,7 @@ final class LlmsText {
     // The resources API serves ACCESS data on the support domain only. The
     // content API is domain-aware (renders the serving domain's nodes).
     $access_lines = $access_apis
-      ? "\n- Resources: {$base}/api/1.0/resources returns the ACCESS resource catalog as JSON\n- Content index: {$base}/.well-known/content-index.json lists the support documentation corpus with content hashes"
+      ? "\n- Resources: {$base}/api/1.0/resources returns the ACCESS resource catalog as JSON\n- Content index: {$base}/.well-known/content-index.json lists the support pages, affinity groups and MATCH engagements with content hashes"
       : '';
     $intro = $tagline !== ''
       ? "> {$tagline}\n>\n> {$site_name} is part of the ConnectCI platform."
@@ -51,7 +51,7 @@ final class LlmsText {
 - API documentation: {$base}/api-docs describes every API with OpenAPI specs
 - Events: {$base}{$events} returns upcoming events as JSON
 - Announcements: {$base}/api/2.1/announcements returns announcements as JSON
-- Page text: {$base}/api/1.0/content?path=PAGE_PATH renders content pages as plain text with a content hash (events and other listing types are served by their own APIs above){$access_lines}
+- Page text: {$base}/api/1.0/content?path=PAGE_PATH renders content pages, affinity groups, news, mentorships, MATCH engagements and Appverse apps as plain text with a content hash (events and other listing types are served by their own APIs above){$access_lines}
 
 MD;
   }

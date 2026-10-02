@@ -1,0 +1,92 @@
+uuid: 589f80c4-578b-4e76-92e7-47b76383ef1e
+langcode: en
+status: true
+dependencies:
+  config:
+    - core.entity_view_mode.node.text
+    - field.field.node.access_news.body
+    - field.field.node.access_news.field_affiliation
+    - field.field.node.access_news.field_affinity_group_node
+    - field.field.node.access_news.field_news_external_link
+    - field.field.node.access_news.field_published_date
+    - field.field.node.access_news.field_tags
+    - node.type.access_news
+  module:
+    - datetime
+    - link
+    - options
+    - text
+    - user
+third_party_settings:
+  layout_builder:
+    enabled: false
+    allow_custom: false
+id: node.access_news.text
+targetEntityType: node
+bundle: access_news
+mode: text
+content:
+  body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_affiliation:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_affinity_group_node:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: false
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_news_external_link:
+    type: link
+    label: inline
+    settings:
+      trim_length: 80
+      url_only: false
+      url_plain: false
+      rel: ''
+      target: ''
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_published_date:
+    type: datetime_custom
+    label: inline
+    settings:
+      timezone_override: ''
+      date_format: m/d/Y
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_tags:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: false
+    third_party_settings: {  }
+    weight: 5
+    region: content
+hidden:
+  content_moderation_control: true
+  field_affinity_group: true
+  field_choose_where_to_share_this: true
+  field_domain_access: true
+  field_domain_all_affiliates: true
+  field_domain_source: true
+  field_image: true
+  langcode: true
+  layout_builder__layout: true
+  links: true
+  search_api_excerpt: true
+

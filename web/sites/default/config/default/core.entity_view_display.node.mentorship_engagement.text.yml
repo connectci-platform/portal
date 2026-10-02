@@ -1,0 +1,93 @@
+uuid: c7652ebb-48bd-432c-9d8f-64ada2898767
+langcode: en
+status: true
+dependencies:
+  config:
+    - core.entity_view_mode.node.text
+    - field.field.node.mentorship_engagement.body
+    - field.field.node.mentorship_engagement.field_me_state
+    - field.field.node.mentorship_engagement.field_mentorship_program
+    - field.field.node.mentorship_engagement.field_tags
+    - node.type.mentorship_engagement
+  module:
+    - text
+    - user
+third_party_settings:
+  layout_builder:
+    enabled: false
+    allow_custom: false
+id: node.mentorship_engagement.text
+targetEntityType: node
+bundle: mentorship_engagement
+mode: text
+content:
+  body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_me_state:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: false
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_mentorship_program:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_tags:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: false
+    third_party_settings: {  }
+    weight: 3
+    region: content
+hidden:
+  field_actual_completion_date_1: true
+  field_actual_completion_date_2: true
+  field_actual_completion_date_3: true
+  field_actual_completion_date_4: true
+  field_admin_notes: true
+  field_ccmnet_approved: true
+  field_completion_date_goal_1: true
+  field_completion_date_goal_2: true
+  field_completion_date_goal_3: true
+  field_completion_date_goal_4: true
+  field_domain_access: true
+  field_domain_all_affiliates: true
+  field_domain_source: true
+  field_goal_3_description: true
+  field_knowledge_base_contributio: true
+  field_launch_presentation: true
+  field_launch_presentation_date: true
+  field_match_interested_users: true
+  field_me_ccmnet_leadership: true
+  field_me_looking_for: true
+  field_me_preferred_attributes: true
+  field_mentee: true
+  field_mentor: true
+  field_mentorship_pretitle: true
+  field_milestone_actual_date: true
+  field_milestone_completion_date: true
+  field_milestone_description: true
+  field_milestone_description_1: true
+  field_milestone_description_2: true
+  field_milestone_description_4: true
+  field_notes: true
+  field_wrap_presentation: true
+  field_wrap_presentation_date: true
+  langcode: true
+  layout_builder__layout: true
+  links: true
+  search_api_excerpt: true
+
