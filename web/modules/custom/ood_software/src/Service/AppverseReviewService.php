@@ -782,6 +782,13 @@ class AppverseReviewService {
    * matters. Returns the extracted paths keyed 'artifact' (the
    * *.artifact.json), 'md', 'pdf', 'html' — whichever were present, in that
    * order — and nothing else lands in $dir. Bytes that are not a zip give [].
+   *
+   * The reports are the files that share the artifact JSON's stem
+   * (review-<slug>.md beside review-<slug>.artifact.json). The artifact holds
+   * other files of the same types — the pre-review facts include
+   * pre-review/tool-table.md, zipped ahead of the report — and taking the
+   * first .md found would store that instead and leave the report empty.
+   * With no artifact JSON (a dry-run), any review-* report file counts.
    */
   public static function extractReviewFiles(string $zipContents, string $dir): array {
     $tmpFile = tempnam(sys_get_temp_dir(), 'review_zip_');
@@ -794,14 +801,28 @@ class AppverseReviewService {
       @unlink($tmpFile);
       return [];
     }
+    // First pass: the artifact JSON names the stem, wherever it sits in the
+    // zip's order.
+    $stem = NULL;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+      $name = basename($zip->getNameIndex($i));
+      if (str_ends_with($name, '.artifact.json')) {
+        $stem = substr($name, 0, -strlen('.artifact.json'));
+        break;
+      }
+    }
     $found = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
       $name = basename($zip->getNameIndex($i));
       if (str_ends_with($name, '.artifact.json')) {
         $kind = 'artifact';
       }
-      elseif (preg_match('/\.(md|pdf|html)$/', $name, $m)) {
-        $kind = $m[1];
+      elseif (preg_match('/^(.+)\.(md|pdf|html)$/', $name, $m)) {
+        $isReport = $stem !== NULL ? $m[1] === $stem : str_starts_with($name, 'review-');
+        if (!$isReport) {
+          continue;
+        }
+        $kind = $m[2];
       }
       else {
         continue;

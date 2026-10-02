@@ -84,6 +84,33 @@ class AppverseReviewServiceTest extends UnitTestCase {
   }
 
   /**
+   * The artifact also carries the pre-review facts, including
+   * pre-review/tool-table.md, which GitHub zips ahead of the report. Taking
+   * the first .md stored the tool table as the report and left the report
+   * field empty (appverse-review run 36919971976). Only files sharing the
+   * artifact JSON's stem are reports, whatever the zip order.
+   *
+   * @covers ::extractReviewFiles
+   */
+  public function testExtractReviewFilesSkipsOtherMarkdownInTheArtifact(): void {
+    $dir = $this->makeTempDir();
+    $zip = $this->buildZip([
+      'review-o-r/appverse-review/appverse-review/pre-review/tool-table.md' => '| tool | count |',
+      'review-o-r/appverse-review/appverse-review/pre-review/summary.json' => '{}',
+      'review-o-r/appverse-review/appverse-review/review-o-r.md' => '# report',
+      'review-o-r/appverse-review/appverse-review/review-o-r.pdf' => '%PDF',
+      // Last in the zip: the stem is found before the reports are picked.
+      'review-o-r/appverse-review/appverse-review/review-o-r.artifact.json' => '{}',
+    ]);
+
+    $files = AppverseReviewService::extractReviewFiles($zip, $dir);
+
+    $this->assertSame($dir . '/review-o-r.md', $files['md']);
+    $this->assertSame('# report', file_get_contents($files['md']));
+    $this->assertSame(['review-o-r.artifact.json', 'review-o-r.md', 'review-o-r.pdf'], $this->listDir($dir));
+  }
+
+  /**
    * A zip with no artifact JSON (a dry-run, or an older workflow) must not
    * produce an 'artifact' key, so the caller can tell "nothing to seed" from
    * "seed this".
