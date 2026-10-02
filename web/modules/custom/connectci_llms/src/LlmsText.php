@@ -51,7 +51,7 @@ final class LlmsText {
 - API documentation: {$base}/api-docs describes every API with OpenAPI specs
 - Events: {$base}{$events} returns upcoming events as JSON
 - Announcements: {$base}/api/2.1/announcements returns announcements as JSON
-- Page text: {$base}/api/1.0/content?path=PAGE_PATH renders content pages, affinity groups, news, mentorships, MATCH engagements and Appverse apps as plain text with a content hash (events and other listing types are served by their own APIs above){$access_lines}
+- Page text: {$base}/api/1.0/content?path=PAGE_PATH renders a content item (page, group, news item, engagement or app) as plain text with a content hash (events and other listing types are served by their own APIs above){$access_lines}
 
 MD;
   }

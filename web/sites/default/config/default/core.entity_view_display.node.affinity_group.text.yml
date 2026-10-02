@@ -31,7 +31,7 @@ content:
     region: content
   field_ag_goals:
     type: text_default
-    label: inline
+    label: above
     settings: {  }
     third_party_settings: {  }
     weight: 1
@@ -89,4 +89,3 @@ hidden:
   layout_builder__layout: true
   links: true
   search_api_excerpt: true
-
