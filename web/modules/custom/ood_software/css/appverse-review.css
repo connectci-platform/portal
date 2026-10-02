@@ -545,6 +545,29 @@
   color: #c9cdd0;
 }
 
+/* Superseded banner and history bar (a repo with more than one review). */
+.arv-page .arv-superseded {
+  font-size: .86rem;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: #fff8ec;
+  border-left: 3px solid var(--status-amber);
+}
+.arv-page .arv-superseded a {
+  margin-left: .35rem;
+  color: var(--blue);
+  font-weight: 600;
+}
+.arv-page .arv-superseded-note {
+  display: block;
+  font-size: .78rem;
+  color: var(--gray-700);
+  margin-top: 2px;
+}
+.arv-page .review-history a {
+  margin-left: 4px;
+}
+
 /* Public summary (appverse-review-summary.html.twig): one column, one row per
    category, no findings. */
 .arv-summary {

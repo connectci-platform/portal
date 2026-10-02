@@ -196,4 +196,54 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertNull($app['blocks']['code_quality']['level']);
   }
 
+  /**
+   * A middle review knows both neighbours and that it is superseded.
+   *
+   * @covers ::historyPosition
+   */
+  public function testHistoryPositionOfAMiddleReview(): void {
+    $reviews = [['nid' => 10], ['nid' => 20], ['nid' => 30]];
+
+    $h = ReviewPageData::historyPosition($reviews, 20);
+
+    $this->assertSame(2, $h['position']);
+    $this->assertSame(3, $h['total']);
+    $this->assertSame(10, $h['older']['nid']);
+    $this->assertSame(30, $h['newer']['nid']);
+    $this->assertSame(30, $h['newest']['nid'], 'superseded: points at the newest, not just the next');
+  }
+
+  /**
+   * The newest review has no newer neighbour and is not superseded; the
+   * oldest has no older one.
+   *
+   * @covers ::historyPosition
+   */
+  public function testHistoryPositionAtTheEnds(): void {
+    $reviews = [['nid' => 10], ['nid' => 20], ['nid' => 30]];
+
+    $newest = ReviewPageData::historyPosition($reviews, 30);
+    $this->assertNull($newest['newer']);
+    $this->assertNull($newest['newest'], 'the newest review is not superseded');
+    $this->assertSame(20, $newest['older']['nid']);
+
+    $oldest = ReviewPageData::historyPosition($reviews, 10);
+    $this->assertNull($oldest['older']);
+    $this->assertSame(30, $oldest['newest']['nid']);
+
+    $only = ReviewPageData::historyPosition([['nid' => 10]], 10);
+    $this->assertSame(['position' => 1, 'total' => 1, 'older' => NULL, 'newer' => NULL, 'newest' => NULL], $only);
+  }
+
+  /**
+   * A review the list does not contain (the viewer may not see it, or the
+   * list is stale) has no position rather than a wrong one.
+   *
+   * @covers ::historyPosition
+   */
+  public function testHistoryPositionOfAReviewNotInTheList(): void {
+    $this->assertNull(ReviewPageData::historyPosition([['nid' => 10]], 99));
+    $this->assertNull(ReviewPageData::historyPosition([], 10));
+  }
+
 }

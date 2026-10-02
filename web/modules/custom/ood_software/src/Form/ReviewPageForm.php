@@ -134,7 +134,9 @@ final class ReviewPageForm extends FormBase {
     // The page differs by permission, by whether the viewer owns the repo,
     // and by ?view=public; a cached copy must never cross those lines.
     $form['#cache']['contexts'] = ['user.permissions', 'user', 'url.query_args:view'];
-    $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : []);
+    // node_list: the history bar and the superseded banner depend on the
+    // repo's other reviews, so a newly seeded review must invalidate this one.
+    $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : [], ['node_list']);
 
     if (!$canEdit) {
       return $form;
@@ -237,7 +239,10 @@ final class ReviewPageForm extends FormBase {
       '#value' => $this->t('Save draft'),
       '#attributes' => ['class' => ['btn', 'ghost']],
     ];
-    if ($page['state'] !== 'published') {
+    // A superseded review (a newer one of the same repo exists) can still be
+    // saved, but not published: publishing it would put stale findings in
+    // front of the newer review. The banner links to the newer one.
+    if ($page['state'] !== 'published' && empty($page['superseded_by'])) {
       $form['actions']['publish'] = [
         '#type' => 'submit',
         '#value' => $this->t('Publish review'),
@@ -299,7 +304,7 @@ final class ReviewPageForm extends FormBase {
     }
 
     $node->setNewRevision(TRUE);
-    $node->setRevisionLogMessage('Review page: saved by ' . $this->currentUser->getDisplayName());
+    $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName());
     $node->save();
     $this->messenger()->addStatus($this->t('Review saved.'));
     $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
@@ -316,6 +321,7 @@ final class ReviewPageForm extends FormBase {
       $fresh = $storage->loadUnchanged($this->node->id());
       $fresh->set('moderation_state', $next);
       $fresh->setNewRevision(TRUE);
+      $this->stampRevision($fresh, sprintf('Review page: moved to %s by %s', $next, $this->currentUser->getDisplayName()));
       if (method_exists($fresh, 'setValidationRequired')) {
         $fresh->setValidationRequired(FALSE);
       }
@@ -335,6 +341,7 @@ final class ReviewPageForm extends FormBase {
 
     $previous = $this->previousReviews($node, $repo);
     $reportHtml = $this->reportHtmlUrl($node);
+    $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
 
     $apps = [];
     foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
@@ -397,6 +404,8 @@ final class ReviewPageForm extends FormBase {
       'state' => $state,
       'state_label' => self::STATE_LABELS[$state] ?? ucfirst($state),
       'previous' => $previous,
+      'history' => $history,
+      'superseded_by' => $history['newest'] ?? NULL,
       'report_html' => $reportHtml,
       'report_pdf' => $this->fileUrl($node, 'field_arv_report_pdf'),
       'recommendation' => $node->get('field_arv_recommendation')->value,
@@ -469,6 +478,49 @@ final class ReviewPageForm extends FormBase {
       ];
     }
     return $previous;
+  }
+
+  /**
+   * Every review of the repo the viewer may see, oldest first.
+   *
+   * Access-checked, so a visitor's history counts published reviews only and
+   * is never told about a draft. Each item is what the history bar and the
+   * superseded banner show: nid, label (date · short SHA), url.
+   */
+  protected function reviewHistory(?NodeInterface $repo): array {
+    if ($repo === NULL) {
+      return [];
+    }
+    $storage = $this->entityTypeManager->getStorage('node');
+    $nids = $storage->getQuery()
+      ->accessCheck(TRUE)
+      ->condition('type', 'appverse_review')
+      ->condition('field_arv_repo', $repo->id())
+      ->sort('created', 'ASC')
+      ->sort('nid', 'ASC')
+      ->execute();
+    $history = [];
+    foreach ($storage->loadMultiple($nids) as $review) {
+      $at = (int) ($review->get('field_arv_reviewed_at')->value ?? $review->getCreatedTime());
+      $history[] = [
+        'nid' => (int) $review->id(),
+        'label' => $this->formatDate($at, 'short') . ' · ' . substr((string) $review->get('field_arv_sha')->value, 0, 7),
+        'url' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString(),
+      ];
+    }
+    return $history;
+  }
+
+  /**
+   * Records who made a revision and when.
+   *
+   * Without this every revision saved from the review page reads as
+   * anonymous, all with the same time.
+   */
+  protected function stampRevision(NodeInterface $node, string $message): void {
+    $node->setRevisionUserId((int) $this->currentUser->id());
+    $node->setRevisionCreationTime($this->time->getCurrentTime());
+    $node->setRevisionLogMessage($message);
   }
 
   protected function addProseElement(array &$form, array $finding): void {

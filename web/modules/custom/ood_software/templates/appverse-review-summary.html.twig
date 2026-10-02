@@ -23,10 +23,26 @@
     </div>
   {% endif %}
 
+  {% if page.superseded_by %}
+    <div class="arv-superseded">
+      {{ 'A newer review of this repo exists'|t }} ({{ page.superseded_by.label }}).
+      <a href="{{ page.superseded_by.url }}">{{ 'Go to the newer review'|t }} ›</a>
+    </div>
+  {% endif %}
+
   <div class="overview-block">
-    <div class="overview-meta">
-      {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} {{ 'on @date'|t({'@date': page.reviewed_at}) }}{% endif %}
-      {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
+    <div class="overview-row">
+      <div class="overview-meta">
+        {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} {{ 'on @date'|t({'@date': page.reviewed_at}) }}{% endif %}
+        {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
+      </div>
+      {% if page.history and page.history.total > 1 %}
+        <div class="prev-reviews review-history">
+          <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
+          {% if page.history.older %}· <a href="{{ page.history.older.url }}">‹ {{ 'Older'|t }}</a>{% endif %}
+          {% if page.history.newer %}· <a href="{{ page.history.newer.url }}">{{ 'Newer'|t }} ›</a>{% endif %}
+        </div>
+      {% endif %}
     </div>
   </div>
 

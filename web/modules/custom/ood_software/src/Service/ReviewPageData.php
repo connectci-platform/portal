@@ -137,6 +137,38 @@ final class ReviewPageData {
   }
 
   /**
+   * Where a review sits among the reviews of its repo.
+   *
+   * $reviews is the repo's reviews the viewer may see, oldest first, each
+   * with at least an 'nid'. Returns the 1-based position, the total, the
+   * neighbours either side, and 'newest' when the current review is not the
+   * newest one (it is superseded); NULL when $currentNid is not in the list.
+   *
+   * @return array{position: int, total: int, older: ?array, newer: ?array, newest: ?array}|null
+   */
+  public static function historyPosition(array $reviews, int $currentNid): ?array {
+    $reviews = array_values($reviews);
+    $index = NULL;
+    foreach ($reviews as $i => $review) {
+      if ((int) $review['nid'] === $currentNid) {
+        $index = $i;
+        break;
+      }
+    }
+    if ($index === NULL) {
+      return NULL;
+    }
+    $last = count($reviews) - 1;
+    return [
+      'position' => $index + 1,
+      'total' => count($reviews),
+      'older' => $index > 0 ? $reviews[$index - 1] : NULL,
+      'newer' => $index < $last ? $reviews[$index + 1] : NULL,
+      'newest' => $index < $last ? $reviews[$last] : NULL,
+    ];
+  }
+
+  /**
    * Labels of the previous reviews that carried this stable id, in the
    * order given (newest first).
    *

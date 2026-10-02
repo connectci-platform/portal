@@ -106,6 +106,13 @@
 
 <div class="arv-page">
   {# No <h1> here: the page title block already renders "Review of …". #}
+  {% if page.superseded_by %}
+    <div class="arv-superseded">
+      {{ 'A newer review of this repo exists'|t }} ({{ page.superseded_by.label }}).
+      <a href="{{ page.superseded_by.url }}">{{ 'Go to the newer review'|t }} ›</a>
+      {% if can_edit and page.state != 'published' %}<span class="arv-superseded-note">{{ 'This one can still be saved, but not published.'|t }}</span>{% endif %}
+    </div>
+  {% endif %}
   <div class="overview-block">
     <div class="overview-row">
       <div class="overview-meta">
@@ -119,10 +126,11 @@
         {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
         {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
       </div>
-      <div class="prev-reviews">
-        {% if page.previous is not empty %}
-          {{ 'Previous reviews'|t }}:
-          {% for prev in page.previous %}<a href="{{ prev.url }}">{{ prev.label }}</a> {% endfor %}
+      <div class="prev-reviews review-history">
+        {% if page.history and page.history.total > 1 %}
+          <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
+          {% if page.history.older %}· <a href="{{ page.history.older.url }}">‹ {{ 'Older'|t }} ({{ page.history.older.label }})</a>{% endif %}
+          {% if page.history.newer %}· <a href="{{ page.history.newer.url }}">{{ 'Newer'|t }} ({{ page.history.newer.label }}) ›</a>{% endif %}
         {% else %}
           <span class="muted">{{ 'First review of this repo'|t }}</span>
         {% endif %}
