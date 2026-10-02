@@ -8,6 +8,7 @@ on:
         default: 'iterate'
 permissions:
   contents: write
+  actions: read
 jobs:
   release:
     name: Tag code
@@ -17,38 +18,101 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create/push tag
+      - name: Wait for a successful (A) Deploy to dev run
         run: |
-          git remote set-url origin https://$gh_user:$gh_token@github.com/$gh_repo.git
+          set -euo pipefail
+
+          DEADLINE=$((SECONDS + 900))
+
+          while true; do
+            if [ "$SECONDS" -ge "$DEADLINE" ]; then
+              echo "::error::Timed out after 15 minutes waiting for a successful (A) Deploy to dev run."
+              exit 1
+            fi
+
+            git fetch origin main
+            TARGET_SHA=$(git rev-parse origin/main)
+            echo "Pinned TARGET_SHA=$TARGET_SHA"
+
+            PIN_TIME=$SECONDS
+
+            while true; do
+              if [ "$SECONDS" -ge "$DEADLINE" ]; then
+                echo "::error::Timed out after 15 minutes waiting for a successful (A) Deploy to dev run."
+                exit 1
+              fi
+
+              RUNS=$(gh run list --workflow=main.yml --branch=main --json databaseId,headSha,status,conclusion --limit 20)
+
+              MATCHING=$(echo "$RUNS" | jq --arg sha "$TARGET_SHA" '[.[] | select(.headSha == $sha)]')
+              MATCH_COUNT=$(echo "$MATCHING" | jq 'length')
+
+              if [ "$MATCH_COUNT" -eq 0 ]; then
+                ELAPSED=$((SECONDS - PIN_TIME))
+                if [ "$ELAPSED" -ge 90 ]; then
+                  echo "::error::No (A) Deploy to dev run appeared for $TARGET_SHA within 90 seconds."
+                  exit 1
+                fi
+                echo "Waiting for a (A) Deploy to dev run to appear for $TARGET_SHA (${ELAPSED}s elapsed)..."
+                sleep 15
+                continue
+              fi
+
+              INFLIGHT_COUNT=$(echo "$RUNS" | jq '[.[] | select(.status != "completed")] | length')
+
+              if [ "$INFLIGHT_COUNT" -gt 0 ]; then
+                echo "Waiting for $INFLIGHT_COUNT in-flight (A) Deploy to dev run(s) on main to finish..."
+                sleep 15
+                continue
+              fi
+
+              NEWEST_CONCLUSION=$(echo "$MATCHING" | jq -r '.[0].conclusion')
+
+              if [ "$NEWEST_CONCLUSION" != "success" ]; then
+                echo "::error::No successful (A) Deploy to dev run for $TARGET_SHA. Dispatch main.yml on main, then re-run Create Release."
+                exit 1
+              fi
+
+              echo "(A) Deploy to dev succeeded for $TARGET_SHA."
+              break
+            done
+
+            git fetch origin main
+            NEW_SHA=$(git rev-parse origin/main)
+            if [ "$NEW_SHA" != "$TARGET_SHA" ]; then
+              echo "origin/main moved from $TARGET_SHA to $NEW_SHA; restarting gate."
+              continue
+            fi
+
+            echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_ENV"
+            echo "Gate passed. TARGET_SHA=$TARGET_SHA"
+            break
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create tag
+        run: |
+          git remote set-url origin "https://$gh_user:$gh_token@github.com/$gh_repo.git"
           git config user.name "$(git log -n 1 --pretty=format:%an)"
           git config user.email "$(git log -n 1 --pretty=format:%ae)"
-          git fetch origin
           latest_sha=$(git rev-list --tags --max-count=1)
           current_version=$(git describe --tags --abbrev=0)
-          if [ $set_version == 'iterate' ]
+          if [ "$set_version" == 'iterate' ]
           then
             next_version=$(echo ${current_version} | awk -F. -v OFS=. '{$NF += 1 ; print}')
             next_version_message="Patch level change, see releases notes for more info"
           else
-            next_version=$set_version
+            next_version="$set_version"
             next_version_message="New major/minor release, see releases notesfor more info"
           fi
-          git checkout $latest_sha
-          git checkout main
-          git tag -a $next_version -m "$next_version_message"
-          git push origin --tags
+          git checkout "$TARGET_SHA"
+          git tag -a "$next_version" -m "$next_version_message"
           touch release1.txt && touch release.md && echo '# CHANGELOG' > release.md
-          git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s' $latest_sha..main --no-merges >> release.md
+          git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s' "$latest_sha..$TARGET_SHA" --no-merges >> release.md
           jq -Rs '{ tag_name: "TAGNAMEZ", name: "TAGNAMEZ", body: .,draft: false, prerelease: false, generate_release_notes: false }' release.md > release1.txt
           sed "s/TAGNAMEZ/$next_version/g" release1.txt > release.txt
-          description=$(cat release.txt)
-          echo $description;
-          curl \
-            -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -u "$gh_user:$gh_token"\
-            https://api.github.com/repos/$gh_repo/releases \
-            -d "$description"
+          echo "next_version=$next_version" >> "$GITHUB_ENV"
         env:
           set_version: ${{ github.event.inputs.version }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
@@ -63,3 +127,22 @@ jobs:
           site_name: ${{ secrets.TERMINUS_SITE_NAME }}
           env: test
           flags: --sync-content
+          expected_sha: ${{ env.TARGET_SHA }}
+
+      - name: Publish tag and release
+        if: success()
+        run: |
+          git push origin "refs/tags/$next_version"
+          description=$(cat release.txt)
+          echo "$description"
+          curl \
+            --fail-with-body \
+            -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -u "$gh_user:$gh_token" \
+            https://api.github.com/repos/$gh_repo/releases \
+            -d "$description"
+        env:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_user: ${{ secrets.GH_USER }}
+          gh_repo: connectci-platform/portal

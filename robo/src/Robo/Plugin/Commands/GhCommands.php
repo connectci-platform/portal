@@ -318,8 +318,9 @@ class GhCommands extends Tasks {
       }
       $gh_repo = $m[1];
 
-      // Strip -dev suffix to get the feature branch name.
-      $branch = preg_replace('/-dev$/', '', $version);
+      // Composer uses a "dev-" prefix for feature branches and a "-dev"
+      // suffix for numbered branches (e.g. 3.0.x-dev).
+      $branch = preg_replace(['/^dev-/', '/-dev$/'], '', $version);
 
       $results[] = [
         'package' => $package,
