@@ -1,0 +1,14 @@
+uuid: b7a91ef4-6c35-41ac-a360-4588b392316c
+langcode: en
+status: true
+dependencies:
+  module:
+    - operations_cider
+id: operations_cider.xdmod_error
+configuration:
+  email_body:
+    content:
+      value: "<p>The scheduled job <strong>{{ job }}</strong> could not sync data from XDMoD.</p>\n<p>Key: {{ key }}<br>\nHTTP status: {{ status }}<br>\nError: {{ message }}</p>\n<p>{{ steps }}</p>\n<p>Resource pages keep showing the last good metrics, and hide them once they are 45 days old. This alert is sent at most once a day.</p>"
+      format: basic_html
+  email_subject:
+    value: 'XDMoD sync failed: {{ job }}'
