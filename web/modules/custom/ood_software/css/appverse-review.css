@@ -713,10 +713,37 @@
 }
 .arv-page .summary-row dd {
   margin: 0;
+}
+.arv-page .summary-row-head {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+.arv-page .summary-findings {
+  margin-top: 6px;
+}
+.arv-page .summary-findings > summary {
+  font-size: .78rem;
+  color: var(--blue);
+  cursor: pointer;
+}
+.arv-page .summary-findings > summary:hover {
+  text-decoration: underline;
+}
+.arv-page .summary-sev {
+  font-size: .76rem;
+  font-weight: 700;
+  margin: 10px 0 4px;
+}
+.arv-page .summary-sev .n {
+  color: var(--gray-500);
+  font-weight: 400;
+}
+.arv-page .summary-findings .frow {
+  grid-template-columns: 70px 1fr;
+  padding: 6px 0;
+  border-top: 1px solid var(--gray-150);
 }
 .arv-page .summary-line {
   font-size: .86rem;
