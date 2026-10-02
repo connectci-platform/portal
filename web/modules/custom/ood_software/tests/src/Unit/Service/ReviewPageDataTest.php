@@ -236,6 +236,90 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * A reviewer's finding gets what the automated review fills: the anchor
+   * file and line from "path:line" evidence, a defect key on that file, and
+   * the aspect/category of the block it was added in.
+   *
+   * @covers ::reviewerFinding
+   */
+  public function testReviewerFindingParsesEvidenceLikeTheTool(): void {
+    $f = ReviewPageData::reviewerFinding(
+      ['rule' => 'qua-02', 'severity' => 'Medium', 'summary' => ' Cluster is hardcoded ', 'evidence' => 'jupyter_example/form.yml:3-5 — `cluster: x`'],
+      'portability', 'jupyter_example', 'manual-0a1b2c3d',
+    );
+
+    $this->assertSame('QUA-02', $f['rule']);
+    $this->assertSame('medium', $f['severity']);
+    $this->assertSame('Cluster is hardcoded', $f['summary']);
+    $this->assertSame('jupyter_example/form.yml', $f['anchor']);
+    $this->assertSame(3, $f['line']);
+    $this->assertSame('jupyter_example/form.yml:reviewer-finding', $f['defect_key']);
+    $this->assertSame(['quality', 'portability'], [$f['aspect'], $f['category']]);
+    $this->assertSame('jupyter_example', $f['app_id']);
+    $this->assertSame('manual-0a1b2c3d', $f['stable_id']);
+
+    // A file without a line still anchors; prose without a file anchors to root.
+    $this->assertSame('README.md', ReviewPageData::reviewerFinding(['rule' => 'QUA-01', 'severity' => 'low', 'summary' => 's', 'evidence' => 'README.md has no install steps'], 'documentation', 'root', 'm')['anchor']);
+    $noFile = ReviewPageData::reviewerFinding(['rule' => 'MNT-02', 'severity' => 'info', 'summary' => 's', 'evidence' => 'no tags on GitHub'], 'maintenance', 'root', 'm');
+    $this->assertSame(['', NULL, 'root:reviewer-finding'], [$noFile['anchor'], $noFile['line'], $noFile['defect_key']]);
+  }
+
+  /**
+   * @covers ::reviewerFinding
+   * @dataProvider invalidReviewerFindings
+   */
+  public function testReviewerFindingRejectsIncompleteInput(array $input, string $block): void {
+    $this->expectException(\InvalidArgumentException::class);
+    ReviewPageData::reviewerFinding($input, $block, 'root', 'm');
+  }
+
+  public static function invalidReviewerFindings(): array {
+    $ok = ['rule' => 'QUA-03', 'severity' => 'low', 'summary' => 'Missing set -e'];
+    return [
+      'no summary' => [['summary' => '  '] + $ok, 'code_quality'],
+      'no rule' => [['rule' => ''] + $ok, 'code_quality'],
+      'unknown severity' => [['severity' => 'urgent'] + $ok, 'code_quality'],
+      'unknown block' => [$ok, 'other'],
+    ];
+  }
+
+  /**
+   * Every block's aspect/category pair maps back to that block, and a
+   * reviewer finding with an "Other" rule code stays in the block it was
+   * added in rather than falling into Code quality.
+   *
+   * @covers ::blockFromFields
+   * @covers ::buildApp
+   */
+  public function testReviewerFindingStaysInItsBlock(): void {
+    foreach (ReviewPageData::BLOCK_FIELDS as $block => $fields) {
+      $this->assertSame($block, ReviewPageData::blockFromFields($fields['aspect'], $fields['category']));
+    }
+    $this->assertNull(ReviewPageData::blockFromFields(NULL, NULL));
+
+    $app = ReviewPageData::buildApp(['app_id' => 'root', 'findings' => [
+      ['rule' => 'CUSTOM-1', 'severity' => 'low', 'summary' => 'Site path in submit.yml.erb', 'evidence' => '', 'stable_id' => 'm1', 'block' => 'portability'],
+    ]]);
+    $this->assertSame('1 finding · 1 Low', $app['blocks']['portability']['count_line']);
+    $this->assertSame('No findings', $app['blocks']['code_quality']['count_line']);
+  }
+
+  /**
+   * Each rule a reviewer can pick under a block is filed under that block by
+   * blockFor(), so a reviewer finding and a tool finding with the same code
+   * land together.
+   *
+   * @covers ::blockFor
+   */
+  public function testBlockRulesAgreeWithBlockFor(): void {
+    foreach (ReviewPageData::BLOCK_RULES as $block => $rules) {
+      foreach (array_keys($rules) as $rule) {
+        $this->assertSame($block, ReviewPageData::blockFor($rule), $rule);
+      }
+    }
+  }
+
+  /**
    * A review the list does not contain (the viewer may not see it, or the
    * list is stale) has no position rather than a wrong one.
    *

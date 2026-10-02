@@ -42,6 +42,72 @@ final class ReviewPageData {
 
   const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
+  /**
+   * The rule codes a reviewer may pick for a finding added to each block,
+   * from appverse-review's references/finding-codes.md. blockFor() files
+   * each code under the same block.
+   */
+  const BLOCK_RULES = [
+    'structure' => [
+      'STR-01' => 'Missing or insufficient required file',
+      'STR-02' => 'Missing or invalid required metadata field',
+      'STR-03' => 'YAML parse error',
+      'STR-04' => 'Broken reference',
+      'STR-05' => 'Unbalanced or malformed ERB tags',
+      'STR-06' => 'Shell script syntax error',
+      'STR-07' => 'Non-standard app layout',
+      'STR-08' => 'Passenger dependency manifest missing or inconsistent',
+    ],
+    'security' => [
+      'OODT-01' => 'Shell injection / arbitrary code execution',
+      'OODT-02' => 'Credential exposure',
+      'OODT-03' => 'Unauthorized access',
+      'OODT-04' => 'Data exfiltration',
+      'OODT-05' => 'Network exposure',
+      'OODT-06' => 'Container security',
+      'OODT-07' => 'Persistence',
+      'OODT-08' => 'Insecure configuration',
+    ],
+    'portability' => [
+      'QUA-02' => 'Portability below threshold',
+    ],
+    'documentation' => [
+      'QUA-01' => 'Documentation below threshold',
+    ],
+    'code_quality' => [
+      'QUA-03' => 'Missing error handling',
+      'QUA-04' => 'Dead code',
+      'QUA-05' => 'Copy-paste artifact',
+      'QUA-06' => 'Correctness defect',
+      'QUA-07' => 'Missing input validation',
+      'QUA-08' => 'Magic number or undocumented literal',
+      'QUA-09' => 'Large duplicated code block',
+      'QUA-10' => 'ERB template does not handle a missing or nil value',
+    ],
+    'maintenance' => [
+      'MNT-01' => 'Activity below threshold',
+      'MNT-02' => 'No tagged releases',
+      'MNT-03' => 'No CHANGELOG',
+      'MNT-04' => 'No CI configuration',
+      'MNT-05' => 'Single contributor with no recent activity',
+      'MNT-06' => 'Open issues with no response',
+    ],
+  ];
+
+  /**
+   * How a reviewer finding records the block it was added in, using the
+   * paragraph's aspect and category fields (the seeder's vocabulary), so a
+   * finding with an "Other" rule code stays where the reviewer put it.
+   */
+  const BLOCK_FIELDS = [
+    'structure' => ['aspect' => 'structure', 'category' => NULL],
+    'security' => ['aspect' => 'security', 'category' => 'security'],
+    'portability' => ['aspect' => 'quality', 'category' => 'portability'],
+    'documentation' => ['aspect' => 'quality', 'category' => 'documentation'],
+    'code_quality' => ['aspect' => 'quality', 'category' => NULL],
+    'maintenance' => ['aspect' => 'maintenance', 'category' => 'maintenance'],
+  ];
+
   const GATE_LABELS = [
     'metadata' => 'Metadata',
     'yaml_valid' => 'YAML valid',
@@ -77,6 +143,69 @@ final class ReviewPageData {
       return 'maintenance';
     }
     return 'other';
+  }
+
+  /**
+   * The block a reviewer finding was added in, from its aspect and category
+   * (the inverse of BLOCK_FIELDS); NULL when they name no block.
+   */
+  public static function blockFromFields(?string $aspect, ?string $category): ?string {
+    foreach (self::BLOCK_FIELDS as $block => $fields) {
+      if ($fields['aspect'] === $aspect && $fields['category'] === ($category ?: NULL)) {
+        return $block;
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * The paragraph field values for a finding a reviewer adds or edits.
+   *
+   * Fills what the automated review would: the anchor file and line parsed
+   * from evidence written as "path:line" (or "path:line-line"), a defect key
+   * on that file, and the aspect/category that keep it in $block. Throws
+   * \InvalidArgumentException for an unknown block, an unknown severity, or
+   * an empty summary or rule.
+   *
+   * @return array{rule: string, severity: string, summary: string, evidence: string, anchor: string, line: ?int, defect_key: string, aspect: string, category: ?string, app_id: string, stable_id: string}
+   */
+  public static function reviewerFinding(array $input, string $block, string $appId, string $stableId): array {
+    if (!isset(self::BLOCK_FIELDS[$block])) {
+      throw new \InvalidArgumentException("Unknown block: $block");
+    }
+    $rule = strtoupper(trim((string) ($input['rule'] ?? '')));
+    $severity = strtolower(trim((string) ($input['severity'] ?? '')));
+    $summary = trim((string) ($input['summary'] ?? ''));
+    $evidence = trim((string) ($input['evidence'] ?? ''));
+    if ($rule === '' || $summary === '') {
+      throw new \InvalidArgumentException('A finding needs a rule and a summary.');
+    }
+    if (!in_array($severity, self::SEVERITY_ORDER, TRUE)) {
+      throw new \InvalidArgumentException("Unknown severity: $severity");
+    }
+    $anchor = '';
+    $line = NULL;
+    if (preg_match('/^([^\s:]+):(\d+)(?:-\d+)?\b/', $evidence, $m)) {
+      $anchor = $m[1];
+      $line = (int) $m[2];
+    }
+    elseif (preg_match('/^([^\s:]+\.[A-Za-z0-9]+)\b/', $evidence, $m)) {
+      // A file named without a line ("form.yml has no …").
+      $anchor = $m[1];
+    }
+    return [
+      'rule' => $rule,
+      'severity' => $severity,
+      'summary' => $summary,
+      'evidence' => $evidence,
+      'anchor' => $anchor,
+      'line' => $line,
+      'defect_key' => ($anchor !== '' ? $anchor : 'root') . ':reviewer-finding',
+      'aspect' => self::BLOCK_FIELDS[$block]['aspect'],
+      'category' => self::BLOCK_FIELDS[$block]['category'],
+      'app_id' => $appId,
+      'stable_id' => $stableId,
+    ];
   }
 
   /**
@@ -241,7 +370,8 @@ final class ReviewPageData {
   public static function buildApp(array $app, array $previous = []): array {
     $byBlock = array_fill_keys(array_keys(self::APP_BLOCKS), []);
     foreach ($app['findings'] ?? [] as $finding) {
-      $block = self::blockFor((string) ($finding['rule'] ?? ''));
+      // A reviewer finding names its block; others go by rule code.
+      $block = $finding['block'] ?? self::blockFor((string) ($finding['rule'] ?? ''));
       if (!isset($byBlock[$block])) {
         $block = 'code_quality';
       }
@@ -275,7 +405,7 @@ final class ReviewPageData {
     $mnt = [];
     $byBlock = array_fill_keys(array_keys(self::APP_BLOCKS), []);
     foreach ($findings as $finding) {
-      $block = self::blockFor((string) ($finding['rule'] ?? ''));
+      $block = $finding['block'] ?? self::blockFor((string) ($finding['rule'] ?? ''));
       if ($block === 'maintenance') {
         $mnt[] = $finding;
       }

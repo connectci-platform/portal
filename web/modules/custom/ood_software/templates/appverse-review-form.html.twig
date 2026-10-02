@@ -36,15 +36,28 @@
         {% if finding.also_flagged_in is not empty %}
           <div class="ev also-flagged">{{ 'Also flagged in'|t }} {{ finding.also_flagged_in|join(', ') }}</div>
         {% endif %}
+        {% if finding.source == 'reviewer' %}
+          <div class="added-by"><span class="reviewer-tag">{{ 'Reviewer'|t }}</span> {{ 'Added by @name · @when'|t({'@name': finding.author ?: 'a reviewer'|t, '@when': finding.created}) }}</div>
+        {% endif %}
       </div>
       {% if can_edit %}
         <div class="frow-actions">
-          <button type="button" class="expand-hint">{{ '+ add note'|t }}</button>
+          {% if finding.source == 'reviewer' %}
+            <button type="button" class="expand-hint">{{ 'Edit'|t }}</button>
+          {% else %}
+            <button type="button" class="expand-hint" data-has-note="{{ 'has note'|t }}">{{ '+ add note'|t }}</button>
+          {% endif %}
         </div>
       {% endif %}
     </div>
     {% if can_edit %}
-      <div class="fnote">{{ attribute(form.prose, finding.pid) }}</div>
+      <div class="fnote">
+        {{ attribute(form.prose, finding.pid) }}
+        {% if finding.source == 'reviewer' %}
+          {{ attribute(form.edit_finding, finding.pid) }}
+          <div class="finding-delete">{{ attribute(form.delete_finding, finding.pid) }}</div>
+        {% endif %}
+      </div>
     {% elseif finding.prose %}
       <div class="fnote"><div class="arv-text">{{ finding.prose }}</div></div>
     {% endif %}
@@ -96,6 +109,12 @@
         </div>
       </div>
     {% endfor %}
+    {% if can_edit and block.target and form.add_finding[block.target] is defined %}
+      <details class="add-finding">
+        <summary>{{ '+ Add finding'|t }}</summary>
+        {{ attribute(form.add_finding, block.target) }}
+      </details>
+    {% endif %}
   </div>
 {% endmacro %}
 
@@ -226,5 +245,5 @@
     </aside>
   </div>
 
-  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'actions') }}
+  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'actions', 'add_finding', 'edit_finding', 'delete_finding') }}
 </div>

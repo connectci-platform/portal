@@ -172,7 +172,8 @@ final class ReviewPageForm extends FormBase {
           '#attributes' => ['placeholder' => $this->t('Reason for changing the automated rating…')],
         ];
       }
-      foreach ($app['blocks'] as $block) {
+      foreach ($app['blocks'] as $key => $block) {
+        $this->addNewFindingElements($form, $block['target'], $key);
         foreach ($block['groups'] as $group) {
           foreach ($group['findings'] as $finding) {
             $this->addProseElement($form, $finding);
@@ -180,13 +181,15 @@ final class ReviewPageForm extends FormBase {
         }
       }
     }
-    foreach ($page['repo_blocks'] as $block) {
+    foreach ($page['repo_blocks'] as $key => $block) {
+      $this->addNewFindingElements($form, $block['target'], $key);
       foreach ($block['groups'] as $group) {
         foreach ($group['findings'] as $finding) {
           $this->addProseElement($form, $finding);
         }
       }
     }
+    $this->addNewFindingElements($form, $page['maintenance']['target'], 'maintenance');
     $maint = $page['maintenance'];
     $form['maint_level'] = [
       '#type' => 'select',
@@ -276,10 +279,12 @@ final class ReviewPageForm extends FormBase {
       }
       foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $finding) {
         $this->saveProse($finding, $values);
+        $this->saveReviewerEdits($finding, $values);
       }
     }
     foreach ($node->get('field_arv_repo_findings')->referencedEntities() as $finding) {
       $this->saveProse($finding, $values);
+      $this->saveReviewerEdits($finding, $values);
     }
 
     if (isset($values['maint_level'])) {
@@ -364,6 +369,10 @@ final class ReviewPageForm extends FormBase {
         'findings' => array_map([$this, 'findingArray'], $verdict->get('field_rvv_findings')->referencedEntities()),
       ], $previous);
       $app['pid'] = $verdict->id();
+      // Where an "Add finding" in each block puts the new finding.
+      foreach (array_keys($app['blocks']) as $key) {
+        $app['blocks'][$key]['target'] = 'app:' . $verdict->id() . ':' . $key;
+      }
       $apps[] = $app;
     }
 
@@ -377,6 +386,10 @@ final class ReviewPageForm extends FormBase {
       ],
       $previous,
     );
+    foreach (array_keys($repoSection['blocks']) as $key) {
+      $repoSection['blocks'][$key]['target'] = 'repo:' . $key;
+    }
+    $repoSection['maintenance']['target'] = 'repo:maintenance';
 
     $notes = [];
     foreach ($node->get('field_arv_internal_notes')->referencedEntities() as $note) {
@@ -429,7 +442,17 @@ final class ReviewPageForm extends FormBase {
    * A finding paragraph as the array ReviewPageData works on.
    */
   protected function findingArray(ParagraphInterface $p): array {
+    $source = $p->hasField('field_rvf_source') ? (string) ($p->get('field_rvf_source')->value ?? '') : '';
+    $isReviewer = $source === 'reviewer';
+    $author = $isReviewer ? $p->get('field_rvf_author')->entity : NULL;
     return [
+      // Findings seeded before field_rvf_source existed are automated.
+      'source' => $isReviewer ? 'reviewer' : 'ai',
+      // A reviewer finding stays in the block it was added in (see
+      // ReviewPageData::BLOCK_FIELDS); NULL lets the rule code decide.
+      'block' => $isReviewer ? ReviewPageData::blockFromFields($p->get('field_rvf_aspect')->value, $p->get('field_rvf_category')->value) : NULL,
+      'author' => $author ? $author->getDisplayName() : '',
+      'created' => $isReviewer ? $this->formatDate((int) ($p->get('field_rvf_created')->value ?? 0), 'medium') : '',
       'pid' => $p->id(),
       'rule' => (string) ($p->get('field_rvf_rule')->value ?? ''),
       'severity' => (string) ($p->get('field_rvf_severity')->value ?? ''),
@@ -531,6 +554,230 @@ final class ReviewPageForm extends FormBase {
       '#rows' => 2,
       '#default_value' => $finding['prose'],
       '#attributes' => ['placeholder' => $this->t('Reviewer note…')],
+    ];
+    if ($finding['source'] !== 'reviewer') {
+      return;
+    }
+    // A reviewer's own finding is editable (saved with Save draft) and
+    // deletable by any reviewer; automated findings are annotated only.
+    $pid = $finding['pid'];
+    $form['edit_finding'][$pid] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['finding-fields']],
+      'rule' => ['#type' => 'textfield', '#title' => $this->t('Rule'), '#size' => 10, '#maxlength' => 32, '#default_value' => $finding['rule']],
+      'severity' => ['#type' => 'select', '#title' => $this->t('Severity'), '#options' => $this->severityOptions(), '#default_value' => $finding['severity']],
+      'summary' => ['#type' => 'textfield', '#title' => $this->t('Summary'), '#maxlength' => 255, '#default_value' => $finding['summary']],
+      'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 255, '#default_value' => $finding['evidence'], '#attributes' => ['placeholder' => 'path/to/file:line — what is there']],
+    ];
+    $form['delete_finding'][$pid] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Delete finding'),
+      '#name' => 'delete_finding__' . $pid,
+      '#finding_pid' => $pid,
+      '#submit' => ['::deleteFinding'],
+      '#limit_validation_errors' => [],
+      '#attributes' => ['class' => ['btn', 'ghost', 'btn-delete-finding']],
+    ];
+  }
+
+  /**
+   * The "Add finding" form for one block: the fields the automated review
+   * fills that need a reviewer's judgment. Its button validates only its own
+   * fields, so an empty add form elsewhere never blocks Save draft.
+   */
+  protected function addNewFindingElements(array &$form, string $target, string $blockKey): void {
+    $rules = [];
+    foreach (ReviewPageData::BLOCK_RULES[$blockKey] ?? [] as $code => $title) {
+      $rules[$code] = $code . ' — ' . $title;
+    }
+    $rules['_other'] = $this->t('Other…');
+    $selector = ':input[name="add_finding[' . $target . '][rule]"]';
+    $form['add_finding'][$target] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['finding-fields']],
+      'rule' => ['#type' => 'select', '#title' => $this->t('Rule'), '#options' => $rules],
+      'rule_other' => [
+        '#type' => 'textfield',
+        '#title' => $this->t('Rule code'),
+        '#size' => 10,
+        '#maxlength' => 32,
+        '#states' => ['visible' => [$selector => ['value' => '_other']]],
+      ],
+      'severity' => ['#type' => 'select', '#title' => $this->t('Severity'), '#options' => $this->severityOptions(), '#default_value' => 'medium'],
+      'summary' => ['#type' => 'textfield', '#title' => $this->t('Summary'), '#maxlength' => 255],
+      'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 255, '#attributes' => ['placeholder' => 'path/to/file:line — what is there']],
+      'add' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Add finding'),
+        '#name' => 'add_finding__' . $target,
+        '#finding_target' => $target,
+        '#validate' => ['::validateAddFinding'],
+        '#submit' => ['::addFinding'],
+        '#limit_validation_errors' => [['add_finding', $target]],
+        '#attributes' => ['class' => ['btn', 'ghost']],
+      ],
+    ];
+  }
+
+  /**
+   * The finding a reviewer typed into one block's add form, as paragraph
+   * values, or NULL with the error set on the form.
+   */
+  protected function newFindingFromInput(array $input, string $target, FormStateInterface $form_state): ?array {
+    [$kind, $first, $second] = array_pad(explode(':', $target), 3, NULL);
+    $blockKey = $kind === 'app' ? $second : $first;
+    $appId = 'root';
+    if ($kind === 'app') {
+      foreach ($this->node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+        if ((string) $verdict->id() === (string) $first) {
+          $appId = (string) ($verdict->get('field_rvv_app_id')->value ?? 'root');
+        }
+      }
+    }
+    $rule = ($input['rule'] ?? '') === '_other' ? ($input['rule_other'] ?? '') : ($input['rule'] ?? '');
+    try {
+      return ReviewPageData::reviewerFinding(['rule' => $rule] + $input, (string) $blockKey, $appId, 'manual-' . bin2hex(random_bytes(4)));
+    }
+    catch (\InvalidArgumentException $e) {
+      $form_state->setErrorByName('add_finding][' . $target . '][summary', $this->t('A new finding needs a rule, a severity and a summary.'));
+      return NULL;
+    }
+  }
+
+  public function validateAddFinding(array &$form, FormStateInterface $form_state): void {
+    $target = $form_state->getTriggeringElement()['#finding_target'];
+    $this->newFindingFromInput($form_state->getValue(['add_finding', $target]) ?? [], $target, $form_state);
+  }
+
+  /**
+   * Submit handler for a block's "Add finding": a review_finding paragraph
+   * marked as the reviewer's, appended to that app's verdict (or the repo's
+   * findings), saved as a new revision of the review.
+   */
+  public function addFinding(array &$form, FormStateInterface $form_state): void {
+    $target = $form_state->getTriggeringElement()['#finding_target'];
+    $values = $this->newFindingFromInput($form_state->getValue(['add_finding', $target]) ?? [], $target, $form_state);
+    if ($values === NULL) {
+      return;
+    }
+    $node = $this->node;
+    $finding = Paragraph::create([
+      'type' => 'review_finding',
+      'field_rvf_stable_id' => $values['stable_id'],
+      'field_rvf_app_id' => $values['app_id'],
+      'field_rvf_rule' => $values['rule'],
+      'field_rvf_defect_key' => $values['defect_key'],
+      'field_rvf_aspect' => $values['aspect'],
+      'field_rvf_category' => $values['category'],
+      'field_rvf_severity' => $values['severity'],
+      'field_rvf_summary' => $values['summary'],
+      'field_rvf_evidence' => $values['evidence'],
+      'field_rvf_anchor' => $values['anchor'],
+      'field_rvf_line' => $values['line'],
+      'field_rvf_source' => 'reviewer',
+      'field_rvf_author' => $this->currentUser->id(),
+      'field_rvf_created' => $this->time->getCurrentTime(),
+    ]);
+    [$kind, $first] = explode(':', $target);
+    if ($kind === 'app') {
+      foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+        if ((string) $verdict->id() === (string) $first) {
+          $finding->setParentEntity($verdict, 'field_rvv_findings');
+          $finding->save();
+          $verdict->get('field_rvv_findings')->appendItem($finding);
+          $verdict->save();
+        }
+      }
+    }
+    else {
+      $finding->setParentEntity($node, 'field_arv_repo_findings');
+      $finding->save();
+      $node->get('field_arv_repo_findings')->appendItem($finding);
+    }
+    $node->setNewRevision(TRUE);
+    $this->stampRevision($node, sprintf('Review page: %s added finding %s', $this->currentUser->getDisplayName(), $values['rule']));
+    $node->save();
+    $this->messenger()->addStatus($this->t('Finding @rule added.', ['@rule' => $values['rule']]));
+    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
+  }
+
+  /**
+   * Submit handler for "Delete finding" on a reviewer's finding. Removes the
+   * reference (earlier revisions keep theirs); automated findings are never
+   * deleted here.
+   */
+  public function deleteFinding(array &$form, FormStateInterface $form_state): void {
+    $pid = (string) $form_state->getTriggeringElement()['#finding_pid'];
+    $node = $this->node;
+    $removed = NULL;
+    $drop = function ($list) use ($pid, &$removed): bool {
+      foreach ($list->referencedEntities() as $delta => $p) {
+        if ((string) $p->id() === $pid && ($p->get('field_rvf_source')->value ?? '') === 'reviewer') {
+          $removed = $p;
+          $list->removeItem($delta);
+          return TRUE;
+        }
+      }
+      return FALSE;
+    };
+    foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      if ($drop($verdict->get('field_rvv_findings'))) {
+        $verdict->save();
+        break;
+      }
+    }
+    if ($removed === NULL) {
+      $drop($node->get('field_arv_repo_findings'));
+    }
+    if ($removed === NULL) {
+      $this->messenger()->addError($this->t('Only a finding a reviewer added can be deleted.'));
+      return;
+    }
+    $node->setNewRevision(TRUE);
+    $this->stampRevision($node, sprintf('Review page: %s deleted finding %s', $this->currentUser->getDisplayName(), $removed->get('field_rvf_rule')->value));
+    $node->save();
+    $this->messenger()->addStatus($this->t('Finding deleted.'));
+    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
+  }
+
+  /**
+   * Saves the edit fields of a reviewer's finding, keeping its identity
+   * (stable id, author, time added) and the block it was added in.
+   */
+  protected function saveReviewerEdits(ParagraphInterface $finding, array $values): void {
+    $pid = $finding->id();
+    if (($finding->get('field_rvf_source')->value ?? '') !== 'reviewer' || !isset($values['edit_finding'][$pid])) {
+      return;
+    }
+    $block = ReviewPageData::blockFromFields($finding->get('field_rvf_aspect')->value, $finding->get('field_rvf_category')->value) ?? 'code_quality';
+    try {
+      $v = ReviewPageData::reviewerFinding($values['edit_finding'][$pid], $block, (string) $finding->get('field_rvf_app_id')->value, (string) $finding->get('field_rvf_stable_id')->value);
+    }
+    catch (\InvalidArgumentException $e) {
+      // validateForm() reported it; leave the finding as it was.
+      return;
+    }
+    foreach (['rule', 'severity', 'summary', 'evidence', 'anchor', 'line', 'defect_key'] as $key) {
+      $finding->set('field_rvf_' . $key, $v[$key]);
+    }
+    $finding->save();
+  }
+
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    foreach ($form_state->getValue('edit_finding') ?? [] as $pid => $input) {
+      if (trim((string) ($input['summary'] ?? '')) === '' || trim((string) ($input['rule'] ?? '')) === '') {
+        $form_state->setErrorByName('edit_finding][' . $pid . '][summary', $this->t('A finding needs a rule and a summary.'));
+      }
+    }
+  }
+
+  protected function severityOptions(): array {
+    return [
+      'critical' => $this->t('Critical'),
+      'high' => $this->t('High'),
+      'medium' => $this->t('Medium'),
+      'low' => $this->t('Low'),
+      'info' => $this->t('Info'),
     ];
   }
 

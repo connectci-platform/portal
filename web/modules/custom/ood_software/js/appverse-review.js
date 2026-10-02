@@ -32,11 +32,14 @@
         }
         const textarea = box.querySelector('textarea');
         const hasText = textarea ? textarea.value.trim() !== '' : box.textContent.trim() !== '';
-        if (!hasText) {
+        // A box holding a validation error stays open so the error is seen.
+        const hasError = box.querySelector('.error') !== null;
+        if (!hasText && !hasError) {
           box.classList.add('collapsed');
         }
-        else {
-          hint.textContent = Drupal.t('has note');
+        else if (hint.dataset.hasNote) {
+          // Automated findings say "has note"; a reviewer's own keeps "Edit".
+          hint.textContent = hint.dataset.hasNote;
         }
         hint.addEventListener('click', (e) => {
           e.stopPropagation();

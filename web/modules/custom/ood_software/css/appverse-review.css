@@ -527,6 +527,69 @@
   margin-bottom: 4px;
 }
 
+/* Reviewer-added findings: tag + who/when, inline edit fields, add form. */
+.arv-page .added-by {
+  font-size: .72rem;
+  color: var(--gray-700);
+  margin-top: 3px;
+}
+.arv-page .reviewer-tag {
+  display: inline-block;
+  font-size: .66rem;
+  font-weight: 700;
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 20px;
+  padding: 0 7px;
+  margin-right: 4px;
+}
+.arv-page .finding-fields {
+  display: grid;
+  grid-template-columns: 9rem 8rem 1fr;
+  gap: 8px 10px;
+  margin-top: 8px;
+}
+.arv-page .finding-fields > .form-item-summary,
+.arv-page .finding-fields > [class*="-summary"],
+.arv-page .finding-fields > [class*="-evidence"],
+.arv-page .finding-fields > .form-actions,
+.arv-page .finding-fields > input[type=submit] {
+  grid-column: 1 / -1;
+}
+.arv-page .finding-fields label {
+  font-size: .74rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.arv-page .finding-delete {
+  margin-top: 8px;
+  text-align: right;
+}
+.arv-page .btn-delete-finding {
+  color: var(--red);
+  border-color: var(--gray-300);
+}
+.arv-page .add-finding {
+  border-top: 1px solid var(--gray-150);
+  padding: 8px 14px;
+}
+.arv-page .add-finding > summary {
+  font-size: .78rem;
+  color: var(--blue);
+  cursor: pointer;
+}
+.arv-page .add-finding > summary:hover {
+  text-decoration: underline;
+}
+.arv-page .add-finding .finding-fields input[type=submit] {
+  justify-self: start;
+}
+@media (max-width: 600px) {
+  .arv-page .finding-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* State pill. */
 .arv-page .state-pill {
   display: inline-block;

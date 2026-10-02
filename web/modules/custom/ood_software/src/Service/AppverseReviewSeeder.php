@@ -210,6 +210,8 @@ class AppverseReviewSeeder {
       'field_rvf_summary' => $finding['summary'] ?? '',
       'field_rvf_evidence' => $finding['evidence'] ?? '',
       'field_rvf_anchor' => $finding['anchor'] ?? '',
+      // Reviewers add findings on the review page with source "reviewer".
+      'field_rvf_source' => 'ai',
     ]);
     // The artifact's findings do not yet emit "category"; set it when present.
     if (isset($finding['category'])) {
