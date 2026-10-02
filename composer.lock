@@ -736,7 +736,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "93e4a5c086fe88a8159c1dd508fbcc0f67eb036a"
+                "reference": "9c226e04958f1cc38ac688650c7de6bc128126fe"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -754,7 +754,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-09-17T23:29:11+00:00"
+            "time": "2026-10-01T18:31:24+00:00"
         },
         {
             "name": "connectci/operations_cider",
@@ -24635,5 +24635,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
