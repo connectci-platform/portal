@@ -105,6 +105,16 @@
   font-size: .85rem;
   color: #fff;
 }
+.arv-page .overview-line + .overview-line {
+  margin-top: 2px;
+}
+.arv-page .overview-line .state-pill {
+  margin-left: .35rem;
+}
+.arv-page .overview-line--sub {
+  font-size: .78rem;
+  color: #c9cdd0;
+}
 .arv-page .overview-meta code {
   font-size: .85em;
   background: rgba(255, 255, 255, .15);
@@ -321,11 +331,6 @@
   font-size: .86rem;
   color: var(--gray-700);
   margin-top: .25rem;
-}
-.arv-page .report-link {
-  font-size: .78rem;
-  color: var(--blue);
-  text-decoration: none;
 }
 
 .arv-page .rating-badge {
@@ -679,6 +684,7 @@
     border: 1px solid var(--gray-300);
   }
   .arv-page .overview-meta,
+  .arv-page .overview-line--sub,
   .arv-page .overview-meta a,
   .arv-page .overview-meta code,
   .arv-page .prev-reviews,

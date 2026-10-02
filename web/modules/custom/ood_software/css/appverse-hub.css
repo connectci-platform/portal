@@ -237,10 +237,11 @@ header:has(> .appverse-hub-add-repo) {
   grid-template-columns:
     minmax(12rem, 1fr)   /* title (the only flexible track) */
     9rem                 /* submitted date */
-    2.5rem               /* github */
+    4.5rem               /* github + re-sync */
     12rem                /* owner (blank on own hub) */
-    9rem                 /* status */
-    11rem;               /* edit pencil + resync + lifecycle actions */
+    9rem                 /* status (badges wrap onto more lines) */
+    12.5rem;             /* edit + lifecycle + review actions: five 2rem icons
+                            fit on one line; a reviewed repo's seven wrap */
   align-items: center;
   column-gap: 1.25rem;
   row-gap: 0.5rem;
@@ -257,6 +258,18 @@ header:has(> .appverse-hub-add-repo) {
    single-app cards. */
 .appverse-hub-card__cell--submitted { justify-content: flex-start; }
 .appverse-hub-card__cell--actions { justify-content: flex-end; }
+/* The status and actions tracks are fixed, but their contents are not: up to
+   four badges, and up to seven action icons on a reviewed repo. Unwrapped,
+   the badges ran right and the right-aligned icons ran left, on top of each
+   other. Let both wrap inside their own track instead. */
+.appverse-hub-card__cell--status,
+.appverse-hub-card__cell--actions {
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+.appverse-hub-card__cell--status .badge {
+  white-space: nowrap;
+}
 .appverse-hub-card__submitted {
   font-size: 0.875rem;
   color: #555;
@@ -306,7 +319,7 @@ header:has(> .appverse-hub-add-repo) {
      otherwise render a stray label with no value. Hide any data cell that has
      no rendered content. :has() is supported on all current mobile engines;
      the desktop grid keeps empty cells for alignment above this breakpoint. */
-  .appverse-hub-card__cell--github:not(:has(a)),
+  .appverse-hub-card__cell--github:not(:has(a, button)),
   .appverse-hub-card__cell--owner:not(:has(a)),
   .appverse-hub-card__cell--actions:not(:has(a, button)) {
     display: none;

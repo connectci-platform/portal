@@ -34,7 +34,8 @@
     </div>
 
     {# The card title links to the catalog, so a separate catalog icon would be
-       redundant. GitHub is the only remaining header link here. #}
+       redundant. GitHub is the only remaining header link here; re-sync sits
+       beside it because it pulls from that same GitHub repo. #}
     <div class="appverse-hub-card__cell appverse-hub-card__cell--github">
       {% if hub.github_url %}
         <a href="{{ hub.github_url }}" class="appverse-hub-card__icon-btn" target="_blank" rel="noopener"
@@ -42,6 +43,7 @@
           <i class="bi bi-github" aria-hidden="true"></i>
         </a>
       {% endif %}
+      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
     </div>
 
     {# Owner name + contact only when the repo is owned by someone else (the
@@ -90,7 +92,6 @@
           <i class="bi bi-pencil-square" aria-hidden="true"></i>
         </a>
       {% endif %}
-      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
       {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
       {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
       {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}

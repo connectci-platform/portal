@@ -69,9 +69,6 @@
               <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the automated rating'|t }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
             {% endif %}
           {% endif %}
-          {% if block.anchor and page.report_html %}
-            <a class="report-link" href="{{ page.report_html }}{{ block.anchor }}" target="_blank" rel="noopener">{{ 'Open in report'|t }} ›</a>
-          {% endif %}
         </div>
         <div class="cat-count">{{ block.count_line }}</div>
       </div>
@@ -115,16 +112,24 @@
   {% endif %}
   <div class="overview-block">
     <div class="overview-row">
+      {# Two lines: what was reviewed, then who/when and the links. One long
+         line wrapped unevenly. #}
       <div class="overview-meta">
-        {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
-        · {{ page.shape }}
-        {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
-        {% if page.maintainer %} · {{ 'Maintainer'|t }}: {{ page.maintainer }}{% endif %}
-        {% if page.reviewed_at %} · {{ 'Reviewed'|t }}: {{ page.reviewed_at }}{% endif %}
-        · <span class="state-pill state-pill--{{ page.state }}">{{ page.state_label }}</span>
-        {% if page.report_pdf %} · <a href="{{ page.report_pdf }}">{{ 'PDF report'|t }}</a>{% endif %}
-        {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
-        {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
+        <div class="overview-line">
+          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
+          {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
+          · {{ page.shape }}
+          <span class="state-pill state-pill--{{ page.state }}">{{ page.state_label }}</span>
+        </div>
+        <div class="overview-line overview-line--sub">
+          {% set sub = [] %}
+          {% if page.maintainer %}{% set sub = sub|merge([('Maintainer'|t) ~ ': ' ~ page.maintainer]) %}{% endif %}
+          {% if page.reviewed_at %}{% set sub = sub|merge([('Reviewed'|t) ~ ' ' ~ page.reviewed_at]) %}{% endif %}
+          {{ sub|join(' · ') }}
+          {% if page.report_pdf %}{{ sub is empty ? '' : ' · ' }}<a href="{{ page.report_pdf }}">{{ 'PDF report'|t }}</a>{% endif %}
+          {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
+          {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
+        </div>
       </div>
       <div class="prev-reviews review-history">
         {% if page.history and page.history.total > 1 %}
