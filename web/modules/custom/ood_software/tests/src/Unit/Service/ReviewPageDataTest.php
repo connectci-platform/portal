@@ -236,6 +236,20 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * A block keeps the automated rating beside the current level, so the page
+   * can say what the tool rated after a reviewer overrides it.
+   *
+   * @covers ::buildBlock
+   */
+  public function testBuildBlockKeepsTheToolLevel(): void {
+    $block = ReviewPageData::buildBlock('portability', 'Portability', [], ['level' => 'needs_attention', 'tool_level' => 'some_notes'], []);
+    $this->assertSame(['needs_attention', 'some_notes'], [$block['level'], $block['tool_level']]);
+
+    $none = ReviewPageData::buildBlock('code_quality', 'Code quality', [], NULL, []);
+    $this->assertNull($none['tool_level']);
+  }
+
+  /**
    * A reviewer's finding gets what the automated review fills: the anchor
    * file and line from "path:line" evidence, a defect key on that file, and
    * the aspect/category of the block it was added in.

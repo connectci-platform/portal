@@ -163,7 +163,9 @@ final class ReviewPageForm extends FormBase {
           '#title_display' => 'invisible',
           '#options' => $levelOptions,
           '#empty_option' => $this->t('- None -'),
-          '#default_value' => $block['level'] ?? '',
+          // An empty level (an older or hand-seeded review) starts at the
+          // automated rating rather than "None".
+          '#default_value' => ($block['level'] ?? NULL) ?: ($block['tool_level'] ?? ''),
         ];
         $form['level_note'][$pid][$axis] = [
           '#type' => 'textarea',
@@ -199,7 +201,7 @@ final class ReviewPageForm extends FormBase {
       '#title_display' => 'invisible',
       '#options' => $levelOptions,
       '#empty_option' => $this->t('- None -'),
-      '#default_value' => $maint['level'] ?? '',
+      '#default_value' => ($maint['level'] ?? NULL) ?: ($maint['tool_level'] ?? ''),
     ];
     $form['maint_level_note'] = [
       '#type' => 'textarea',
@@ -353,9 +355,11 @@ final class ReviewPageForm extends FormBase {
     $apps = [];
     foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $levels = [];
+      $toolLevels = json_decode((string) ($verdict->get('field_rvv_indicators_default')->value ?? ''), TRUE) ?: [];
       foreach (self::AXES as $axis => $prefix) {
         $levels[$axis] = [
           'level' => $verdict->get("field_rvv_{$prefix}_level")->value,
+          'tool_level' => $toolLevels[$axis]['level'] ?? NULL,
           'summary' => (string) ($verdict->get("field_rvv_{$prefix}_summary")->value ?? ''),
           'anchor' => (string) ($verdict->get("field_rvv_{$prefix}_anchor")->value ?? ''),
           'note' => (string) ($verdict->get("field_rvv_{$prefix}_level_note")->value ?? ''),
@@ -382,6 +386,7 @@ final class ReviewPageForm extends FormBase {
       array_map([$this, 'findingArray'], $node->get('field_arv_repo_findings')->referencedEntities()),
       [
         'level' => $node->get('field_arv_maint_level')->value,
+        'tool_level' => (json_decode((string) ($node->get('field_arv_indicators_default')->value ?? ''), TRUE) ?: [])['maintenance']['level'] ?? NULL,
         'summary' => (string) ($node->get('field_arv_maint_summary')->value ?? ''),
         'anchor' => (string) ($node->get('field_arv_maint_anchor')->value ?? ''),
         'note' => (string) ($node->get('field_arv_maint_level_note')->value ?? ''),

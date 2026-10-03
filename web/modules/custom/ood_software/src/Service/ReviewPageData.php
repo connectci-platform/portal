@@ -349,6 +349,8 @@ final class ReviewPageData {
       'key' => $key,
       'title' => $title,
       'level' => $level['level'] ?? NULL,
+      // The automated review's own rating, kept when a reviewer overrides it.
+      'tool_level' => $level['tool_level'] ?? NULL,
       'summary' => $level['summary'] ?? '',
       'anchor' => $level['anchor'] ?? '',
       'note' => $level['note'] ?? '',
