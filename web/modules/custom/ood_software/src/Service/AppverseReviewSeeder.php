@@ -136,6 +136,18 @@ class AppverseReviewSeeder {
       }
     }
 
+    // The report's draft feedback is the reviewer's starting point for the
+    // response to the contributor: pre-fill it, to be edited before sending.
+    // The response is never shown publicly.
+    $mdName = basename((string) ($artifact['artifacts']['report_md'] ?? ''));
+    if ($mdName !== '' && $reports_dir !== NULL && $review->get('field_arv_contributor_response')->isEmpty()) {
+      $mdPath = rtrim($reports_dir, '/') . '/' . $mdName;
+      $draft = is_readable($mdPath) ? self::extractDraftFeedback((string) file_get_contents($mdPath)) : '';
+      if ($draft !== '') {
+        $review->set('field_arv_contributor_response', ['value' => $draft, 'format' => 'plain_text']);
+      }
+    }
+
     $review->save();
     $this->logger->notice('Seeded review @nid for @repo @ @sha (@apps app(s), @findings finding(s)).', [
       '@nid' => $review->id(),
@@ -250,6 +262,26 @@ class AppverseReviewSeeder {
       }
     }
     return NULL;
+  }
+
+  /**
+   * The report's draft feedback, ready to edit as the response.
+   *
+   * The section under "## Draft feedback…" (reviewer mode) or "## Fix before
+   * submitting" (submitter mode), up to the next level-2 heading, without the
+   * heading itself or HTML comments (the feedback-covers key list the
+   * report's checker reads). '' when the report has no such section.
+   */
+  public static function extractDraftFeedback(string $markdown): string {
+    if (!preg_match('/^##\s+(?:Draft feedback|Fix before submitting)\b[^\n]*\n/mi', $markdown, $m, PREG_OFFSET_CAPTURE)) {
+      return '';
+    }
+    $body = substr($markdown, $m[0][1] + strlen($m[0][0]));
+    if (preg_match('/^##\s/m', $body, $next, PREG_OFFSET_CAPTURE)) {
+      $body = substr($body, 0, $next[0][1]);
+    }
+    $body = preg_replace('/<!--.*?-->/s', '', $body);
+    return trim(preg_replace("/\n{3,}/", "\n\n", $body));
   }
 
   /**
