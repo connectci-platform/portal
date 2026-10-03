@@ -236,6 +236,47 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * Evidence that starts with path:line links to that line at the reviewed
+   * commit; the rest of the evidence stays as text.
+   *
+   * @covers ::evidenceLink
+   * @dataProvider evidenceLinks
+   */
+  public function testEvidenceLink(string $evidence, ?string $url, ?string $text): void {
+    $link = ReviewPageData::evidenceLink($evidence, 'https://github.com/mkonda/appverse-example-monorepo', 'a52c443deadbeef');
+    $this->assertSame($url, $link['url'] ?? NULL);
+    $this->assertSame($text, $link['text'] ?? NULL);
+    if ($link !== NULL) {
+      $this->assertSame($evidence, $link['text'] . $link['rest'], 'text + rest is the whole evidence');
+    }
+  }
+
+  public static function evidenceLinks(): array {
+    $base = 'https://github.com/mkonda/appverse-example-monorepo/blob/a52c443deadbeef/';
+    return [
+      'file and line' => ['jupyter_example/form.yml:3 — `cluster: x`', $base . 'jupyter_example/form.yml#L3', 'jupyter_example/form.yml:3'],
+      'line range' => ['appverse.yml:43-44 — `shared_paths`', $base . 'appverse.yml#L43-L44', 'appverse.yml:43-44'],
+      'several lines link the first' => ['jupyter_example/form.yml:10,17 — min/max', $base . 'jupyter_example/form.yml#L10', 'jupyter_example/form.yml:10,17'],
+      'erb file' => ['template/script.sh.erb:40', $base . 'template/script.sh.erb#L40', 'template/script.sh.erb:40'],
+      'absent directory is not linked' => ['jupyter_example/template/ — directory absent from repo', NULL, NULL],
+      'bare file is not linked' => ['README.md — no Prerequisites section', NULL, NULL],
+      'no path is not linked' => ['No CHANGELOG, CHANGES, or HISTORY file found at repo root', NULL, NULL],
+      'parent paths are not linked' => ['../etc/passwd:1', NULL, NULL],
+    ];
+  }
+
+  /**
+   * Only GitHub repos with a known commit get links.
+   *
+   * @covers ::evidenceLink
+   */
+  public function testEvidenceLinkNeedsAGitHubRepoAndACommit(): void {
+    $this->assertSame('https://github.com/o/r/blob/abc/f.yml#L1', ReviewPageData::evidenceLink('f.yml:1', 'https://github.com/o/r.git', 'abc')['url']);
+    $this->assertNull(ReviewPageData::evidenceLink('f.yml:1', 'https://gitlab.com/o/r', 'abc'));
+    $this->assertNull(ReviewPageData::evidenceLink('f.yml:1', 'https://github.com/o/r', ''));
+  }
+
+  /**
    * A block keeps the automated rating beside the current level, so the page
    * can say what the tool rated after a reviewer overrides it.
    *

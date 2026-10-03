@@ -548,6 +548,13 @@
   color: var(--gray-500);
   margin-top: 2px;
 }
+.arv-page .frow .ev a {
+  color: var(--blue);
+  text-decoration: none;
+}
+.arv-page .frow .ev a:hover {
+  text-decoration: underline;
+}
 .arv-page .frow .also-flagged {
   color: var(--status-amber);
 }

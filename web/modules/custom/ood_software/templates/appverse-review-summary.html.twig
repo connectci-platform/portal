@@ -39,7 +39,7 @@
                 <div class="rule">{{ finding.rule }}</div>
                 <div>
                   <div class="sum">{{ finding.summary }}{% if finding.source == 'reviewer' %} <span class="reviewer-tag">{{ 'Reviewer'|t }}</span>{% endif %}</div>
-                  {% if finding.evidence %}<div class="ev">{{ finding.evidence }}</div>{% endif %}
+                  {% if finding.evidence %}<div class="ev">{% if finding.evidence_link %}<a href="{{ finding.evidence_link.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ finding.evidence_link.text }}</a>{{ finding.evidence_link.rest }}{% else %}{{ finding.evidence }}{% endif %}</div>{% endif %}
                 </div>
               </div>
             {% endfor %}

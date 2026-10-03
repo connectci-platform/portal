@@ -67,6 +67,12 @@ final class ReviewPageForm extends FormBase {
   protected NodeInterface $node;
 
   /**
+   * The repo URL and reviewed commit findingArray() links evidence to.
+   */
+  protected string $linkRepoUrl = '';
+  protected string $linkSha = '';
+
+  /**
    * The view a viewer gets.
    *
    * Reviewers get the editable page, or the public summary when they ask for
@@ -348,6 +354,11 @@ final class ReviewPageForm extends FormBase {
     $reviewedAt = (int) ($node->get('field_arv_reviewed_at')->value ?? 0);
     $state = (string) ($node->get('moderation_state')->value ?? 'draft');
 
+    // Evidence links point at the repo on GitHub at the reviewed commit.
+    $this->linkRepoUrl = $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty()
+      ? (string) ($repo->get('field_repo_url')->first()->getValue()['uri'] ?? '') : '';
+    $this->linkSha = $sha;
+
     $previous = $this->previousReviews($node, $repo);
     $reportHtml = $this->reportHtmlUrl($node);
     $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
@@ -475,6 +486,7 @@ final class ReviewPageForm extends FormBase {
       'stable_id' => (string) ($p->get('field_rvf_stable_id')->value ?? ''),
       'summary' => (string) ($p->get('field_rvf_summary')->value ?? ''),
       'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
+      'evidence_link' => ReviewPageData::evidenceLink((string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
     ];

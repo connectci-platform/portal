@@ -209,6 +209,38 @@ final class ReviewPageData {
   }
 
   /**
+   * A GitHub link for the "path:line" an evidence string starts with.
+   *
+   * Only a path with a line number is linked: the line proves the file
+   * exists at the reviewed commit, while a bare path is often the "file
+   * absent" case and would link to a 404. "path:3", "path:3-5" (a range)
+   * and "path:10,17" (first line) are understood. NULL for a non-GitHub
+   * repo, no commit, or evidence that does not start with path:line.
+   *
+   * @return array{url: string, text: string, rest: string}|null
+   *   The URL, the linked "path:line" text, and the rest of the evidence.
+   */
+  public static function evidenceLink(string $evidence, string $repoUrl, string $sha): ?array {
+    if ($sha === '' || !preg_match('#^https?://(?:www\.)?github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/?$#i', trim($repoUrl), $repo)) {
+      return NULL;
+    }
+    if (!preg_match('#^([A-Za-z0-9._~/-]*[A-Za-z0-9_~-]\.?[A-Za-z0-9._~-]*):(\d+)(?:-(\d+))?(?:,\d+)*#', $evidence, $m)) {
+      return NULL;
+    }
+    $path = ltrim($m[1], '/');
+    if ($path === '' || str_contains($path, '..')) {
+      return NULL;
+    }
+    $anchor = '#L' . $m[2] . (isset($m[3]) && $m[3] !== '' ? '-L' . $m[3] : '');
+    $segments = implode('/', array_map('rawurlencode', explode('/', $path)));
+    return [
+      'url' => sprintf('https://github.com/%s/%s/blob/%s/%s%s', $repo[1], $repo[2], rawurlencode($sha), $segments, $anchor),
+      'text' => $m[0],
+      'rest' => substr($evidence, strlen($m[0])),
+    ];
+  }
+
+  /**
    * Whether a finding record asserts a defect.
    *
    * FAIL and WARN do; PASS confirms a check and NOT CHECKED reports a skipped
