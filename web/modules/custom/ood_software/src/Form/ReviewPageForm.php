@@ -480,9 +480,9 @@ final class ReviewPageForm extends FormBase {
       'pid' => $p->id(),
       'rule' => (string) ($p->get('field_rvf_rule')->value ?? ''),
       'severity' => (string) ($p->get('field_rvf_severity')->value ?? ''),
-      // The paragraph has no result field (#11); everything seeded is a
-      // finding until it does.
-      'result' => 'FAIL',
+      // FAIL / WARN / PASS / NOT CHECKED. Rows seeded before the result was
+      // stored have none and count as findings, as they always have.
+      'result' => strtoupper(str_replace('_', ' ', (string) ($p->hasField('field_rvf_result') ? ($p->get('field_rvf_result')->value ?? '') : ''))) ?: 'FAIL',
       'stable_id' => (string) ($p->get('field_rvf_stable_id')->value ?? ''),
       'summary' => (string) ($p->get('field_rvf_summary')->value ?? ''),
       'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
@@ -732,6 +732,7 @@ final class ReviewPageForm extends FormBase {
       'field_rvf_anchor' => $values['anchor'],
       'field_rvf_line' => $values['line'],
       'field_rvf_source' => 'reviewer',
+      'field_rvf_result' => 'fail',
       'field_rvf_author' => $this->currentUser->id(),
       'field_rvf_created' => $this->time->getCurrentTime(),
     ]);

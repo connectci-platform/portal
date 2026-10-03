@@ -150,6 +150,41 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * PASS and NOT CHECKED rows are not findings: they stay out of the groups
+   * and the count line, and are listed apart so a reviewer can confirm a
+   * cleared check.
+   *
+   * @covers ::buildBlock
+   */
+  public function testBuildBlockListsCheckedRowsApart(): void {
+    $block = ReviewPageData::buildBlock('code_quality', 'Code quality', [
+      $this->finding('QUA-05', 'low', 'WARN'),
+      $this->finding('QUA-07', 'info', 'PASS'),
+      $this->finding('QUA-03', 'info', 'NOT CHECKED'),
+      $this->finding('QUA-04', 'info', 'NOT CHECKED'),
+    ], NULL, []);
+
+    $this->assertSame('1 finding · 1 Low', $block['count_line']);
+    $this->assertSame(['QUA-07', 'QUA-03', 'QUA-04'], array_column($block['checked']['rows'], 'rule'));
+    $this->assertSame(['PASS' => 1, 'NOT CHECKED' => 2], $block['checked']['counts']);
+  }
+
+  /**
+   * A repo-level block with only checked rows still appears, so a cleared
+   * repo-wide check can be confirmed; it adds nothing to the total.
+   *
+   * @covers ::buildRepo
+   */
+  public function testBuildRepoKeepsABlockOfOnlyCheckedRows(): void {
+    $repo = ReviewPageData::buildRepo([$this->finding('STR-01', 'info', 'PASS')], NULL);
+
+    $this->assertSame(['structure'], array_keys($repo['blocks']));
+    $this->assertSame('No findings', $repo['blocks']['structure']['count_line']);
+    $this->assertSame(['PASS' => 1], $repo['blocks']['structure']['checked']['counts']);
+    $this->assertSame(0, $repo['total']);
+  }
+
+  /**
    * The per-app assembly: findings sorted into the five blocks in the fixed
    * order, each block carrying its level, count line, severity groups, and
    * the "also flagged" marks; PASS rows excluded everywhere.

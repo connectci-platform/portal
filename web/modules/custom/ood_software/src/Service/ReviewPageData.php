@@ -377,8 +377,17 @@ final class ReviewPageData {
       unset($finding);
     }
     unset($group);
+    // PASS and NOT CHECKED rows: not findings, but a reviewer checks that a
+    // cleared candidate really is clear. Counts by result, worst-first order.
+    $checkedRows = array_values(array_filter($findings, fn ($f) => !self::isDefect($f)));
+    $checkedCounts = [];
+    foreach ($checkedRows as $row) {
+      $result = strtoupper(trim((string) $row['result']));
+      $checkedCounts[$result] = ($checkedCounts[$result] ?? 0) + 1;
+    }
     return [
       'key' => $key,
+      'checked' => ['rows' => $checkedRows, 'counts' => $checkedCounts],
       'title' => $title,
       'level' => $level['level'] ?? NULL,
       // The automated review's own rating, kept when a reviewer overrides it.
@@ -449,9 +458,10 @@ final class ReviewPageData {
     }
     $blocks = [];
     foreach (self::APP_BLOCKS as $key => $title) {
-      $defects = array_filter($byBlock[$key], [self::class, 'isDefect']);
-      if ($defects !== []) {
-        $blocks[$key] = self::buildBlock($key, $title, array_values($defects), NULL, $previous);
+      // A repo-level block appears when it holds anything: findings, or only
+      // checked rows (PASS / NOT CHECKED) a reviewer may want to confirm.
+      if ($byBlock[$key] !== []) {
+        $blocks[$key] = self::buildBlock($key, $title, $byBlock[$key], NULL, $previous);
       }
     }
     $maintenance = self::buildBlock('maintenance', 'Maintenance', $mnt, $level, $previous);

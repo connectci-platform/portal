@@ -12,6 +12,7 @@ dependencies:
     - field.field.paragraph.review_finding.field_rvf_defect_key
     - field.field.paragraph.review_finding.field_rvf_evidence
     - field.field.paragraph.review_finding.field_rvf_line
+    - field.field.paragraph.review_finding.field_rvf_result
     - field.field.paragraph.review_finding.field_rvf_reviewer_prose
     - field.field.paragraph.review_finding.field_rvf_rule
     - field.field.paragraph.review_finding.field_rvf_severity
@@ -148,5 +149,6 @@ hidden:
   created: true
   field_rvf_author: true
   field_rvf_created: true
+  field_rvf_result: true
   field_rvf_source: true
   status: true

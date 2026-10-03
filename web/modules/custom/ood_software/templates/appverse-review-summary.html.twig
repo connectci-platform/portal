@@ -113,7 +113,11 @@
     <div class="summary-app-head"><h2 class="sec app-name">{{ 'Repository'|t }}</h2></div>
     <dl class="summary-rows">
       {% for key, block in page.repo_blocks %}
-        {{ m.summary_row(block, page, level_class) }}
+        {# A repo block of only PASS / NOT CHECKED rows has nothing for a
+           visitor; reviewers see those rows on the full page. #}
+        {% if block.groups is not empty %}
+          {{ m.summary_row(block, page, level_class) }}
+        {% endif %}
       {% endfor %}
       {{ m.summary_row(page.maintenance, page, level_class) }}
     </dl>

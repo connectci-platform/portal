@@ -234,6 +234,9 @@ class AppverseReviewSeeder {
       'field_rvf_anchor' => $finding['anchor'] ?? '',
       // Reviewers add findings on the review page with source "reviewer".
       'field_rvf_source' => 'ai',
+      // PASS and NOT CHECKED rows are checks, not findings; the page keeps
+      // them out of the counts and lists them apart.
+      'field_rvf_result' => self::resultKey($finding['result'] ?? NULL),
     ]);
     // The artifact's findings do not yet emit "category"; set it when present.
     if (isset($finding['category'])) {
@@ -272,6 +275,15 @@ class AppverseReviewSeeder {
       }
     }
     return NULL;
+  }
+
+  /**
+   * The field_rvf_result key for an artifact row's result ("PASS", "NOT
+   * CHECKED", …); NULL for a missing or unknown one.
+   */
+  public static function resultKey(?string $result): ?string {
+    $key = str_replace(' ', '_', strtolower(trim((string) $result)));
+    return in_array($key, ['fail', 'warn', 'pass', 'not_checked'], TRUE) ? $key : NULL;
   }
 
   /**

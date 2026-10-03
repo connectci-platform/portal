@@ -121,6 +121,26 @@
         </div>
       </div>
     {% endfor %}
+    {# PASS and NOT CHECKED rows: not findings, but listed so a reviewer can
+       confirm a cleared check. Full page only; the public summary omits them. #}
+    {% if block.checked.rows is not empty %}
+      {% set parts = [] %}
+      {% for result, n in block.checked.counts %}
+        {% set parts = parts|merge([n ~ ' ' ~ (result == 'PASS' ? 'passed'|t : (result == 'NOT CHECKED' ? 'not checked'|t : result|lower))]) %}
+      {% endfor %}
+      <details class="checked-rows">
+        <summary>{{ 'Checked: @parts'|t({'@parts': parts|join(' · ')}) }}</summary>
+        {% for row in block.checked.rows %}
+          <div class="frow">
+            <div class="rule">{{ row.rule }}</div>
+            <div>
+              <div class="sum"><span class="result-pill result-pill--{{ row.result|lower|replace({' ': '-'}) }}">{{ row.result }}</span> {{ row.summary }}</div>
+              {% if row.evidence %}<div class="ev">{% if row.evidence_link %}<a href="{{ row.evidence_link.url }}" target="_blank" rel="noopener">{{ row.evidence_link.text }}</a>{{ row.evidence_link.rest }}{% else %}{{ row.evidence }}{% endif %}</div>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </details>
+    {% endif %}
     {% if can_edit and block.target and form.add_finding[block.target] is defined %}
       <details class="add-finding">
         <summary>{{ '+ Add finding'|t }}</summary>

@@ -589,6 +589,35 @@
   margin-bottom: 4px;
 }
 
+/* Checked rows (PASS / NOT CHECKED) under a block's findings. */
+.arv-page .checked-rows {
+  border-top: 1px solid var(--gray-150);
+  padding: 8px 14px;
+}
+.arv-page .checked-rows > summary {
+  font-size: .78rem;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.arv-page .checked-rows .frow {
+  padding: 6px 0;
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .result-pill {
+  display: inline-block;
+  font-size: .64rem;
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+.arv-page .result-pill--pass {
+  background: #e0f3f0;
+  color: var(--status-green);
+}
+
 /* Reviewer-added findings: tag + who/when, inline edit fields, add form. */
 .arv-page .added-by {
   font-size: .72rem;
