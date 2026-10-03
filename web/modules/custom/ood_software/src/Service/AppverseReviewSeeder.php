@@ -139,12 +139,22 @@ class AppverseReviewSeeder {
     // The report's draft feedback is the reviewer's starting point for the
     // response to the contributor: pre-fill it, to be edited before sending.
     // The response is never shown publicly.
+    // From the md report too: the repo-level gate table's evidence and the
+    // Catalog checks, which Step 1 of the Reviewer Process asks the reviewer
+    // to settle and which the artifact JSON does not carry.
     $mdName = basename((string) ($artifact['artifacts']['report_md'] ?? ''));
-    if ($mdName !== '' && $reports_dir !== NULL && $review->get('field_arv_contributor_response')->isEmpty()) {
-      $mdPath = rtrim($reports_dir, '/') . '/' . $mdName;
-      $draft = is_readable($mdPath) ? self::extractDraftFeedback((string) file_get_contents($mdPath)) : '';
-      if ($draft !== '') {
+    $mdPath = $mdName !== '' && $reports_dir !== NULL ? rtrim($reports_dir, '/') . '/' . $mdName : '';
+    $markdown = $mdPath !== '' && is_readable($mdPath) ? (string) file_get_contents($mdPath) : '';
+    if ($markdown !== '') {
+      $draft = self::extractDraftFeedback($markdown);
+      if ($draft !== '' && $review->get('field_arv_contributor_response')->isEmpty()) {
         $review->set('field_arv_contributor_response', ['value' => $draft, 'format' => 'plain_text']);
+      }
+      if ($review->hasField('field_arv_gate_evidence') && ($rows = self::gateRows($markdown)) !== []) {
+        $review->set('field_arv_gate_evidence', json_encode($rows));
+      }
+      if ($review->hasField('field_arv_catalog_checks') && ($catalog = self::extractSection($markdown, 'Catalog checks')) !== '') {
+        $review->set('field_arv_catalog_checks', $catalog);
       }
     }
 
@@ -273,7 +283,17 @@ class AppverseReviewSeeder {
    * report's checker reads). '' when the report has no such section.
    */
   public static function extractDraftFeedback(string $markdown): string {
-    if (!preg_match('/^##\s+(?:Draft feedback|Fix before submitting)\b[^\n]*\n/mi', $markdown, $m, PREG_OFFSET_CAPTURE)) {
+    return self::extractSection($markdown, '(?:Draft feedback|Fix before submitting)');
+  }
+
+  /**
+   * A level-2 section of the md report: the body under the first "## "
+   * heading matching $headingPattern (a regex fragment, case-insensitive),
+   * up to the next level-2 heading, without the heading or HTML comments.
+   * '' when the report has no such section.
+   */
+  public static function extractSection(string $markdown, string $headingPattern): string {
+    if (!preg_match('/^##\s+' . $headingPattern . '\b[^\n]*\n/mi', $markdown, $m, PREG_OFFSET_CAPTURE)) {
       return '';
     }
     $body = substr($markdown, $m[0][1] + strlen($m[0][0]));
@@ -282,6 +302,35 @@ class AppverseReviewSeeder {
     }
     $body = preg_replace('/<!--.*?-->/s', '', $body);
     return trim(preg_replace("/\n{3,}/", "\n\n", $body));
+  }
+
+  /**
+   * The rows of the report's "Repo-level gate criteria" table.
+   *
+   * Each row is rule ('' for the table's "—"), result (PASS / FAIL / WARN …)
+   * and evidence, the report's own wording. [] when there is no table.
+   *
+   * @return array<int, array{rule: string, result: string, evidence: string}>
+   */
+  public static function gateRows(string $markdown): array {
+    $rows = [];
+    foreach (explode("\n", self::extractSection($markdown, 'Repo-level gate criteria')) as $line) {
+      $line = trim($line);
+      // Table rows only; skip the header and the |---| separator.
+      if (!str_starts_with($line, '|') || preg_match('/^\|[\s:|-]+\|$/', $line)) {
+        continue;
+      }
+      $cells = array_map('trim', explode('|', trim($line, '|')));
+      if (count($cells) < 3 || strcasecmp($cells[0], 'Rule') === 0) {
+        continue;
+      }
+      $rows[] = [
+        'rule' => in_array($cells[0], ['—', '-', '–'], TRUE) ? '' : $cells[0],
+        'result' => strtoupper($cells[1]),
+        'evidence' => implode(' | ', array_slice($cells, 2)),
+      ];
+    }
+    return $rows;
   }
 
   /**

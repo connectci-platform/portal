@@ -56,6 +56,8 @@
 .arv-page code {
   font-family: ui-monospace, "Courier New", monospace;
   font-size: .86em;
+  /* The theme colours code pink; on this page it is plain ink. */
+  color: var(--gray-900);
   background: var(--gray-150);
   padding: 1px 4px;
   border-radius: 2px;
@@ -437,6 +439,59 @@
 }
 .arv-page .gate--not_checked b {
   color: var(--gray-500);
+}
+
+/* Gates and catalog checks (Reviewer Process step 1), top of the main column. */
+.arv-page .gate-rows {
+  list-style: none;
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .gate-rows li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: .84rem;
+  padding: 3px 0;
+}
+.arv-page .gate-rows .rule {
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: .74rem;
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+.arv-page .gate-result {
+  flex: none;
+  min-width: 3.2rem;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+.arv-page .gate-result--pass {
+  color: var(--status-green);
+}
+.arv-page .gate-result--fail {
+  color: var(--status-red);
+}
+.arv-page .gate-result--warn {
+  color: var(--status-amber);
+}
+.arv-page .catalog-checks {
+  padding: 8px 14px 12px;
+  font-size: .84rem;
+}
+.arv-page .catalog-checks-title {
+  font-weight: 700;
+  font-size: .86rem;
+  margin-bottom: 4px;
+}
+.arv-page .catalog-checks ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.arv-page .catalog-checks li {
+  margin: 3px 0;
 }
 
 /* Severity groups. */

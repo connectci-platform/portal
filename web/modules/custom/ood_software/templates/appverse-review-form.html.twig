@@ -164,6 +164,43 @@
 
   <div class="layout">
     <div class="main-col">
+      {# Step 1 of the Reviewer Process: settle the repo gates and the
+         duplicate check. Reviewers and the contributor only; the public
+         summary does not render this. #}
+      {% if page.repo_gates or page.gate_rows or page.catalog_html %}
+        <div class="catblock repo-checks" id="block-repo-checks">
+          <div class="cat-top">
+            <div class="cat-title-row">
+              <span class="cat-name">{{ 'Gates and catalog checks'|t }}</span>
+              <div class="cat-count">{{ 'Reviewer Process, step 1'|t }}</div>
+            </div>
+            {% if page.repo_gates %}
+              <div class="gates">
+                {% for gate in page.repo_gates %}
+                  <span class="gate gate--{{ gate.value }}" title="{{ gate.label }}: {{ gate.value|replace({'_': ' '}) }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          {% if page.gate_rows %}
+            <ul class="gate-rows">
+              {% for row in page.gate_rows %}
+                <li>
+                  <span class="gate-result gate-result--{{ row.result|lower }}">{{ row.result }}</span>
+                  {% if row.rule %}<span class="rule">{{ row.rule }}</span>{% endif %}
+                  <span class="gate-evidence">{{ row.evidence_html }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          {% if page.catalog_html %}
+            <div class="catalog-checks">
+              <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
+              {{ page.catalog_html }}
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
       {% for app in page.apps %}
         <div class="app-section" id="app-{{ app.app_id }}">
           {% if page.apps|length > 1 %}

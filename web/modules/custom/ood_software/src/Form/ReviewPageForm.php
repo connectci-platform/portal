@@ -8,12 +8,14 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -417,6 +419,12 @@ final class ReviewPageForm extends FormBase {
       'state' => $state,
       'state_label' => self::STATE_LABELS[$state] ?? ucfirst($state),
       'previous' => $previous,
+      // Step 1 of the Reviewer Process: the repo gates (pass/fail stored since
+      // the first import; the report's evidence per row and the Catalog
+      // checks only on reviews imported since they were parsed).
+      'repo_gates' => ReviewPageData::gatePills(json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []),
+      'gate_rows' => $this->gateRows($node),
+      'catalog_html' => $node->hasField('field_arv_catalog_checks') ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
       'history' => $history,
       'superseded_by' => $history['newest'] ?? NULL,
       'report_html' => $reportHtml,
@@ -532,6 +540,38 @@ final class ReviewPageForm extends FormBase {
       ];
     }
     return $history;
+  }
+
+  /**
+   * The report's repo-level gate rows, each with its evidence rendered.
+   */
+  protected function gateRows(NodeInterface $node): array {
+    if (!$node->hasField('field_arv_gate_evidence')) {
+      return [];
+    }
+    $rows = json_decode((string) ($node->get('field_arv_gate_evidence')->value ?? ''), TRUE) ?: [];
+    foreach ($rows as &$row) {
+      // Evidence is one line of markdown (backticked values); render it
+      // inline, without the paragraph wrapper.
+      $html = (string) $this->renderMarkdown((string) ($row['evidence'] ?? ''));
+      $row['evidence_html'] = Markup::create(preg_replace('#^\s*<p>(.*)</p>\s*$#s', '$1', $html));
+    }
+    return $rows;
+  }
+
+  /**
+   * Markdown from the report, as HTML safe to print: raw HTML in the source
+   * is stripped and unsafe links are dropped, so Markup is sound here.
+   */
+  protected function renderMarkdown(string $markdown): ?Markup {
+    if (trim($markdown) === '') {
+      return NULL;
+    }
+    $converter = new GithubFlavoredMarkdownConverter([
+      'html_input' => 'strip',
+      'allow_unsafe_links' => FALSE,
+    ]);
+    return Markup::create((string) $converter->convert($markdown));
   }
 
   /**

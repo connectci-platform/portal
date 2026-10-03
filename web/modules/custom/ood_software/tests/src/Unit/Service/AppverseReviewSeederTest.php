@@ -43,6 +43,36 @@ class AppverseReviewSeederTest extends UnitTestCase {
   }
 
   /**
+   * The gate table's rows, in the report's wording, for the reviewer's
+   * Step 1: "—" rules become '', the header and separator are skipped.
+   *
+   * @covers ::gateRows
+   */
+  public function testGateRowsReadsTheRepoLevelTable(): void {
+    $md = "## Repo-level gate criteria\n\n| Rule | Result | Evidence |\n|---|---|---|\n"
+      . "| — | PASS | Repository public and accessible (clone succeeded) |\n"
+      . "| STR-01 | fail | LICENSE — no LICENSE file found |\n\n## Upkeep\n\n| Signal | Value |\n|---|---|\n| CI | none |\n";
+
+    $this->assertSame([
+      ['rule' => '', 'result' => 'PASS', 'evidence' => 'Repository public and accessible (clone succeeded)'],
+      ['rule' => 'STR-01', 'result' => 'FAIL', 'evidence' => 'LICENSE — no LICENSE file found'],
+    ], AppverseReviewSeeder::gateRows($md));
+    $this->assertSame([], AppverseReviewSeeder::gateRows("## Upkeep\n\n| a | b | c |\n"));
+  }
+
+  /**
+   * The Catalog checks section keeps its markdown (nested bullets, emphasis)
+   * for the page to render.
+   *
+   * @covers ::extractSection
+   */
+  public function testExtractSectionKeepsTheCatalogChecksMarkdown(): void {
+    $md = "## Catalog checks\n\n- Duplicate check — pages 1–2 read.\n  - **Rationale:** _example apps_\n- `software` matches — PASS.\n\n## Overall recommendation\n\nReject.\n";
+
+    $this->assertSame("- Duplicate check — pages 1–2 read.\n  - **Rationale:** _example apps_\n- `software` matches — PASS.", AppverseReviewSeeder::extractSection($md, 'Catalog checks'));
+  }
+
+  /**
    * A report without the section (a dry-run placeholder, an older report)
    * pre-fills nothing.
    *

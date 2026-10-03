@@ -203,3 +203,15 @@ resourceFields:
     publicName: field_arv_internal_notes
     enhancer:
       id: ''
+  field_arv_gate_evidence:
+    disabled: true
+    fieldName: field_arv_gate_evidence
+    publicName: field_arv_gate_evidence
+    enhancer:
+      id: ''
+  field_arv_catalog_checks:
+    disabled: true
+    fieldName: field_arv_catalog_checks
+    publicName: field_arv_catalog_checks
+    enhancer:
+      id: ''
