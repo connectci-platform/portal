@@ -65,22 +65,25 @@
     </div>
 
     <div class="appverse-hub-card__cell appverse-hub-card__cell--status">
+      {# Each badge's title explains it: the editorial badge is where a person
+         is in the process ("Awaiting review" = waiting for a reviewer); the
+         review badges are the automated run's ("Review pending" = run queued). #}
       {% if hub.unpublished_after_publish %}
-        <span class="badge badge-warning">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
+        <span class="badge badge-warning badge--hint" title="{{ 'Was published, then unpublished. Only an admin can republish it.'|t }}">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
       {% else %}
-        <span class="badge badge-{{ hub.status.modifier }}">{{ hub.status.label }}</span>
+        <span class="badge badge-{{ hub.status.modifier }}{{ hub.status.description ? ' badge--hint' }}" {% if hub.status.description %}title="{{ hub.status.description }}"{% endif %}>{{ hub.status.label }}</span>
       {% endif %}
       {% if hub.has_validation_issues %}
-        <span class="badge badge-error">{{ 'Validation errors'|t }}</span>
+        <span class="badge badge-error badge--hint" title="{{ 'The last sync found problems in appverse.yml or the app files; see the edit page.'|t }}">{{ 'Validation errors'|t }}</span>
       {% endif %}
       {% if hub.review.status %}
-        <span class="badge badge-{{ hub.review.status_badge.modifier }}"
-              title="{{ hub.review.status_badge.label }}">
+        <span class="badge badge-{{ hub.review.status_badge.modifier }} badge--hint"
+              title="{{ hub.review.status_badge.description ?: hub.review.status_badge.label }}">
           {% if hub.review.status_badge.icon %}<i class="bi {{ hub.review.status_badge.icon }}" aria-hidden="true"></i>{% endif %}
           {{ hub.review.status_badge.label }}
         </span>
         {% if hub.review.recommendation %}
-          <span class="badge badge-{{ hub.review.recommendation_badge.modifier }}">
+          <span class="badge badge-{{ hub.review.recommendation_badge.modifier }}{{ hub.review.recommendation_badge.description ? ' badge--hint' }}" {% if hub.review.recommendation_badge.description %}title="{{ hub.review.recommendation_badge.description }}"{% endif %}>
             {{ hub.review.recommendation_badge.label }}
           </span>
         {% endif %}
@@ -234,7 +237,7 @@
                 {% endfor %}
               </td>
               <td>
-                <span class="badge badge-{{ app.status.modifier }}">{{ app.status.label }}</span>
+                <span class="badge badge-{{ app.status.modifier }}{{ app.status.description ? ' badge--hint' }}" {% if app.status.description %}title="{{ app.status.description }}"{% endif %}>{{ app.status.label }}</span>
                 {% if app.edit_url %}
                   <a href="{{ app.edit_url }}" class="appverse-hub-card__icon-btn"
                      title="{{ 'Edit'|t }}" aria-label="{{ 'Edit @t'|t({'@t': app.title}) }}">

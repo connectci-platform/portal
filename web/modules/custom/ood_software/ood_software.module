@@ -1690,16 +1690,18 @@ function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
  * @return array<string, mixed>
  */
 function _ood_software_hub_badge(string $state): array {
-  // Literal t() calls so the labels are extractable for translation.
+  // Literal t() calls so the labels are extractable for translation. The
+  // description is the badge's tooltip: these are the editorial (human)
+  // states, distinct from the automated review run's badge.
   $map = [
-    'published' => ['label' => t('Published'), 'modifier' => 'success'],
-    'ready_for_review' => ['label' => t('Awaiting review'), 'modifier' => 'warning'],
-    'needs_adjustment' => ['label' => t('Needs changes'), 'modifier' => 'error'],
-    'draft' => ['label' => t('Draft'), 'modifier' => 'muted'],
-    'archived' => ['label' => t('Archived'), 'modifier' => 'muted'],
+    'published' => ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public AppVerse catalog.')],
+    'ready_for_review' => ['label' => t('Awaiting review'), 'modifier' => 'warning', 'description' => t('Submitted by the contributor and waiting for a reviewer to look at it.')],
+    'needs_adjustment' => ['label' => t('Needs changes'), 'modifier' => 'error', 'description' => t('A reviewer asked for changes. It returns to the queue when the contributor re-submits.')],
+    'draft' => ['label' => t('Draft'), 'modifier' => 'muted', 'description' => t('Not submitted yet. The contributor can still edit it; it is not in the review queue.')],
+    'archived' => ['label' => t('Archived'), 'modifier' => 'muted', 'description' => t('Withdrawn; not shown in the catalog.')],
   ];
   // Unknown state: pass the raw id through dynamically (genuinely variable).
-  return $map[$state] ?? ['label' => t('@l', ['@l' => ucfirst($state)]), 'modifier' => 'muted'];
+  return $map[$state] ?? ['label' => t('@l', ['@l' => ucfirst($state)]), 'modifier' => 'muted', 'description' => ''];
 }
 
 /**
@@ -1707,15 +1709,15 @@ function _ood_software_hub_badge(string $state): array {
  */
 function _ood_software_hub_review_badge(?string $recommendation): array {
   $map = [
-    'accepted' => ['label' => t('Accepted'), 'modifier' => 'success'],
-    'accepted_with_suggestions' => ['label' => t('Suggestions'), 'modifier' => 'warning'],
-    'changes_requested' => ['label' => t('Changes needed'), 'modifier' => 'error'],
-    'rejected' => ['label' => t('Rejected'), 'modifier' => 'error'],
+    'accepted' => ['label' => t('Accepted'), 'modifier' => 'success', 'description' => t('The automated review recommends accepting. A reviewer makes the final decision.')],
+    'accepted_with_suggestions' => ['label' => t('Suggestions'), 'modifier' => 'warning', 'description' => t('The automated review recommends accepting with suggestions. A reviewer makes the final decision.')],
+    'changes_requested' => ['label' => t('Changes needed'), 'modifier' => 'error', 'description' => t('The automated review recommends requesting changes. A reviewer makes the final decision.')],
+    'rejected' => ['label' => t('Rejected'), 'modifier' => 'error', 'description' => t('The automated review recommends rejecting. A reviewer makes the final decision.')],
   ];
   if ($recommendation === NULL) {
-    return ['label' => '', 'modifier' => ''];
+    return ['label' => '', 'modifier' => '', 'description' => ''];
   }
-  return $map[$recommendation] ?? ['label' => t('@r', ['@r' => ucfirst($recommendation)]), 'modifier' => 'muted'];
+  return $map[$recommendation] ?? ['label' => t('@r', ['@r' => ucfirst($recommendation)]), 'modifier' => 'muted', 'description' => ''];
 }
 
 /**
@@ -1723,15 +1725,15 @@ function _ood_software_hub_review_badge(?string $recommendation): array {
  */
 function _ood_software_hub_review_status_badge(?string $status): array {
   $map = [
-    'pending' => ['label' => t('Review pending'), 'modifier' => 'muted', 'icon' => 'bi-hourglass-split'],
-    'in_progress' => ['label' => t('Review running'), 'modifier' => 'warning', 'icon' => 'bi-gear-wide-connected'],
-    'complete' => ['label' => t('Review complete'), 'modifier' => 'success', 'icon' => 'bi-check-circle'],
-    'error' => ['label' => t('Review failed'), 'modifier' => 'error', 'icon' => 'bi-exclamation-triangle'],
+    'pending' => ['label' => t('Review pending'), 'modifier' => 'muted', 'icon' => 'bi-hourglass-split', 'description' => t('An automated review was started and is waiting for GitHub Actions to pick it up.')],
+    'in_progress' => ['label' => t('Review running'), 'modifier' => 'warning', 'icon' => 'bi-gear-wide-connected', 'description' => t('The automated review is running on GitHub Actions; this usually takes 10–20 minutes.')],
+    'complete' => ['label' => t('Review complete'), 'modifier' => 'success', 'icon' => 'bi-check-circle', 'description' => t('The automated review finished; open it from the review icon on this card.')],
+    'error' => ['label' => t('Review failed'), 'modifier' => 'error', 'icon' => 'bi-exclamation-triangle', 'description' => t('The automated review run failed. Start it again, or check the site log.')],
   ];
   if ($status === NULL) {
-    return ['label' => '', 'modifier' => '', 'icon' => ''];
+    return ['label' => '', 'modifier' => '', 'icon' => '', 'description' => ''];
   }
-  return $map[$status] ?? ['label' => t('@s', ['@s' => ucfirst($status)]), 'modifier' => 'muted', 'icon' => ''];
+  return $map[$status] ?? ['label' => t('@s', ['@s' => ucfirst($status)]), 'modifier' => 'muted', 'icon' => '', 'description' => ''];
 }
 
 /**
@@ -2102,12 +2104,12 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
   // Per-app status: when the parent repo is unpublished, member apps are
   // hidden from the catalog regardless of their own state.
   if (!$repoPublished) {
-    $status = ['label' => t('Hidden'), 'modifier' => 'muted'];
+    $status = ['label' => t('Hidden'), 'modifier' => 'muted', 'description' => t('Not in the catalog because its repo is unpublished, whatever the app\'s own state.')];
   }
   else {
     $status = $app->isPublished()
-      ? ['label' => t('Published'), 'modifier' => 'success']
-      : ['label' => t('Unpublished'), 'modifier' => 'warning'];
+      ? ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public AppVerse catalog.')]
+      : ['label' => t('Unpublished'), 'modifier' => 'warning', 'description' => t('Not in the catalog; its repo is published, so publishing the app lists it.')];
   }
 
   // Resolved implementation tags (chips) + unresolved (flagged, with a

@@ -160,6 +160,8 @@ header:has(> .appverse-hub-add-repo) {
   background: #f6f8fa;
   color: #57606a;
 }
+/* A badge with an explanatory title: the help cursor says hovering tells more. */
+.badge--hint { cursor: help; }
 .badge-success { background: #dafbe1; color: #1a7f37; }
 .badge-warning { background: #fff8c5; color: #9a6700; }
 .badge-error { background: #ffebe9; color: #cf222e; }
