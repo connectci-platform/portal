@@ -1,0 +1,191 @@
+uuid: 7046d86a-b285-428a-8143-c77e87f19339
+langcode: en
+status: true
+dependencies:
+  config:
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - jsonapi_defaults
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 50
+id: paragraph--review_verdict
+disabled: true
+path: paragraph/review_verdict
+resourceType: paragraph--review_verdict
+resourceFields:
+  id:
+    disabled: false
+    fieldName: id
+    publicName: id
+    enhancer:
+      id: ''
+  uuid:
+    disabled: false
+    fieldName: uuid
+    publicName: uuid
+    enhancer:
+      id: ''
+  revision_id:
+    disabled: false
+    fieldName: revision_id
+    publicName: revision_id
+    enhancer:
+      id: ''
+  langcode:
+    disabled: false
+    fieldName: langcode
+    publicName: langcode
+    enhancer:
+      id: ''
+  type:
+    disabled: false
+    fieldName: type
+    publicName: type
+    enhancer:
+      id: ''
+  status:
+    disabled: false
+    fieldName: status
+    publicName: status
+    enhancer:
+      id: ''
+  created:
+    disabled: false
+    fieldName: created
+    publicName: created
+    enhancer:
+      id: ''
+  parent_id:
+    disabled: false
+    fieldName: parent_id
+    publicName: parent_id
+    enhancer:
+      id: ''
+  parent_type:
+    disabled: false
+    fieldName: parent_type
+    publicName: parent_type
+    enhancer:
+      id: ''
+  parent_field_name:
+    disabled: false
+    fieldName: parent_field_name
+    publicName: parent_field_name
+    enhancer:
+      id: ''
+  behavior_settings:
+    disabled: false
+    fieldName: behavior_settings
+    publicName: behavior_settings
+    enhancer:
+      id: ''
+  default_langcode:
+    disabled: false
+    fieldName: default_langcode
+    publicName: default_langcode
+    enhancer:
+      id: ''
+  revision_default:
+    disabled: false
+    fieldName: revision_default
+    publicName: revision_default
+    enhancer:
+      id: ''
+  revision_translation_affected:
+    disabled: false
+    fieldName: revision_translation_affected
+    publicName: revision_translation_affected
+    enhancer:
+      id: ''
+  field_rvv_app_id:
+    disabled: false
+    fieldName: field_rvv_app_id
+    publicName: field_rvv_app_id
+    enhancer:
+      id: ''
+  field_rvv_app_ref:
+    disabled: false
+    fieldName: field_rvv_app_ref
+    publicName: field_rvv_app_ref
+    enhancer:
+      id: ''
+  field_rvv_conclusion:
+    disabled: false
+    fieldName: field_rvv_conclusion
+    publicName: field_rvv_conclusion
+    enhancer:
+      id: ''
+  field_rvv_criteria:
+    disabled: false
+    fieldName: field_rvv_criteria
+    publicName: field_rvv_criteria
+    enhancer:
+      id: ''
+  field_rvv_docs_anchor:
+    disabled: false
+    fieldName: field_rvv_docs_anchor
+    publicName: field_rvv_docs_anchor
+    enhancer:
+      id: ''
+  field_rvv_docs_level:
+    disabled: false
+    fieldName: field_rvv_docs_level
+    publicName: field_rvv_docs_level
+    enhancer:
+      id: ''
+  field_rvv_docs_level_note:
+    disabled: false
+    fieldName: field_rvv_docs_level_note
+    publicName: field_rvv_docs_level_note
+    enhancer:
+      id: ''
+  field_rvv_docs_summary:
+    disabled: false
+    fieldName: field_rvv_docs_summary
+    publicName: field_rvv_docs_summary
+    enhancer:
+      id: ''
+  field_rvv_findings:
+    disabled: false
+    fieldName: field_rvv_findings
+    publicName: field_rvv_findings
+    enhancer:
+      id: ''
+  field_rvv_indicators_default:
+    disabled: false
+    fieldName: field_rvv_indicators_default
+    publicName: field_rvv_indicators_default
+    enhancer:
+      id: ''
+  field_rvv_moderator_notes:
+    disabled: false
+    fieldName: field_rvv_moderator_notes
+    publicName: field_rvv_moderator_notes
+    enhancer:
+      id: ''
+  field_rvv_port_anchor:
+    disabled: false
+    fieldName: field_rvv_port_anchor
+    publicName: field_rvv_port_anchor
+    enhancer:
+      id: ''
+  field_rvv_port_level:
+    disabled: false
+    fieldName: field_rvv_port_level
+    publicName: field_rvv_port_level
+    enhancer:
+      id: ''
+  field_rvv_port_level_note:
+    disabled: false
+    fieldName: field_rvv_port_level_note
+    publicName: field_rvv_port_level_note
+    enhancer:
+      id: ''
+  field_rvv_port_summary:
+    disabled: false
+    fieldName: field_rvv_port_summary
+    publicName: field_rvv_port_summary
+    enhancer:
+      id: ''
+
