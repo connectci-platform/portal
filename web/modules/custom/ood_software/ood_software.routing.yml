@@ -203,3 +203,43 @@ ood_software.add_repo:
     _title: 'Add an Appverse repo'
   requirements:
     _permission: 'submit appverse repo'
+
+# Confirmation pages for the hub's Publish / Unpublish icons (the icons link
+# here instead of POSTing). Each carries the access check of the action it
+# confirms; confirming runs that action's controller method.
+ood_software.repo_publish_confirm:
+  path: '/appverse/repo/{node}/publish/confirm'
+  defaults:
+    _form: '\Drupal\ood_software\Form\HubPublishConfirmForm'
+    _title: 'Publish'
+    op: publish
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+ood_software.repo_unpublish_confirm:
+  path: '/appverse/repo/{node}/unpublish/confirm'
+  defaults:
+    _form: '\Drupal\ood_software\Form\HubPublishConfirmForm'
+    _title: 'Unpublish'
+    op: unpublish
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+ood_software.app_toggle_publish_confirm:
+  path: '/appverse/app/{node}/unpublish/confirm'
+  defaults:
+    _form: '\Drupal\ood_software\Form\HubPublishConfirmForm'
+    _title: 'Publish or unpublish app'
+    op: toggle_app
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'

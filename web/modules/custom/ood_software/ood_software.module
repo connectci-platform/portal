@@ -1834,6 +1834,27 @@ function _ood_software_hub_member_apps(\Drupal\node\NodeInterface $repo): array 
  *
  * @return array<string, mixed>
  */
+function _ood_software_hub_confirm_link(string $internalPath, string $label, string $icon, string $variant = ''): array {
+  // Same look as an action form's icon button, but a link to a confirmation
+  // page (HubPublishConfirmForm): used for actions too consequential for one
+  // click, such as Publish and Unpublish. ?destination brings the reviewer
+  // back to the same list, filters intact.
+  $dest = \Drupal::service('path.current')->getPath();
+  $query = \Drupal::request()->getQueryString();
+  return [
+    '#type' => 'inline_template',
+    '#template' => '<a href="{{ href }}" class="appverse-hub-card__icon-btn {{ variant ? "appverse-hub-card__icon-btn--" ~ variant : "" }}" '
+      . 'title="{{ label }}" aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i></a>',
+    '#context' => [
+      'href' => '/' . $internalPath . '?destination=' . urlencode($dest . ($query ? '?' . $query : '')),
+      'label' => $label,
+      'icon' => $icon,
+      'variant' => $variant,
+    ],
+    '#cache' => ['contexts' => ['url.query_args']],
+  ];
+}
+
 function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = ''): array {
   $token = \Drupal::service('csrf_token')->get($internalPath);
   $dest = \Drupal::service('path.current')->getPath();
@@ -1889,10 +1910,10 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
     );
   }
   if ($isAdmin && $notPublishedActive) {
-    $actions['publish'] = _ood_software_hub_action_form('appverse/repo/' . $id . '/publish', t('Publish'), 'bi-check-circle', 'primary');
+    $actions['publish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/publish/confirm', t('Publish…'), 'bi-check-circle', 'primary');
   }
   if ($published) {
-    $actions['unpublish'] = _ood_software_hub_action_form('appverse/repo/' . $id . '/unpublish', t('Unpublish'), 'bi-slash-circle');
+    $actions['unpublish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/unpublish/confirm', t('Unpublish…'), 'bi-slash-circle');
   }
   // Request changes maps to the request_adjustment transition, which the
   // appverse_editorial workflow permits from published, ready_for_review, and
@@ -2133,7 +2154,7 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
     'status' => $status,
     'tags' => $tags,
     'unpublish_form' => $repoPublished
-      ? _ood_software_hub_action_form('appverse/app/' . $app->id() . '/unpublish', $app->isPublished() ? t('Unpublish app') : t('Publish app'), $app->isPublished() ? 'bi-slash-circle' : 'bi-check-circle')
+      ? _ood_software_hub_confirm_link('appverse/app/' . $app->id() . '/unpublish/confirm', $app->isPublished() ? t('Unpublish app…') : t('Publish app…'), $app->isPublished() ? 'bi-slash-circle' : 'bi-check-circle')
       : NULL,
   ];
 }
