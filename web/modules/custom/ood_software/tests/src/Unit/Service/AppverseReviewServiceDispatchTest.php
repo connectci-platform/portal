@@ -17,6 +17,7 @@ use Drupal\ood_software\Service\AppverseReviewSeeder;
 use Drupal\ood_software\Service\AppverseReviewService;
 use GuzzleHttp\Client;
 use Psr\Http\Message\ResponseInterface;
+use Drupal\Core\Session\AccountInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -43,7 +44,7 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
   protected int $freshSaves = 0;
   protected ?array $postOptions = NULL;
 
-  protected function makeService(int $httpStatus): AppverseReviewService {
+  protected function makeService(int $httpStatus, ?AccountInterface $user = NULL): AppverseReviewService {
     $response = $this->createMock(ResponseInterface::class);
     $response->method('getStatusCode')->willReturn($httpStatus);
     // Guzzle 7's ClientInterface does not declare post(); it is a trait
@@ -86,6 +87,7 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
       $http, $keys, $loggerFactory, $etm, $time,
       $this->createMock(FileSystemInterface::class),
       $this->createMock(AppverseReviewSeeder::class),
+      $user,
     );
   }
 
@@ -121,6 +123,27 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $this->assertContains(['field_review_dispatched_at', self::NOW], $this->freshSets);
     $this->assertContains(['field_review_status', 'pending'], $this->freshSets);
     $this->assertSame(1, $this->freshSaves);
+  }
+
+  /**
+   * The repo records who started the run, so the imported review is
+   * authored by them rather than the anonymous cron user; an anonymous
+   * starter records no one.
+   *
+   * @covers ::dispatchForNode
+   */
+  public function testDispatchRecordsWhoStartedTheReview(): void {
+    $user = $this->createMock(AccountInterface::class);
+    $user->method('isAuthenticated')->willReturn(TRUE);
+    $user->method('id')->willReturn(42);
+    $this->assertTrue($this->makeService(204, $user)->dispatchForNode($this->makeRepoNode()));
+    $this->assertContains(['field_review_dispatched_by', 42], $this->freshSets);
+
+    $this->freshSets = [];
+    $anonymous = $this->createMock(AccountInterface::class);
+    $anonymous->method('isAuthenticated')->willReturn(FALSE);
+    $this->assertTrue($this->makeService(204, $anonymous)->dispatchForNode($this->makeRepoNode()));
+    $this->assertContains(['field_review_dispatched_by', NULL], $this->freshSets);
   }
 
   /**

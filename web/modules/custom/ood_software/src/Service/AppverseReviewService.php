@@ -7,6 +7,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\key\KeyRepositoryInterface;
 use Drupal\node\NodeInterface;
@@ -83,6 +84,9 @@ class AppverseReviewService {
     protected TimeInterface $time,
     protected FileSystemInterface $fileSystem,
     protected AppverseReviewSeeder $seeder,
+    // Who starts a review run; the imported review is authored by them.
+    // Optional so callers built without it (unit tests) still work.
+    protected ?AccountInterface $currentUser = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -235,6 +239,11 @@ class AppverseReviewService {
       }
       if ($fresh->hasField('field_review_run_id')) {
         $fresh->set('field_review_run_id', NULL);
+      }
+      if ($fresh->hasField('field_review_dispatched_by')) {
+        // Start review, or the contributor's send-for-review transition.
+        $starter = $this->currentUser && $this->currentUser->isAuthenticated() ? $this->currentUser->id() : NULL;
+        $fresh->set('field_review_dispatched_by', $starter);
       }
 
       $fresh->_ood_software_suppress_notifications = TRUE;

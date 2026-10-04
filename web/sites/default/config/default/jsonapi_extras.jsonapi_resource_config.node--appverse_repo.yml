@@ -126,6 +126,12 @@ resourceFields:
     publicName: field_review_dispatched_at
     enhancer:
       id: ''
+  field_review_dispatched_by:
+    disabled: true
+    fieldName: field_review_dispatched_by
+    publicName: field_review_dispatched_by
+    enhancer:
+      id: ''
   field_review_recommendation:
     disabled: true
     fieldName: field_review_recommendation

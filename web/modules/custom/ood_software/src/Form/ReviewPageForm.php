@@ -442,7 +442,13 @@ final class ReviewPageForm extends FormBase {
       'sha' => $sha,
       'sha7' => substr($sha, 0, 7),
       'ref' => (string) ($node->get('field_arv_ref')->value ?? ''),
-      'shape' => str_replace('_', ' ', (string) ($node->get('field_arv_repo_shape')->value ?? '')),
+      // Plain wording for the header, not the stored value ("inferred single").
+      'shape' => match ((string) ($node->get('field_arv_repo_shape')->value ?? '')) {
+        'inferred_single' => (string) $this->t('Single app (no appverse.yml)'),
+        'declared_single' => (string) $this->t('Single app'),
+        'declared_monorepo' => (string) $this->t('Monorepo'),
+        default => str_replace('_', ' ', (string) ($node->get('field_arv_repo_shape')->value ?? '')),
+      },
       'reviewed_at' => $reviewedAt ? $this->formatDate($reviewedAt, 'short') : '',
       'tool_version' => (string) ($node->get('field_arv_tool_version')->value ?? ''),
       'state' => $state,

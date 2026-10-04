@@ -21,6 +21,7 @@ dependencies:
     - field.field.node.appverse_repo.field_repo_validation_er
     - field.field.node.appverse_repo.field_repo_validation_st
     - field.field.node.appverse_repo.field_repo_www_url
+    - field.field.node.appverse_repo.field_review_dispatched_by
     - node.type.appverse_repo
   module:
     - content_moderation
@@ -128,3 +129,4 @@ hidden:
   field_repo_validation_er: true
   field_repo_validation_st: true
   field_repo_www_url: true
+  field_review_dispatched_by: true

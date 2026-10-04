@@ -84,9 +84,17 @@ class AppverseReviewSeeder {
     $recommendation = $artifact['recommendation'] ?? [];
     $short_sha = substr($sha, 0, 7);
 
+    // Authored by whoever started the run (recorded on the repo at dispatch),
+    // not the anonymous cron user that imports it; the site admin when no one
+    // is recorded (a hand-run import, or a run dispatched before this).
+    $author = $repo->hasField('field_review_dispatched_by') ? (int) ($repo->get('field_review_dispatched_by')->target_id ?? 0) : 0;
+    $author = $author ?: 1;
+
     /** @var \Drupal\node\NodeInterface $review */
     $review = $node_storage->create([
       'type' => 'appverse_review',
+      'uid' => $author,
+      'revision_uid' => $author,
       'title' => sprintf('Review: %s @ %s', $repo->label(), $short_sha),
       'moderation_state' => 'draft',
       'field_arv_repo' => $repo->id(),
