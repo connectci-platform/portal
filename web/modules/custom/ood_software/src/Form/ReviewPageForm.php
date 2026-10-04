@@ -7,6 +7,7 @@ use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\EnforcedResponseException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
@@ -16,6 +17,8 @@ use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -118,8 +121,18 @@ final class ReviewPageForm extends FormBase {
   }
 
   public function buildForm(array $form, FormStateInterface $form_state, ?NodeInterface $node = NULL): array {
+    if ($node !== NULL && $node->bundle() === 'appverse_repo') {
+      // /appverse/review/{repo id}: go to that repo's newest review the
+      // viewer may see, as the hub card's link does; none is a 404.
+      $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($node);
+      if ($latest === NULL) {
+        throw new NotFoundHttpException();
+      }
+      throw new EnforcedResponseException(new RedirectResponse(Url::fromRoute('ood_software.review_page', ['node' => $latest->id()])->toString()));
+    }
     if ($node === NULL || $node->bundle() !== 'appverse_review') {
-      throw new \InvalidArgumentException('The review page needs an appverse_review node.');
+      // Any other node id is simply not a review: 404, not a server error.
+      throw new NotFoundHttpException();
     }
     $this->node = $node;
     $isReviewer = $this->currentUser->hasPermission(self::REVIEWER_PERMISSION);
@@ -510,6 +523,11 @@ final class ReviewPageForm extends FormBase {
       ->execute();
     $previous = [];
     foreach ($storage->loadMultiple($nids) as $other) {
+      // accessCheck(TRUE) does not drop drafts a viewer may not see; this
+      // does (see AppverseReviewService::latestReviewFor()).
+      if (!$other->access('view')) {
+        continue;
+      }
       $ids = [];
       $paragraphs = $other->get('field_arv_repo_findings')->referencedEntities();
       foreach ($other->get('field_arv_verdicts')->referencedEntities() as $verdict) {
@@ -549,6 +567,11 @@ final class ReviewPageForm extends FormBase {
       ->execute();
     $history = [];
     foreach ($storage->loadMultiple($nids) as $review) {
+      // A visitor's history counts published reviews only: the query's access
+      // check does not drop drafts, so check view access per review.
+      if (!$review->access('view')) {
+        continue;
+      }
       $at = (int) ($review->get('field_arv_reviewed_at')->value ?? $review->getCreatedTime());
       $history[] = [
         'nid' => (int) $review->id(),

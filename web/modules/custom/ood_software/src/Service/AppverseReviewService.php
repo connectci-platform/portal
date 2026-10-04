@@ -178,18 +178,23 @@ class AppverseReviewService {
    */
   public function latestReviewFor(NodeInterface $repo): ?NodeInterface {
     $storage = $this->entityTypeManager->getStorage('node');
+    // The query's access check applies node-access grants only; it does not
+    // drop unpublished (draft) reviews for a viewer who may not see them.
+    // So walk the reviews newest first and return the first the viewer may
+    // actually view.
     $nids = $storage->getQuery()
       ->accessCheck(TRUE)
       ->condition('type', 'appverse_review')
       ->condition('field_arv_repo', $repo->id())
       ->sort('created', 'DESC')
-      ->range(0, 1)
+      ->sort('nid', 'DESC')
       ->execute();
-    if ($nids === []) {
-      return NULL;
+    foreach ($storage->loadMultiple($nids) as $review) {
+      if ($review instanceof NodeInterface && $review->access('view')) {
+        return $review;
+      }
     }
-    $review = $storage->load(reset($nids));
-    return $review instanceof NodeInterface ? $review : NULL;
+    return NULL;
   }
 
   /**
