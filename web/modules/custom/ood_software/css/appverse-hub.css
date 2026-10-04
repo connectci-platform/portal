@@ -54,6 +54,24 @@ header:has(> .appverse-hub-add-repo) {
 .appverse-hub-card {
   background: #fff;
   padding: 1rem 0;
+  /* A card action returns to #appverse-repo-N: keep the card clear of the
+     fixed admin toolbar when the browser scrolls to it. */
+  scroll-margin-top: 8rem;
+}
+/* ...and highlight it briefly, so the result of the action (a "Review
+   pending" badge, a new state) is easy to find. */
+.appverse-hub-card:target {
+  animation: appverse-hub-card-flash 2.5s ease-out;
+}
+@keyframes appverse-hub-card-flash {
+  0%, 40% { background: #fff8c5; }
+  100% { background: #fff; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .appverse-hub-card:target {
+    animation: none;
+    background: #fff8c5;
+  }
 }
 /* Separate cards with a horizontal rule rather than boxing each one. The rule
    lives on the Views row that wraps a hub card (the actual repeating boundary,

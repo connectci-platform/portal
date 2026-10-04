@@ -11,7 +11,9 @@
  *   | [resync + lifecycle icons]
  */
 #}
-<article class="appverse-hub-card state-{{ hub.moderation_state }}">
+{# The id is the anchor a card action returns to (see
+   _ood_software_hub_action_form()), so the reviewer lands on this card. #}
+<article id="appverse-repo-{{ hub.repo_id }}" class="appverse-hub-card state-{{ hub.moderation_state }}">
   {# Header is a CSS grid with shared column tracks so fields line up across
      cards: title | submitted | github | owner | status | actions.
      Status sits in its own column next to the actions so it always lines up.

@@ -1857,7 +1857,18 @@ function _ood_software_hub_confirm_link(string $internalPath, string $label, str
 
 function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = ''): array {
   $token = \Drupal::service('csrf_token')->get($internalPath);
+  // Back to the same list after the action: its filters (the query string)
+  // and, for a repo action, that repo's card (#appverse-repo-N), where the
+  // result (e.g. "Review pending") shows. Without these the list reset and
+  // the status message sat above an unfiltered list, far from the card.
   $dest = \Drupal::service('path.current')->getPath();
+  $query = \Drupal::request()->getQueryString();
+  if ($query) {
+    $dest .= '?' . $query;
+  }
+  if (preg_match('#^appverse/repo/(\d+)/#', $internalPath, $m)) {
+    $dest .= '#appverse-repo-' . $m[1];
+  }
   $action = '/' . $internalPath . '?token=' . $token . '&destination=' . urlencode($dest);
   return [
     '#type' => 'inline_template',
