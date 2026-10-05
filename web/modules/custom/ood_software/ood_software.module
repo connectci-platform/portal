@@ -1033,7 +1033,10 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
  * of this hook on that branch keys off that permission and supersedes this one.
  */
 function ood_software_node_access(NodeInterface $node, string $operation, AccountInterface $account): AccessResultInterface {
-  if ($operation !== 'view' || $node->bundle() !== 'appverse_app') {
+  // Reviewers (appverse_pm) see unpublished Appverse content only: apps,
+  // repos and reviews. This replaces the site-wide "view any unpublished
+  // content" the role used to carry (appverse-planning#36).
+  if ($operation !== 'view' || !in_array($node->bundle(), ['appverse_app', 'appverse_repo', 'appverse_review'], TRUE)) {
     return AccessResult::neutral();
   }
 

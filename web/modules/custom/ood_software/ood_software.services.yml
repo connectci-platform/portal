@@ -61,3 +61,18 @@ services:
     arguments: ['@messenger', '@current_user']
     tags:
       - { name: event_subscriber }
+
+  # Appverse reviewers may view the latest version of a repo, app or review
+  # (appverse-planning#36). The route subscriber swaps the node latest-version
+  # route's requirement onto this check, which runs the site's own check
+  # (access_check.latest_revision, as access_events decorates it) and adds
+  # the reviewer allowance.
+  ood_software.latest_version_access:
+    class: Drupal\ood_software\Access\AppverseLatestVersionAccessCheck
+    arguments: ['@access_check.latest_revision', '@content_moderation.moderation_information']
+    tags:
+      - { name: access_check, applies_to: _ood_software_latest_version }
+  ood_software.latest_version_route_subscriber:
+    class: Drupal\ood_software\Routing\AppverseLatestVersionRouteSubscriber
+    tags:
+      - { name: event_subscriber }
