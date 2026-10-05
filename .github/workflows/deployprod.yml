@@ -12,6 +12,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Determine expected commit SHA
+        run: |
+          expected_sha=$(git rev-list -n1 "$(git describe --tags --abbrev=0)")
+          echo "$expected_sha"
+          echo "expected_sha=$expected_sha" >> "$GITHUB_ENV"
+
       - uses: ./.github/actions/dingorunner
         env:
           runner: deploy
@@ -20,3 +26,4 @@ jobs:
           site_name: ${{ secrets.TERMINUS_SITE_NAME }}
           env: live
           flags:
+          expected_sha: ${{ env.expected_sha }}

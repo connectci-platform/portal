@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "34446966b43a060d2c8dcb8d3ad7ab4d",
+    "content-hash": "5ca56f8f3793da9ef4624c6ead3586a8",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -675,17 +675,18 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-d8-2865-login-lock",
+            "version": "3.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "a15b0ed50241d1a3b6d54332084356a7acbbcd5b"
+                "reference": "4dc521bb0cb81af2d2f20d2b0289c6e973664f0e"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -701,16 +702,17 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-09-20T03:39:21+00:00"
+            "time": "2026-10-05T14:02:45+00:00"
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-d8-2762",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "daf5feda627c471c7aea29a366632025b2114acd"
+                "reference": "84bc69798d2de598b13ac2cd13e8539037956f01"
             },
+            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -726,7 +728,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-09-23T01:31:16+00:00"
+            "time": "2026-09-25T19:26:15+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -734,7 +736,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "93e4a5c086fe88a8159c1dd508fbcc0f67eb036a"
+                "reference": "9c226e04958f1cc38ac688650c7de6bc128126fe"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -752,7 +754,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-09-17T23:29:11+00:00"
+            "time": "2026-10-01T18:31:24+00:00"
         },
         {
             "name": "connectci/operations_cider",
@@ -760,7 +762,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "52b2606f716892cbfca75b4d2e8bade41b26b688"
+                "reference": "dc1f43bbafe0f459a54f1b1f16ce39983f6e313d"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -789,7 +791,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-09-20T00:09:11+00:00"
+            "time": "2026-09-26T12:17:55+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -8992,78 +8994,6 @@
             }
         },
         {
-            "name": "drupal/search404",
-            "version": "2.1.2",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/search404.git",
-                "reference": "2.1.2"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/search404-2.1.2.zip",
-                "reference": "2.1.2",
-                "shasum": "1bd271486856e33a23c394849503477b97fbe25f"
-            },
-            "require": {
-                "drupal/core": "^8 || ^9 || ^10"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "2.1.2",
-                    "datestamp": "1677067806",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "anoopjohn",
-                    "homepage": "https://www.drupal.org/user/188049"
-                },
-                {
-                    "name": "binnythomas",
-                    "homepage": "https://www.drupal.org/user/3123091"
-                },
-                {
-                    "name": "emilymathew",
-                    "homepage": "https://www.drupal.org/user/2921997"
-                },
-                {
-                    "name": "jijojoseph_zyxware",
-                    "homepage": "https://www.drupal.org/user/3561263"
-                },
-                {
-                    "name": "larssg",
-                    "homepage": "https://www.drupal.org/user/655"
-                },
-                {
-                    "name": "varunity",
-                    "homepage": "https://www.drupal.org/user/273530"
-                },
-                {
-                    "name": "vimaljoseph",
-                    "homepage": "https://www.drupal.org/user/817380"
-                },
-                {
-                    "name": "zyxware",
-                    "homepage": "https://www.drupal.org/user/222163"
-                }
-            ],
-            "description": "Automatically search for the keywords in URLs that result in 404 errors and show results instead of Page-Not-Found.",
-            "homepage": "https://www.drupal.org/project/search404",
-            "support": {
-                "source": "https://git.drupalcode.org/project/search404"
-            }
-        },
-        {
             "name": "drupal/search_api",
             "version": "1.41.0",
             "source": {
@@ -11034,17 +10964,17 @@
         },
         {
             "name": "drupal/webform",
-            "version": "6.3.0",
+            "version": "6.3.1",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/webform.git",
-                "reference": "6.3.0"
+                "reference": "6.3.1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/webform-6.3.0.zip",
-                "reference": "6.3.0",
-                "shasum": "67b09271edfd2fb38dc699ff733911ad500ae5d7"
+                "url": "https://ftp.drupal.org/files/projects/webform-6.3.1.zip",
+                "reference": "6.3.1",
+                "shasum": "f737cb4e614df7f54b9bb77fe40109e7abab789b"
             },
             "require": {
                 "drupal/core": "^10.3 || ^11.0"
@@ -11059,6 +10989,7 @@
                 "drupal/entity": "^1.0",
                 "drupal/entity_print": "^2.0",
                 "drupal/hal": "^2.0",
+                "drupal/honeypot": "^2.0",
                 "drupal/jquery_ui": "^1.0",
                 "drupal/jquery_ui_button": "^2.0",
                 "drupal/jquery_ui_checkboxradio": "^2.0",
@@ -11089,8 +11020,8 @@
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "6.3.0",
-                    "datestamp": "1783438699",
+                    "version": "6.3.1",
+                    "datestamp": "1790179518",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -12769,16 +12700,16 @@
         },
         {
             "name": "league/commonmark",
-            "version": "2.10.0",
+            "version": "2.10.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/commonmark.git",
-                "reference": "d2d1aa8b35e072966c89bc0c66cf926e56767dc4"
+                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/d2d1aa8b35e072966c89bc0c66cf926e56767dc4",
-                "reference": "d2d1aa8b35e072966c89bc0c66cf926e56767dc4",
+                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/6efbd9c472b91db0a3350fcd601c8332c2382e1f",
+                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f",
                 "shasum": ""
             },
             "require": {
@@ -12872,7 +12803,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-08-11T16:06:25+00:00"
+            "time": "2026-09-21T13:07:34+00:00"
         },
         {
             "name": "league/config",
@@ -19214,7 +19145,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "e82d10bd156845e9a034738ad5424c266a326a1d"
+                "reference": "554f4454b1055fefe7d5822f206597a32fda8543"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -19226,7 +19157,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-09-20T00:06:27+00:00"
+            "time": "2026-09-25T23:49:21+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",

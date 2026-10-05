@@ -36,14 +36,14 @@ class DocSyncService {
    * Map of GitHub raw doc URLs to Drupal node IDs.
    *
    * Each doc is synced from its canonical repo. Review-skill docs (the
-   * reviewer checklist and the security rubric) are maintained in the
+   * reviewer process and the review rubric) are maintained in the
    * appverse-review plugin repo under references/; broader Appverse docs
    * live in ood-appverse under docs/. The URL is the full raw.githubusercontent
    * path so a single map can span repos and subpaths.
    */
   public const DOC_MAP = [
     'https://raw.githubusercontent.com/Sweet-and-Fizzy/appverse-review/main/references/review-checklist.md' => 11932,
-    'https://raw.githubusercontent.com/Sweet-and-Fizzy/appverse-review/main/references/security-rubric.md' => 12246,
+    'https://raw.githubusercontent.com/Sweet-and-Fizzy/appverse-review/main/references/review-rubric.md' => 12246,
     'https://raw.githubusercontent.com/sweet-and-fizzy/ood-appverse/main/docs/appverse-contributor-guide.md' => 11929,
     'https://raw.githubusercontent.com/sweet-and-fizzy/ood-appverse/main/docs/app-best-practices.md' => 11933,
   ];

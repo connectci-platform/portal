@@ -1,5 +1,8 @@
 @CLAUDE.personal.md
 
+## Style Guidlines
+- Use American English
+
 ## Directory Notes
 - `docroot/`: The Drupal root directory, containing all Drupal core files, contributed modules, themes, and custom code.
 - 'web/': A symlink to `docroot/` for easier web server configuration.

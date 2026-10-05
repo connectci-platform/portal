@@ -45,6 +45,12 @@ const JSONAPI_HEADERS = {
   Accept: 'application/vnd.api+json',
 };
 
+// Escape a literal string for safe embedding inside a `new RegExp(...)`
+// source string, used by the Text-part line assertions below.
+function escapeRegExpForTest(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Resolve an entity's JSON:API UUID by a filter, so the seed never hardcodes
 // UUIDs (which differ per environment / DB artifact). Fails loudly if absent.
 function resolveUuid(resource, filterField, filterValue, label) {
@@ -490,6 +496,24 @@ describe('Appverse Maintenance Hub', () => {
           bodyContains: [COLLECTION_TITLE, '/appverse/manage-repos'],
         });
 
+        // Strict check: each URL must render as a real link (HTML) and sit
+        // on its own line right after its label (Text), not glued to
+        // surrounding text with no separator.
+        cy.assertEmailLinks(message, [
+          { label: 'Repository:', href: FIXTURE_REPO_URL },
+          { label: 'Review queue:', href: /\/appverse\/manage-repos$/ },
+        ], { minParagraphs: 3 });
+
+        // Belt-and-suspenders against the specific broken (pre-fix) shape:
+        // the repo URL running straight into "Review queue:" with no
+        // separator, and "Repository:" glued onto the end of the previous
+        // sentence ("...Site.Repository:").
+        cy.getMailpitMessage(message.ID).then((fullMessage) => {
+          const text = fullMessage.Text || '';
+          expect(text).to.not.contain(`${FIXTURE_REPO_URL}Review`);
+          expect(text).to.not.match(/\.Repository:/);
+        });
+
         // From-address verification: this spec runs at /e2e/ondemand/, so
         // the request resolves to the openondemand domain and
         // domain_site_settings overlays system.site at request time.
@@ -516,7 +540,14 @@ describe('Appverse Maintenance Hub', () => {
   describe('Request changes (admin → contributor notification)', () => {
     describe('Case A: email only (ready_for_review starting state)', () => {
       const COLLECTION_TITLE = 'Test Notebooks (Ready)';
-      const REVIEW_COMMENT = 'Please update the README and re-submit.';
+      // Two lines so we can assert the HTML converts the newline to <br />
+      // and the Text keeps the lines separate. The typed comment below uses
+      // {enter} to produce the actual newline in the textarea; this constant
+      // is the single-line collapsed form used for the whitespace-tolerant
+      // bodyContains check (which collapses all whitespace to single spaces).
+      const REVIEW_COMMENT_LINE_1 = 'Please update the README.';
+      const REVIEW_COMMENT_LINE_2 = 'Then re-submit.';
+      const REVIEW_COMMENT = `${REVIEW_COMMENT_LINE_1} ${REVIEW_COMMENT_LINE_2}`;
 
       beforeEach(() => {
         cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
@@ -532,9 +563,11 @@ describe('Appverse Maintenance Hub', () => {
             cy.get('a[href*="/request-changes"]').click();
           });
 
-        // Fill out the Request changes form.
+        // Fill out the Request changes form. {enter} types an actual newline
+        // into the textarea so the fix's newline-to-<br /> conversion has
+        // something to convert.
         cy.url().should('include', '/request-changes');
-        cy.get('textarea[name="comment"]').type(REVIEW_COMMENT);
+        cy.get('textarea[name="comment"]').type(`${REVIEW_COMMENT_LINE_1}{enter}${REVIEW_COMMENT_LINE_2}`);
         cy.get('form input[type="submit"][value="Request changes"]').click();
 
         cy.waitForEmail({
@@ -545,6 +578,34 @@ describe('Appverse Maintenance Hub', () => {
             subject: 'Changes requested',
             to: CONTRIBUTOR_EMAIL,
             bodyContains: [COLLECTION_TITLE, REVIEW_COMMENT, 'my-appverse'],
+          });
+
+          cy.assertEmailLinks(message, [
+            {
+              label: 'Open your maintenance hub to make changes and resubmit:',
+              href: /\/user\/\d+\/my-appverse$/,
+            },
+          ]);
+
+          cy.getMailpitMessage(message.ID).then((fullMessage) => {
+            const html = fullMessage.HTML || '';
+            const text = fullMessage.Text || '';
+
+            // "Reviewer's note:" begins a line on its own (the apostrophe
+            // may render as ' or &#039; in HTML; the Text part — produced
+            // from HTML via Html2Text — should decode it to a plain ').
+            expect(text).to.match(/(^|\n)\s*Reviewer(?:'|&#039;)?s note:\s*(\r?\n|$)/);
+
+            // The comment's two lines land on separate lines in Text, not
+            // glued together or run into "Reviewer's note:".
+            expect(text).to.match(new RegExp(`(^|\\n)\\s*${escapeRegExpForTest(REVIEW_COMMENT_LINE_1)}\\s*(\\r?\\n|$)`));
+            expect(text).to.match(new RegExp(`(^|\\n)\\s*${escapeRegExpForTest(REVIEW_COMMENT_LINE_2)}\\s*(\\r?\\n|$)`));
+            // Not on the same line as "Reviewer's note:".
+            // [ \t]* rather than \s*, which would also match the line break.
+            expect(text).to.not.match(/Reviewer(?:'|&#039;)?s note:[ \t]*Please update/);
+
+            // The two-line comment is rendered with a line break in HTML.
+            expect(html).to.match(/Please update the README\.\s*<br\s*\/?>\s*Then re-submit\./);
           });
         });
       });
@@ -590,6 +651,19 @@ describe('Appverse Maintenance Hub', () => {
             subject: 'Changes requested',
             to: CONTRIBUTOR_EMAIL,
             bodyContains: [COLLECTION_TITLE, REVIEW_COMMENT],
+          });
+
+          cy.assertEmailLinks(message, [
+            {
+              label: 'Open your maintenance hub to make changes and resubmit:',
+              href: /\/user\/\d+\/my-appverse$/,
+            },
+          ]);
+
+          cy.getMailpitMessage(message.ID).then((fullMessage) => {
+            const text = fullMessage.Text || '';
+            expect(text).to.match(/(^|\n)\s*Reviewer(?:'|&#039;)?s note:\s*(\r?\n|$)/);
+            expect(text).to.match(new RegExp(`(^|\\n)\\s*${escapeRegExpForTest(REVIEW_COMMENT)}\\s*(\\r?\\n|$)`));
           });
         });
 
@@ -640,6 +714,15 @@ describe('Appverse Maintenance Hub', () => {
           to: CONTRIBUTOR_EMAIL,
           bodyContains: [COLLECTION_TITLE, '/appverse#/repo/'],
         });
+
+        cy.assertEmailLinks(message, [
+          {
+            label: 'View it in the catalog:',
+            // Url::fromUserInput() drops the slash before the fragment, so
+            // the generated link is /appverse#/repo/<slug>.
+            href: /\/appverse\/?#\/repo\/[^/\s]+$/,
+          },
+        ]);
       });
 
       // No fan-out: exactly one message in Mailpit even though the cascade

@@ -1306,3 +1306,80 @@ function ood_software_deploy_10014_backfill_inferred_repos(&$sandbox) {
     '@total' => $sandbox['total'],
   ]);
 }
+
+/**
+ * Send stranded repos for review alongside their already-submitted apps.
+ *
+ * Until D8-2881 a moderation change on an appverse_app did not carry its
+ * parent appverse_repo. An inferred single-app repo has no appverse.yml, so
+ * authors submit through the app's own node form, and that left the repo in
+ * draft while the app sat in ready_for_review. The review queue filters repos
+ * on their own moderation state, so those submissions were invisible to
+ * reviewers while their authors saw them as sent.
+ *
+ * The code fix stops new ones appearing. This repairs the rows already in that
+ * state: a repo in draft or needs_adjustment with at least one member app in
+ * ready_for_review moves to ready_for_review. Nothing else is touched — a
+ * published repo is left alone so this can never pull a live app out of the
+ * catalog, and a repo whose apps are all drafts stays a draft.
+ *
+ * Idempotent: re-running finds no repos left in the stranded shape.
+ */
+function ood_software_deploy_10015_unstrand_repos_awaiting_review(): \Drupal\Core\StringTranslation\TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+
+  // moderation_state is computed, so entityQuery cannot filter on it; the
+  // stored value lives in content_moderation's own table.
+  $appIds = \Drupal::database()->select('content_moderation_state_field_data', 'c')
+    ->fields('c', ['content_entity_id'])
+    ->condition('c.content_entity_type_id', 'node')
+    ->condition('c.workflow', 'appverse_editorial')
+    ->condition('c.moderation_state', 'ready_for_review')
+    ->execute()
+    ->fetchCol();
+
+  if (!$appIds) {
+    return t('No apps awaiting review; nothing to unstrand.');
+  }
+
+  $moved = [];
+  foreach ($storage->loadMultiple($appIds) as $app) {
+    if ($app->bundle() !== 'appverse_app' || !$app->hasField('field_appverse_repo')) {
+      continue;
+    }
+    if ($app->get('field_appverse_repo')->isEmpty()) {
+      continue;
+    }
+    // The reference returns EntityInterface; narrow it so the node-only calls
+    // below (hasField/get/set/setNewRevision) are statically sound.
+    $repo = $app->get('field_appverse_repo')->entity;
+    if (!$repo instanceof \Drupal\node\NodeInterface || !$repo->hasField('moderation_state')) {
+      continue;
+    }
+    if (isset($moved[$repo->id()])) {
+      continue;
+    }
+    if (!in_array($repo->get('moderation_state')->value, ['draft', 'needs_adjustment'], TRUE)) {
+      continue;
+    }
+    // Repairing rows is not a submission event, so don't email reviewers about
+    // each one. ood_software_node_update() reads this runtime flag; without it
+    // a deploy that unstrands N repos sends N "ready for review" notices in one
+    // burst, and on a host without working SMTP the synchronous per-repo send
+    // stalls the deploy mid-repair. Same guard the inferred-repo backfill uses.
+    $repo->_ood_software_suppress_notifications = TRUE;
+    $repo->set('moderation_state', 'ready_for_review');
+    $repo->setNewRevision(TRUE);
+    $repo->setRevisionLogMessage('Sent for review with its already-submitted member app (D8-2881).');
+    $repo->save();
+    $moved[$repo->id()] = $repo->label();
+  }
+
+  if (!$moved) {
+    return t('No stranded repos found; nothing to do.');
+  }
+  return t('Sent @count stranded repos for review: @titles', [
+    '@count' => count($moved),
+    '@titles' => implode(', ', $moved),
+  ]);
+}

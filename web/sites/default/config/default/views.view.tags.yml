@@ -367,7 +367,7 @@ display:
               1: {  }
               2: {  }
               3: {  }
-          use_tokens: 0
+          use_tokens: false
         status:
           id: status
           table: taxonomy_term_field_data
