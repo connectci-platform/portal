@@ -331,6 +331,11 @@ final class ReviewPageForm extends FormBase {
       $node->set('field_arv_internal_notes', $notes);
     }
 
+    // The reviewer's first save starts the Review step: an imported (draft)
+    // review moves to In Review (REVIEW-STATES.md, situation 5 → 6).
+    if (($node->get('moderation_state')->value ?? '') === 'draft') {
+      $node->set('moderation_state', 'in_review');
+    }
     $node->setNewRevision(TRUE);
     $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName());
     $node->save();

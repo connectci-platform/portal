@@ -203,6 +203,18 @@ resourceFields:
     publicName: field_arv_internal_notes
     enhancer:
       id: ''
+  field_arv_decision_sent_at:
+    disabled: true
+    fieldName: field_arv_decision_sent_at
+    publicName: field_arv_decision_sent_at
+    enhancer:
+      id: ''
+  field_arv_decision_sent_by:
+    disabled: true
+    fieldName: field_arv_decision_sent_by
+    publicName: field_arv_decision_sent_by
+    enhancer:
+      id: ''
   field_arv_gate_evidence:
     disabled: true
     fieldName: field_arv_gate_evidence

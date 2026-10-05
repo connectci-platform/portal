@@ -1051,14 +1051,20 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
   if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
     return $access->orIf(AccessResult::allowed());
   }
-  // An unpublished review is for reviewers only. Forbidden, not neutral: its
-  // author may be the contributor (a review is authored by whoever started the
-  // run, send-for-review included) and every user holds "view own unpublished
-  // content", which would otherwise let them read it before any decision is
-  // sent. The repo owner gains read access once a decision is sent
-  // (decision_sent_at, appverse-planning#28; REVIEW-STATES.md).
+  // An unpublished review: reviewers (above), and the repo's owner once a
+  // decision has been sent (decision_sent_at; appverse-planning#28,
+  // REVIEW-STATES.md "Who can read the review"). Everyone else is forbidden,
+  // not neutral: the review's author may be the contributor (a review is
+  // authored by whoever started the run, send-for-review included) and every
+  // user holds "view own unpublished content", which would otherwise let them
+  // read it before any decision is sent.
   if ($node->bundle() === 'appverse_review') {
-    return $access->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers only until a decision is sent.'));
+    $sent = $node->hasField('field_arv_decision_sent_at') && !$node->get('field_arv_decision_sent_at')->isEmpty();
+    $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
+    if ($sent && $repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+      return $access->addCacheContexts(['user'])->addCacheableDependency($repo)->orIf(AccessResult::allowed());
+    }
+    return $access->addCacheContexts(['user'])->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers, and to the contributor once a decision is sent.'));
   }
 
   return $access;

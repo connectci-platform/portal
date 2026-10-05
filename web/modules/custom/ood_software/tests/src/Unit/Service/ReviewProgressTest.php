@@ -1,0 +1,112 @@
+<?php
+
+namespace Drupal\Tests\ood_software\Unit\Service;
+
+use Drupal\Tests\UnitTestCase;
+use Drupal\ood_software\Service\ReviewProgress as P;
+
+/**
+ * The progress line for the eleven situations of the state model.
+ *
+ * Each case is a row of appverse-planning review-system/REVIEW-STATES.md:
+ * the stored facts, the five reviewer step states, the four contributor step
+ * states, and the labels that matter.
+ *
+ * @group ood_software
+ *
+ * @coversDefaultClass \Drupal\ood_software\Service\ReviewProgress
+ */
+class ReviewProgressTest extends UnitTestCase {
+
+  /**
+   * @covers ::steps
+   * @dataProvider situations
+   */
+  public function testSituation(array $facts, array $reviewer, array $contributor, array $labels): void {
+    $steps = P::steps($facts);
+
+    $this->assertSame($reviewer, array_column($steps['reviewer'], 'state'), 'reviewer step states');
+    $this->assertSame($contributor, array_column($steps['contributor'], 'state'), 'contributor step states');
+    $byStep = array_column($steps['reviewer'], 'label', 'step');
+    foreach ($labels as $step => $label) {
+      $this->assertSame($label, $byStep[$step], "label of $step");
+    }
+  }
+
+  public static function situations(): array {
+    [$D, $C, $W, $F, $N] = [P::DONE, P::CURRENT, P::WAITING, P::FAILED, P::NOT_REACHED];
+    $base = ['repo_state' => 'ready_for_review', 'run_status' => 'complete', 'review_state' => NULL, 'decision_sent' => FALSE, 'decision' => NULL, 'suggestion' => 'request_changes', 'round' => 1];
+    return [
+      '1 added, not submitted' => [
+        ['repo_state' => 'draft', 'run_status' => NULL] + $base,
+        [$W, $N, $N, $N, $N], [$W, $N, $N, $N], ['Submitted' => 'Not submitted'],
+      ],
+      '2 submitted, AI report queued' => [
+        ['run_status' => 'pending'] + $base,
+        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Queued'],
+      ],
+      '3 AI report running' => [
+        ['run_status' => 'in_progress'] + $base,
+        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Running'],
+      ],
+      // The contributor still sees "In review" (current), never a failure.
+      '4 AI report failed' => [
+        ['run_status' => 'error'] + $base,
+        [$D, $F, $N, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Failed · rerun'],
+      ],
+      '5 AI report ready, nobody started' => [
+        ['review_state' => 'draft'] + $base,
+        [$D, $D, $C, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Ready · suggests Request changes', 'Review' => 'Not started'],
+      ],
+      '6 reviewer working' => [
+        ['review_state' => 'in_review'] + $base,
+        [$D, $D, $C, $N, $N], [$D, $C, $N, $N], ['Review' => 'In progress'],
+      ],
+      '7 changes requested' => [
+        ['repo_state' => 'needs_adjustment', 'review_state' => 'in_review', 'decision_sent' => TRUE, 'decision' => 'request_changes'] + $base,
+        [$D, $D, $D, $W, $N], [$D, $D, $W, $N], ['Decision' => 'Changes requested · round 1'],
+      ],
+      '8 resubmitted, new AI report' => [
+        ['run_status' => 'pending', 'round' => 2] + $base,
+        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['Submitted' => 'Resubmitted · round 2', 'AI report' => 'Queued'],
+      ],
+      '9 accepted, not yet published' => [
+        ['review_state' => 'in_review', 'decision_sent' => TRUE, 'decision' => 'accept_with_suggestions'] + $base,
+        [$D, $D, $D, $D, $C], [$D, $D, $D, $C], ['Decision' => 'Accepted with suggestions', 'Live' => 'Ready to publish'],
+      ],
+      '10 published' => [
+        ['repo_state' => 'published', 'review_state' => 'published', 'decision_sent' => TRUE, 'decision' => 'accept'] + $base,
+        [$D, $D, $D, $D, $D], [$D, $D, $D, $D], ['Decision' => 'Accepted', 'Live' => 'Live'],
+      ],
+      '11 declined' => [
+        ['repo_state' => 'declined', 'review_state' => 'in_review', 'decision_sent' => TRUE, 'decision' => 'reject'] + $base,
+        [$D, $D, $D, $F, $N], [$D, $D, $F, $N], ['Decision' => 'Declined'],
+      ],
+    ];
+  }
+
+  /**
+   * A decision on the review that has not been sent does not show: the
+   * steps follow the sent decision only.
+   *
+   * @covers ::steps
+   */
+  public function testAnUnsentDecisionIsNotShown(): void {
+    $steps = P::steps(['repo_state' => 'ready_for_review', 'run_status' => 'complete', 'review_state' => 'in_review', 'decision_sent' => FALSE, 'decision' => 'accept']);
+    $this->assertSame([P::NOT_REACHED, P::NOT_REACHED], [$steps['reviewer'][3]['state'], $steps['reviewer'][4]['state']]);
+  }
+
+  /**
+   * The overall decision is the strictest per-app one (appverse-review#70).
+   *
+   * @covers ::strictestDecision
+   */
+  public function testStrictestDecision(): void {
+    $this->assertSame('request_changes', P::strictestDecision(['accept', 'request_changes', 'accept_with_suggestions']));
+    $this->assertSame('reject', P::strictestDecision(['reject', 'accept']));
+    $this->assertSame('accept_with_suggestions', P::strictestDecision(['accept', 'accept_with_suggestions']));
+    $this->assertNull(P::strictestDecision([]));
+    $this->assertNull(P::strictestDecision([NULL, 'bogus']));
+  }
+
+}

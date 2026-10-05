@@ -7,6 +7,8 @@ dependencies:
     - field.field.node.appverse_review.field_arv_assigned_reviewer
     - field.field.node.appverse_review.field_arv_catalog_checks
     - field.field.node.appverse_review.field_arv_contributor_response
+    - field.field.node.appverse_review.field_arv_decision_sent_at
+    - field.field.node.appverse_review.field_arv_decision_sent_by
     - field.field.node.appverse_review.field_arv_gate_evidence
     - field.field.node.appverse_review.field_arv_indicators_default
     - field.field.node.appverse_review.field_arv_internal_notes
@@ -180,6 +182,8 @@ hidden:
   field_arv_assigned_reviewer: true
   field_arv_catalog_checks: true
   field_arv_contributor_response: true
+  field_arv_decision_sent_at: true
+  field_arv_decision_sent_by: true
   field_arv_gate_evidence: true
   field_arv_indicators_default: true
   field_arv_internal_notes: true

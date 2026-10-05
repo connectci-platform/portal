@@ -543,3 +543,32 @@ function ood_software_update_10507(): TranslatableMarkup {
 
   return t('Added the "Classroom Stories" slideshow view block to node 12116 (or reasserted its position).');
 }
+
+/**
+ * Move reviews out of the retired "Waiting for Contributor" state.
+ *
+ * The review workflow drops waiting_for_contributor (appverse-planning#28,
+ * REVIEW-STATES.md): a sent decision is now a field on the review, not a
+ * state. drush deploy runs this before the config import removes the state,
+ * so any review still in it moves to In Review rather than being left in a
+ * state the workflow no longer has.
+ */
+function ood_software_update_10508(): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $nids = $storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->execute();
+  $moved = 0;
+  foreach ($storage->loadMultiple($nids) as $review) {
+    if ($review->get('moderation_state')->value !== 'waiting_for_contributor') {
+      continue;
+    }
+    $review->set('moderation_state', 'in_review');
+    $review->setNewRevision(TRUE);
+    $review->setRevisionLogMessage('Moved from the retired Waiting for Contributor state (appverse-planning#28).');
+    $review->save();
+    $moved++;
+  }
+  return t('Moved @n review(s) from Waiting for Contributor to In Review.', ['@n' => $moved]);
+}

@@ -43,8 +43,6 @@ permissions:
   - 'use appverse_editorial transition unpublish'
   - 'use appverse_review_workflow transition begin_review'
   - 'use appverse_review_workflow transition publish'
-  - 'use appverse_review_workflow transition request_contributor_input'
-  - 'use appverse_review_workflow transition resume_review'
   - 'use appverse_review_workflow transition return_to_draft'
   - 'use appverse_review_workflow transition unpublish'
   - 'view appverse_app revisions'

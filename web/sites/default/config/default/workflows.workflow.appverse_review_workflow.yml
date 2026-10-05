@@ -26,11 +26,6 @@ type_settings:
       weight: 10
       published: true
       default_revision: true
-    waiting_for_contributor:
-      label: 'Waiting for Contributor'
-      weight: 5
-      published: false
-      default_revision: true
   transitions:
     begin_review:
       label: 'Begin Review'
@@ -44,23 +39,10 @@ type_settings:
         - in_review
       to: published
       weight: 3
-    request_contributor_input:
-      label: 'Request Contributor Input'
-      from:
-        - in_review
-      to: waiting_for_contributor
-      weight: 1
-    resume_review:
-      label: 'Resume Review'
-      from:
-        - waiting_for_contributor
-      to: in_review
-      weight: 2
     return_to_draft:
       label: 'Return to Draft'
       from:
         - in_review
-        - waiting_for_contributor
       to: draft
       weight: 5
     unpublish:
