@@ -21,7 +21,18 @@ describe("PA Science Project Email Notifications", () => {
   before(() => {
     // Set up PA Science manager role for user 2000
     // This ensures consistent test behavior regardless of existing data
-    cy.drush('user:role:add', ['pascience_manager', 'user+2000@localhost.localdomain']);
+    //
+    // Note: `drush user:role:add`'s positional argument is a comma-delimited
+    // list of user *names*, not emails/uids - passing an email there silently
+    // fails to match (drush reports "Unable to find a matching user" for any
+    // lookup on an email containing "+"), so `cy.drush` here previously ran
+    // with `failOnNonZeroExit: false` and never actually granted the role.
+    // That left the pascience_manager role with no members, so the
+    // 'Project Created'/'Project Updated'/interest-expressed emails - which
+    // go to that role - were never sent, and cy.waitForEmail() timed out
+    // waiting on Mailpit for mail that was never dispatched. Use --mail to
+    // look the user up by email instead.
+    cy.drush('user:role:add', ['pascience_manager'], { mail: 'user+2000@localhost.localdomain' });
   });
 
   beforeEach(() => {
@@ -36,8 +47,8 @@ describe("PA Science Project Email Notifications", () => {
 
     // Fill out basic project form (only fields visible on create)
     cy.get('input[name="project_title"]').type('Test Project Creation Email');
-    cy.get('input[name="project_leader[first]"]').type('Jane');
-    cy.get('input[name="project_leader[last]"]').type('Doe');
+    cy.get('input[name="project_leader[first]"]').clear().type('Jane');
+    cy.get('input[name="project_leader[last]"]').clear().type('Doe');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('jane.doe@test.com');
     cy.get('textarea[name="project_description"]').type('This is a test project to verify creation email.');
@@ -69,8 +80,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.visit('/form/project');
 
     cy.get('input[name="project_title"]').type('Test Project Received Email');
-    cy.get('input[name="project_leader[first]"]').type('John');
-    cy.get('input[name="project_leader[last]"]').type('Smith');
+    cy.get('input[name="project_leader[first]"]').clear().type('John');
+    cy.get('input[name="project_leader[last]"]').clear().type('Smith');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('john.smith@test.com');
     cy.get('textarea[name="project_description"]').type('Test project for received email.');
@@ -116,8 +127,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.visit('/form/project');
 
     cy.get('input[name="project_title"]').type('Test Project Update Email');
-    cy.get('input[name="project_leader[first]"]').type('Alice');
-    cy.get('input[name="project_leader[last]"]').type('Johnson');
+    cy.get('input[name="project_leader[first]"]').clear().type('Alice');
+    cy.get('input[name="project_leader[last]"]').clear().type('Johnson');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('alice.johnson@test.com');
     cy.get('textarea[name="project_description"]').type('Test project for update email.');
@@ -170,8 +181,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.visit('/form/project');
 
     cy.get('input[name="project_title"]').type('Test Project Approved Email');
-    cy.get('input[name="project_leader[first]"]').type('Bob');
-    cy.get('input[name="project_leader[last]"]').type('Williams');
+    cy.get('input[name="project_leader[first]"]').clear().type('Bob');
+    cy.get('input[name="project_leader[last]"]').clear().type('Williams');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('bob.williams@test.com');
     cy.get('textarea[name="project_description"]').type('Test project for approval email.');
@@ -224,8 +235,8 @@ describe("PA Science Project Email Notifications", () => {
     cy.get('input[name="tags[682]"]').check(); // Login tag (or any available tag)
     cy.get('select[name="status"]').select('Recruiting'); // Set to Recruiting status
 
-    cy.get('input[name="project_leader[first]"]').type('Project');
-    cy.get('input[name="project_leader[last]"]').type('Leader');
+    cy.get('input[name="project_leader[first]"]').clear().type('Project');
+    cy.get('input[name="project_leader[last]"]').clear().type('Leader');
     cy.get('input[name="email"]').clear();
     cy.get('input[name="email"]').type('projectleader@test.com');
     cy.get('textarea[name="project_description"]').type('This is a recruiting project for PA Science');

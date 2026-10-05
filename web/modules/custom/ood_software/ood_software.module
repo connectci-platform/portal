@@ -9,10 +9,12 @@ use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
@@ -1047,8 +1049,74 @@ function ood_software_node_insert(NodeInterface $node): void {
     if ($flag && $account->id() && !$flag_service->getFlagging($flag, $node, $account)) {
       $flag_service->flag($flag, $node, $account);
     }
-    \Drupal::messenger()->addStatus(t("Thanks for your submission! The Appverse team reviews new apps on Fridays. If we have questions, we'll open an issue on your repo"));
+    // Only claim a submission when the app actually entered review. This fired
+    // on every appverse_app creation, so registering a repo produced two
+    // contradictory notices at once: this one saying the team reviews new apps
+    // on Fridays, and AddRepoForm's accurate "in your hub as a draft — send it
+    // for review when you are ready". Contributors reasonably believed the
+    // first and never submitted (D8-2881).
+    $state = $node->hasField('moderation_state')
+      ? $node->get('moderation_state')->value
+      : NULL;
+    if ($state === 'ready_for_review') {
+      \Drupal::messenger()->addStatus(t("Thanks for your submission! The Appverse team reviews new apps on Fridays. If we have questions, we'll open an issue on your repo"));
+    }
   }
+}
+
+/**
+ * Send an app's parent repo for review when the app itself is.
+ *
+ * The hub's repo action cascades downward to member apps. This is the other
+ * direction, for the app-edit path an inferred single-app repo steers authors
+ * into. Only moves a repo still in draft or needs_adjustment, so it never
+ * pulls a published repo back out of the catalog.
+ */
+function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
+  // Defence in depth against a save loop. What actually stops the hub's
+  // repo-to-apps cascade bouncing back up here is the state guard below: by
+  // then the repo already reads ready_for_review, so it fails the
+  // draft/needs_adjustment check and this returns. This static only covers a
+  // caller that saves the repo while its own save is still in flight.
+  static $running = FALSE;
+  if ($running) {
+    return;
+  }
+  if ($node->bundle() !== 'appverse_app' || !$node->hasField('moderation_state')) {
+    return;
+  }
+  if ($node->get('moderation_state')->value !== 'ready_for_review') {
+    return;
+  }
+  // Only act on the transition itself, not on every later save.
+  if (_ood_software_previous_moderation_state($node) === 'ready_for_review') {
+    return;
+  }
+  if (!$node->hasField('field_appverse_repo') || $node->get('field_appverse_repo')->isEmpty()) {
+    return;
+  }
+  // The reference returns EntityInterface; narrow it so the node-only calls
+  // below are statically sound.
+  $repo = $node->get('field_appverse_repo')->entity;
+  if (!$repo instanceof NodeInterface || !$repo->hasField('moderation_state')) {
+    return;
+  }
+  if (!in_array($repo->get('moderation_state')->value, ['draft', 'needs_adjustment'], TRUE)) {
+    return;
+  }
+  $running = TRUE;
+  try {
+    $repo->set('moderation_state', 'ready_for_review');
+    $repo->setNewRevision(TRUE);
+    $repo->setRevisionLogMessage('Auto-sent for review with its member app.');
+    $repo->save();
+  }
+  finally {
+    $running = FALSE;
+  }
+  \Drupal::messenger()->addStatus(t('Also sent @title for review, so it reaches the review queue.', [
+    '@title' => $repo->label(),
+  ]));
 }
 
 /**
@@ -1056,6 +1124,16 @@ function ood_software_node_insert(NodeInterface $node): void {
  */
 function ood_software_node_update(NodeInterface $node): void {
   _ood_software_mark_appverse_cache_dirty($node);
+
+  // An app sent for review has to carry its parent repo with it. A review is a
+  // review of a repo and the queue filters repos on their own state, so an app
+  // moved on its own leaves the repo in draft and the submission is invisible
+  // to reviewers while the author sees "Awaiting review" (D8-2881).
+  //
+  // This matters most for inferred single-app repos, which have no
+  // appverse.yml and so are edited through the app's own node form — that is
+  // the majority shape, not an edge case.
+  _ood_software_sync_repo_to_app_review($node);
 
   // Moderation transition notifications. Repos only — App-level
   // transitions intentionally don't fan out so a cascade-publish on N
@@ -1176,15 +1254,17 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@site' => $site_name,
         '@title' => $title,
       ]);
-      $message['body'][] = t('@owner submitted "@title" for review on @site.', [
+      $message['body'][] = t('<p>@owner submitted "@title" for review on @site.</p>', [
         '@owner' => $owner_name,
         '@title' => $title,
         '@site' => $site_name,
       ]);
       if ($repo) {
-        $message['body'][] = t('Repository: @repo', ['@repo' => $repo]);
+        // The ":repo" placeholder both sanitizes the URL for the href
+        // attribute and escapes it for the visible link text.
+        $message['body'][] = t('<p>Repository: <a href=":repo">:repo</a></p>', [':repo' => $repo]);
       }
-      $message['body'][] = t('Review queue: @url', ['@url' => $admin_queue]);
+      $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [':url' => $admin_queue]);
       break;
 
     case 'needs_adjustment':
@@ -1217,15 +1297,20 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@site' => $site_name,
         '@title' => $title,
       ]);
-      $message['body'][] = t('A reviewer requested changes on your repo "@title" before it can be published on @site.', [
+      $message['body'][] = t('<p>A reviewer requested changes on your repo "@title" before it can be published on @site.</p>', [
         '@title' => $title,
         '@site' => $site_name,
       ]);
       if ($comment !== '') {
-        $message['body'][] = t("Reviewer's note:\n\n@comment", ['@comment' => $comment]);
+        $message['body'][] = t("<p>Reviewer's note:</p>");
+        // Escape the comment ourselves and convert its own line breaks to
+        // <br> so multi-line notes survive — t()'s @-placeholder would
+        // escape it too, but wrapping the whole thing in a single t() call
+        // would leave the comment's newlines flattened into one line.
+        $message['body'][] = Markup::create('<p>' . nl2br(Html::escape($comment)) . '</p>');
       }
       if ($hub_link) {
-        $message['body'][] = t('Open your maintenance hub to make changes and resubmit: @url', ['@url' => $hub_link]);
+        $message['body'][] = t('<p>Open your maintenance hub to make changes and resubmit: <a href=":url">:url</a></p>', [':url' => $hub_link]);
       }
       break;
 
@@ -1238,11 +1323,11 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@site' => $site_name,
         '@title' => $title,
       ]);
-      $message['body'][] = t('Your repo "@title" has been published to the @site catalog.', [
+      $message['body'][] = t('<p>Your repo "@title" has been published to the @site catalog.</p>', [
         '@title' => $title,
         '@site' => $site_name,
       ]);
-      $message['body'][] = t('View it in the catalog: @url', ['@url' => $catalog_link]);
+      $message['body'][] = t('<p>View it in the catalog: <a href=":url">:url</a></p>', [':url' => $catalog_link]);
       break;
   }
 }
