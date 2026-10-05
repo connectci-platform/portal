@@ -18,6 +18,7 @@ use Drupal\ood_software\Service\AppverseReviewService;
 use GuzzleHttp\Client;
 use Psr\Http\Message\ResponseInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Site\Settings;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -123,6 +124,29 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $this->assertContains(['field_review_dispatched_at', self::NOW], $this->freshSets);
     $this->assertContains(['field_review_status', 'pending'], $this->freshSets);
     $this->assertSame(1, $this->freshSaves);
+  }
+
+  /**
+   * The dispatch sends the model the ood_software.review_model setting names
+   * for this environment; a value the workflow does not accept falls back to
+   * sonnet rather than failing every dispatch.
+   *
+   * @covers ::dispatchForNode
+   * @covers ::reviewModel
+   */
+  public function testDispatchSendsTheConfiguredModel(): void {
+    try {
+      new Settings(['ood_software.review_model' => 'qwen']);
+      $this->assertTrue($this->makeService(204)->dispatchForNode($this->makeRepoNode()));
+      $this->assertSame('qwen', $this->postOptions['json']['inputs']['model']);
+
+      new Settings(['ood_software.review_model' => 'gpt-9']);
+      $this->assertTrue($this->makeService(204)->dispatchForNode($this->makeRepoNode()));
+      $this->assertSame('sonnet', $this->postOptions['json']['inputs']['model']);
+    }
+    finally {
+      new Settings([]);
+    }
   }
 
   /**

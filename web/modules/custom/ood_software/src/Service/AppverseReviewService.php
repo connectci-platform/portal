@@ -58,11 +58,17 @@ class AppverseReviewService {
    * The workflow's model input: "qwen" runs on the on-prem gateway, "sonnet"
    * or "opus" on the Anthropic API.
    *
-   * Sonnet until Qwen is benchmarked: the first Qwen review through the
-   * portal (appverse-review run 36917068688) failed the feedback-floor and
-   * key checks on a repo Sonnet had passed the same day.
+   * The default where the ood_software.review_model setting names none (see
+   * reviewModel()). Sonnet until Qwen is benchmarked: the first Qwen review
+   * through the portal (appverse-review run 36917068688) failed the
+   * feedback-floor and key checks on a repo Sonnet had passed the same day.
    */
   const DEFAULT_MODEL = 'sonnet';
+
+  /**
+   * The model inputs the review workflow accepts.
+   */
+  const MODELS = ['qwen', 'sonnet', 'opus'];
 
   /**
    * Drupal Key module key ID for the GitHub token.
@@ -147,7 +153,7 @@ class AppverseReviewService {
    * @return bool
    *   TRUE when GitHub accepted the dispatch.
    */
-  public function dispatchForNode(NodeInterface $node, string $model = self::DEFAULT_MODEL, ?string $aspectsOverride = NULL): bool {
+  public function dispatchForNode(NodeInterface $node, ?string $model = NULL, ?string $aspectsOverride = NULL): bool {
     $repoUrl = $this->extractRepoUrl($node);
     if ($repoUrl === NULL) {
       $this->logger->warning('Cannot dispatch review for repo node @nid: no field_repo_url value.', [
@@ -266,12 +272,14 @@ class AppverseReviewService {
    * @param string $targetRepo
    *   The target repo in "owner/name" format (e.g. "OSC/bc_osc_jupyter").
    * @param string $model
-   *   The workflow's model input. Defaults to self::DEFAULT_MODEL.
+   *   The workflow's model input. NULL takes this environment's model from
+   *   the ood_software.review_model setting (see reviewModel()).
    *
    * @return bool
    *   TRUE if the dispatch succeeded (HTTP 204), FALSE otherwise.
    */
-  public function dispatch(string $targetRepo, string $model = self::DEFAULT_MODEL, string $correlationId = '', ?string $aspectsOverride = NULL): bool {
+  public function dispatch(string $targetRepo, ?string $model = NULL, string $correlationId = '', ?string $aspectsOverride = NULL): bool {
+    $model = $model ?? $this->reviewModel();
     // On non-production environments, only dispatch dry-run reviews to
     // avoid spending API credits on dev/staging test transitions.
     // $aspectsOverride exists for explicit callers (drush php:eval) that
@@ -721,6 +729,48 @@ class AppverseReviewService {
   public function fullReviewsEnabled(): bool {
     $allowed = Settings::get('ood_software.review_full_environments', []);
     return self::fullReviewsAllowed(getenv('PANTHEON_ENVIRONMENT') ?: NULL, is_array($allowed) ? $allowed : []);
+  }
+
+  /**
+   * The model the ood_software.review_model setting names for an environment.
+   *
+   * The setting is a model for every environment ('qwen'), or one per
+   * environment (['md-2788' => 'qwen']) with an optional 'default' key. No
+   * environment name (local ddev) reads as "local". NULL when the setting
+   * names nothing for $env; the value is not validated here.
+   */
+  public static function configuredModel(?string $env, mixed $setting): ?string {
+    $env = ($env === NULL || $env === '') ? 'local' : $env;
+    if (is_string($setting) && $setting !== '') {
+      return $setting;
+    }
+    if (is_array($setting)) {
+      $model = $setting[$env] ?? $setting['default'] ?? NULL;
+      return is_string($model) && $model !== '' ? $model : NULL;
+    }
+    return NULL;
+  }
+
+  /**
+   * The model this site's reviews run on: the setting's model for
+   * PANTHEON_ENVIRONMENT, or DEFAULT_MODEL. A model the workflow does not
+   * accept is logged and replaced by DEFAULT_MODEL, so a typo in settings
+   * cannot make every dispatch fail.
+   */
+  public function reviewModel(): string {
+    $model = self::configuredModel(getenv('PANTHEON_ENVIRONMENT') ?: NULL, Settings::get('ood_software.review_model'));
+    if ($model === NULL) {
+      return self::DEFAULT_MODEL;
+    }
+    if (!in_array($model, self::MODELS, TRUE)) {
+      $this->logger->warning('ood_software.review_model names "@model", which the review workflow does not accept (@models); using @default.', [
+        '@model' => $model,
+        '@models' => implode(', ', self::MODELS),
+        '@default' => self::DEFAULT_MODEL,
+      ]);
+      return self::DEFAULT_MODEL;
+    }
+    return $model;
   }
 
   /**

@@ -40,6 +40,12 @@ $content_directories['sync'] = '/datastorage/content/sync';
 // (local.settings.php does, to run real reviews from ddev).
 $settings['ood_software.review_full_environments'] = ['md-2788'];
 
+// The model AppVerse AI reviews run on, per environment: "qwen" (the on-prem
+// gateway) or "sonnet" / "opus" (the Anthropic API). Unlisted environments,
+// live included, use sonnet. Read by AppverseReviewService::reviewModel(); a
+// plain string ('qwen') applies everywhere, e.g. from local.settings.php.
+$settings['ood_software.review_model'] = ['md-2788' => 'qwen'];
+
 $additionalSettingsFiles = [
   (DRUPAL_ROOT . "/../vendor/acquia/blt/settings/blt.settings.php"),
   (__DIR__ . "/settings.pantheon.php"),

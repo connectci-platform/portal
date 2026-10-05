@@ -238,6 +238,32 @@ class AppverseReviewServiceTest extends UnitTestCase {
     return $bytes;
   }
 
+  /**
+   * The model setting: one model everywhere, or one per environment with an
+   * optional default; local ddev reads as "local"; anything else names none.
+   *
+   * @covers ::configuredModel
+   * @dataProvider configuredModels
+   */
+  public function testConfiguredModel(?string $env, mixed $setting, ?string $expected): void {
+    $this->assertSame($expected, AppverseReviewService::configuredModel($env, $setting));
+  }
+
+  public static function configuredModels(): array {
+    $perEnv = ['md-2788' => 'qwen', 'local' => 'opus'];
+    return [
+      'no setting' => ['live', NULL, NULL],
+      'one model everywhere' => ['live', 'qwen', 'qwen'],
+      'listed environment' => ['md-2788', $perEnv, 'qwen'],
+      'unlisted environment' => ['live', $perEnv, NULL],
+      'unlisted, with a default' => ['live', $perEnv + ['default' => 'opus'], 'opus'],
+      'no environment is local' => [NULL, $perEnv, 'opus'],
+      'empty environment is local' => ['', $perEnv, 'opus'],
+      'empty string names none' => ['live', '', NULL],
+      'non-string entry names none' => ['md-2788', ['md-2788' => TRUE], NULL],
+    ];
+  }
+
   private function makeTempDir(): string {
     $dir = sys_get_temp_dir() . '/arv-test-' . bin2hex(random_bytes(6));
     mkdir($dir, 0700);
