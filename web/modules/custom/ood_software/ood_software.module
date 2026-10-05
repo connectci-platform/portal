@@ -1042,10 +1042,23 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
 
   $access = AccessResult::neutral()
     ->addCacheableDependency($node)
+    ->addCacheContexts(['user.roles'])
     ->cachePerPermissions();
 
-  if (!$node->isPublished() && in_array('appverse_pm', $account->getRoles(), TRUE)) {
+  if ($node->isPublished()) {
+    return $access;
+  }
+  if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
     return $access->orIf(AccessResult::allowed());
+  }
+  // An unpublished review is for reviewers only. Forbidden, not neutral: its
+  // author may be the contributor (a review is authored by whoever started the
+  // run, send-for-review included) and every user holds "view own unpublished
+  // content", which would otherwise let them read it before any decision is
+  // sent. The repo owner gains read access once a decision is sent
+  // (decision_sent_at, appverse-planning#28; REVIEW-STATES.md).
+  if ($node->bundle() === 'appverse_review') {
+    return $access->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers only until a decision is sent.'));
   }
 
   return $access;
