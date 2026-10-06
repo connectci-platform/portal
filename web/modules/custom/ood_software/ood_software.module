@@ -1825,17 +1825,21 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
     : NULL;
 
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
-  // Start review: on every repo an admin can see, whatever its moderation
+  // Run AI report: on every repo an admin can see, whatever its moderation
   // state, except while a run is already pending or in progress (the
   // progress line's AI report step says so). The action does not move the
   // app's editorial state.
+  //
+  // "Start review" read as starting the human review, which is the next step
+  // along and a different thing. The model produces a report; the reviewer
+  // reviews (appverse-planning#49).
   $runReviewAction = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
     $label = match ($reviewStatus) {
-      NULL => t('Start review'),
+      NULL => t('Run AI report'),
       // The progress line's "Failed · rerun" (appverse-planning#34).
-      'error' => t('Rerun the AI report'),
-      default => t('Start review again'),
+      'error' => t('Rerun AI report'),
+      default => t('Rerun AI report'),
     };
     if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);

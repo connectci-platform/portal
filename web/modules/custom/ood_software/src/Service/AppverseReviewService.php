@@ -144,7 +144,7 @@ class AppverseReviewService {
    * Starts a review for a repo node, without touching its moderation state.
    *
    * The one implementation behind the ready_for_review transition, the hub's
-   * Start review action, and any explicit caller. Resolves owner/repo from
+   * Run AI report action, and any explicit caller. Resolves owner/repo from
    * the node, sends the dispatch with a correlation id, and on success records
    * the same timestamp on the node so the id can be recomputed when the run
    * is polled for. A failed dispatch leaves the node untouched: marking it
@@ -322,7 +322,7 @@ class AppverseReviewService {
         $fresh->set('field_review_run_id', NULL);
       }
       if ($fresh->hasField('field_review_dispatched_by')) {
-        // Start review, or the contributor's send-for-review transition.
+        // Run AI report, or the contributor's send-for-review transition.
         $starter = $this->currentUser && $this->currentUser->isAuthenticated() ? $this->currentUser->id() : NULL;
         $fresh->set('field_review_dispatched_by', $starter);
       }

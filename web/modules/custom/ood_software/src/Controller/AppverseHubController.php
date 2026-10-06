@@ -494,10 +494,10 @@ final class AppverseHubController extends ControllerBase {
       return $this->redirectToHub();
     }
     if ($this->reviewService->dispatchForNode($node)) {
-      $this->messenger()->addStatus($this->t('Review started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full review).', ['@title' => $node->label()]));
+      $this->messenger()->addStatus($this->t('AI report started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full report).', ['@title' => $node->label()]));
     }
     else {
-      $this->messenger()->addError($this->t('Could not start the review for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
+      $this->messenger()->addError($this->t('Could not start the AI report for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
     }
     return $this->redirectToHub();
   }
