@@ -70,6 +70,8 @@ class ReviewDecisionSendTest extends KernelTestBase {
       'field.field.node.appverse_review.field_arv_repo',
       'field.storage.node.field_arv_decision_sent_at',
       'field.field.node.appverse_review.field_arv_decision_sent_at',
+      'field.storage.node.field_arv_sent_decisions',
+      'field.field.node.appverse_review.field_arv_sent_decisions',
       'field.storage.node.field_arv_decision_sent_by',
       'field.field.node.appverse_review.field_arv_decision_sent_by',
       'field.storage.node.field_arv_withdrawn_at',
@@ -110,6 +112,10 @@ class ReviewDecisionSendTest extends KernelTestBase {
     $this->assertState($appState, $app);
     $this->assertState($reviewState, $review);
     $this->assertFalse($this->reload($review)->get('field_arv_decision_sent_at')->isEmpty());
+    // What was sent is stored, for Publish and the page (appverse-planning#51).
+    $sent = ReviewDecisionApplier::sent($this->reload($review));
+    $this->assertSame([$decision], array_values($sent['apps']));
+    $this->assertSame('Thanks for the submission.', $sent['response']);
     $this->assertCount(1, $this->mails(), 'One decision email.');
   }
 

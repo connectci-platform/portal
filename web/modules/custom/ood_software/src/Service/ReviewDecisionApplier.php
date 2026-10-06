@@ -51,6 +51,34 @@ final class ReviewDecisionApplier {
   ) {}
 
   /**
+   * What was sent to the contributor, or NULL before a decision is sent.
+   *
+   * Fixed at send time (field_arv_sent_decisions), so editing the page later
+   * cannot change what Publish, the progress line or the page take the
+   * decision to be (appverse-planning#51). A review sent before the field
+   * existed falls back to its current conclusions and response.
+   *
+   * @return array{apps: array<string, string>, response: string}|null
+   *   apps: verdict paragraph id => decision.
+   */
+  public static function sent(NodeInterface $review): ?array {
+    if (!$review->hasField('field_arv_decision_sent_at') || $review->get('field_arv_decision_sent_at')->isEmpty()) {
+      return NULL;
+    }
+    $stored = $review->hasField('field_arv_sent_decisions')
+      ? json_decode((string) ($review->get('field_arv_sent_decisions')->value ?? ''), TRUE) : NULL;
+    if (is_array($stored) && is_array($stored['apps'] ?? NULL)) {
+      return ['apps' => array_map('strval', $stored['apps']), 'response' => (string) ($stored['response'] ?? '')];
+    }
+    $apps = [];
+    foreach ($review->hasField('field_arv_verdicts') ? $review->get('field_arv_verdicts')->referencedEntities() : [] as $verdict) {
+      $apps[(string) $verdict->id()] = (string) $verdict->get('field_rvv_conclusion')->value;
+    }
+    $response = $review->hasField('field_arv_contributor_response') ? (string) ($review->get('field_arv_contributor_response')->value ?? '') : '';
+    return ['apps' => $apps, 'response' => $response];
+  }
+
+  /**
    * Why a decision cannot be sent on this review now, or NULL when it can.
    *
    * The review page offers Send decision only on a current, undecided review.
@@ -173,6 +201,10 @@ final class ReviewDecisionApplier {
     $overall = ReviewProgress::strictestDecision(array_values($decisions));
     $review->set('field_arv_decision_sent_at', $this->time->getCurrentTime());
     $review->set('field_arv_decision_sent_by', $this->currentUser->id());
+    // What the email says, fixed: later edits to the page do not change it.
+    if ($review->hasField('field_arv_sent_decisions')) {
+      $review->set('field_arv_sent_decisions', json_encode(['apps' => $decisions, 'response' => $response]));
+    }
     if (($review->get('moderation_state')->value ?? '') === 'draft') {
       $review->set('moderation_state', 'in_review');
     }
@@ -233,19 +265,24 @@ final class ReviewDecisionApplier {
     if (($blocker = $this->repoBlocker($review)) !== NULL) {
       return $blocker;
     }
-    $decisions = $this->appDecisions($review);
+    // What was sent, not what the page says now (appverse-planning#51). Only
+    // a sent Accept with suggestions waits for this step: Accept publishes on
+    // send, and nothing else publishes at all.
+    $decisions = self::sent($review)['apps'] ?? [];
+    if (!in_array('accept_with_suggestions', $decisions, TRUE)) {
+      return $this->t('Nothing was published: the decision sent on this review did not accept any app with suggestions.');
+    }
     $published = [];
     foreach ($this->appNodes($review) as $pid => $app) {
-      if (in_array($decisions[$pid] ?? NULL, ['accept', 'accept_with_suggestions'], TRUE) && !$app->isPublished()) {
-        $this->publishNode($app, 'Published from the review.');
+      if (in_array($decisions[$pid] ?? NULL, ['accept', 'accept_with_suggestions'], TRUE) && !$app->isPublished()
+        && $this->publishNode($app, 'Published from the review.')) {
         $published[] = $app->label();
       }
     }
     $repo = $review->get('field_arv_repo')->entity;
-    $repoWentLive = $repo instanceof NodeInterface && !$repo->isPublished();
-    if ($repoWentLive) {
-      $this->publishNode($repo, 'Published from the review.');
-    }
+    // What actually went live, not what was attempted: the email says so.
+    $repoWentLive = $repo instanceof NodeInterface && !$repo->isPublished()
+      && $this->publishNode($repo, 'Published from the review.');
     $this->publishReview($review);
 
     // Only when something entered the catalog: publishing just the review of
@@ -334,7 +371,7 @@ final class ReviewDecisionApplier {
    */
   public function appNodes(NodeInterface $review): array {
     $apps = [];
-    foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+    foreach ($review->hasField('field_arv_verdicts') ? $review->get('field_arv_verdicts')->referencedEntities() : [] as $verdict) {
       $app = $verdict->get('field_rvv_app_ref')->entity;
       if ($app instanceof NodeInterface) {
         $apps[(string) $verdict->id()] = $app;
@@ -356,17 +393,17 @@ final class ReviewDecisionApplier {
    * Publishes a repo or an app from its latest revision, as the hub's publish
    * does, so in-flight edits are what go live.
    */
-  protected function publishNode(NodeInterface $node, string $log): void {
+  protected function publishNode(NodeInterface $node, string $log): bool {
     // Already live: nothing to move, and a published-to-published save of a
     // repo would send the publish email again.
     if ($node->isPublished()) {
-      return;
+      return FALSE;
     }
     $storage = $this->entityTypeManager->getStorage('node');
     $latest = $storage->getLatestRevisionId($node->id());
     $fresh = $latest ? $storage->loadRevision($latest) : $storage->loadUnchanged($node->id());
     if (!$fresh instanceof NodeInterface || !$this->canMove($fresh, 'published')) {
-      return;
+      return FALSE;
     }
     $fresh->set('moderation_state', 'published');
     // The decision email replaces the repo's "published" email. The flag is
@@ -375,6 +412,7 @@ final class ReviewDecisionApplier {
     $fresh->_ood_software_suppress_notifications = TRUE;
     $this->saveRevision($fresh, $log);
     $this->messenger->addStatus($this->t('Published @title.', ['@title' => $fresh->label()]));
+    return TRUE;
   }
 
   /**

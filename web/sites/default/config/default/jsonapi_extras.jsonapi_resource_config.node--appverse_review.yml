@@ -137,6 +137,12 @@ resourceFields:
     publicName: field_arv_repo_criteria
     enhancer:
       id: ''
+  field_arv_sent_decisions:
+    disabled: true
+    fieldName: field_arv_sent_decisions
+    publicName: field_arv_sent_decisions
+    enhancer:
+      id: ''
   field_arv_run_meta:
     disabled: false
     fieldName: field_arv_run_meta

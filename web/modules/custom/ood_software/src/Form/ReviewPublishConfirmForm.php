@@ -57,25 +57,46 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
   }
 
   /**
-   * Whether "Publish app and review" applies: a decision has been sent, some
-   * app was accepted with suggestions, and that app or the review is not live
-   * yet. In a monorepo the other apps may have been sent back (#30); only the
-   * accepted ones are published.
+   * Whether "Publish app and review" applies (appverse-planning#29, #41, #51).
+   *
+   * Only after a decision was sent that accepted some app with suggestions,
+   * read from what was sent, not from the page, which can be edited later.
+   * The repo must still be awaiting review, or live under re-review, the
+   * states repoBlocker() allows, and this must be its newest review. Then: an
+   * app accepted with suggestions is not live yet, or the review is not. In a
+   * monorepo the other apps may have been sent back (#30); only the accepted
+   * ones are published.
    */
   public static function canPublish(NodeInterface $review): bool {
-    if ($review->get('field_arv_decision_sent_at')->isEmpty()) {
+    $sent = ReviewDecisionApplier::sent($review);
+    $repo = $review->get('field_arv_repo')->entity;
+    if ($sent === NULL || !in_array('accept_with_suggestions', $sent['apps'], TRUE)
+      || !$repo instanceof NodeInterface
+      || !in_array($repo->get('moderation_state')->value ?? '', ['ready_for_review', 'published'], TRUE)) {
       return FALSE;
     }
-    $waiting = FALSE;
-    $suggestions = FALSE;
-    foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      if ($verdict->get('field_rvv_conclusion')->value === 'accept_with_suggestions') {
-        $suggestions = TRUE;
-        $app = $verdict->get('field_rvv_app_ref')->entity;
-        $waiting = $waiting || ($app instanceof NodeInterface && !$app->isPublished());
+    $newest = \Drupal::entityQuery('node')
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_review')
+      ->condition('field_arv_repo', $repo->id())
+      ->sort('created', 'DESC')
+      ->sort('nid', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    if ((int) reset($newest) !== (int) $review->id()) {
+      return FALSE;
+    }
+    if (!$review->isPublished()) {
+      return TRUE;
+    }
+    foreach ($review->hasField('field_arv_verdicts') ? $review->get('field_arv_verdicts')->referencedEntities() : [] as $verdict) {
+      $app = $verdict->get('field_rvv_app_ref')->entity;
+      if (($sent['apps'][(string) $verdict->id()] ?? NULL) === 'accept_with_suggestions'
+        && $app instanceof NodeInterface && !$app->isPublished()) {
+        return TRUE;
       }
     }
-    return $suggestions && ($waiting || !$review->isPublished());
+    return FALSE;
   }
 
   public function getQuestion() {

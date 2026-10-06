@@ -14,6 +14,7 @@ use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
+use Drupal\ood_software\Service\ReviewDecisionApplier;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
@@ -187,9 +188,12 @@ final class ReviewPageForm extends FormBase {
     // saved decision below its floor is not offered, so it shows as not
     // decided until the reviewer picks again.
     $floors = ReviewFloors::forReview($node);
+    // A sent decision is locked: the selects and the response show what was
+    // sent and are not saved again (appverse-planning#51).
+    $locked = $page['decision']['sent'];
     foreach ($page['apps'] as $app) {
       $pid = $app['pid'];
-      $floor = $floors[(string) $pid] ?? NULL;
+      $floor = $locked ? NULL : ($floors[(string) $pid] ?? NULL);
       $form['conclusion'][$pid] = [
         '#type' => 'select',
         '#title' => $this->t('Decision'),
@@ -197,6 +201,7 @@ final class ReviewPageForm extends FormBase {
         '#options' => array_intersect_key($this->conclusionOptions(), array_flip(ReviewFloors::choices($floor['decision'] ?? NULL))),
         '#empty_option' => $this->t('- Not decided -'),
         '#default_value' => $app['conclusion'] ?? '',
+        '#disabled' => $locked,
         '#description' => $floor ? $this->t('At least @d: @reason.', [
           '@d' => ReviewProgress::DECISION_LABELS[$floor['decision']],
           '@reason' => $floor['reason'],
@@ -283,6 +288,7 @@ final class ReviewPageForm extends FormBase {
       '#title_display' => 'invisible',
       '#rows' => 8,
       '#default_value' => $page['response'],
+      '#disabled' => $locked,
     ];
     $form['assessment'] = [
       '#type' => 'textarea',
@@ -336,11 +342,13 @@ final class ReviewPageForm extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $node = $this->node;
     $values = $form_state->getValues();
+    // A sent decision's conclusions and response are not written again.
+    $locked = ReviewDecisionApplier::sent($node) !== NULL;
 
     foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $pid = $verdict->id();
       $changed = FALSE;
-      if (array_key_exists($pid, $values['conclusion'] ?? [])) {
+      if (!$locked && array_key_exists($pid, $values['conclusion'] ?? [])) {
         $verdict->set('field_rvv_conclusion', $values['conclusion'][$pid] !== '' ? $values['conclusion'][$pid] : NULL);
         $changed = TRUE;
       }
@@ -368,7 +376,9 @@ final class ReviewPageForm extends FormBase {
       $node->set('field_arv_maint_level', $values['maint_level'] !== '' ? $values['maint_level'] : NULL);
       $this->setText($node, 'field_arv_maint_level_note', $values['maint_level_note'] ?? '');
     }
-    $this->setText($node, 'field_arv_contributor_response', $values['response'] ?? '');
+    if (!$locked) {
+      $this->setText($node, 'field_arv_contributor_response', $values['response'] ?? '');
+    }
     $repo = $node->get('field_arv_repo')->entity;
     if (array_key_exists('assignee', $values) && $repo instanceof NodeInterface) {
       $this->reviewAssignment->assign($repo, $values['assignee'] !== '' ? (int) $values['assignee'] : NULL);
@@ -421,6 +431,9 @@ final class ReviewPageForm extends FormBase {
     $previous = $this->previousReviews($node, $repo);
     $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
 
+    // Once a decision is sent, the page shows what was sent, not what the
+    // fields hold now (appverse-planning#51).
+    $sent = ReviewDecisionApplier::sent($node);
     $apps = [];
     foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $levels = [];
@@ -439,7 +452,7 @@ final class ReviewPageForm extends FormBase {
         'app_id' => $verdict->get('field_rvv_app_id')->value ?? 'root',
         'name' => $appRef ? $appRef->label() : ($verdict->get('field_rvv_app_id')->value ?? 'App'),
         'criteria' => json_decode((string) ($verdict->get('field_rvv_criteria')->value ?? '{}'), TRUE) ?: [],
-        'conclusion' => $verdict->get('field_rvv_conclusion')->value,
+        'conclusion' => $sent !== NULL ? ($sent['apps'][(string) $verdict->id()] ?? NULL) : $verdict->get('field_rvv_conclusion')->value,
         'levels' => $levels,
         'findings' => array_map([$this, 'findingArray'], $verdict->get('field_rvv_findings')->referencedEntities()),
       ], $previous);
@@ -519,7 +532,7 @@ final class ReviewPageForm extends FormBase {
       'repo_blocks' => $repoSection['blocks'],
       'level_labels' => $this->levelOptions(),
       'conclusion_labels' => $this->conclusionOptions(),
-      'response' => (string) ($node->get('field_arv_contributor_response')->value ?? ''),
+      'response' => $sent !== NULL ? $sent['response'] : (string) ($node->get('field_arv_contributor_response')->value ?? ''),
       'assessment' => (string) ($node->get('field_arv_assessment')->value ?? ''),
       'notes' => $notes,
       'edit_url' => Url::fromRoute('entity.node.edit_form', ['node' => $node->id()])->toString(),
@@ -650,11 +663,7 @@ final class ReviewPageForm extends FormBase {
     if (!$node->hasField('field_arv_decision_sent_at') || $node->get('field_arv_decision_sent_at')->isEmpty()) {
       return ['sent' => FALSE, 'label' => '', 'by' => '', 'at' => '', 'publish_url' => NULL];
     }
-    $decisions = [];
-    foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      $decisions[] = $verdict->get('field_rvv_conclusion')->value;
-    }
-    $overall = ReviewProgress::strictestDecision($decisions);
+    $overall = ReviewProgress::strictestDecision(array_values(ReviewDecisionApplier::sent($node)['apps'] ?? []));
     $by = $node->get('field_arv_decision_sent_by')->entity;
     return [
       'sent' => TRUE,

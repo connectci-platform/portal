@@ -75,6 +75,11 @@ final class RepoProgress {
    * A review's overall decision: its strictest per-app one.
    */
   protected function decision(NodeInterface $review): ?string {
+    // What was sent, not what the page holds now (appverse-planning#51).
+    $sent = ReviewDecisionApplier::sent($review);
+    if ($sent !== NULL) {
+      return ReviewProgress::strictestDecision(array_values($sent['apps']));
+    }
     $decisions = [];
     foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $decisions[] = $verdict->get('field_rvv_conclusion')->value;
