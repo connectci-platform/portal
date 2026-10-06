@@ -94,12 +94,6 @@
           <i class="bi bi-chat-left-text" aria-hidden="true"></i>
         </a>
       {% endif %}
-      {% if hub.review.report_url %}
-        <a href="{{ hub.review.report_url }}" class="appverse-hub-card__icon-btn" target="_blank" rel="noopener"
-           title="{{ 'View review report'|t }}" aria-label="{{ 'View review report for @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
-        </a>
-      {% endif %}
       {% if hub.review.review_url %}
         <a href="{{ hub.review.review_url }}" class="appverse-hub-card__icon-btn"
            title="{{ 'Open review'|t }}" aria-label="{{ 'Open review for @t'|t({'@t': hub.title}) }}">

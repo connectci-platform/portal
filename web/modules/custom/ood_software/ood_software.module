@@ -1787,14 +1787,6 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
     ? $repo->get('field_review_status')->value
     : NULL;
 
-  $reportUrl = NULL;
-  if ($repo->hasField('field_review_report') && !$repo->get('field_review_report')->isEmpty()) {
-    $file = $repo->get('field_review_report')->entity;
-    if ($file instanceof \Drupal\file\FileInterface) {
-      $reportUrl = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
-    }
-  }
-
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
   // Start review: on every repo an admin can see, whatever its moderation
   // state, except while a run is already pending or in progress (the
@@ -1827,7 +1819,6 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   }
 
   return [
-    'report_url' => $reportUrl,
     'review_url' => $reviewUrl,
     'run_review_action' => $runReviewAction,
   ];

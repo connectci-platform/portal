@@ -10,6 +10,7 @@ use Drupal\file\FileRepositoryInterface;
 use Drupal\node\NodeInterface;
 use Drupal\paragraphs\Entity\Paragraph;
 use Psr\Log\LoggerInterface;
+use Drupal\file\FileInterface;
 
 /**
  * Seeds an appverse_review node from a review artifact.
@@ -40,7 +41,7 @@ class AppverseReviewSeeder {
   /**
    * Creates a Draft appverse_review node (verdicts + findings) from an artifact.
    *
-   * @param array $artifact
+   * @param array<mixed> $artifact
    *   Decoded artifact JSON.
    * @param \Drupal\node\NodeInterface|null $repo
    *   The appverse_repo node; resolved from reviewed.repo_url when NULL.
@@ -133,10 +134,13 @@ class AppverseReviewSeeder {
     }
     $review->set('field_arv_verdicts', $verdicts);
 
-    foreach (['report_md' => 'field_arv_report_md', 'report_pdf' => 'field_arv_report_pdf', 'report_html' => 'field_arv_report_html'] as $key => $field) {
-      // Each report field's storage config decides where its file lives. The
-      // MD and PDF are private so a Draft review's report is not readable at a
-      // guessable public URL; the HTML is public by config (deep-link target).
+    // Only the Markdown report is imported. The PDF and HTML are the tool's
+    // first pass and go stale as soon as the reviewer edits the review, so
+    // they stay in the CI artifact and not on the portal
+    // (appverse-planning#42). The field's storage config decides where the
+    // file lives; the Markdown is private, so a Draft review's report is not
+    // readable at a guessable public URL.
+    foreach (['report_md' => 'field_arv_report_md'] as $key => $field) {
       $scheme = $review->getFieldDefinition($field)->getSetting('uri_scheme') ?: 'private';
       $file = $this->attachReport($artifact['artifacts'][$key] ?? '', $reports_dir, $sha, $scheme);
       if ($file !== NULL) {
@@ -180,6 +184,8 @@ class AppverseReviewSeeder {
 
   /**
    * Builds one review_verdict paragraph for an apps[] entry.
+   *
+   * @param array<mixed> $app
    */
   protected function buildVerdictParagraph(array $app, NodeInterface $repo): Paragraph {
     $app_id = $app['app_id'] ?? 'root';
@@ -227,6 +233,8 @@ class AppverseReviewSeeder {
 
   /**
    * Builds one review_finding paragraph from an artifact finding record.
+   *
+   * @param array<mixed> $finding
    */
   protected function buildFindingParagraph(array $finding): Paragraph {
     $paragraph = Paragraph::create([
@@ -361,7 +369,7 @@ class AppverseReviewSeeder {
    *   'public'), taken from that field's storage config so the two cannot
    *   disagree.
    */
-  protected function attachReport(string $artifact_path, ?string $reports_dir, string $sha, string $scheme) {
+  protected function attachReport(string $artifact_path, ?string $reports_dir, string $sha, string $scheme): ?FileInterface {
     if ($artifact_path === '' || $reports_dir === NULL) {
       return NULL;
     }

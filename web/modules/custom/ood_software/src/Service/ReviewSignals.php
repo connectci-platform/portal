@@ -26,7 +26,8 @@ final class ReviewSignals {
    * The verdict for an app: by app node first, then by the subpath the tool
    * used as app_id, where an empty subpath is the "root" app.
    *
-   * @param array<int, array{app_ref: ?int, app_id: string, axes: array}> $verdicts
+   * @param array<int, array{app_ref: ?int, app_id: string, axes: array<string, mixed>}> $verdicts
+   * @return array<mixed>
    */
   public static function pickVerdict(array $verdicts, int $appNid, string $subpath): ?array {
     foreach ($verdicts as $verdict) {
@@ -37,7 +38,7 @@ final class ReviewSignals {
     $wanted = trim($subpath, '/');
     $wanted = $wanted === '' ? 'root' : $wanted;
     foreach ($verdicts as $verdict) {
-      if (trim((string) ($verdict['app_id'] ?? ''), '/') === $wanted) {
+      if (trim($verdict['app_id'], '/') === $wanted) {
         return $verdict;
       }
     }
@@ -57,38 +58,46 @@ final class ReviewSignals {
   /**
    * The per-app review object for the cache, or NULL without a verdict.
    *
-   * @param array $review
-   *   reviewed_at (int), sha, url, report_html (absolute URL or ''), upkeep
-   *   (level/summary/anchor).
-   * @param array|null $verdict
+   * Each axis links into the public review page: the app's section for
+   * portability and documentation, the repository section for upkeep. The
+   * page carries matching ids (`app-<app id>`, `maintenance`). The HTML
+   * report it used to link to is no longer imported (appverse-planning#42).
+   *
+   * @param array<string, mixed> $review
+   *   reviewed_at (int), sha, url (the review page), upkeep
+   *   (level/summary).
+   * @param array<string, mixed>|null $verdict
    *   As pickVerdict() returns it.
    * @param int|null $lastCommit
    *   The repo's last commit time.
+   *
+   * @return array<string, mixed>|null
+   *   The review object, or NULL without a verdict.
    */
   public static function shape(array $review, ?array $verdict, ?int $lastCommit): ?array {
     if ($verdict === NULL) {
       return NULL;
     }
-    $report = (string) ($review['report_html'] ?? '');
-    $axis = function (array $a) use ($report): array {
-      $anchor = (string) ($a['anchor'] ?? '');
+    $url = (string) ($review['url'] ?? '');
+    $appId = trim((string) ($verdict['app_id'] ?? ''), '/');
+    $appSection = 'app-' . ($appId === '' ? 'root' : $appId);
+    $axis = function (array $a, string $section) use ($url): array {
       return [
         'level' => $a['level'] ?? NULL,
         'summary' => (string) ($a['summary'] ?? ''),
-        'anchor' => ($report !== '' && $anchor !== '') ? $report . $anchor : '',
+        'anchor' => $url !== '' ? $url . '#' . $section : '',
       ];
     };
     $out = [
       'reviewedAt' => (int) ($review['reviewed_at'] ?? 0),
       'sha7' => substr((string) ($review['sha'] ?? ''), 0, 7),
-      'url' => (string) ($review['url'] ?? ''),
+      'url' => $url,
       'outOfDate' => self::isOutOfDate((int) ($review['reviewed_at'] ?? 0), $lastCommit),
     ];
     foreach (self::AXES as $name) {
-      $out[$name] = $axis($verdict['axes'][$name] ?? []);
+      $out[$name] = $axis($verdict['axes'][$name] ?? [], $appSection);
     }
-    $out['upkeep'] = $axis($review['upkeep'] ?? []);
+    $out['upkeep'] = $axis($review['upkeep'] ?? [], 'maintenance');
     return $out;
   }
-
 }

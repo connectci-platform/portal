@@ -10,6 +10,8 @@ use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Psr\Log\LoggerInterface;
+use Drupal\Core\Entity\Query\QueryInterface;
+use Drupal\Core\Entity\FieldableEntityInterface;
 
 /**
  * Generates a static JSON cache of appverse data for fast frontend loading.
@@ -118,6 +120,8 @@ class AppverseCacheService {
 
   /**
    * Build the software array with nested apps.
+   *
+   * @return array<mixed>
    */
   protected function buildSoftwareData(): array {
     $nodeStorage = $this->entityTypeManager->getStorage('node');
@@ -144,7 +148,7 @@ class AppverseCacheService {
     $appsBySoftware = [];
     foreach ($appNodes as $app) {
       $softwareRef = $app->get('field_appverse_software_implemen')->entity;
-      if ($softwareRef) {
+      if ($softwareRef instanceof NodeInterface) {
         $appsBySoftware[$softwareRef->uuid()][] = $app;
       }
     }
@@ -176,6 +180,9 @@ class AppverseCacheService {
 
   /**
    * Build the repos array with nested member apps.
+   *
+   * @param array<mixed> $softwareData
+   * @return array<mixed>
    */
   protected function buildReposData(array $softwareData): array {
     $nodeStorage = $this->entityTypeManager->getStorage('node');
@@ -211,7 +218,7 @@ class AppverseCacheService {
     $memberAppNodes = $nodeStorage->loadMultiple($appNids);
     foreach ($memberAppNodes as $app) {
       $repoRef = $app->get('field_appverse_repo')->entity;
-      if ($repoRef) {
+      if ($repoRef instanceof NodeInterface) {
         $appNidsByRepo[(int) $repoRef->id()][] = (int) $app->id();
       }
     }
@@ -293,7 +300,7 @@ class AppverseCacheService {
    * visible — the cascade only fires when an explicit parent reference
    * exists and that parent is unpublished.
    */
-  protected function applyRepoCascadeFilter($appQuery): void {
+  protected function applyRepoCascadeFilter(QueryInterface $appQuery): void {
     $nodeStorage = $this->entityTypeManager->getStorage('node');
     $unpublishedRepoIds = $nodeStorage->getQuery()
       ->condition('type', 'appverse_repo')
@@ -311,6 +318,8 @@ class AppverseCacheService {
 
   /**
    * Get a list of scalar string values from a multi-valued string field.
+   *
+   * @return array<mixed>
    */
   protected function getStringList(NodeInterface $entity, string $fieldName): array {
     if (!$entity->hasField($fieldName) || $entity->get($fieldName)->isEmpty()) {
@@ -318,13 +327,15 @@ class AppverseCacheService {
     }
     $out = [];
     foreach ($entity->get($fieldName) as $item) {
-      $out[] = $item->value;
+      $out[] = $item->getValue()['value'] ?? NULL;
     }
     return $out;
   }
 
   /**
    * Get the UUIDs of related repos referenced by a repo node.
+   *
+   * @return array<mixed>
    */
   protected function getRelatedRepoUuids(NodeInterface $repo): array {
     if (!$repo->hasField('field_repo_related') || $repo->get('field_repo_related')->isEmpty()) {
@@ -342,6 +353,9 @@ class AppverseCacheService {
    *
    * Reverse lookup is computed server-side once per cache rebuild so the React
    * app doesn't need to walk repos to render "Part of X" lines.
+   *
+   * @param array<mixed> $repos
+   * @param array<mixed> $software
    */
   protected function annotateAppsWithRepoBackRefs(array &$software, array $repos): void {
     $appToColl = [];
@@ -361,6 +375,8 @@ class AppverseCacheService {
 
   /**
    * Build a single app data array.
+   *
+   * @return array<mixed>
    */
   protected function buildAppData(NodeInterface $app, string $softwareId): array {
     return [
@@ -383,7 +399,7 @@ class AppverseCacheService {
   /**
    * Published review data per repo nid, memoised for one generation.
    *
-   * @var array<int, array|null>
+   * @var array<int, array<mixed>|null>
    */
   protected array $reviewByRepo = [];
 
@@ -394,6 +410,8 @@ class AppverseCacheService {
    * Only Published reviews are read: this file is world-readable, so a Draft
    * review's levels must never reach it. Levels are the stored field values,
    * which already include any reviewer override.
+   *
+   * @return array<mixed>
    */
   protected function reviewForApp(NodeInterface $app): ?array {
     $repo = $app->hasField('field_appverse_repo') ? $app->get('field_appverse_repo')->entity : NULL;
@@ -412,6 +430,8 @@ class AppverseCacheService {
 
   /**
    * The newest Published appverse_review for a repo, as plain arrays.
+   *
+   * @return array<mixed>
    */
   protected function publishedReviewFor(NodeInterface $repo): ?array {
     $nid = (int) $repo->id();
@@ -430,11 +450,6 @@ class AppverseCacheService {
     $review = $ids ? $storage->load(reset($ids)) : NULL;
     if (!$review instanceof NodeInterface) {
       return $this->reviewByRepo[$nid] = NULL;
-    }
-    $reportHtml = '';
-    if ($review->hasField('field_arv_report_html') && !$review->get('field_arv_report_html')->isEmpty()) {
-      $file = $review->get('field_arv_report_html')->entity;
-      $reportHtml = $file ? $this->fileUrlGenerator->generateAbsoluteString($file->getFileUri()) : '';
     }
     $verdicts = [];
     foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
@@ -456,7 +471,6 @@ class AppverseCacheService {
       'reviewed_at' => (int) ($review->get('field_arv_reviewed_at')->value ?? $review->getCreatedTime()),
       'sha' => (string) ($review->get('field_arv_sha')->value ?? ''),
       'url' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString(),
-      'report_html' => $reportHtml,
       'upkeep' => [
         'level' => $review->get('field_arv_maint_level')->value,
         'summary' => (string) ($review->get('field_arv_maint_summary')->value ?? ''),
@@ -468,8 +482,10 @@ class AppverseCacheService {
 
   /**
    * Get multiple taxonomy terms from an entity reference field.
+   *
+   * @return array<mixed>
    */
-  protected function getTerms($entity, string $fieldName): array {
+  protected function getTerms(FieldableEntityInterface $entity, string $fieldName): array {
     if (!$entity->hasField($fieldName) || $entity->get($fieldName)->isEmpty()) {
       return [];
     }
@@ -486,8 +502,10 @@ class AppverseCacheService {
 
   /**
    * Get a single taxonomy term from an entity reference field.
+   *
+   * @return array<mixed>
    */
-  protected function getTerm($entity, string $fieldName): ?array {
+  protected function getTerm(FieldableEntityInterface $entity, string $fieldName): ?array {
     $terms = $this->getTerms($entity, $fieldName);
     return $terms[0] ?? NULL;
   }
@@ -505,6 +523,11 @@ class AppverseCacheService {
 
   /**
    * Extract unique filter options from the built software data.
+   *
+   * @param array<mixed> $softwareList
+   * @param array<mixed> $repos
+   *
+   * @return array<mixed>
    */
   protected function extractFilterOptions(array $softwareList, array $repos): array {
     $topics = [];

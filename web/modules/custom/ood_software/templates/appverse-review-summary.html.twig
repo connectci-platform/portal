@@ -90,7 +90,7 @@
   {% endif %}
 
   {% for app in page.apps %}
-    <section class="summary-app">
+    <section class="summary-app" id="app-{{ app.app_id }}">
       <div class="summary-app-head">
         <h2 class="sec app-name">{{ app.name }}</h2>
         {% if app.conclusion %}
@@ -109,7 +109,7 @@
 
   {# Repo-wide findings (a monorepo files these under the repo, not an app)
      and the Maintenance block. #}
-  <section class="summary-app">
+  <section class="summary-app" id="maintenance">
     <div class="summary-app-head"><h2 class="sec app-name">{{ 'Repository'|t }}</h2></div>
     <dl class="summary-rows">
       {% for key, block in page.repo_blocks %}

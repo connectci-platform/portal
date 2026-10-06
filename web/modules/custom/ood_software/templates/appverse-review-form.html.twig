@@ -197,7 +197,6 @@
           {% if page.maintainer %}{% set sub = sub|merge([('Maintainer'|t) ~ ': ' ~ page.maintainer]) %}{% endif %}
           {% if page.reviewed_at %}{% set sub = sub|merge([('Reviewed'|t) ~ ' ' ~ page.reviewed_at]) %}{% endif %}
           {{ sub|join(' · ') }}
-          {% if page.report_pdf %}{{ sub is empty ? '' : ' · ' }}<a href="{{ page.report_pdf }}">{{ 'PDF report'|t }}</a>{% endif %}
           {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
           {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
         </div>
@@ -300,7 +299,9 @@
           {% endif %}
         </div>
       {% endfor %}
-      {% if page.recommendation %}
+      {# The tool's suggestion is for reviewers; contributors never see AI
+         state (appverse-planning#42). #}
+      {% if can_edit and page.recommendation %}
         <div class="concl-caption" title="{{ page.recommendation_note }}">{{ 'Automated suggestion'|t }}: {{ page.recommendation_label }}</div>
       {% endif %}
       <hr class="sidebar-rule">

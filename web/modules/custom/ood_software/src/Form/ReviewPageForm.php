@@ -5,7 +5,6 @@ namespace Drupal\ood_software\Form;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\EnforcedResponseException;
 use Drupal\Core\Form\FormStateInterface;
@@ -24,6 +23,10 @@ use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\ood_software\Service\AppverseReviewService;
+use Drupal\user\UserInterface;
+use Drupal\Component\Render\MarkupInterface;
+use Drupal\Core\Entity\FieldableEntityInterface;
 
 /**
  * The review page: one appverse_review, laid out as the moderation wireframe.
@@ -89,9 +92,9 @@ final class ReviewPageForm extends FormBase {
     protected AccountInterface $currentUser,
     protected TimeInterface $time,
     protected DateFormatterInterface $dateFormatter,
-    protected FileUrlGeneratorInterface $fileUrlGenerator,
     protected RepoProgress $repoProgress,
     protected ReviewAssignment $reviewAssignment,
+    protected AppverseReviewService $reviews,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -100,9 +103,9 @@ final class ReviewPageForm extends FormBase {
       $container->get('current_user'),
       $container->get('datetime.time'),
       $container->get('date.formatter'),
-      $container->get('file_url_generator'),
       $container->get('ood_software.repo_progress'),
       $container->get('ood_software.review_assignment'),
+      $container->get('ood_software.review_dispatcher'),
     );
   }
 
@@ -118,11 +121,15 @@ final class ReviewPageForm extends FormBase {
     return 'Review of ' . ($repo ? $repo->label() : $node->label());
   }
 
+  /**
+   * @param array<string, mixed> $form
+   * @return array<mixed>
+   */
   public function buildForm(array $form, FormStateInterface $form_state, ?NodeInterface $node = NULL): array {
     if ($node !== NULL && $node->bundle() === 'appverse_repo') {
       // /appverse/review/{repo id}: go to that repo's newest review the
       // viewer may see, as the hub card's link does; none is a 404.
-      $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($node);
+      $latest = $this->reviews->latestReviewFor($node);
       if ($latest === NULL) {
         throw new NotFoundHttpException();
       }
@@ -316,11 +323,16 @@ final class ReviewPageForm extends FormBase {
 
   /**
    * Second submit handler for "Send decision…": after the save, confirm.
+   *
+   * @param array<string, mixed> $form
    */
   public function goToDecision(array &$form, FormStateInterface $form_state): void {
     $form_state->setRedirect('ood_software.review_decision', ['node' => $this->node->id()]);
   }
 
+  /**
+   * @param array<string, mixed> $form
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $node = $this->node;
     $values = $form_state->getValues();
@@ -391,9 +403,12 @@ final class ReviewPageForm extends FormBase {
 
   /**
    * Everything the template needs, as plain arrays.
+   *
+   * @return array<mixed>
    */
   protected function buildPage(NodeInterface $node): array {
     $repo = $node->get('field_arv_repo')->entity;
+    $repo = $repo instanceof NodeInterface ? $repo : NULL;
     $sha = (string) ($node->get('field_arv_sha')->value ?? '');
     $reviewedAt = (int) ($node->get('field_arv_reviewed_at')->value ?? 0);
     $state = (string) ($node->get('moderation_state')->value ?? 'draft');
@@ -404,7 +419,6 @@ final class ReviewPageForm extends FormBase {
     $this->linkSha = $sha;
 
     $previous = $this->previousReviews($node, $repo);
-    $reportHtml = $this->reportHtmlUrl($node);
     $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
 
     $apps = [];
@@ -497,8 +511,6 @@ final class ReviewPageForm extends FormBase {
       // The contributor withdrew this round (appverse-planning#34).
       'withdrawn' => $node->hasField('field_arv_withdrawn_at') && !$node->get('field_arv_withdrawn_at')->isEmpty()
         ? $this->formatDate((int) $node->get('field_arv_withdrawn_at')->value, 'medium') : NULL,
-      'report_html' => $reportHtml,
-      'report_pdf' => $this->fileUrl($node, 'field_arv_report_pdf'),
       'recommendation' => $node->get('field_arv_recommendation')->value,
       'recommendation_label' => $this->conclusionOptions()[$node->get('field_arv_recommendation')->value] ?? '',
       'recommendation_note' => (string) ($node->get('field_arv_recommendation_note')->value ?? ''),
@@ -518,6 +530,8 @@ final class ReviewPageForm extends FormBase {
 
   /**
    * A finding paragraph as the array ReviewPageData works on.
+   *
+   * @return array<mixed>
    */
   protected function findingArray(ParagraphInterface $p): array {
     $source = $p->hasField('field_rvf_source') ? (string) ($p->get('field_rvf_source')->value ?? '') : '';
@@ -529,7 +543,7 @@ final class ReviewPageForm extends FormBase {
       // A reviewer finding stays in the block it was added in (see
       // ReviewPageData::BLOCK_FIELDS); NULL lets the rule code decide.
       'block' => $isReviewer ? ReviewPageData::blockFromFields($p->get('field_rvf_aspect')->value, $p->get('field_rvf_category')->value) : NULL,
-      'author' => $author ? $author->getDisplayName() : '',
+      'author' => $author instanceof UserInterface ? $author->getDisplayName() : '',
       'created' => $isReviewer ? $this->formatDate((int) ($p->get('field_rvf_created')->value ?? 0), 'medium') : '',
       'pid' => $p->id(),
       'rule' => (string) ($p->get('field_rvf_rule')->value ?? ''),
@@ -548,6 +562,8 @@ final class ReviewPageForm extends FormBase {
 
   /**
    * Other reviews of the same repo, newest first, with their stable ids.
+   *
+   * @return array<mixed>
    */
   protected function previousReviews(NodeInterface $node, ?NodeInterface $repo): array {
     if ($repo === NULL) {
@@ -593,6 +609,8 @@ final class ReviewPageForm extends FormBase {
    * Access-checked, so a visitor's history counts published reviews only and
    * is never told about a draft. Each item is what the history bar and the
    * superseded banner show: nid, label (date · short SHA), url.
+   *
+   * @return array<mixed>
    */
   protected function reviewHistory(?NodeInterface $repo): array {
     if ($repo === NULL) {
@@ -641,7 +659,7 @@ final class ReviewPageForm extends FormBase {
     return [
       'sent' => TRUE,
       'label' => (string) (ReviewProgress::DECISION_LABELS[$overall] ?? ''),
-      'by' => $by ? $by->getDisplayName() : '',
+      'by' => $by instanceof UserInterface ? $by->getDisplayName() : '',
       'at' => $this->formatDate((int) $node->get('field_arv_decision_sent_at')->value, 'medium'),
       // After an Accept with suggestions: "Publish app and review".
       'publish_url' => ReviewPublishConfirmForm::canPublish($node)
@@ -652,6 +670,8 @@ final class ReviewPageForm extends FormBase {
 
   /**
    * The report's repo-level gate rows, each with its evidence rendered.
+   *
+   * @return array<mixed>
    */
   protected function gateRows(NodeInterface $node): array {
     if (!$node->hasField('field_arv_gate_evidence')) {
@@ -671,7 +691,7 @@ final class ReviewPageForm extends FormBase {
    * Markdown from the report, as HTML safe to print: raw HTML in the source
    * is stripped and unsafe links are dropped, so Markup is sound here.
    */
-  protected function renderMarkdown(string $markdown): ?Markup {
+  protected function renderMarkdown(string $markdown): ?MarkupInterface {
     if (trim($markdown) === '') {
       return NULL;
     }
@@ -694,6 +714,10 @@ final class ReviewPageForm extends FormBase {
     $node->setRevisionLogMessage($message);
   }
 
+  /**
+   * @param array<string, mixed> $form
+   * @param array<mixed> $finding
+   */
   protected function addProseElement(array &$form, array $finding): void {
     $form['prose'][$finding['pid']] = [
       '#type' => 'textarea',
@@ -732,6 +756,8 @@ final class ReviewPageForm extends FormBase {
    * The "Add finding" form for one block: the fields the automated review
    * fills that need a reviewer's judgment. Its button validates only its own
    * fields, so an empty add form elsewhere never blocks Save draft.
+   *
+   * @param array<string, mixed> $form
    */
   protected function addNewFindingElements(array &$form, string $target, string $blockKey): void {
     $rules = [];
@@ -770,6 +796,9 @@ final class ReviewPageForm extends FormBase {
   /**
    * The finding a reviewer typed into one block's add form, as paragraph
    * values, or NULL with the error set on the form.
+   *
+   * @param array<mixed> $input
+   * @return array<mixed>
    */
   protected function newFindingFromInput(array $input, string $target, FormStateInterface $form_state): ?array {
     [$kind, $first, $second] = array_pad(explode(':', $target), 3, NULL);
@@ -792,6 +821,9 @@ final class ReviewPageForm extends FormBase {
     }
   }
 
+  /**
+   * @param array<string, mixed> $form
+   */
   public function validateAddFinding(array &$form, FormStateInterface $form_state): void {
     $target = $form_state->getTriggeringElement()['#finding_target'];
     $this->newFindingFromInput($form_state->getValue(['add_finding', $target]) ?? [], $target, $form_state);
@@ -801,6 +833,8 @@ final class ReviewPageForm extends FormBase {
    * Submit handler for a block's "Add finding": a review_finding paragraph
    * marked as the reviewer's, appended to that app's verdict (or the repo's
    * findings), saved as a new revision of the review.
+   *
+   * @param array<string, mixed> $form
    */
   public function addFinding(array &$form, FormStateInterface $form_state): void {
     $target = $form_state->getTriggeringElement()['#finding_target'];
@@ -854,6 +888,8 @@ final class ReviewPageForm extends FormBase {
    * Submit handler for "Delete finding" on a reviewer's finding. Removes the
    * reference (earlier revisions keep theirs); automated findings are never
    * deleted here.
+   *
+   * @param array<string, mixed> $form
    */
   public function deleteFinding(array &$form, FormStateInterface $form_state): void {
     $pid = (string) $form_state->getTriggeringElement()['#finding_pid'];
@@ -892,6 +928,8 @@ final class ReviewPageForm extends FormBase {
   /**
    * Saves the edit fields of a reviewer's finding, keeping its identity
    * (stable id, author, time added) and the block it was added in.
+   *
+   * @param array<mixed> $values
    */
   protected function saveReviewerEdits(ParagraphInterface $finding, array $values): void {
     $pid = $finding->id();
@@ -912,6 +950,9 @@ final class ReviewPageForm extends FormBase {
     $finding->save();
   }
 
+  /**
+   * @param array<string, mixed> $form
+   */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     foreach ($form_state->getValue('edit_finding') ?? [] as $pid => $input) {
       if (trim((string) ($input['summary'] ?? '')) === '' || trim((string) ($input['rule'] ?? '')) === '') {
@@ -920,6 +961,9 @@ final class ReviewPageForm extends FormBase {
     }
   }
 
+  /**
+   * @return array<mixed>
+   */
   protected function severityOptions(): array {
     return [
       'critical' => $this->t('Critical'),
@@ -930,6 +974,9 @@ final class ReviewPageForm extends FormBase {
     ];
   }
 
+  /**
+   * @param array<mixed> $values
+   */
   protected function saveProse(ParagraphInterface $finding, array $values): void {
     $pid = $finding->id();
     if (!array_key_exists($pid, $values['prose'] ?? [])) {
@@ -946,7 +993,7 @@ final class ReviewPageForm extends FormBase {
   /**
    * Sets a text_long field, keeping its current format (plain_text if none).
    */
-  protected function setText($entity, string $field, string $value): void {
+  protected function setText(FieldableEntityInterface $entity, string $field, string $value): void {
     if (!$entity->hasField($field)) {
       return;
     }
@@ -954,6 +1001,9 @@ final class ReviewPageForm extends FormBase {
     $entity->set($field, ['value' => $value, 'format' => $format]);
   }
 
+  /**
+   * @return array<mixed>
+   */
   protected function levelOptions(): array {
     $definitions = $this->entityTypeManager->getStorage('field_storage_config');
     $storage = $definitions->load('node.field_arv_maint_level');
@@ -972,6 +1022,9 @@ final class ReviewPageForm extends FormBase {
     return $options ?: ['solid' => 'Solid', 'some_notes' => 'Some notes', 'needs_attention' => 'Needs attention'];
   }
 
+  /**
+   * @return array<mixed>
+   */
   protected function conclusionOptions(): array {
     return [
       'accept' => $this->t('Accept'),
@@ -979,18 +1032,6 @@ final class ReviewPageForm extends FormBase {
       'request_changes' => $this->t('Request changes'),
       'reject' => $this->t('Reject'),
     ];
-  }
-
-  protected function fileUrl(NodeInterface $node, string $field): string {
-    if (!$node->hasField($field) || $node->get($field)->isEmpty()) {
-      return '';
-    }
-    $file = $node->get($field)->entity;
-    return $file ? $this->fileUrlGenerator->generateString($file->getFileUri()) : '';
-  }
-
-  protected function reportHtmlUrl(NodeInterface $node): string {
-    return $this->fileUrl($node, 'field_arv_report_html');
   }
 
   protected function formatDate(int $ts, string $type): string {

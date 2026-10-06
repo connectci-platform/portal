@@ -20,6 +20,10 @@ use Drupal\ood_software\Service\ReviewSignals;
  */
 class ReviewSignalsTest extends UnitTestCase {
 
+  /**
+   * @param array<mixed> $levels
+   * @return array<mixed>
+   */
   private function verdict(?int $appRef, string $appId, array $levels = []): array {
     $axes = [];
     foreach (['portability', 'documentation'] as $axis) {
@@ -67,16 +71,17 @@ class ReviewSignalsTest extends UnitTestCase {
   }
 
   /**
-   * The emitted object: enum keys as stored, one-line summaries, anchors
-   * resolved against the HTML report, upkeep from the repo-level fields,
-   * the review page URL. No labels, nothing about drafts.
+   * The emitted object: enum keys as stored, one-line summaries, links into
+   * the public review page (the app's section, or the repository section for
+   * upkeep), upkeep from the repo-level fields. No labels, nothing about
+   * drafts, and no HTML report (appverse-planning#42).
    *
    * @covers ::shape
    */
   public function testShapeEmitsEnumKeysAndResolvedLinks(): void {
     $review = [
       'reviewed_at' => 1790000000, 'sha' => 'a52c443663757694b45b0af0d85297be485ba05d',
-      'url' => '/appverse/review/12334', 'report_html' => 'https://x.test/files/r.html',
+      'url' => '/appverse/review/12334',
       'upkeep' => ['level' => 'some_notes', 'summary' => 'Brand-new repo', 'anchor' => '#upkeep'],
     ];
     $verdict = $this->verdict(12329, 'jupyter_example', [
@@ -91,9 +96,9 @@ class ReviewSignalsTest extends UnitTestCase {
     $this->assertSame(['reviewedAt', 'sha7', 'url', 'outOfDate', 'portability', 'documentation', 'upkeep'], array_keys($out), 'no security level in the public cache (schema 1.2)');
     $this->assertSame('a52c443', $out['sha7']);
     $this->assertTrue($out['outOfDate']);
-    $this->assertSame(['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => 'https://x.test/files/r.html#documentation'], $out['documentation']);
-    $this->assertSame('', $out['portability']['anchor'], 'no fragment, no link');
-    $this->assertSame('https://x.test/files/r.html#upkeep', $out['upkeep']['anchor']);
+    $this->assertSame(['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '/appverse/review/12334#app-jupyter_example'], $out['documentation']);
+    $this->assertSame('/appverse/review/12334#app-jupyter_example', $out['portability']['anchor'], 'both app axes go to the app section');
+    $this->assertSame('/appverse/review/12334#maintenance', $out['upkeep']['anchor']);
     $this->assertSame('some_notes', $out['upkeep']['level']);
     $this->assertStringNotContainsString('Some notes', json_encode($out), 'display words stay out of the cache');
   }
@@ -102,7 +107,29 @@ class ReviewSignalsTest extends UnitTestCase {
    * @covers ::shape
    */
   public function testShapeWithoutAVerdictIsNull(): void {
-    $this->assertNull(ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/r', 'report_html' => '', 'upkeep' => []], NULL, NULL));
+    $this->assertNull(ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/r', 'upkeep' => []], NULL, NULL));
+  }
+
+  /**
+   * A single-app repo's verdict has no app id; its section is app-root, as
+   * on the review page.
+   *
+   * @covers ::shape
+   */
+  public function testASingleAppLinksToTheRootSection(): void {
+    $out = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/appverse/review/7', 'upkeep' => []], $this->verdict(5, '', []), NULL);
+    $this->assertSame('/appverse/review/7#app-root', $out['documentation']['anchor']);
+  }
+
+  /**
+   * Without a review URL there is nothing to link to.
+   *
+   * @covers ::shape
+   */
+  public function testNoUrlMeansNoLinks(): void {
+    $out = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '', 'upkeep' => []], $this->verdict(5, 'x', []), NULL);
+    $this->assertSame('', $out['portability']['anchor']);
+    $this->assertSame('', $out['upkeep']['anchor']);
   }
 
 }
