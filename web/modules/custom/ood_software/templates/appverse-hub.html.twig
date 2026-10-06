@@ -89,22 +89,16 @@
        beside. Bootstrap 4 is global in the ood theme (data-toggle, not
        data-bs-toggle) so this needs no JS of its own. #}
     <div class="appverse-hub-card__cell appverse-hub-card__cell--actions">
-      {% if hub.review.review_url %}
-        <a href="{{ hub.review.review_url }}" class="appverse-hub-card__action-btn"
-           aria-label="{{ 'Open review for @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-clipboard-check" aria-hidden="true"></i> {{ 'Open review'|t }}
-        </a>
-      {% endif %}
-      {% if hub.review.run_review_action %}{{ hub.review.run_review_action }}{% endif %}
-      {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
-      {% if hub.edit_url and not hub.has_menu %}
-        <a href="{{ hub.edit_url }}" class="appverse-hub-card__action-btn"
-           aria-label="{{ 'Edit @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-pencil-square" aria-hidden="true"></i> {{ 'Edit'|t }}
-        </a>
-      {% endif %}
-      {% if hub.actions.withdraw and not hub.has_menu %}{{ hub.actions.withdraw }}{% endif %}
-      {% if hub.actions.resync and not hub.has_menu %}{{ hub.actions.resync }}{% endif %}
+      {# Exactly one action stays inline, and everything else is in the menu.
+         Named actions are much wider than the icons they replace, and the
+         column is 13rem: two of them plus the menu button overflow it and wrap
+         onto the progress line below, which is the problem this replaced.
+
+         Which one is inline is the one thing the card most expects you to do
+         next: open the review if there is one, otherwise run the report (a
+         reviewer), or send for review (a contributor). The row builder decides
+         that; see hub.primary_action. #}
+      {% if hub.primary_action %}{{ hub.primary_action }}{% endif %}
 
       {% if hub.has_menu %}
         <div class="dropdown appverse-hub-card__menu">
@@ -115,6 +109,12 @@
             {{ 'Actions'|t }}
           </button>
           <div class="dropdown-menu dropdown-menu-right" aria-labelledby="appverse-actions-{{ hub.repo_id }}">
+            {% if hub.review.review_url and hub.review.run_review_action %}
+              {{ hub.review.run_review_action_menu }}
+            {% endif %}
+            {# In the menu only when it is not the inline action, i.e. when a
+               review already exists and took that slot. #}
+            {% if hub.actions.send_for_review and hub.review.review_url %}{{ hub.actions.send_for_review }}{% endif %}
             {% if hub.edit_url %}
               <a class="dropdown-item" href="{{ hub.edit_url }}">
                 <i class="bi bi-pencil-square" aria-hidden="true"></i> {{ 'Edit'|t }}

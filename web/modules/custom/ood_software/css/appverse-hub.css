@@ -260,9 +260,10 @@ header:has(> .appverse-hub-add-repo) {
     4.5rem               /* github + re-sync */
     12rem                /* owner (blank on own hub) */
     9rem                 /* status (badges wrap onto more lines) */
-    14rem;               /* actions: a labelled button plus the Actions menu
-                            for a reviewer, or up to three labelled buttons
-                            for a contributor */
+    13rem;               /* actions: one labelled button plus the Actions menu
+                            for a reviewer (the widest pair, "Rerun AI report"
+                            + "Actions", needs ~12.2rem), or a contributor's
+                            inline buttons */
   align-items: center;
   column-gap: 1.25rem;
   row-gap: 0.5rem;
@@ -449,6 +450,15 @@ header:has(> .appverse-hub-add-repo) {
 .appverse-hub-card__menu .dropdown-menu {
   font-size: 0.8125rem;
   min-width: 11rem;
+}
+/* The theme underlines links in content, which made the menu's link items
+   (Edit, Request changes, Delete) read as underlined while the POST items
+   beside them did not. A menu item is a control, not prose, so none of them
+   underline, in any state. */
+.appverse-hub-card__menu .dropdown-item,
+.appverse-hub-card__menu .dropdown-item:hover,
+.appverse-hub-card__menu .dropdown-item:focus {
+  text-decoration: none;
 }
 .appverse-hub-card__menu .dropdown-item {
   display: flex;

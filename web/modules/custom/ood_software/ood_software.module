@@ -1882,6 +1882,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   // along and a different thing. The model produces a report; the reviewer
   // reviews (appverse-planning#49).
   $runReviewAction = NULL;
+  $runReviewActionMenu = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
     $label = match ($reviewStatus) {
       NULL => t('Run AI report'),
@@ -1898,6 +1899,16 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
       'bi-play-circle-fill',
       'success'
     );
+    // The same action as a menu item. Which of the two the card renders
+    // depends on whether a review already exists to open, and the template
+    // cannot rebuild a render array, so both are offered here.
+    $runReviewActionMenu = _ood_software_hub_action_form(
+      'appverse/repo/' . $repo->id() . '/run-review',
+      (string) $label,
+      'bi-play-circle-fill',
+      'success',
+      TRUE
+    );
   }
 
   // The newest review node for this repo, if the viewer may see it.
@@ -1910,6 +1921,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   return [
     'review_url' => $reviewUrl,
     'run_review_action' => $runReviewAction,
+    'run_review_action_menu' => $runReviewActionMenu,
   ];
 }
 
@@ -2045,14 +2057,16 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
 function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $isAdmin, string $state, bool $published): array {
   $id = $repo->id();
   $dest = urlencode(\Drupal::service('path.current')->getPath());
-  // Only a reviewer's card collapses into a menu. A reviewer can reach six
-  // actions on one row, which never fit the column; a contributor reaches
-  // three at most, so hiding any of them behind a click would cost a step and
-  // save nothing (appverse-planning#55). This flag is also what the template
-  // reads as hub.has_menu, so the two stay in step by construction.
-  $inMenu = $isAdmin;
+  // Every card collapses into a menu. Named actions are much wider than the
+  // icons they replace: a contributor's three come to ~430px of buttons and a
+  // reviewer's six to far more, against an actions column of 13rem, so either
+  // role overflows and wraps onto the progress line below (appverse-planning#55).
+  // One inline action plus the menu fits both. This flag is also what the
+  // template reads as hub.has_menu, so the two stay in step by construction.
+  $inMenu = TRUE;
   $actions = [
     'in_menu' => $inMenu,
+    'send_for_review_inline' => NULL,
     'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise', '', $inMenu),
     'send_for_review' => NULL,
     'publish' => NULL,
@@ -2072,10 +2086,15 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   $liveWithSentBack = $published && $state === 'published'
     && \Drupal::service('ood_software.repo_member_apps')->sentBackCount($repo) > 0;
   if (!$isAdmin && (in_array($state, ['draft', 'needs_adjustment'], TRUE) || $liveWithSentBack)) {
+    $label = $state === 'draft' ? t('Send for review') : t('Re-submit');
     $actions['send_for_review'] = _ood_software_hub_action_form(
-      'appverse/repo/' . $id . '/send-for-review',
-      $state === 'draft' ? t('Send for review') : t('Re-submit'),
-      'bi-send', 'primary'
+      'appverse/repo/' . $id . '/send-for-review', $label, 'bi-send', 'primary', $inMenu
+    );
+    // The same action as an inline button, for the card that promotes it to
+    // the primary slot. A render array cannot be re-rendered in another shape,
+    // so both are built here and the row builder picks one.
+    $actions['send_for_review_inline'] = _ood_software_hub_action_form(
+      'appverse/repo/' . $id . '/send-for-review', $label, 'bi-send', 'primary'
     );
   }
   // The contributor withdraws a submission in review, before a decision
@@ -2233,6 +2252,36 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
 
   $actions = _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished());
 
+  // One action stays inline beside the Actions menu; the rest are named items
+  // inside it. Two labelled buttons plus the menu overflow the 13rem column
+  // and wrap onto the progress line, which is the problem the menu replaced.
+  //
+  // Open review comes first because the card is otherwise the only route to
+  // the review page: the title links to the catalog, and the progress chip is
+  // not a link. Burying it would hide a reviewer's main destination behind a
+  // click. Failing that, the inline slot goes to the action the card is
+  // waiting on — run the report for a reviewer, send for review for a
+  // contributor (appverse-planning#55).
+  $primaryAction = NULL;
+  if ($review['review_url'] !== NULL) {
+    $primaryAction = [
+      '#type' => 'inline_template',
+      '#template' => '<a href="{{ href }}" class="appverse-hub-card__action-btn" aria-label="{{ label }}">'
+        . '<i class="bi bi-clipboard-check" aria-hidden="true"></i> {{ text }}</a>',
+      '#context' => [
+        'href' => $review['review_url'],
+        'label' => t('Open review for @t', ['@t' => $repo->label()]),
+        'text' => t('Open review'),
+      ],
+    ];
+  }
+  elseif ($review['run_review_action'] !== NULL) {
+    $primaryAction = $review['run_review_action'];
+  }
+  elseif ($actions['send_for_review'] !== NULL) {
+    $primaryAction = $actions['send_for_review_inline'];
+  }
+
   return [
     'repo_id' => (int) $repo->id(),
     'title' => $repo->label(),
@@ -2262,6 +2311,7 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     // one; the action set decides, and repo_id above labels the toggle. See
     // in_menu there.
     'has_menu' => !empty($actions['in_menu']),
+    'primary_action' => $primaryAction,
     'discovery_tags' => $discoveryTags,
     'single_app_tags' => $singleAppTags,
     'review' => $review,
