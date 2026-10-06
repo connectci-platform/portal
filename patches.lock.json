@@ -1,5 +1,5 @@
 {
-    "_hash": "0b4088526f125e4eb0d196f77764ed33f886a0101eed1f2a18415eb0f23a0ce3",
+    "_hash": "c9e6393a7aad26a01ed5eabc6bff8b395c17ff1c3ede0eb10596fe080cafe2da",
     "patches": {
         "drupal/core": [
             {
@@ -145,6 +145,16 @@
                 "description": "Resolve the generation timezone from the event rather than the saving user",
                 "url": "patches/recurring_events-generation-event-timezone.patch",
                 "sha256": "c2984a58bd74dafeee370b02b5b1f404730f1b9be13ac657a8449d8b4d652267",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report",
+                "url": "patches/recurring_events-quiet-instance-status-message.patch",
+                "sha256": "be6911876d93b83352f8c995325f54f2bb396429d28b76b10006ffbfd1fba825",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

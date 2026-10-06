@@ -1,0 +1,41 @@
+diff --git a/recurring_events.module b/recurring_events.module
+--- a/recurring_events.module
++++ b/recurring_events.module
+@@ -247,20 +247,32 @@
+   $instances = $entity->getInstances();
+   $updated_statuses = $skipped_statuses = 0;
+   if (!empty($instances)) {
++    // When the series and its instances are moderated by different workflows
++    // their states can never be mirrored, so every instance would be reported
++    // as skipped on every save. Do not count those as skipped.
++    $workflows_differ = FALSE;
++    if (\Drupal::moduleHandler()->moduleExists('content_moderation')) {
++      $moderation_information = \Drupal::service('content_moderation.moderation_information');
++      $series_workflow = $moderation_information->getWorkflowForEntity($entity);
++      $instance_workflow = $moderation_information->getWorkflowForEntity(reset($instances));
++      $workflows_differ = $series_workflow && $instance_workflow && $series_workflow->id() !== $instance_workflow->id();
++    }
+     foreach ($instances as $instance) {
+       $status_updated = $creation_service->updateInstanceStatus($instance, $entity);
+       if ($status_updated) {
+         $updated_statuses++;
+         $instance->save();
+       }
+-      else {
++      elseif (!$workflows_differ) {
+         $skipped_statuses++;
+       }
+     }
+-    \Drupal::messenger()->addMessage(t('Successfully updated @success instance statuses. Skipped @skipped instances due to status or workflow mismatch with series.', [
+-      '@success' => $updated_statuses,
+-      '@skipped' => $skipped_statuses,
+-    ]));
++    if ($updated_statuses || $skipped_statuses) {
++      \Drupal::messenger()->addMessage(t('Successfully updated @success instance statuses. Skipped @skipped instances due to status or workflow mismatch with series.', [
++        '@success' => $updated_statuses,
++        '@skipped' => $skipped_statuses,
++      ]));
++    }
+   }
+ }
+ 
