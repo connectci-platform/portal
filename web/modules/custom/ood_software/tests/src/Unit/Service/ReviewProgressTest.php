@@ -146,7 +146,10 @@ class ReviewProgressTest extends UnitTestCase {
       '5 AI report ready, nobody started' => ['In review', 'In review', 'warning'],
       '6 reviewer working' => ['In review', 'In review', 'warning'],
       '7 changes requested' => ['Changes requested · round 1', 'Changes requested · round 1', 'warning'],
-      '8 resubmitted, new AI report' => ['In review', 'In review', 'warning'],
+      // A resubmission starts a fresh AI report, so the reviewer chip reads
+      // the same as case 2: the round shows on the progress line's Submitted
+      // step, not on the chip, which says where the repo is now.
+      '8 resubmitted, new AI report' => ['Queued', 'In review', 'warning'],
       '9 accepted, not yet published' => ['Ready to publish', 'Ready to publish', 'warning'],
       '10 published' => ['Live', 'Live', 'success'],
       '11 declined' => ['Declined', 'Declined', 'danger'],

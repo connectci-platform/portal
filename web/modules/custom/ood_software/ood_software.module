@@ -1933,11 +1933,15 @@ function _ood_software_hub_member_apps(\Drupal\node\NodeInterface $repo): array 
  *   Bootstrap-icon class, e.g. 'bi-arrow-clockwise'.
  * @param string $variant
  *   Optional modifier class suffix for styling (e.g. 'primary', 'danger').
+ * @param bool $inMenu
+ *   TRUE to render as a named item inside the card's Actions dropdown instead
+ *   of an inline button. The caller decides, because the same action is inline
+ *   on one card and in the menu on another.
  *
  * @return array<string, mixed>
  */
-function _ood_software_hub_confirm_link(string $internalPath, string $label, string $icon, string $variant = ''): array {
-  // Same look as an action form's icon button, but a link to a confirmation
+function _ood_software_hub_confirm_link(string $internalPath, string $label, string $icon, string $variant = '', bool $inMenu = FALSE): array {
+  // Same look as an action form's button, but a link to a confirmation
   // page (HubPublishConfirmForm): used for actions too consequential for one
   // click, such as Publish and Unpublish. ?destination brings the reviewer
   // back to the same list, filters intact.
@@ -1945,8 +1949,11 @@ function _ood_software_hub_confirm_link(string $internalPath, string $label, str
   $query = \Drupal::request()->getQueryString();
   return [
     '#type' => 'inline_template',
-    '#template' => '<a href="{{ href }}" class="appverse-hub-card__icon-btn {{ variant ? "appverse-hub-card__icon-btn--" ~ variant : "" }}" '
-      . 'title="{{ label }}" aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i></a>',
+    '#template' => $inMenu
+      ? '<a href="{{ href }}" class="dropdown-item">'
+        . '<i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</a>'
+      : '<a href="{{ href }}" class="appverse-hub-card__action-btn {{ variant ? "appverse-hub-card__action-btn--" ~ variant : "" }}" '
+        . 'aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</a>',
     '#context' => [
       'href' => '/' . $internalPath . '?destination=' . urlencode($dest . ($query ? '?' . $query : '')),
       'label' => $label,
@@ -1963,7 +1970,7 @@ function _ood_software_hub_confirm_link(string $internalPath, string $label, str
  * @return array<string, mixed>
  *   A render array for the action.
  */
-function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = ''): array {
+function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = '', bool $inMenu = FALSE): array {
   $token = \Drupal::service('csrf_token')->get($internalPath);
   // Back to the same list after the action: its filters (the query string)
   // and, for a repo action, that repo's card (#appverse-repo-N), where the
@@ -1980,9 +1987,16 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
   $action = '/' . $internalPath . '?token=' . $token . '&destination=' . urlencode($dest);
   return [
     '#type' => 'inline_template',
-    '#template' => '<form method="post" action="{{ action }}" class="appverse-hub-card__action-form">'
-      . '<button type="submit" class="appverse-hub-card__icon-btn {{ variant ? "appverse-hub-card__icon-btn--" ~ variant : "" }}" '
-      . 'title="{{ label }}" aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i></button></form>',
+    // In the menu the form is the item: a bare <button class="dropdown-item">
+    // sits in the list like the links around it, so a POST action needs no
+    // JS to live beside a GET one.
+    '#template' => $inMenu
+      ? '<form method="post" action="{{ action }}" class="appverse-hub-card__menu-form">'
+        . '<button type="submit" class="dropdown-item">'
+        . '<i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</button></form>'
+      : '<form method="post" action="{{ action }}" class="appverse-hub-card__action-form">'
+        . '<button type="submit" class="appverse-hub-card__action-btn {{ variant ? "appverse-hub-card__action-btn--" ~ variant : "" }}" '
+        . 'aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</button></form>',
     '#context' => [
       'action' => $action,
       'label' => $label,
@@ -2009,8 +2023,15 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
 function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $isAdmin, string $state, bool $published): array {
   $id = $repo->id();
   $dest = urlencode(\Drupal::service('path.current')->getPath());
+  // Only a reviewer's card collapses into a menu. A reviewer can reach six
+  // actions on one row, which never fit the column; a contributor reaches
+  // three at most, so hiding any of them behind a click would cost a step and
+  // save nothing (appverse-planning#55). This flag is also what the template
+  // reads as hub.has_menu, so the two stay in step by construction.
+  $inMenu = $isAdmin;
   $actions = [
-    'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise'),
+    'in_menu' => $inMenu,
+    'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise', '', $inMenu),
     'send_for_review' => NULL,
     'publish' => NULL,
     'unpublish' => NULL,
@@ -2035,13 +2056,13 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // (appverse-planning#34).
   if (!$isAdmin && (int) $repo->getOwnerId() === (int) \Drupal::currentUser()->id()
     && \Drupal\ood_software\Form\WithdrawConfirmForm::canWithdraw($repo, \Drupal::service('ood_software.repo_progress'))) {
-    $actions['withdraw'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/withdraw', t('Withdraw from review…'), 'bi-arrow-counterclockwise');
+    $actions['withdraw'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/withdraw', t('Withdraw from review…'), 'bi-arrow-counterclockwise', '', $inMenu);
   }
   if ($isAdmin && $notPublishedActive && !$hasReview) {
-    $actions['publish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/publish/confirm', t('Publish…'), 'bi-check-circle', 'primary');
+    $actions['publish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/publish/confirm', t('Publish…'), 'bi-check-circle', 'primary', $inMenu);
   }
   if ($published) {
-    $actions['unpublish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/unpublish/confirm', t('Unpublish…'), 'bi-slash-circle');
+    $actions['unpublish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/unpublish/confirm', t('Unpublish…'), 'bi-slash-circle', '', $inMenu);
   }
   // Request changes maps to the request_adjustment transition, which the
   // appverse_editorial workflow permits from published, ready_for_review, and
@@ -2064,7 +2085,9 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
         $assignee !== NULL => t('Assign to me (now @name)', ['@name' => $assignee->getDisplayName()]),
         default => t('Assign to me'),
       },
-      $mine ? 'bi-person-dash' : 'bi-person-plus'
+      $mine ? 'bi-person-dash' : 'bi-person-plus',
+      '',
+      $inMenu
     );
   }
   return $actions;
@@ -2182,6 +2205,8 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     '#labels' => $isAdmin,
   ];
 
+  $actions = _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished());
+
   return [
     'repo_id' => (int) $repo->id(),
     'title' => $repo->label(),
@@ -2206,7 +2231,11 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'moderation_comment' => $moderationComment,
     'edit_url' => $editUrl,
     'owner' => $owner,
-    'actions' => _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished()),
+    'actions' => $actions,
+    // The template must know whether a menu exists before it opens markup for
+    // one; the action set decides, and repo_id above labels the toggle. See
+    // in_menu there.
+    'has_menu' => !empty($actions['in_menu']),
     'discovery_tags' => $discoveryTags,
     'single_app_tags' => $singleAppTags,
     'review' => $review,

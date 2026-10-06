@@ -8,7 +8,7 @@
  * Header cluster, left→right:
  *   [status badge] | [pencil — inferred+can_edit] | Submitted <ts>
  *   | [github] | [catalog] | [owner name][email — admin]
- *   | [resync + lifecycle icons]
+ *   | [labelled actions + Actions menu]
  */
 #}
 {# The id is the anchor a card action returns to (see
@@ -36,8 +36,7 @@
     </div>
 
     {# The card title links to the catalog, so a separate catalog icon would be
-       redundant. GitHub is the only remaining header link here; re-sync sits
-       beside it because it pulls from that same GitHub repo. #}
+       redundant. GitHub is the only remaining header link here. #}
     <div class="appverse-hub-card__cell appverse-hub-card__cell--github">
       {% if hub.github_url %}
         <a href="{{ hub.github_url }}" class="appverse-hub-card__icon-btn" target="_blank" rel="noopener"
@@ -45,7 +44,6 @@
           <i class="bi bi-github" aria-hidden="true"></i>
         </a>
       {% endif %}
-      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
     </div>
 
     {# Owner name + contact only when the repo is owned by someone else (the
@@ -77,36 +75,69 @@
       {% endif %}
     </div>
 
+    {# Actions. A reviewer can have six of these at once, which never fit the
+       column and wrapped onto a second row over the line below. Icons alone
+       also did not say what they do: a tooltip can confirm a guess but cannot
+       advertise a capability, so the play icon stayed unreadable however many
+       titles it carried (appverse-planning#55).
+
+       So: the one or two a reviewer uses on most rows stay out as labelled
+       buttons, and the rest go in a menu where every item is named in words.
+       A contributor has at most three and keeps them all inline, which is why
+       the menu is built only when there is something to put in it. Delete sits
+       last behind a separator, away from the benign actions it used to sit
+       beside. Bootstrap 4 is global in the ood theme (data-toggle, not
+       data-bs-toggle) so this needs no JS of its own. #}
     <div class="appverse-hub-card__cell appverse-hub-card__cell--actions">
-      {% if hub.edit_url %}
-        <a href="{{ hub.edit_url }}" class="appverse-hub-card__icon-btn"
-           title="{{ 'Edit'|t }}" aria-label="{{ 'Edit @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-pencil-square" aria-hidden="true"></i>
-        </a>
-      {% endif %}
-      {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
-      {% if hub.actions.withdraw %}{{ hub.actions.withdraw }}{% endif %}
-      {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
-      {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}
-      {% if hub.actions.request_changes %}
-        <a href="{{ hub.actions.request_changes.url }}" class="appverse-hub-card__icon-btn"
-           title="{{ 'Request changes'|t }}" aria-label="{{ 'Request changes'|t }}">
-          <i class="bi bi-chat-left-text" aria-hidden="true"></i>
-        </a>
-      {% endif %}
       {% if hub.review.review_url %}
-        <a href="{{ hub.review.review_url }}" class="appverse-hub-card__icon-btn"
-           title="{{ 'Open review'|t }}" aria-label="{{ 'Open review for @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+        <a href="{{ hub.review.review_url }}" class="appverse-hub-card__action-btn"
+           aria-label="{{ 'Open review for @t'|t({'@t': hub.title}) }}">
+          <i class="bi bi-clipboard-check" aria-hidden="true"></i> {{ 'Open review'|t }}
         </a>
       {% endif %}
-      {% if hub.actions.assign %}{{ hub.actions.assign }}{% endif %}
       {% if hub.review.run_review_action %}{{ hub.review.run_review_action }}{% endif %}
-      {% if hub.actions.delete %}
-        <a href="{{ hub.actions.delete.url }}" class="appverse-hub-card__icon-btn appverse-hub-card__icon-btn--danger"
-           title="{{ 'Delete'|t }}" aria-label="{{ 'Delete @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-trash" aria-hidden="true"></i>
+      {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
+      {% if hub.edit_url and not hub.has_menu %}
+        <a href="{{ hub.edit_url }}" class="appverse-hub-card__action-btn"
+           aria-label="{{ 'Edit @t'|t({'@t': hub.title}) }}">
+          <i class="bi bi-pencil-square" aria-hidden="true"></i> {{ 'Edit'|t }}
         </a>
+      {% endif %}
+      {% if hub.actions.withdraw and not hub.has_menu %}{{ hub.actions.withdraw }}{% endif %}
+      {% if hub.actions.resync and not hub.has_menu %}{{ hub.actions.resync }}{% endif %}
+
+      {% if hub.has_menu %}
+        <div class="dropdown appverse-hub-card__menu">
+          <button class="appverse-hub-card__action-btn dropdown-toggle" type="button"
+                  id="appverse-actions-{{ hub.repo_id }}" data-toggle="dropdown"
+                  aria-haspopup="true" aria-expanded="false"
+                  aria-label="{{ 'More actions for @t'|t({'@t': hub.title}) }}">
+            {{ 'Actions'|t }}
+          </button>
+          <div class="dropdown-menu dropdown-menu-right" aria-labelledby="appverse-actions-{{ hub.repo_id }}">
+            {% if hub.edit_url %}
+              <a class="dropdown-item" href="{{ hub.edit_url }}">
+                <i class="bi bi-pencil-square" aria-hidden="true"></i> {{ 'Edit'|t }}
+              </a>
+            {% endif %}
+            {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
+            {% if hub.actions.withdraw %}{{ hub.actions.withdraw }}{% endif %}
+            {% if hub.actions.assign %}{{ hub.actions.assign }}{% endif %}
+            {% if hub.actions.request_changes %}
+              <a class="dropdown-item" href="{{ hub.actions.request_changes.url }}">
+                <i class="bi bi-chat-left-text" aria-hidden="true"></i> {{ 'Request changes'|t }}
+              </a>
+            {% endif %}
+            {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
+            {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}
+            {% if hub.actions.delete %}
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item appverse-hub-card__menu-item--danger" href="{{ hub.actions.delete.url }}">
+                <i class="bi bi-trash" aria-hidden="true"></i> {{ 'Delete'|t }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
       {% endif %}
     </div>
   </header>
