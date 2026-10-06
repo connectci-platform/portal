@@ -13,13 +13,16 @@ use Drupal\node\NodeInterface;
  * The assignee lives on the repo, not on each review, so a repo can be
  * assigned while it waits for its AI report and keeps its reviewer across
  * rounds; who decided each round is the review's decision_sent_by. Only
- * appverse_pm and administrators can be assigned (the field's handler).
+ * Only appverse_pm can be assigned (the field's handler). Administrators were
+ * offered too, which put people who do not review into the picker
+ * (appverse-planning#33, #55); the field's declared dependencies already
+ * listed appverse_pm alone.
  */
 final class ReviewAssignment {
 
   const FIELD = 'field_repo_assigned_reviewer';
 
-  const ROLES = ['appverse_pm', 'administrator'];
+  const ROLES = ['appverse_pm'];
 
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager,

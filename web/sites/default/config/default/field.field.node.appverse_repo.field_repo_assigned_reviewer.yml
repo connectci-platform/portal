@@ -24,5 +24,4 @@ settings:
       type: role
       role:
         appverse_pm: appverse_pm
-        administrator: administrator
 field_type: entity_reference
