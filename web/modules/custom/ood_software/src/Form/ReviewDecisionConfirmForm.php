@@ -60,14 +60,15 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       $this->messenger()->addWarning($blocker);
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
-    $appDecisions = $this->appDecisions();
+    // Keyed by verdict, since two apps can share a name (#48).
+    $appDecisions = $this->applier->appDecisions($node);
+    $names = $this->applier->appNames($node);
     $response = (string) ($node->get('field_arv_contributor_response')->value ?? '');
     // The page offers no choice below an app's floor; this catches one saved
     // before the floor existed or before a finding changed (#30).
-    $names = $this->appNames();
     $problems = array_merge(
-      ReviewDecision::problems($appDecisions, $response),
-      ReviewFloors::problems($this->applier->appDecisions($node), ReviewFloors::forReview($node), $names),
+      ReviewDecision::problems($appDecisions, $response, $names),
+      ReviewFloors::problems($appDecisions, ReviewFloors::forReview($node), $names),
     );
     if ($problems !== []) {
       foreach ($problems as $problem) {
@@ -85,13 +86,13 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       '#theme' => 'item_list',
       '#title' => $this->t('Per app'),
       '#items' => array_map(
-        fn ($app, $d) => new FormattableMarkup('@app: <strong>@d</strong>', ['@app' => $app, '@d' => ReviewProgress::DECISION_LABELS[$d]]),
+        fn ($id, $d) => new FormattableMarkup('@app: <strong>@d</strong>', ['@app' => $names[$id] ?? $id, '@d' => ReviewProgress::DECISION_LABELS[$d] ?? $d]),
         array_keys($appDecisions), $appDecisions,
       ),
       '#weight' => -20,
     ] : [];
     $rows = [];
-    foreach (ReviewDecision::effectsFor($appDecisions, $repo instanceof NodeInterface && $repo->isPublished()) as [$heading, $text]) {
+    foreach (ReviewDecision::effectsFor($appDecisions, $repo instanceof NodeInterface && $repo->isPublished(), $names) as [$heading, $text]) {
       $rows[] = [['data' => $heading, 'header' => TRUE], $text];
     }
     $form['effects'] = [
@@ -101,29 +102,6 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       '#weight' => -10,
     ];
     return parent::buildForm($form, $form_state);
-  }
-
-  /**
-   * App name => its decision, from the review's verdicts.
-   *
-   * @return array<string, string>
-   */
-  protected function appDecisions(): array {
-    $names = $this->appNames();
-    $decisions = [];
-    foreach ($this->applier->appDecisions($this->review) as $pid => $decision) {
-      $decisions[$names[$pid]] = $decision;
-    }
-    return $decisions;
-  }
-
-  /**
-   * Verdict paragraph id => the app's name.
-   *
-   * @return array<string, string>
-   */
-  protected function appNames(): array {
-    return $this->applier->appNames($this->review);
   }
 
   public function getQuestion() {

@@ -11,11 +11,13 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
+use Drupal\Component\Render\PlainTextOutput;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
@@ -1069,6 +1071,9 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
  * alter drops Draft from the widget, but JSON:API is writable on this site
  * and checks field access, not the form. The hub's Withdraw sets the state in
  * code, so this does not stop it.
+ *
+ * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface>|null $items
+ *   The field values, when access is checked on an entity.
  */
 function ood_software_entity_field_access(string $operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL): AccessResultInterface {
   if ($operation !== 'edit' || $field_definition->getName() !== 'moderation_state' || $items === NULL) {
@@ -1388,22 +1393,39 @@ function ood_software_mail(string $key, array &$message, array $params): void {
     case 'review_decision':
     case 'review_published':
       $email = $params['email'] ?? [];
-      $message['subject'] = (string) ($email['subject'] ?? '');
+      $langcode = $message['langcode'];
+      $message['subject'] = PlainTextOutput::renderFromHtml(_ood_software_mail_text($email['subject'] ?? '', $langcode));
       foreach ($email['blocks'] ?? [] as $block) {
         $message['body'][] = match ($block[0]) {
-          'p' => Markup::create('<p>' . Html::escape($block[1]) . '</p>'),
+          'p' => Markup::create('<p>' . _ood_software_mail_text($block[1], $langcode) . '</p>'),
           // The response keeps its own line breaks.
           'response' => Markup::create('<blockquote><p>' . nl2br(Html::escape($block[1])) . '</p></blockquote>'),
           'apps' => Markup::create('<ul>' . implode('', array_map(
-            static fn ($app, $label) => '<li>' . Html::escape((string) $app) . ': <strong>' . Html::escape((string) $label) . '</strong></li>',
-            array_keys($block[1]), $block[1],
+            static fn (array $app) => '<li>' . Html::escape((string) $app[0]) . ': <strong>' . _ood_software_mail_text($app[1], $langcode) . '</strong></li>',
+            $block[1],
           )) . '</ul>'),
-          'link' => t('<p>@label: <a href=":url">:url</a></p>', ['@label' => $block[1], ':url' => $block[2]]),
+          'link' => Markup::create('<p>' . _ood_software_mail_text($block[1], $langcode) . ': <a href="' . Html::escape($block[2]) . '">' . Html::escape($block[2]) . '</a></p>'),
           default => '',
         };
       }
       break;
   }
+}
+
+/**
+ * Email text in the recipient's language, as safe HTML.
+ *
+ * DecisionEmail builds TranslatableMarkup without knowing who it goes to;
+ * this translates it into the mail's language. Its placeholders (repo and
+ * reviewer names) are escaped by the markup itself. A plain string is
+ * escaped.
+ */
+function _ood_software_mail_text(mixed $text, string $langcode): string {
+  if ($text instanceof TranslatableMarkup) {
+    // phpcs:ignore Drupal.Semantics.FunctionT.NotLiteralString
+    return (string) new TranslatableMarkup($text->getUntranslatedString(), $text->getArguments(), ['langcode' => $langcode] + $text->getOptions());
+  }
+  return Html::escape((string) $text);
 }
 
 /**
@@ -2045,7 +2067,11 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // moves the repo and the review together (appverse-planning#29).
   $hasReview = _ood_software_repo_has_review($repo);
 
-  if (!$isAdmin && in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
+  // A live repo with apps sent back is re-submitted whole, staying live
+  // (appverse-planning#48).
+  $liveWithSentBack = $published && $state === 'published'
+    && \Drupal::service('ood_software.repo_member_apps')->sentBackCount($repo) > 0;
+  if (!$isAdmin && (in_array($state, ['draft', 'needs_adjustment'], TRUE) || $liveWithSentBack)) {
     $actions['send_for_review'] = _ood_software_hub_action_form(
       'appverse/repo/' . $id . '/send-for-review',
       $state === 'draft' ? t('Send for review') : t('Re-submit'),

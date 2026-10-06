@@ -296,6 +296,7 @@ YAML;
       $this->container->get('ood_software.repo_member_apps'),
       $this->container->get('ood_software.review_dispatcher'),
       $this->container->get('ood_software.review_assignment'),
+      $this->container->get('ood_software.repo_notifier'),
     );
   }
 

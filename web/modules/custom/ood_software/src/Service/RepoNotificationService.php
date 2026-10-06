@@ -85,18 +85,30 @@ class RepoNotificationService {
   }
 
   /**
+   * Tells the reviewers a live repo was re-submitted.
+   *
+   * A live repo stays published while its sent-back apps are reviewed again,
+   * so no transition into ready_for_review sends the usual email.
+   */
+  public function notifyResubmitted(NodeInterface $repo): void {
+    $this->sendToAdmins($repo, 'ready_for_review', []);
+  }
+
+  /**
    * Email the repo's owner a composed review email.
    *
    * @param string $key
    *   review_decision or review_published (see ood_software_mail()).
-   * @param array{subject: string, blocks: array} $email
+   * @param array<string, mixed> $email
    *   From DecisionEmail.
+   * @param string|null $replyTo
+   *   The reviewer's address, so a reply reaches them; NULL for the site's.
    *
    * @return bool
    *   Whether the mail system accepted it.
    */
-  public function sendReviewEmail(NodeInterface $repo, string $key, array $email): bool {
-    return $this->sendToOwner($repo, $key, ['email' => $email]);
+  public function sendReviewEmail(NodeInterface $repo, string $key, array $email, ?string $replyTo = NULL): bool {
+    return $this->sendToOwner($repo, $key, ['email' => $email], $replyTo);
   }
 
   /**
@@ -166,7 +178,7 @@ class RepoNotificationService {
    *
    * @param array<string, mixed> $extras
    */
-  protected function sendToOwner(NodeInterface $node, string $key, array $extras): bool {
+  protected function sendToOwner(NodeInterface $node, string $key, array $extras, ?string $replyTo = NULL): bool {
     $owner = $node->getOwner();
     // getOwner() is typed non-nullable, but at runtime a node whose owner
     // account was deleted resolves to null. Without this guard the deleted-owner
@@ -180,7 +192,7 @@ class RepoNotificationService {
       ]);
       return FALSE;
     }
-    return $this->dispatch($key, $owner->getEmail(), $owner->getPreferredLangcode(), $node, $extras);
+    return $this->dispatch($key, $owner->getEmail(), $owner->getPreferredLangcode(), $node, $extras, $replyTo);
   }
 
   /**
@@ -188,11 +200,12 @@ class RepoNotificationService {
    *
    * @param array<string, mixed> $extras
    */
-  protected function dispatch(string $key, string $to, string $langcode, NodeInterface $node, array $extras): bool {
+  protected function dispatch(string $key, string $to, string $langcode, NodeInterface $node, array $extras, ?string $replyTo = NULL): bool {
     $params = [
       'node' => $node,
     ] + $extras;
-    $result = $this->mailManager->mail('ood_software', $key, $to, $langcode, $params);
+    // NULL Reply-To falls back to the site address.
+    $result = $this->mailManager->mail('ood_software', $key, $to, $langcode, $params, $replyTo);
     return !empty($result['result']);
   }
 }

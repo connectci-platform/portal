@@ -18,6 +18,7 @@ use Drupal\user\UserInterface;
 use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\ood_software\Service\RepoMemberApps;
+use Drupal\ood_software\Service\RepoNotificationService;
 use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Plugin\GitHubService;
 
@@ -38,6 +39,7 @@ final class AppverseHubController extends ControllerBase {
     protected RepoMemberApps $repoMemberApps,
     protected AppverseReviewService $reviewService,
     protected ReviewAssignment $reviewAssignment,
+    protected RepoNotificationService $notifier,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -50,6 +52,7 @@ final class AppverseHubController extends ControllerBase {
       $container->get('ood_software.repo_member_apps'),
       $container->get('ood_software.review_dispatcher'),
       $container->get('ood_software.review_assignment'),
+      $container->get('ood_software.repo_notifier'),
     );
   }
 
@@ -432,11 +435,41 @@ final class AppverseHubController extends ControllerBase {
    * Allowed for owner or admin.
    */
   public function sendForReview(NodeInterface $node): RedirectResponse {
+    if ($node->bundle() === 'appverse_repo' && $node->isPublished()) {
+      return $this->resubmitLive($node);
+    }
     return $this->applyTransition(
       $node,
       'ready_for_review',
       $this->t('Sent @title for review.', ['@title' => $node->label()])
     );
+  }
+
+  /**
+   * Re-submits a live repo whose apps were sent back (appverse-planning#48).
+   *
+   * One commit gives one AI report, so the whole repo is reviewed again. The
+   * repo and its accepted apps stay live; the apps sent back return to Ready
+   * for review. The run starts first, so a failed dispatch moves nothing.
+   */
+  protected function resubmitLive(NodeInterface $repo): RedirectResponse {
+    if ($this->repoMemberApps->sentBackCount($repo) === 0) {
+      $this->messenger()->addError($this->t('@title is live and no app in it is waiting on changes, so there is nothing to re-submit.', ['@title' => $repo->label()]));
+      return $this->redirectToHub();
+    }
+    $status = $repo->hasField('field_review_status') ? (string) ($repo->get('field_review_status')->value ?? '') : '';
+    if (in_array($status, ['pending', 'in_progress'], TRUE)) {
+      $this->messenger()->addWarning($this->t('A review of @title is already running.', ['@title' => $repo->label()]));
+      return $this->redirectToHub();
+    }
+    if (!$this->reviewService->dispatchForNode($repo)) {
+      $this->messenger()->addError($this->t('Could not start the review for @title. Please try again later.', ['@title' => $repo->label()]));
+      return $this->redirectToHub();
+    }
+    $this->repoMemberApps->cascadeModeration($repo, 'ready_for_review', ['needs_adjustment'], 'Re-submitted with the repo.');
+    $this->notifier->notifyResubmitted($repo);
+    $this->messenger()->addStatus($this->t('Re-submitted @title. A new review has started, and the apps already accepted stay live.', ['@title' => $repo->label()]));
+    return $this->redirectToHub();
   }
 
   /**

@@ -289,6 +289,9 @@ final class ReviewPageForm extends FormBase {
       '#rows' => 8,
       '#default_value' => $page['response'],
       '#disabled' => $locked,
+      // The response sits inside the decision email (appverse-planning#48),
+      // which already says the rest; repeating it reads twice.
+      '#description' => $this->t('This goes into the decision email to the contributor. The email already greets them, lists each app\'s decision, says how to re-submit and tells them a reply reaches you, so write only the review itself: what to change and why.'),
     ];
     $form['assessment'] = [
       '#type' => 'textarea',

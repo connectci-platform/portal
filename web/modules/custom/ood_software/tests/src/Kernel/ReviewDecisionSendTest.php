@@ -90,8 +90,8 @@ class ReviewDecisionSendTest extends KernelTestBase {
 
     // User 1 bypasses access checks, so take that id first.
     $this->createUser([], 'admin');
-    $this->owner = $this->createUser([], 'owner');
-    $reviewer = $this->createUser(['administer appverse content'], 'reviewer');
+    $this->owner = $this->createUser([], 'owner', FALSE, ['mail' => 'owner@example.com']);
+    $reviewer = $this->createUser(['administer appverse content'], 'reviewer', FALSE, ['mail' => 'reviewer@example.com']);
     $this->assertInstanceOf(AccountInterface::class, $reviewer);
     $this->setCurrentUser($reviewer);
   }
@@ -133,6 +133,27 @@ class ReviewDecisionSendTest extends KernelTestBase {
       'request changes' => ['request_changes', 'needs_adjustment', 'needs_adjustment', 'in_review'],
       'reject' => ['reject', 'declined', 'declined', 'in_review'],
     ];
+  }
+
+  /**
+   * The decision email greets the contributor and replies to the reviewer.
+   */
+  public function testDecisionEmailRepliesToTheReviewer(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $review = $this->makeReview($repo, ['request_changes' => $this->makeApp($repo, 'ready_for_review')]);
+
+    $this->assertNull($this->applier()->send($review, 'Please add a <LICENSE>.'));
+
+    $mail = $this->mails()[0];
+    $this->assertSame('owner@example.com', $mail['to']);
+    $this->assertSame('reviewer@example.com', $mail['reply-to']);
+    $this->assertSame('[AppVerse] Changes requested on example/repo', $mail['subject']);
+    $this->assertStringContainsString('Hi owner,', $mail['body']);
+    $this->assertStringContainsString('reviewer reviewed your repo "example/repo"', $mail['body']);
+    $this->assertStringContainsString('Reply to this email and it goes to reviewer.', $mail['body']);
+    // The response is escaped: the mail is turned into plain text, which
+    // strips a tag but keeps escaped text as written.
+    $this->assertStringContainsString('Please add a <LICENSE>.', $mail['body']);
   }
 
   /**

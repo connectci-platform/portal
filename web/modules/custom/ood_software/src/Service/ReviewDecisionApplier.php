@@ -15,6 +15,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Carries out a review's decision on the review, its repo and its apps.
@@ -244,13 +245,9 @@ final class ReviewDecisionApplier {
     if (!$repo instanceof NodeInterface) {
       return NULL;
     }
-    $names = $this->appNames($review);
-    $byName = [];
-    foreach ($decisions as $pid => $decision) {
-      $byName[$names[$pid]] = $decision;
-    }
     return [$repo, DecisionEmail::decision(
-      $this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo),
+      $this->siteName(), (string) $repo->label(), $decisions, $this->appNames($review), $response, $wasLive,
+      $this->people($review, $repo), $this->links($review, $repo),
     )];
   }
 
@@ -289,7 +286,7 @@ final class ReviewDecisionApplier {
     // a live repo is not news to the contributor.
     if ($repo instanceof NodeInterface && ($repoWentLive || $published !== [])) {
       $this->email($review, $repo, 'review_published', DecisionEmail::nowLive(
-        $this->siteName(), $repo->label(), $published, count($decisions) > 1, $this->links($review, $repo),
+        $this->siteName(), (string) $repo->label(), $published, count($decisions) > 1, $this->people($review, $repo), $this->links($review, $repo),
       ));
     }
     return NULL;
@@ -316,12 +313,14 @@ final class ReviewDecisionApplier {
    *   As DecisionEmail builds it, with at least a subject.
    */
   protected function email(NodeInterface $review, NodeInterface $repo, string $key, array $email): void {
-    $sent = $this->notifier->sendReviewEmail($repo, $key, $email);
+    // A reply starts a conversation with the reviewer, not the site.
+    $reviewer = $this->reviewer($review);
+    $sent = $this->notifier->sendReviewEmail($repo, $key, $email, $reviewer?->getEmail() ?: NULL);
     $owner = $repo->getOwner();
     $this->loggerFactory->get('ood_software')->info('Review @rid: @key email "@subject" @result to the owner of repo @repo.', [
       '@rid' => $review->id(),
       '@key' => $key,
-      '@subject' => $email['subject'],
+      '@subject' => (string) $email['subject'],
       '@result' => $sent ? 'sent' : 'NOT sent',
       '@repo' => $repo->id(),
     ]);
@@ -332,6 +331,32 @@ final class ReviewDecisionApplier {
     else {
       $this->messenger->addWarning($this->t('The email to the contributor could not be sent; see the site log.'));
     }
+  }
+
+  /**
+   * The reviewer the email names and replies go to: whoever sent the
+   * decision, or the current user before one is recorded.
+   */
+  protected function reviewer(NodeInterface $review): ?UserInterface {
+    $sender = $review->hasField('field_arv_decision_sent_by') ? $review->get('field_arv_decision_sent_by')->entity : NULL;
+    if ($sender instanceof UserInterface) {
+      return $sender;
+    }
+    $current = $this->entityTypeManager->getStorage('user')->load($this->currentUser->id());
+    return $current instanceof UserInterface && !$current->isAnonymous() ? $current : NULL;
+  }
+
+  /**
+   * The names the email uses for the contributor and the reviewer.
+   *
+   * @return array{contributor: string, reviewer: string}
+   */
+  protected function people(NodeInterface $review, NodeInterface $repo): array {
+    // A repo whose owner was deleted belongs to the anonymous user.
+    return [
+      'contributor' => $repo->getOwnerId() ? (string) $repo->getOwner()->getDisplayName() : '',
+      'reviewer' => (string) ($this->reviewer($review)?->getDisplayName() ?? ''),
+    ];
   }
 
   protected function siteName(): string {

@@ -20,19 +20,23 @@ final class ReviewDecision {
    * required for every overall decision except Accept.
    *
    * @param array<string, string|null> $appDecisions
-   *   App name => its decision (accept, accept_with_suggestions,
+   *   Verdict id => its decision (accept, accept_with_suggestions,
    *   request_changes, reject), or NULL when not decided.
+   * @param string $response
+   *   The response to the contributor.
+   * @param array<string, string> $names
+   *   Verdict id => the app's name; the key stands in without one.
    *
    * @return array<int, string>
    */
-  public static function problems(array $appDecisions, string $response): array {
+  public static function problems(array $appDecisions, string $response, array $names = []): array {
     $problems = [];
     if ($appDecisions === []) {
       $problems[] = 'The review has no apps to decide.';
     }
     foreach ($appDecisions as $app => $decision) {
       if (!in_array($decision, ReviewProgress::DECISIONS, TRUE)) {
-        $problems[] = sprintf('Choose a decision for %s.', $app);
+        $problems[] = sprintf('Choose a decision for %s.', $names[$app] ?? $app);
       }
     }
     $overall = ReviewProgress::strictestDecision(array_values($appDecisions));
@@ -89,11 +93,15 @@ final class ReviewDecision {
    * row and follows plan().
    *
    * @param array<string, string> $appDecisions
-   *   App name => its decision.
+   *   Verdict id => its decision.
+   * @param bool $repoPublished
+   *   Whether the repo is live.
+   * @param array<string, string> $names
+   *   Verdict id => the app's name; the key stands in without one.
    *
    * @return array<int, array{0: string, 1: string}>
    */
-  public static function effectsFor(array $appDecisions, bool $repoPublished): array {
+  public static function effectsFor(array $appDecisions, bool $repoPublished, array $names = []): array {
     $distinct = array_values(array_unique(array_values($appDecisions)));
     if (count($distinct) === 1) {
       return self::effects($distinct[0], $repoPublished);
@@ -103,7 +111,7 @@ final class ReviewDecision {
 
     $apps = [];
     foreach ($appDecisions as $app => $decision) {
-      $apps[] = $app . ': ' . match ($decision) {
+      $apps[] = ($names[$app] ?? $app) . ': ' . match ($decision) {
         'accept' => 'published',
         'accept_with_suggestions' => 'published when you use Publish',
         'request_changes' => 'unpublished, back to the contributor as Needs changes',
