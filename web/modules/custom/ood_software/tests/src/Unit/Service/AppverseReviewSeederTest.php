@@ -83,4 +83,23 @@ class AppverseReviewSeederTest extends UnitTestCase {
     $this->assertSame('', AppverseReviewSeeder::extractDraftFeedback(''));
   }
 
+  /**
+   * A contributor-started run is not authored by the contributor, whose "view
+   * own unpublished content" would reach the undecided review
+   * (appverse-planning#44).
+   *
+   * @covers ::authorFor
+   */
+  public function testAuthorFor(): void {
+    $reviewer = $this->createMock(\Drupal\Core\Session\AccountInterface::class);
+    $reviewer->method('hasPermission')->willReturn(TRUE);
+    $reviewer->method('id')->willReturn(42);
+    $contributor = $this->createMock(\Drupal\Core\Session\AccountInterface::class);
+    $contributor->method('hasPermission')->willReturn(FALSE);
+    $contributor->method('id')->willReturn(7);
+    $this->assertSame(42, AppverseReviewSeeder::authorFor($reviewer));
+    $this->assertSame(1, AppverseReviewSeeder::authorFor($contributor));
+    $this->assertSame(1, AppverseReviewSeeder::authorFor(NULL));
+  }
+
 }

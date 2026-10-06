@@ -7,7 +7,7 @@ dependencies:
   module:
     - jsonapi_extras
 id: node--appverse_review
-disabled: false
+disabled: true
 path: node/appverse_review
 resourceType: node--appverse_review
 resourceFields:

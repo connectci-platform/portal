@@ -572,3 +572,35 @@ function ood_software_update_10508(): TranslatableMarkup {
   }
   return t('Moved @n review(s) from Waiting for Contributor to In Review.', ['@n' => $moved]);
 }
+
+/**
+ * Reviews are no longer authored by contributors (appverse-planning#44).
+ *
+ * A review was authored by whoever started its run, often the contributor,
+ * whose "view own unpublished content" then reached the undecided review
+ * through JSON:API filters. The seeder now authors a contributor-started run
+ * as the site admin; this moves existing reviews whose author is not a
+ * reviewer to the site admin too. Ownership only: no new revision, no
+ * moderation change.
+ */
+function ood_software_update_10509(): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $nids = $storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('uid', 1, '<>')
+    ->execute();
+  $moved = 0;
+  foreach ($storage->loadMultiple($nids) as $review) {
+    $owner = $review->getOwner();
+    if ($owner && $owner->hasPermission('administer appverse content')) {
+      continue;
+    }
+    $review->setOwnerId(1);
+    $review->setSyncing(TRUE);
+    $review->setNewRevision(FALSE);
+    $review->save();
+    $moved++;
+  }
+  return t('Moved @n review(s) authored by a non-reviewer to the site admin.', ['@n' => $moved]);
+}

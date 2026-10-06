@@ -6,6 +6,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\file\FileRepositoryInterface;
 use Drupal\node\NodeInterface;
 use Drupal\paragraphs\Entity\Paragraph;
@@ -36,6 +37,15 @@ class AppverseReviewSeeder {
     $this->fileRepository = $file_repository;
     $this->fileSystem = $file_system;
     $this->logger = $logger_factory->get('ood_software');
+  }
+
+  /**
+   * The review's author: the reviewer who started the run, else the site
+   * admin (appverse-planning#44; see seedFromArtifact()).
+   */
+  public static function authorFor(mixed $starter): int {
+    return $starter instanceof AccountInterface && $starter->hasPermission('administer appverse content')
+      ? (int) $starter->id() : 1;
   }
 
   /**
@@ -85,11 +95,15 @@ class AppverseReviewSeeder {
     $recommendation = $artifact['recommendation'] ?? [];
     $short_sha = substr($sha, 0, 7);
 
-    // Authored by whoever started the run (recorded on the repo at dispatch),
-    // not the anonymous cron user that imports it; the site admin when no one
-    // is recorded (a hand-run import, or a run dispatched before this).
-    $author = $repo->hasField('field_review_dispatched_by') ? (int) ($repo->get('field_review_dispatched_by')->target_id ?? 0) : 0;
-    $author = $author ?: 1;
+    // Authored by the reviewer who started the run (recorded on the repo at
+    // dispatch), not the anonymous cron user that imports it. A run the
+    // contributor started (send-for-review) is authored by the site admin:
+    // an author holds "view own unpublished content", which would let the
+    // contributor reach the undecided review, through JSON:API filters for
+    // one (appverse-planning#44). Who started the run stays on the repo. The
+    // site admin also when no one is recorded (a hand-run import, or a run
+    // dispatched before this).
+    $author = self::authorFor($repo->hasField('field_review_dispatched_by') ? $repo->get('field_review_dispatched_by')->entity : NULL);
 
     /** @var \Drupal\node\NodeInterface $review */
     $review = $node_storage->create([
