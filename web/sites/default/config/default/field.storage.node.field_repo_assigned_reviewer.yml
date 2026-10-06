@@ -1,11 +1,11 @@
-uuid: 25aede31-c4bb-4bec-a8ee-a8e52753a1d8
+uuid: a627324c-f8ed-4ef4-9841-7ac09402edbb
 langcode: en
 status: true
 dependencies:
   module:
     - node
-id: node.field_arv_assigned_reviewer
-field_name: field_arv_assigned_reviewer
+id: node.field_repo_assigned_reviewer
+field_name: field_repo_assigned_reviewer
 entity_type: node
 type: entity_reference
 settings:

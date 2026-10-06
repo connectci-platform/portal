@@ -3,6 +3,7 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.node.appverse_repo.field_repo_assigned_reviewer
     - field.field.node.appverse_repo.field_repo_description
     - field.field.node.appverse_repo.field_repo_docs_url
     - field.field.node.appverse_repo.field_repo_last_commit
@@ -112,6 +113,7 @@ content:
     settings: {  }
     third_party_settings: {  }
 hidden:
+  field_repo_assigned_reviewer: true
   field_repo_description: true
   field_repo_docs_url: true
   field_repo_last_commit: true

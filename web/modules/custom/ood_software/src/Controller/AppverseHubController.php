@@ -17,6 +17,7 @@ use Drupal\user\UserInterface;
 use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\ood_software\Service\RepoMemberApps;
+use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Plugin\GitHubService;
 
 /**
@@ -35,6 +36,7 @@ final class AppverseHubController extends ControllerBase {
     protected RequestStack $requestStack,
     protected RepoMemberApps $repoMemberApps,
     protected AppverseReviewService $reviewService,
+    protected ReviewAssignment $reviewAssignment,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -46,6 +48,7 @@ final class AppverseHubController extends ControllerBase {
       $container->get('request_stack'),
       $container->get('ood_software.repo_member_apps'),
       $container->get('ood_software.review_dispatcher'),
+      $container->get('ood_software.review_assignment'),
     );
   }
 
@@ -456,6 +459,33 @@ final class AppverseHubController extends ControllerBase {
    * intents; this does only the first. The result is polled for by cron and
    * lands as an appverse_review node linked from the hub card.
    */
+  /**
+   * The hub card's "Assign to me": assigns the repo to the current reviewer,
+   * taking it over from anyone else, or unassigns it when it is already
+   * theirs (appverse-planning#33).
+   */
+  public function assignMe(NodeInterface $node): RedirectResponse {
+    if ($node->bundle() !== 'appverse_repo') {
+      $this->messenger()->addError($this->t('Only Repos can be assigned.'));
+      return $this->redirectToHub();
+    }
+    $current = $this->reviewAssignment->assignee($node);
+    $mine = $current && (int) $current->id() === (int) $this->currentUser()->id();
+    if ($mine) {
+      $this->reviewAssignment->assign($node, NULL);
+      $this->messenger()->addStatus($this->t('You are no longer assigned to @title.', ['@title' => $node->label()]));
+    }
+    elseif ($this->reviewAssignment->assign($node, (int) $this->currentUser()->id())) {
+      $this->messenger()->addStatus($current
+        ? $this->t('You are now assigned to @title, taking over from @name.', ['@title' => $node->label(), '@name' => $current->getDisplayName()])
+        : $this->t('You are now assigned to @title.', ['@title' => $node->label()]));
+    }
+    else {
+      $this->messenger()->addError($this->t('You cannot be assigned: only AppVerse reviewers can.'));
+    }
+    return $this->redirectToHub();
+  }
+
   public function runReview(NodeInterface $node): RedirectResponse {
     if ($node->bundle() !== 'appverse_repo') {
       $this->messenger()->addError($this->t('Reviews are only available for Repos.'));

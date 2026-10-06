@@ -77,6 +77,10 @@ services:
     tags:
       - { name: event_subscriber }
 
+  # Who reviews a repo (appverse-planning#33).
+  ood_software.review_assignment:
+    class: Drupal\ood_software\Service\ReviewAssignment
+    arguments: ['@entity_type.manager', '@current_user', '@logger.factory']
   # A repo's progress line facts, for the hub card and the review page
   # (appverse-planning#31).
   ood_software.repo_progress:

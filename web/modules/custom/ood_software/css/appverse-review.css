@@ -726,6 +726,11 @@
   color: var(--ink);
 }
 
+/* The repo's reviewer, at the top of the sidebar (appverse-planning#33). */
+.arv-page .assignee-block {
+  margin-bottom: 14px;
+}
+
 /* The repo's progress line at the top of the page (appverse-planning#31);
    the line itself is styled in appverse-progress.css. */
 .arv-page .arv-progress-block {

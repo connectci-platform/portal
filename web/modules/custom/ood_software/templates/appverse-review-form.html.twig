@@ -274,6 +274,13 @@
     </div>
 
     <aside class="sidebar">
+      {# Who reviews the repo, across rounds (appverse-planning#33). #}
+      {% if can_edit %}
+        <div class="assignee-block">
+          <h2 class="sec">{{ 'Reviewer'|t }}</h2>
+          {{ form.assignee }}
+        </div>
+      {% endif %}
       <div class="decision-row">
         <h2 class="sec">{{ 'Decision'|t }}</h2>
       </div>
@@ -330,5 +337,5 @@
     </aside>
   </div>
 
-  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'actions', 'add_finding', 'edit_finding', 'delete_finding') }}
+  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'assignee', 'actions', 'add_finding', 'edit_finding', 'delete_finding') }}
 </div>

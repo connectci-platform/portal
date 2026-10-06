@@ -14,6 +14,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\RepoProgress;
+use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
@@ -90,6 +91,7 @@ final class ReviewPageForm extends FormBase {
     protected DateFormatterInterface $dateFormatter,
     protected FileUrlGeneratorInterface $fileUrlGenerator,
     protected RepoProgress $repoProgress,
+    protected ReviewAssignment $reviewAssignment,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -100,6 +102,7 @@ final class ReviewPageForm extends FormBase {
       $container->get('date.formatter'),
       $container->get('file_url_generator'),
       $container->get('ood_software.repo_progress'),
+      $container->get('ood_software.review_assignment'),
     );
   }
 
@@ -254,6 +257,19 @@ final class ReviewPageForm extends FormBase {
       }
     }
 
+    // The repo's reviewer, kept across rounds (appverse-planning#33).
+    if ($repo instanceof NodeInterface) {
+      $assignee = $this->reviewAssignment->assignee($repo);
+      $form['assignee'] = [
+        '#type' => 'select',
+        '#title' => $this->t('Reviewer'),
+        '#title_display' => 'invisible',
+        '#options' => $this->reviewAssignment->reviewers(),
+        '#empty_option' => $this->t('- Unassigned -'),
+        '#default_value' => $assignee ? $assignee->id() : '',
+      ];
+    }
+
     $form['response'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Response to contributor'),
@@ -341,6 +357,10 @@ final class ReviewPageForm extends FormBase {
       $this->setText($node, 'field_arv_maint_level_note', $values['maint_level_note'] ?? '');
     }
     $this->setText($node, 'field_arv_contributor_response', $values['response'] ?? '');
+    $repo = $node->get('field_arv_repo')->entity;
+    if (array_key_exists('assignee', $values) && $repo instanceof NodeInterface) {
+      $this->reviewAssignment->assign($repo, $values['assignee'] !== '' ? (int) $values['assignee'] : NULL);
+    }
     $this->setText($node, 'field_arv_assessment', $values['assessment'] ?? '');
 
     $noteText = trim((string) ($values['new_note'] ?? ''));

@@ -4,7 +4,6 @@ status: true
 dependencies:
   config:
     - field.field.node.appverse_review.field_arv_assessment
-    - field.field.node.appverse_review.field_arv_assigned_reviewer
     - field.field.node.appverse_review.field_arv_catalog_checks
     - field.field.node.appverse_review.field_arv_contributor_response
     - field.field.node.appverse_review.field_arv_decision_sent_at
@@ -179,7 +178,6 @@ content:
     weight: 5
     region: content
 hidden:
-  field_arv_assigned_reviewer: true
   field_arv_catalog_checks: true
   field_arv_contributor_response: true
   field_arv_decision_sent_at: true

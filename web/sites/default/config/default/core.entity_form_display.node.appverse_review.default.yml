@@ -4,7 +4,6 @@ status: true
 dependencies:
   config:
     - field.field.node.appverse_review.field_arv_assessment
-    - field.field.node.appverse_review.field_arv_assigned_reviewer
     - field.field.node.appverse_review.field_arv_catalog_checks
     - field.field.node.appverse_review.field_arv_contributor_response
     - field.field.node.appverse_review.field_arv_decision_sent_at
@@ -112,7 +111,6 @@ third_party_settings:
     group_internal_notes:
       children:
         - field_arv_internal_notes
-        - field_arv_assigned_reviewer
       label: 'Internal notes - never visible to the contributor or the public'
       region: content
       parent_name: ''
@@ -137,16 +135,6 @@ content:
     region: content
     settings:
       rows: 5
-      placeholder: ''
-    third_party_settings: {  }
-  field_arv_assigned_reviewer:
-    type: entity_reference_autocomplete
-    weight: 61
-    region: content
-    settings:
-      match_operator: CONTAINS
-      match_limit: 10
-      size: 60
       placeholder: ''
     third_party_settings: {  }
   field_arv_contributor_response:

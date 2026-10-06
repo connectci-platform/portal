@@ -1962,6 +1962,19 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   }
   if ($isAdmin) {
     $actions['delete'] = ['url' => '/appverse/repo/' . $id . '/delete?destination=' . $dest];
+    // Assign to me / Unassign me (appverse-planning#33); the review page
+    // assigns anyone.
+    $assignee = \Drupal::service('ood_software.review_assignment')->assignee($repo);
+    $mine = $assignee && (int) $assignee->id() === (int) \Drupal::currentUser()->id();
+    $actions['assign'] = _ood_software_hub_action_form(
+      'appverse/repo/' . $id . '/assign-me',
+      (string) match (TRUE) {
+        $mine => t('Unassign me'),
+        $assignee !== NULL => t('Assign to me (now @name)', ['@name' => $assignee->getDisplayName()]),
+        default => t('Assign to me'),
+      },
+      $mine ? 'bi-person-dash' : 'bi-person-plus'
+    );
   }
   return $actions;
 }
@@ -2107,6 +2120,8 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'single_app_tags' => $singleAppTags,
     'review' => $review,
     'progress' => $progress,
+    // Reviewers only: who is reviewing this repo (appverse-planning#33).
+    'assignee' => $isAdmin ? (\Drupal::service('ood_software.review_assignment')->assignee($repo)?->getDisplayName() ?? '') : NULL,
     'progress_sentence' => $isAdmin ? '' : \Drupal\ood_software\Service\ReviewProgress::contributorSentence($steps['contributor']),
     'apps' => $apps,
   ];
@@ -2284,10 +2299,12 @@ function ood_software_preprocess_views_view(array &$variables): void {
 /**
  * Implements hook_views_data_alter().
  *
- * The manage-repos "Software used" exposed filter gets the wrong filter plugin
- * from core's field-storage discovery: its target_id is an integer column, so
- * it is typed as a numeric filter. Override it to entity_reference so it
- * renders as an autocomplete bound to appverse_software titles.
+ * Adds the manage-repos "Assigned" filter (assigned to me / unassigned).
+ *
+ * And the manage-repos "Software used" exposed filter gets the wrong filter
+ * plugin from core's field-storage discovery: its target_id is an integer
+ * column, so it is typed as a numeric filter. Override it to entity_reference
+ * so it renders as an autocomplete bound to appverse_software titles.
  *
  * @param array<string, mixed> $data
  */
@@ -2296,5 +2313,13 @@ function ood_software_views_data_alter(array &$data): void {
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['id'] = 'entity_reference';
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['entity_type'] = 'node';
   }
+  // The manage-repos "Assigned" filter: assigned to me / unassigned
+  // (appverse-planning#33; the AssignedReviewer filter plugin).
+  $data['node_field_data']['ood_assigned_reviewer'] = [
+    'title' => t('Assigned reviewer (me or unassigned)'),
+    'help' => t('Repos assigned to the current user, or to no one.'),
+    'real field' => 'nid',
+    'filter' => ['id' => 'ood_software_assigned_reviewer'],
+  ];
 }
 

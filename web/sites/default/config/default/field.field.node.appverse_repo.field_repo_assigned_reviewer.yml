@@ -1,17 +1,17 @@
-uuid: a4cca97f-fd24-4d69-b209-ce47b559e6f4
+uuid: d196cfee-7606-40b8-8679-d430b6890342
 langcode: en
 status: true
 dependencies:
   config:
-    - field.storage.node.field_arv_assigned_reviewer
-    - node.type.appverse_review
+    - field.storage.node.field_repo_assigned_reviewer
+    - node.type.appverse_repo
     - user.role.appverse_pm
-id: node.appverse_review.field_arv_assigned_reviewer
-field_name: field_arv_assigned_reviewer
+id: node.appverse_repo.field_repo_assigned_reviewer
+field_name: field_repo_assigned_reviewer
 entity_type: node
-bundle: appverse_review
+bundle: appverse_repo
 label: 'Assigned reviewer'
-description: 'The reviewer responsible for curating this review.'
+description: 'The reviewer responsible for this repo''s review, across rounds. Set from the hub and the review page.'
 required: false
 translatable: false
 default_value: {  }

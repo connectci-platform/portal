@@ -435,6 +435,11 @@ header:has(> .appverse-hub-add-repo) {
   margin: 0.5rem 0 0.25rem;
   max-width: 44rem;
 }
+.appverse-hub-card__assignee {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #545860;
+}
 .appverse-hub-card__progress-sentence {
   margin: 0 0 0.35rem;
   font-size: 0.875rem;

@@ -143,12 +143,6 @@ resourceFields:
     publicName: field_arv_run_meta
     enhancer:
       id: ''
-  field_arv_assigned_reviewer:
-    disabled: false
-    fieldName: field_arv_assigned_reviewer
-    publicName: field_arv_assigned_reviewer
-    enhancer:
-      id: ''
   field_arv_prior_review:
     disabled: false
     fieldName: field_arv_prior_review

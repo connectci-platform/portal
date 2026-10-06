@@ -105,6 +105,7 @@
           <i class="bi bi-clipboard-check" aria-hidden="true"></i>
         </a>
       {% endif %}
+      {% if hub.actions.assign %}{{ hub.actions.assign }}{% endif %}
       {% if hub.review.run_review_action %}{{ hub.review.run_review_action }}{% endif %}
       {% if hub.actions.delete %}
         <a href="{{ hub.actions.delete.url }}" class="appverse-hub-card__icon-btn appverse-hub-card__icon-btn--danger"
@@ -122,6 +123,12 @@
       <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
     {% endif %}
     {{ hub.progress }}
+    {% if hub.assignee is not null %}
+      <p class="appverse-hub-card__assignee">
+        <i class="bi bi-person" aria-hidden="true"></i>
+        {{ 'Reviewer:'|t }} {{ hub.assignee ?: 'Unassigned'|t }}
+      </p>
+    {% endif %}
   </div>
 
   {# Repo-level discovery tags (shared `tags` vocab), on their own full-width

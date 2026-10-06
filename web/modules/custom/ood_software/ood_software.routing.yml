@@ -105,6 +105,21 @@ ood_software.review_page:
     _entity_access: 'node.view'
     node: \d+
 
+ood_software.repo_assign_me:
+  path: '/appverse/repo/{node}/assign-me'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::assignMe'
+    _title: 'Assign to me'
+  methods: [POST]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
 ood_software.repo_run_review:
   path: '/appverse/repo/{node}/run-review'
   defaults:

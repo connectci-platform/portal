@@ -12,6 +12,12 @@ disabled: false
 path: node/appverse_repo
 resourceType: node--appverse_repo
 resourceFields:
+  field_repo_assigned_reviewer:
+    disabled: true
+    fieldName: field_repo_assigned_reviewer
+    publicName: field_repo_assigned_reviewer
+    enhancer:
+      id: ''
   field_repo_description:
     disabled: false
     fieldName: field_repo_description
