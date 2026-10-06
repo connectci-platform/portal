@@ -4,10 +4,13 @@ namespace Drupal\ood_software\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\content_moderation\ModerationInformationInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 
 /**
@@ -22,9 +25,9 @@ use Drupal\node\NodeInterface;
  * - With no app accepted, the repo goes back to the contributor or, when every
  *   app is declined, is declined; a live repo takes its apps with it.
  * Every decision records decision_sent_at / _by, which also opens the review
- * to the repo's owner. Repo transitions go through ood_software_node_update(),
- * so today's notification emails fire as before until the decision emails
- * (#32) replace them; app transitions send none.
+ * to the repo's owner. The repo's own transition emails are suppressed: the
+ * owner gets one decision email for the whole repo (#32; DecisionEmail), and
+ * a "now live" one when Publish puts something in the catalog.
  */
 final class ReviewDecisionApplier {
 
@@ -37,6 +40,9 @@ final class ReviewDecisionApplier {
     protected MessengerInterface $messenger,
     protected RepoMemberApps $repoMemberApps,
     protected ModerationInformationInterface $moderationInformation,
+    protected RepoNotificationService $notifier,
+    protected ConfigFactoryInterface $configFactory,
+    protected LoggerChannelFactoryInterface $loggerFactory,
   ) {}
 
   /**
@@ -52,6 +58,8 @@ final class ReviewDecisionApplier {
     }
     $this->saveRevision($review, sprintf('Decision sent (%s) by %s', $overall, $this->currentUser->getDisplayName()));
 
+    $repo = $review->get('field_arv_repo')->entity;
+    $wasLive = $repo instanceof NodeInterface && $repo->isPublished();
     $plan = ReviewDecision::plan($decisions);
     $apps = $this->appNodes($review);
     // Apps first, so a repo leaving the catalog takes only the apps still
@@ -69,7 +77,6 @@ final class ReviewDecisionApplier {
       }
     }
 
-    $repo = $review->get('field_arv_repo')->entity;
     if ($repo instanceof NodeInterface) {
       match ($plan['repo']) {
         'publish' => $this->publishNode($repo, $response !== '' ? $response : 'Published: accepted on the review.'),
@@ -81,6 +88,17 @@ final class ReviewDecisionApplier {
     if ($plan['review'] === 'publish') {
       $this->publishReview($review);
     }
+
+    if ($repo instanceof NodeInterface) {
+      $names = $this->appNames($review);
+      $byName = [];
+      foreach ($decisions as $pid => $decision) {
+        $byName[$names[$pid]] = $decision;
+      }
+      $this->email($review, $repo, 'review_decision', DecisionEmail::decision(
+        $this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo),
+      ));
+    }
   }
 
   /**
@@ -89,16 +107,75 @@ final class ReviewDecisionApplier {
    */
   public function publish(NodeInterface $review): void {
     $decisions = $this->appDecisions($review);
+    $published = [];
     foreach ($this->appNodes($review) as $pid => $app) {
       if (in_array($decisions[$pid] ?? NULL, ['accept', 'accept_with_suggestions'], TRUE) && !$app->isPublished()) {
         $this->publishNode($app, 'Published from the review.');
+        $published[] = $app->label();
       }
     }
     $repo = $review->get('field_arv_repo')->entity;
-    if ($repo instanceof NodeInterface && !$repo->isPublished()) {
+    $repoWentLive = $repo instanceof NodeInterface && !$repo->isPublished();
+    if ($repoWentLive) {
       $this->publishNode($repo, 'Published from the review.');
     }
     $this->publishReview($review);
+
+    // Only when something entered the catalog: publishing just the review of
+    // a live repo is not news to the contributor.
+    if ($repo instanceof NodeInterface && ($repoWentLive || $published !== [])) {
+      $this->email($review, $repo, 'review_published', DecisionEmail::nowLive(
+        $this->siteName(), $repo->label(), $published, count($decisions) > 1, $this->links($review, $repo),
+      ));
+    }
+  }
+
+  /**
+   * Verdict paragraph id => the app's name.
+   */
+  public function appNames(NodeInterface $review): array {
+    $names = [];
+    foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $app = $verdict->get('field_rvv_app_ref')->entity;
+      $names[(string) $verdict->id()] = $app ? $app->label() : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
+    }
+    return $names;
+  }
+
+  /**
+   * Sends a review email to the repo's owner and records that it went.
+   */
+  protected function email(NodeInterface $review, NodeInterface $repo, string $key, array $email): void {
+    $sent = $this->notifier->sendReviewEmail($repo, $key, $email);
+    $owner = $repo->getOwner();
+    $this->loggerFactory->get('ood_software')->info('Review @rid: @key email "@subject" @result to the owner of repo @repo.', [
+      '@rid' => $review->id(),
+      '@key' => $key,
+      '@subject' => $email['subject'],
+      '@result' => $sent ? 'sent' : 'NOT sent',
+      '@repo' => $repo->id(),
+    ]);
+    if ($sent) {
+      $this->messenger->addStatus($this->t('Emailed @name.', ['@name' => $owner ? $owner->getDisplayName() : $this->t('the contributor')]));
+    }
+    else {
+      $this->messenger->addWarning($this->t('The email to the contributor could not be sent; see the site log.'));
+    }
+  }
+
+  protected function siteName(): string {
+    return (string) $this->configFactory->get('system.site')->get('name');
+  }
+
+  /**
+   * The links a review email carries.
+   */
+  protected function links(NodeInterface $review, NodeInterface $repo): array {
+    return [
+      'review' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()], ['absolute' => TRUE])->toString(),
+      'hub' => Url::fromUserInput('/user/' . $repo->getOwnerId() . '/my-appverse', ['absolute' => TRUE])->toString(),
+      'catalog' => _ood_software_repo_catalog_url($repo),
+    ];
   }
 
   /**
@@ -154,6 +231,8 @@ final class ReviewDecisionApplier {
       return;
     }
     $fresh->set('moderation_state', 'published');
+    // The decision email replaces the repo's "published" email.
+    $fresh->_ood_software_suppress_notifications = TRUE;
     $this->saveRevision($fresh, $log);
     $this->messenger->addStatus($this->t('Published @title.', ['@title' => $fresh->label()]));
   }
@@ -176,8 +255,9 @@ final class ReviewDecisionApplier {
 
   /**
    * Moves the repo to needs_adjustment or declined, as the hub's request
-   * changes does: the response becomes the revision log and today's
-   * notification comment, and a live repo's apps are unpublished with it.
+   * changes does: the response becomes the revision log (the hub card's
+   * feedback), and a live repo's apps are unpublished with it. The decision
+   * email replaces the transition's own.
    */
   protected function moveRepo(NodeInterface $repo, string $state, string $response, string $cascadeLog): void {
     // save() does not validate the transition, so check it here: a repo
@@ -195,8 +275,7 @@ final class ReviewDecisionApplier {
     $repo->set('moderation_state', $state);
     $repo->setRevisionLogMessage($response);
     $repo->setNewRevision(TRUE);
-    // Read by ood_software_node_update() and passed to the notifier.
-    $repo->_ood_software_review_comment = $response;
+    $repo->_ood_software_suppress_notifications = TRUE;
     $repo->save();
     if ($wasPublished) {
       $count = $this->repoMemberApps->cascadeModeration($repo, 'draft', [], $cascadeLog, TRUE);

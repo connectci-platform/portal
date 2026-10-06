@@ -31,6 +31,10 @@ use Psr\Log\LoggerInterface;
  *
  * App-level state changes are NOT notified — this is intentional to avoid
  * a 50-app cascade-publish triggering 50 emails for a single admin action.
+ *
+ * The review page's decisions do not go through these transitions: the
+ * decision applier suppresses them and sends one composed email per decision
+ * instead (sendReviewEmail(); appverse-planning#32).
  */
 class RepoNotificationService {
 
@@ -78,6 +82,21 @@ class RepoNotificationService {
     elseif ($newState === 'published' && $previousState !== 'published') {
       $this->sendToOwner($node, 'published', $extras);
     }
+  }
+
+  /**
+   * Email the repo's owner a composed review email.
+   *
+   * @param string $key
+   *   review_decision or review_published (see ood_software_mail()).
+   * @param array{subject: string, blocks: array} $email
+   *   From DecisionEmail.
+   *
+   * @return bool
+   *   Whether the mail system accepted it.
+   */
+  public function sendReviewEmail(NodeInterface $repo, string $key, array $email): bool {
+    return $this->sendToOwner($repo, $key, ['email' => $email]);
   }
 
   /**
@@ -147,7 +166,7 @@ class RepoNotificationService {
    *
    * @param array<string, mixed> $extras
    */
-  protected function sendToOwner(NodeInterface $node, string $key, array $extras): void {
+  protected function sendToOwner(NodeInterface $node, string $key, array $extras): bool {
     $owner = $node->getOwner();
     // getOwner() is typed non-nullable, but at runtime a node whose owner
     // account was deleted resolves to null. Without this guard the deleted-owner
@@ -159,9 +178,9 @@ class RepoNotificationService {
         '@id' => $node->id(),
         '@key' => $key,
       ]);
-      return;
+      return FALSE;
     }
-    $this->dispatch($key, $owner->getEmail(), $owner->getPreferredLangcode(), $node, $extras);
+    return $this->dispatch($key, $owner->getEmail(), $owner->getPreferredLangcode(), $node, $extras);
   }
 
   /**
@@ -169,10 +188,11 @@ class RepoNotificationService {
    *
    * @param array<string, mixed> $extras
    */
-  protected function dispatch(string $key, string $to, string $langcode, NodeInterface $node, array $extras): void {
+  protected function dispatch(string $key, string $to, string $langcode, NodeInterface $node, array $extras): bool {
     $params = [
       'node' => $node,
     ] + $extras;
-    $this->mailManager->mail('ood_software', $key, $to, $langcode, $params);
+    $result = $this->mailManager->mail('ood_software', $key, $to, $langcode, $params);
+    return !empty($result['result']);
   }
 }

@@ -41,6 +41,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
+    // ood_software.review_seeder depends on file.repository.
+    'file',
     'ood_software',
   ];
 

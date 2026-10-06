@@ -56,11 +56,14 @@ class ReviewDecisionTest extends UnitTestCase {
     $this->assertStringContainsString('Unpublished', ReviewDecision::effects('request_changes', TRUE)[0][1]);
     $this->assertStringNotContainsString('Unpublished', ReviewDecision::effects('request_changes', FALSE)[0][1]);
     $this->assertStringContainsString('Publish button', ReviewDecision::effects('accept_with_suggestions', FALSE)[4][1]);
-    // Accept on a live repo changes nothing in the catalog, so no email.
+    // Accept on a live repo changes nothing in the catalog; the email says so.
     $this->assertStringContainsString('Published', ReviewDecision::effects('accept', FALSE)[0][1]);
     $this->assertStringContainsString('Stays live', ReviewDecision::effects('accept', TRUE)[0][1]);
-    $this->assertStringStartsWith('None', ReviewDecision::effects('accept', TRUE)[2][1]);
-    $this->assertStringStartsNotWith('None', ReviewDecision::effects('accept', FALSE)[2][1]);
+    $this->assertStringContainsString('stays live', ReviewDecision::effects('accept', TRUE)[2][1]);
+    $this->assertStringContainsString('published', ReviewDecision::effects('accept', FALSE)[2][1]);
+    // Accept with suggestions on a new repo: a second email when published.
+    $this->assertStringContainsString('Another goes out', ReviewDecision::effects('accept_with_suggestions', FALSE)[2][1]);
+    $this->assertStringNotContainsString('Another goes out', ReviewDecision::effects('accept_with_suggestions', TRUE)[2][1]);
     $this->assertSame([], ReviewDecision::effects('bogus', FALSE));
   }
 
@@ -109,7 +112,8 @@ class ReviewDecisionTest extends UnitTestCase {
     $rows = array_column(ReviewDecision::effectsFor(['A' => 'accept_with_suggestions', 'B' => 'reject'], TRUE), 1, 0);
     $this->assertStringStartsWith('Stays live', $rows['Repo']);
     $this->assertStringStartsWith('Not public yet', $rows['Review']);
-    $this->assertStringStartsWith('None yet', $rows['Email']);
+    $this->assertStringStartsWith('One email', $rows['Email']);
+    $this->assertStringNotContainsString('Another goes out', $rows['Email'], 'a live repo: nothing new to publish');
     $this->assertStringContainsString('Publish button', $rows['Next step']);
   }
 

@@ -128,11 +128,8 @@ final class ReviewDecision {
         $any('accept_with_suggestions') => 'Not public yet; it is published when you use Publish.',
         default => 'Not public.',
       }],
-      ['Email', match (TRUE) {
-        $plan['repo'] === 'publish' && !$repoPublished => 'The contributor is told the repo is published. That email does not list the apps sent back yet; your response is on the review.',
-        $plan['repo'] === 'needs_adjustment' => 'The contributor gets your response.',
-        default => 'None yet. The contributor sees the review and your response here.',
-      }],
+      ['Email', 'One email to the contributor, listing each app\'s decision, with your response.'
+        . ($any('accept_with_suggestions') && !$repoPublished ? ' Another goes out when you publish.' : '')],
       ['Contributor', 'Can read the review and your response.' . ($any('request_changes') ? ' Fixes the apps sent back and re-submits them.' : '')],
       ['Next step', $next !== [] ? implode(' ', $next) : 'None.'],
     ];
@@ -149,16 +146,15 @@ final class ReviewDecision {
    */
   public static function effects(string $decision, bool $repoPublished): array {
     return match ($decision) {
-      // Email goes out only when the repo changes state (the notifier on
-      // repo transitions); decision emails of their own are #32.
+      // Every decision sends one email for the repo (#32; DecisionEmail).
       'accept' => [
         ['Repo', $repoPublished
           ? 'Stays live in the AppVerse catalog.'
           : 'Published, with its apps, in the AppVerse catalog.'],
         ['Review', 'Published: the public sees its summary.'],
         ['Email', $repoPublished
-          ? 'None: the repo was already live. The contributor sees the review here.'
-          : 'The contributor is told the repo is published.'],
+          ? 'The contributor is told it is accepted and stays live.'
+          : 'The contributor is told the repo is accepted and published.'],
         ['Contributor', 'Can read the review and your response.'],
         ['Next step', 'None: the repo is live.'],
       ],
@@ -167,7 +163,9 @@ final class ReviewDecision {
           ? 'Stays live; nothing changes in the catalog until you publish this review.'
           : 'Stays in the queue as Ready to publish. A new app is not public yet.'],
         ['Review', 'Not public yet.'],
-        ['Email', 'None yet. The contributor sees the review and your suggestions here.'],
+        ['Email', $repoPublished
+          ? 'The contributor gets your suggestions and is told it is accepted.'
+          : 'The contributor gets your suggestions and is told it is accepted. Another goes out when you publish.'],
         ['Contributor', 'Can read the review and your suggestions. The public cannot yet.'],
         ['Next step', 'A Publish button stays at the top of this review until you use it.'],
       ],

@@ -109,12 +109,7 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
    * Verdict paragraph id => the app's name.
    */
   protected function appNames(): array {
-    $names = [];
-    foreach ($this->review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      $app = $verdict->get('field_rvv_app_ref')->entity;
-      $names[(string) $verdict->id()] = $app ? $app->label() : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
-    }
-    return $names;
+    return $this->applier->appNames($this->review);
   }
 
   public function getQuestion() {

@@ -1298,6 +1298,27 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       ]);
       $message['body'][] = t('<p>View it in the catalog: <a href=":url">:url</a></p>', [':url' => $catalog_link]);
       break;
+
+    // The review page's decision email and the "now live" email after its
+    // Publish (appverse-planning#32), composed by DecisionEmail.
+    case 'review_decision':
+    case 'review_published':
+      $email = $params['email'] ?? [];
+      $message['subject'] = (string) ($email['subject'] ?? '');
+      foreach ($email['blocks'] ?? [] as $block) {
+        $message['body'][] = match ($block[0]) {
+          'p' => Markup::create('<p>' . Html::escape($block[1]) . '</p>'),
+          // The response keeps its own line breaks.
+          'response' => Markup::create('<blockquote><p>' . nl2br(Html::escape($block[1])) . '</p></blockquote>'),
+          'apps' => Markup::create('<ul>' . implode('', array_map(
+            static fn ($app, $label) => '<li>' . Html::escape((string) $app) . ': <strong>' . Html::escape((string) $label) . '</strong></li>',
+            array_keys($block[1]), $block[1],
+          )) . '</ul>'),
+          'link' => t('<p>@label: <a href=":url">:url</a></p>', ['@label' => $block[1], ':url' => $block[2]]),
+          default => '',
+        };
+      }
+      break;
   }
 }
 

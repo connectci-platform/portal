@@ -83,7 +83,7 @@ services:
     class: Drupal\ood_software\Service\RepoProgress
     arguments: ['@entity_type.manager']
   # Carries out a review's decision on the review, its repo and its apps
-  # (appverse-planning#29, #30).
+  # (appverse-planning#29, #30, #32).
   ood_software.review_decision_applier:
     class: Drupal\ood_software\Service\ReviewDecisionApplier
-    arguments: ['@entity_type.manager', '@current_user', '@datetime.time', '@messenger', '@ood_software.repo_member_apps', '@content_moderation.moderation_information']
+    arguments: ['@entity_type.manager', '@current_user', '@datetime.time', '@messenger', '@ood_software.repo_member_apps', '@content_moderation.moderation_information', '@ood_software.repo_notifier', '@config.factory', '@logger.factory']
