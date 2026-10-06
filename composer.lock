@@ -798,7 +798,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/webform_submission_search_api.git",
-                "reference": "7bc877460c4c423973d97c2ebc844ad8d30ce6c1"
+                "reference": "9104cb0f2302aca0aa051cb5c5663fcc5f5ac6a4"
             },
             "require": {
                 "drupal/search_api": "^1.3",
@@ -822,7 +822,7 @@
                 "issues": "https://github.com/connectci-platform/webform_submission_search_api/issues",
                 "source": "https://github.com/connectci-platform/webform_submission_search_api"
             },
-            "time": "2026-10-01T16:25:35+00:00"
+            "time": "2026-10-06T15:51:26+00:00"
         },
         {
             "name": "consolidation/annotated-command",
