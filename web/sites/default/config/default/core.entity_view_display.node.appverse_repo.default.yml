@@ -7,6 +7,7 @@ dependencies:
     - field.field.node.appverse_repo.field_repo_description
     - field.field.node.appverse_repo.field_repo_docs_url
     - field.field.node.appverse_repo.field_repo_last_commit
+    - field.field.node.appverse_repo.field_repo_last_release
     - field.field.node.appverse_repo.field_repo_last_synced
     - field.field.node.appverse_repo.field_repo_maintainer_name
     - field.field.node.appverse_repo.field_repo_maintainer_url
@@ -142,6 +143,7 @@ content:
 hidden:
   field_repo_assigned_reviewer: true
   field_repo_last_commit: true
+  field_repo_last_release: true
   field_repo_related: true
   field_repo_shape: true
   field_repo_shared_paths: true

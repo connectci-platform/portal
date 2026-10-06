@@ -77,6 +77,10 @@ services:
     tags:
       - { name: event_subscriber }
 
+  # Re-reviews a listed repo on a new GitHub release (appverse-planning#34).
+  ood_software.release_watcher:
+    class: Drupal\ood_software\Service\ReleaseWatcher
+    arguments: ['@entity_type.manager', '@ood_software.review_dispatcher', '@logger.factory']
   # Who reviews a repo (appverse-planning#33).
   ood_software.review_assignment:
     class: Drupal\ood_software\Service\ReviewAssignment

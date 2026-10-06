@@ -160,6 +160,12 @@
       {% if form['#progress_hint'] %}<p class="arv-progress-hint">{{ form['#progress_hint'] }}</p>{% endif %}
     </div>
   {% endif %}
+  {% if page.withdrawn %}
+    <div class="arv-superseded">
+      {{ 'The contributor withdrew this submission on @at.'|t({'@at': page.withdrawn}) }}
+      {% if can_edit %}<span class="arv-superseded-note">{{ 'There is nothing to decide unless they re-submit, which starts a new review.'|t }}</span>{% endif %}
+    </div>
+  {% endif %}
   {% if page.superseded_by %}
     <div class="arv-superseded">
       {{ 'A newer review of this repo exists'|t }} ({{ page.superseded_by.label }}).

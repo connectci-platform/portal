@@ -153,7 +153,7 @@ class AppverseReviewService {
    * @return bool
    *   TRUE when GitHub accepted the dispatch.
    */
-  public function dispatchForNode(NodeInterface $node, ?string $model = NULL, ?string $aspectsOverride = NULL): bool {
+  public function dispatchForNode(NodeInterface $node, ?string $model = NULL, ?string $aspectsOverride = NULL, ?string $ref = NULL): bool {
     $repoUrl = $this->extractRepoUrl($node);
     if ($repoUrl === NULL) {
       $this->logger->warning('Cannot dispatch review for repo node @nid: no field_repo_url value.', [
@@ -173,11 +173,48 @@ class AppverseReviewService {
     // from the node when the run is polled for.
     $dispatchedAt = $this->time->getRequestTime();
     $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
-    if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride)) {
+    if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride, $ref)) {
       return FALSE;
     }
     $this->recordDispatch($node, $dispatchedAt);
     return TRUE;
+  }
+
+  /**
+   * The tag of a repo's latest GitHub release.
+   *
+   * @return string|false|null
+   *   The tag; NULL when the repo has no release (or GitHub has no such
+   *   repo); FALSE when GitHub could not be asked, so the caller changes
+   *   nothing.
+   */
+  public function latestRelease(NodeInterface $repo): string|false|null {
+    $url = $this->extractRepoUrl($repo);
+    $ownerRepo = $url !== NULL ? $this->parseOwnerRepo($url) : NULL;
+    $token = $this->getToken();
+    if ($ownerRepo === NULL || $token === NULL) {
+      return FALSE;
+    }
+    try {
+      $response = $this->httpClient->get(sprintf('https://api.github.com/repos/%s/releases/latest', $ownerRepo), [
+        'headers' => $this->githubHeaders($token),
+        'http_errors' => FALSE,
+      ]);
+    }
+    catch (\Throwable $e) {
+      $this->logger->warning('Release check for @repo failed: @msg', ['@repo' => $ownerRepo, '@msg' => $e->getMessage()]);
+      return FALSE;
+    }
+    $status = $response->getStatusCode();
+    if ($status === 404) {
+      return NULL;
+    }
+    if ($status !== 200) {
+      $this->logger->warning('Release check for @repo: GitHub answered @status.', ['@repo' => $ownerRepo, '@status' => $status]);
+      return FALSE;
+    }
+    $tag = json_decode((string) $response->getBody(), TRUE)['tag_name'] ?? NULL;
+    return is_string($tag) && $tag !== '' ? $tag : NULL;
   }
 
   /**
@@ -274,11 +311,13 @@ class AppverseReviewService {
    * @param string $model
    *   The workflow's model input. NULL takes this environment's model from
    *   the ood_software.review_model setting (see reviewModel()).
+   * @param string|null $ref
+   *   The branch or tag to review; NULL reviews the default branch.
    *
    * @return bool
    *   TRUE if the dispatch succeeded (HTTP 204), FALSE otherwise.
    */
-  public function dispatch(string $targetRepo, ?string $model = NULL, string $correlationId = '', ?string $aspectsOverride = NULL): bool {
+  public function dispatch(string $targetRepo, ?string $model = NULL, string $correlationId = '', ?string $aspectsOverride = NULL, ?string $ref = NULL): bool {
     $model = $model ?? $this->reviewModel();
     // On non-production environments, only dispatch dry-run reviews to
     // avoid spending API credits on dev/staging test transitions.
@@ -316,7 +355,9 @@ class AppverseReviewService {
           'ref' => self::WORKFLOW_REF,
           'inputs' => [
             'target_repo' => $targetRepo,
-            'target_branch' => '',
+            // A branch or tag to review; empty is the default branch. A
+            // new release is reviewed at its tag (ReleaseWatcher).
+            'target_branch' => $ref ?? '',
             'review_aspects' => $aspects,
             'model' => $model,
             'correlation_id' => $correlationId,

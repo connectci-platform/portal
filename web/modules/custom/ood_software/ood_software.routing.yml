@@ -105,6 +105,18 @@ ood_software.review_page:
     _entity_access: 'node.view'
     node: \d+
 
+ood_software.repo_withdraw:
+  path: '/appverse/repo/{node}/withdraw'
+  defaults:
+    _form: '\Drupal\ood_software\Form\WithdrawConfirmForm'
+    _title: 'Withdraw from review'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+
 ood_software.repo_assign_me:
   path: '/appverse/repo/{node}/assign-me'
   defaults:

@@ -303,7 +303,7 @@ final class ReviewPageForm extends FormBase {
     // then confirms on a page listing what the decision will cause. Not on a
     // superseded review (a newer one of the same repo exists; deciding on
     // stale findings is the wrong review), and not once a decision is sent.
-    if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by'])) {
+    if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by']) && !$page['withdrawn']) {
       $form['actions']['send_decision'] = [
         '#type' => 'submit',
         '#value' => $this->t('Send decision…'),
@@ -494,6 +494,9 @@ final class ReviewPageForm extends FormBase {
       'history' => $history,
       'superseded_by' => $history['newest'] ?? NULL,
       'decision' => $this->decisionInfo($node),
+      // The contributor withdrew this round (appverse-planning#34).
+      'withdrawn' => $node->hasField('field_arv_withdrawn_at') && !$node->get('field_arv_withdrawn_at')->isEmpty()
+        ? $this->formatDate((int) $node->get('field_arv_withdrawn_at')->value, 'medium') : NULL,
       'report_html' => $reportHtml,
       'report_pdf' => $this->fileUrl($node, 'field_arv_report_pdf'),
       'recommendation' => $node->get('field_arv_recommendation')->value,

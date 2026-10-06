@@ -197,6 +197,12 @@ resourceFields:
     publicName: field_arv_internal_notes
     enhancer:
       id: ''
+  field_arv_withdrawn_at:
+    disabled: true
+    fieldName: field_arv_withdrawn_at
+    publicName: field_arv_withdrawn_at
+    enhancer:
+      id: ''
   field_arv_decision_sent_at:
     disabled: true
     fieldName: field_arv_decision_sent_at

@@ -18,6 +18,12 @@ resourceFields:
     publicName: field_repo_assigned_reviewer
     enhancer:
       id: ''
+  field_repo_last_release:
+    disabled: true
+    fieldName: field_repo_last_release
+    publicName: field_repo_last_release
+    enhancer:
+      id: ''
   field_repo_description:
     disabled: false
     fieldName: field_repo_description

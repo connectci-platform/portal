@@ -1778,7 +1778,12 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   // app's editorial state.
   $runReviewAction = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
-    $label = $reviewStatus === NULL ? t('Start review') : t('Start review again');
+    $label = match ($reviewStatus) {
+      NULL => t('Start review'),
+      // The progress line's "Failed · rerun" (appverse-planning#34).
+      'error' => t('Rerun the AI report'),
+      default => t('Start review again'),
+    };
     if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
@@ -1931,13 +1936,17 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // moves the repo and the review together (appverse-planning#29); the hub's
   // Publish and Request changes would be a second, unrecorded place to act.
   // Repos without a review (legacy, or before a run) keep them.
+  // A repo that has had an AI run counts too, even when the run failed and
+  // seeded no review: a failed AI report is rerun, never decided by hand
+  // (appverse-planning#34).
   $hasReview = (bool) \Drupal::entityQuery('node')
     ->accessCheck(FALSE)
     ->condition('type', 'appverse_review')
     ->condition('field_arv_repo', $id)
     ->range(0, 1)
     ->count()
-    ->execute();
+    ->execute()
+    || ($repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty());
 
   if (!$isAdmin && in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
     $actions['send_for_review'] = _ood_software_hub_action_form(
@@ -1945,6 +1954,12 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
       $state === 'draft' ? t('Send for review') : t('Re-submit'),
       'bi-send', 'primary'
     );
+  }
+  // The contributor withdraws a submission in review, before a decision
+  // (appverse-planning#34).
+  if (!$isAdmin && (int) $repo->getOwnerId() === (int) \Drupal::currentUser()->id()
+    && \Drupal\ood_software\Form\WithdrawConfirmForm::canWithdraw($repo, \Drupal::service('ood_software.repo_progress'))) {
+    $actions['withdraw'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/withdraw', t('Withdraw from review…'), 'bi-arrow-counterclockwise');
   }
   if ($isAdmin && $notPublishedActive && !$hasReview) {
     $actions['publish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/publish/confirm', t('Publish…'), 'bi-check-circle', 'primary');

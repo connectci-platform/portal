@@ -50,6 +50,10 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       $this->messenger()->addWarning($this->t('The decision on this review has already been sent.'));
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
+    if ($node->hasField('field_arv_withdrawn_at') && !$node->get('field_arv_withdrawn_at')->isEmpty()) {
+      $this->messenger()->addWarning($this->t('The contributor withdrew this submission; there is nothing to decide unless they re-submit.'));
+      throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
+    }
     $appDecisions = $this->appDecisions();
     $response = (string) ($node->get('field_arv_contributor_response')->value ?? '');
     // The page offers no choice below an app's floor; this catches one saved

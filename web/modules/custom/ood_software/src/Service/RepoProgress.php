@@ -30,7 +30,8 @@ final class RepoProgress {
    * The newest review is the current round's unless its decision was sent
    * before the repo's latest run was dispatched: then the contributor has
    * re-submitted, and that review belongs to the previous round. The round is
-   * one more than the reviews of earlier rounds that requested changes.
+   * one more than the reviews of earlier rounds that requested changes. A
+   * review the contributor withdrew is never the current one.
    */
   public function facts(NodeInterface $repo): array {
     $storage = $this->entityTypeManager->getStorage('node');
@@ -46,7 +47,9 @@ final class RepoProgress {
     $dispatchedAt = $repo->hasField('field_review_dispatched_at') ? (int) ($repo->get('field_review_dispatched_at')->value ?? 0) : 0;
     $newest = $reviews[0] ?? NULL;
     $newestSentAt = $newest ? (int) ($newest->get('field_arv_decision_sent_at')->value ?? 0) : 0;
-    $current = $newest && !($newestSentAt && $dispatchedAt > $newestSentAt) ? $newest : NULL;
+    // A review the contributor withdrew (appverse-planning#34) is set aside.
+    $withdrawn = $newest && $newest->hasField('field_arv_withdrawn_at') && !$newest->get('field_arv_withdrawn_at')->isEmpty();
+    $current = $newest && !$withdrawn && !($newestSentAt && $dispatchedAt > $newestSentAt) ? $newest : NULL;
 
     $changesRequested = 0;
     foreach ($reviews as $review) {
