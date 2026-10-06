@@ -95,10 +95,19 @@ final class ReviewProgress {
       ? self::step('Submitted', self::DONE, $round > 1 ? "Resubmitted · round $round" : 'Submitted')
       : self::step('Submitted', self::WAITING, 'Not submitted');
 
+    // A repo with no run and no review outside the queue predates reviews
+    // (published, or sent back from the hub, before the review system): its
+    // review steps were never reached. In the queue with no run (a dispatch
+    // that never happened), a reviewer has to start one.
+    $neverReviewed = $run === NULL && $reviewState === NULL && $repoState !== 'ready_for_review';
+
     // 2. AI report.
     $aiDone = $submitted && $run === 'complete';
-    if (!$submitted) {
+    if (!$submitted || $neverReviewed) {
       $ai = self::step('AI report', self::NOT_REACHED, '');
+    }
+    elseif ($run === NULL) {
+      $ai = self::step('AI report', self::CURRENT, 'Not started');
     }
     else {
       $ai = match ($run) {
@@ -140,7 +149,7 @@ final class ReviewProgress {
     // Contributors: AI report and Review fold into "In review", which stays
     // current from submission until a decision is sent, whatever the run is
     // doing; a failed run is a reviewer's to rerun and is never shown.
-    if (!$submitted) {
+    if (!$submitted || $neverReviewed) {
       $inReview = self::step('In review', self::NOT_REACHED, '');
     }
     elseif ($sent) {
@@ -154,6 +163,26 @@ final class ReviewProgress {
       'reviewer' => [$submittedStep, $ai, $review, $decisionStep, $live],
       'contributor' => [$submittedStep, $inReview, $decisionStep, $live],
     ];
+  }
+
+  /**
+   * The sentence on a contributor's hub card, from their four steps.
+   *
+   * "In review. A reviewer will respond by email." for everything from
+   * submission to a decision (the mock); the other steps say what the
+   * contributor does next, if anything.
+   */
+  public static function contributorSentence(array $steps): string {
+    [$submitted, $inReview, $decision, $live] = $steps;
+    return match (TRUE) {
+      $submitted['state'] === self::WAITING => 'Not submitted yet.',
+      $inReview['state'] === self::CURRENT => 'In review. A reviewer will respond by email.',
+      $decision['state'] === self::WAITING => 'Changes requested. Read the review, fix the repo and re-submit.',
+      $decision['state'] === self::FAILED => 'Declined. The review says why.',
+      $live['state'] === self::CURRENT => 'Accepted. A reviewer will publish it.',
+      $live['state'] === self::DONE => 'Live in the AppVerse catalog.',
+      default => '',
+    };
   }
 
   protected static function decisionStep(?string $decision, int $round): array {

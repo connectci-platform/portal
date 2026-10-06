@@ -86,6 +86,50 @@ class ReviewProgressTest extends UnitTestCase {
   }
 
   /**
+   * Repos from before the review system: no run and no review.
+   *
+   * @covers ::steps
+   */
+  public function testNeverReviewed(): void {
+    [$D, $C, $N] = [P::DONE, P::CURRENT, P::NOT_REACHED];
+    // Published before reviews existed: nothing is queued or in review.
+    $steps = P::steps(['repo_state' => 'published', 'run_status' => NULL, 'review_state' => NULL]);
+    $this->assertSame([$D, $N, $N, $N, $D], array_column($steps['reviewer'], 'state'));
+    $this->assertSame([$D, $N, $N, $D], array_column($steps['contributor'], 'state'));
+    $this->assertSame('Live in the AppVerse catalog.', P::contributorSentence($steps['contributor']));
+    // In the queue with no run: a reviewer has to start one.
+    $steps = P::steps(['repo_state' => 'ready_for_review', 'run_status' => NULL, 'review_state' => NULL]);
+    $this->assertSame([$D, $C, $N, $N, $N], array_column($steps['reviewer'], 'state'));
+    $this->assertSame('Not started', $steps['reviewer'][1]['label']);
+    $this->assertSame([$D, $C, $N, $N], array_column($steps['contributor'], 'state'));
+  }
+
+  /**
+   * The contributor's card sentence: "In review…" from submission to a
+   * decision, whatever the AI is doing (situations 2–6 and 8).
+   *
+   * @covers ::contributorSentence
+   */
+  public function testContributorSentence(): void {
+    $expected = [
+      '1 added, not submitted' => 'Not submitted yet.',
+      '2 submitted, AI report queued' => 'In review. A reviewer will respond by email.',
+      '3 AI report running' => 'In review. A reviewer will respond by email.',
+      '4 AI report failed' => 'In review. A reviewer will respond by email.',
+      '5 AI report ready, nobody started' => 'In review. A reviewer will respond by email.',
+      '6 reviewer working' => 'In review. A reviewer will respond by email.',
+      '7 changes requested' => 'Changes requested. Read the review, fix the repo and re-submit.',
+      '8 resubmitted, new AI report' => 'In review. A reviewer will respond by email.',
+      '9 accepted, not yet published' => 'Accepted. A reviewer will publish it.',
+      '10 published' => 'Live in the AppVerse catalog.',
+      '11 declined' => 'Declined. The review says why.',
+    ];
+    foreach (self::situations() as $name => [$facts]) {
+      $this->assertSame($expected[$name], P::contributorSentence(P::steps($facts)['contributor']), $name);
+    }
+  }
+
+  /**
    * A decision on the review that has not been sent does not show: the
    * steps follow the sent decision only.
    *

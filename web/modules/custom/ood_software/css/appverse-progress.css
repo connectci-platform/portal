@@ -1,0 +1,118 @@
+/**
+ * The review progress line (appverse-planning#31): numbered steps on the
+ * review page header, thin segments on the hub card. Colors follow the mock's
+ * legend, in the site palette: done green, current blue ring, waiting on the contributor slate
+ * violet, failed or declined red, not reached grey ring.
+ */
+.arv-progress {
+  --arv-p-done: #00857a;
+  --arv-p-current: #0076af;
+  --arv-p-waiting: #6467a8;
+  --arv-p-failed: #c91235;
+  --arv-p-none: #c9cdd0;
+  --arv-p-muted: #545860;
+  display: flex;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.arv-progress__step {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+}
+
+.arv-progress__name {
+  display: block;
+  font-weight: 600;
+}
+
+.arv-progress__label {
+  display: block;
+  font-size: 0.82em;
+  line-height: 1.3;
+  color: var(--arv-p-muted);
+}
+
+.arv-progress__step.is-done .arv-progress__label { color: var(--arv-p-done); }
+.arv-progress__step.is-current .arv-progress__label { color: var(--arv-p-current); }
+.arv-progress__step.is-waiting .arv-progress__label { color: var(--arv-p-waiting); }
+.arv-progress__step.is-failed .arv-progress__label { color: var(--arv-p-failed); }
+
+/* Steps: a numbered circle, a connector to the next step, name, label. */
+.arv-progress--steps .arv-progress__step {
+  padding-right: 0.75rem;
+}
+
+.arv-progress--steps .arv-progress__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--arv-p-none);
+  background: #fff;
+  color: var(--arv-p-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  position: relative;
+  z-index: 1;
+}
+
+.arv-progress--steps .arv-progress__step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 0.8rem;
+  left: 1.6rem;
+  right: 0;
+  height: 2px;
+  background: var(--arv-p-none);
+}
+
+.arv-progress--steps .arv-progress__step.is-done:not(:last-child)::after {
+  background: var(--arv-p-done);
+}
+
+.arv-progress--steps .is-done .arv-progress__dot { background: var(--arv-p-done); border-color: var(--arv-p-done); color: #fff; }
+.arv-progress--steps .is-current .arv-progress__dot { border-color: var(--arv-p-current); color: var(--arv-p-current); }
+.arv-progress--steps .is-waiting .arv-progress__dot { background: var(--arv-p-waiting); border-color: var(--arv-p-waiting); color: #fff; }
+.arv-progress--steps .is-failed .arv-progress__dot { background: var(--arv-p-failed); border-color: var(--arv-p-failed); color: #fff; }
+
+.arv-progress--steps .is-not-reached .arv-progress__name { color: var(--arv-p-muted); }
+
+/* Bar: one thin segment per step, the name under it. */
+.arv-progress--bar {
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.arv-progress--bar .arv-progress__seg {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--arv-p-none);
+  margin-bottom: 0.25rem;
+}
+
+.arv-progress--bar .arv-progress__name { font-weight: 400; color: var(--arv-p-muted); }
+.arv-progress--bar .is-done .arv-progress__seg { background: var(--arv-p-done); }
+.arv-progress--bar .is-current .arv-progress__seg { background: var(--arv-p-current); }
+.arv-progress--bar .is-waiting .arv-progress__seg { background: var(--arv-p-waiting); }
+.arv-progress--bar .is-failed .arv-progress__seg { background: var(--arv-p-failed); }
+.arv-progress--bar .is-current .arv-progress__name { color: var(--arv-p-current); font-weight: 600; }
+.arv-progress--bar .is-waiting .arv-progress__name { color: var(--arv-p-waiting); font-weight: 600; }
+.arv-progress--bar .is-failed .arv-progress__name { color: var(--arv-p-failed); font-weight: 600; }
+.arv-progress--bar .is-done .arv-progress__name { color: var(--arv-p-done); }
+
+/* Narrow screens: the steps variant stacks its labels under smaller dots. */
+@media (max-width: 36rem) {
+  .arv-progress--steps { font-size: 0.85rem; }
+  .arv-progress--steps .arv-progress__label { display: none; }
+  .arv-progress--steps .arv-progress__step.is-current .arv-progress__label,
+  .arv-progress--steps .arv-progress__step.is-waiting .arv-progress__label,
+  .arv-progress--steps .arv-progress__step.is-failed .arv-progress__label { display: block; }
+}

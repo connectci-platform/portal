@@ -65,28 +65,15 @@
     </div>
 
     <div class="appverse-hub-card__cell appverse-hub-card__cell--status">
-      {# Each badge's title explains it: the editorial badge is where a person
-         is in the process ("Awaiting review" = waiting for a reviewer); the
-         review badges are the automated run's ("Review pending" = run queued). #}
+      {# Where the repo is in review is the progress line below the header
+         (appverse-planning#31); these badges are what it does not show. #}
       {% if hub.unpublished_after_publish %}
         <span class="badge badge-warning badge--hint" title="{{ 'Was published, then unpublished. Only an admin can republish it.'|t }}">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
-      {% else %}
-        <span class="badge badge-{{ hub.status.modifier }}{{ hub.status.description ? ' badge--hint' }}" {% if hub.status.description %}title="{{ hub.status.description }}"{% endif %}>{{ hub.status.label }}</span>
+      {% elseif hub.moderation_state == 'archived' %}
+        <span class="badge badge-{{ hub.status.modifier }} badge--hint" title="{{ hub.status.description }}">{{ hub.status.label }}</span>
       {% endif %}
       {% if hub.has_validation_issues %}
         <span class="badge badge-error badge--hint" title="{{ 'The last sync found problems in appverse.yml or the app files; see the edit page.'|t }}">{{ 'Validation errors'|t }}</span>
-      {% endif %}
-      {% if hub.review.status %}
-        <span class="badge badge-{{ hub.review.status_badge.modifier }} badge--hint"
-              title="{{ hub.review.status_badge.description ?: hub.review.status_badge.label }}">
-          {% if hub.review.status_badge.icon %}<i class="bi {{ hub.review.status_badge.icon }}" aria-hidden="true"></i>{% endif %}
-          {{ hub.review.status_badge.label }}
-        </span>
-        {% if hub.review.recommendation %}
-          <span class="badge badge-{{ hub.review.recommendation_badge.modifier }}{{ hub.review.recommendation_badge.description ? ' badge--hint' }}" {% if hub.review.recommendation_badge.description %}title="{{ hub.review.recommendation_badge.description }}"{% endif %}>
-            {{ hub.review.recommendation_badge.label }}
-          </span>
-        {% endif %}
       {% endif %}
     </div>
 
@@ -127,6 +114,15 @@
       {% endif %}
     </div>
   </header>
+
+  {# The review progress line: five steps with labels for reviewers, four
+     with a sentence for contributors (appverse-planning#31). #}
+  <div class="appverse-hub-card__progress">
+    {% if hub.progress_sentence %}
+      <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
+    {% endif %}
+    {{ hub.progress }}
+  </div>
 
   {# Repo-level discovery tags (shared `tags` vocab), on their own full-width
      row below the header so they wrap freely and don't compete with the

@@ -154,6 +154,12 @@
 
 <div class="arv-page">
   {# No <h1> here: the page title block already renders "Review of …". #}
+  {% if form['#progress'] %}
+    <div class="arv-progress-block">
+      {{ form['#progress'] }}
+      {% if form['#progress_hint'] %}<p class="arv-progress-hint">{{ form['#progress_hint'] }}</p>{% endif %}
+    </div>
+  {% endif %}
   {% if page.superseded_by %}
     <div class="arv-superseded">
       {{ 'A newer review of this repo exists'|t }} ({{ page.superseded_by.label }}).

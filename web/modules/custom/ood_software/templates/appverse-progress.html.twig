@@ -1,0 +1,42 @@
+{#
+/**
+ * @file
+ * A repo's review progress line (appverse-planning#31; mock
+ * review-states-progress-steps.pdf, "Option B · chosen").
+ *
+ * Steps come from ReviewProgress::steps(): five for reviewers, four for
+ * contributors. Each step's state is one of done, current (waiting on a
+ * reviewer or the AI), waiting (on the contributor), failed (or declined),
+ * not_reached.
+ *
+ * @var steps - list of {step, state, label}.
+ * @var variant - 'steps': numbered circles with labels (review page header);
+ *   'bar': thin segments with step names (hub card).
+ * @var labels - whether the bar shows each step's label under its name.
+ */
+#}
+{{ attach_library('ood_software/appverse_progress') }}
+{% set state_text = {
+  done: 'Done'|t,
+  current: 'Current'|t,
+  waiting: 'Waiting on the contributor'|t,
+  failed: 'Failed or declined'|t,
+  not_reached: 'Not reached'|t,
+} %}
+<ol class="arv-progress arv-progress--{{ variant }}" aria-label="{{ 'Review progress'|t }}">
+  {% for s in steps %}
+    <li class="arv-progress__step is-{{ s.state|clean_class }}"{% if s.state in ['current', 'waiting', 'failed'] %} aria-current="step"{% endif %}{% if s.label %} title="{{ s.label }}"{% endif %}>
+      {% if variant == 'steps' %}
+        <span class="arv-progress__dot" aria-hidden="true">{{ loop.index }}</span>
+      {% else %}
+        <span class="arv-progress__seg" aria-hidden="true"></span>
+      {% endif %}
+      <span class="arv-progress__name">{{ s.step|t }}</span>
+      <span class="visually-hidden">: {{ state_text[s.state] }}</span>
+      {# The bar is narrow: a label repeating its step's name ("Live") is dropped. #}
+      {% if s.label and (variant == 'steps' or (labels and s.label != s.step)) %}
+        <span class="arv-progress__label">{{ s.label }}</span>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ol>

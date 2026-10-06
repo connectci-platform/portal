@@ -13,6 +13,7 @@ use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
@@ -88,6 +89,7 @@ final class ReviewPageForm extends FormBase {
     protected TimeInterface $time,
     protected DateFormatterInterface $dateFormatter,
     protected FileUrlGeneratorInterface $fileUrlGenerator,
+    protected RepoProgress $repoProgress,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -97,6 +99,7 @@ final class ReviewPageForm extends FormBase {
       $container->get('datetime.time'),
       $container->get('date.formatter'),
       $container->get('file_url_generator'),
+      $container->get('ood_software.repo_progress'),
     );
   }
 
@@ -143,6 +146,20 @@ final class ReviewPageForm extends FormBase {
     // A reviewer looking at the public view (rather than a visitor) gets a
     // banner leading back to the full page.
     $form['#preview'] = $isReviewer && $mode === self::MODE_PUBLIC;
+    // The repo's progress line (appverse-planning#31): five steps for
+    // reviewers, four for the contributor, none on the public summary. It is
+    // the repo's, so a superseded review shows where the repo is now.
+    if ($mode !== self::MODE_PUBLIC && $repo instanceof NodeInterface) {
+      $steps = $this->repoProgress->steps($repo);
+      $form['#progress'] = [
+        '#theme' => 'appverse_progress',
+        '#steps' => $canEdit ? $steps['reviewer'] : $steps['contributor'],
+        '#variant' => 'steps',
+      ];
+      // The mock's hint: saving is what starts the Review step.
+      $form['#progress_hint'] = $canEdit && ($steps['reviewer'][2]['label'] ?? '') === 'Not started'
+        ? $this->t('Your first save starts the Review step.') : NULL;
+    }
     $form['#tree'] = TRUE;
     // The page differs by permission, by whether the viewer owns the repo,
     // and by ?view=public; a cached copy must never cross those lines.

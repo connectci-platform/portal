@@ -62,6 +62,12 @@ function ood_software_theme(): array {
       'render element' => 'form',
       'template' => 'appverse-review-summary',
     ],
+    // A repo's review progress line (appverse-planning#31), on the hub card
+    // and the review page header.
+    'appverse_progress' => [
+      'variables' => ['steps' => [], 'variant' => 'steps', 'labels' => FALSE],
+      'template' => 'appverse-progress',
+    ],
     // Module-registered suggestion for the my_appverse fields row. Modules do
     // not get views-view-fields--<id> filename autodiscovery the way themes do,
     // so the suggestion must be declared with its base hook to be picked up.
@@ -1701,6 +1707,8 @@ function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
   if ($ownerAccount) {
     $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $ownerAccount->getCacheTags());
   }
+  // The progress line reads the repo's reviews (a new one, a sent decision).
+  $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, ['node_list:appverse_review']);
   return ['tags' => $tags, 'contexts' => ['user.permissions', 'user']];
 }
 
@@ -1727,46 +1735,11 @@ function _ood_software_hub_badge(string $state): array {
 }
 
 /**
- * Maps a review recommendation to a badge label + modifier for the hub card.
- */
-function _ood_software_hub_review_badge(?string $recommendation): array {
-  $map = [
-    'accepted' => ['label' => t('Accepted'), 'modifier' => 'success', 'description' => t('The automated review recommends accepting. A reviewer makes the final decision.')],
-    'accepted_with_suggestions' => ['label' => t('Suggestions'), 'modifier' => 'warning', 'description' => t('The automated review recommends accepting with suggestions. A reviewer makes the final decision.')],
-    'changes_requested' => ['label' => t('Changes needed'), 'modifier' => 'error', 'description' => t('The automated review recommends requesting changes. A reviewer makes the final decision.')],
-    'rejected' => ['label' => t('Rejected'), 'modifier' => 'error', 'description' => t('The automated review recommends rejecting. A reviewer makes the final decision.')],
-  ];
-  if ($recommendation === NULL) {
-    return ['label' => '', 'modifier' => '', 'description' => ''];
-  }
-  return $map[$recommendation] ?? ['label' => t('@r', ['@r' => ucfirst($recommendation)]), 'modifier' => 'muted', 'description' => ''];
-}
-
-/**
- * Maps a review status to a badge label + modifier.
- */
-function _ood_software_hub_review_status_badge(?string $status): array {
-  $map = [
-    'pending' => ['label' => t('Review pending'), 'modifier' => 'muted', 'icon' => 'bi-hourglass-split', 'description' => t('An automated review was started and is waiting for GitHub Actions to pick it up.')],
-    'in_progress' => ['label' => t('Review running'), 'modifier' => 'warning', 'icon' => 'bi-gear-wide-connected', 'description' => t('The automated review is running on GitHub Actions; this usually takes 10–20 minutes.')],
-    'complete' => ['label' => t('Review complete'), 'modifier' => 'success', 'icon' => 'bi-check-circle', 'description' => t('The automated review finished; open it from the review icon on this card.')],
-    'error' => ['label' => t('Review failed'), 'modifier' => 'error', 'icon' => 'bi-exclamation-triangle', 'description' => t('The automated review run failed. Start it again, or check the site log.')],
-  ];
-  if ($status === NULL) {
-    return ['label' => '', 'modifier' => '', 'icon' => '', 'description' => ''];
-  }
-  return $map[$status] ?? ['label' => t('@s', ['@s' => ucfirst($status)]), 'modifier' => 'muted', 'icon' => '', 'description' => ''];
-}
-
-/**
  * Builds the review info block for a hub card.
  */
 function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array {
   $reviewStatus = $repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty()
     ? $repo->get('field_review_status')->value
-    : NULL;
-  $recommendation = $repo->hasField('field_review_recommendation') && !$repo->get('field_review_recommendation')->isEmpty()
-    ? $repo->get('field_review_recommendation')->value
     : NULL;
 
   $reportUrl = NULL;
@@ -1779,8 +1752,9 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
 
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
   // Start review: on every repo an admin can see, whatever its moderation
-  // state, except while a run is already pending or in progress (the badge
-  // says so). The action does not move the app's editorial state.
+  // state, except while a run is already pending or in progress (the
+  // progress line's AI report step says so). The action does not move the
+  // app's editorial state.
   $runReviewAction = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
     $label = $reviewStatus === NULL ? t('Start review') : t('Start review again');
@@ -1803,10 +1777,6 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   }
 
   return [
-    'status' => $reviewStatus,
-    'status_badge' => _ood_software_hub_review_status_badge($reviewStatus),
-    'recommendation' => $recommendation,
-    'recommendation_badge' => _ood_software_hub_review_badge($recommendation),
     'report_url' => $reportUrl,
     'review_url' => $reviewUrl,
     'run_review_action' => $runReviewAction,
@@ -2076,6 +2046,17 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
 
   $review = _ood_software_hub_review_info($repo);
 
+  // The progress line (appverse-planning#31) replaces the editorial, run and
+  // recommendation badges: reviewers get five steps with their labels;
+  // contributors four, with no AI state, and a sentence.
+  $steps = \Drupal::service('ood_software.repo_progress')->steps($repo);
+  $progress = [
+    '#theme' => 'appverse_progress',
+    '#steps' => $isAdmin ? $steps['reviewer'] : $steps['contributor'],
+    '#variant' => 'bar',
+    '#labels' => $isAdmin,
+  ];
+
   return [
     'repo_id' => (int) $repo->id(),
     'title' => $repo->label(),
@@ -2104,6 +2085,8 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'discovery_tags' => $discoveryTags,
     'single_app_tags' => $singleAppTags,
     'review' => $review,
+    'progress' => $progress,
+    'progress_sentence' => $isAdmin ? '' : \Drupal\ood_software\Service\ReviewProgress::contributorSentence($steps['contributor']),
     'apps' => $apps,
   ];
 }

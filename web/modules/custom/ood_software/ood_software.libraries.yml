@@ -15,6 +15,12 @@ appverse_hub:
     component:
       css/appverse-hub.css: {}
 
+appverse_progress:
+  version: 1.x
+  css:
+    component:
+      css/appverse-progress.css: {}
+
 appverse_review:
   version: 1.x
   css:

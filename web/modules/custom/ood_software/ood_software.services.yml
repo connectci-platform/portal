@@ -77,6 +77,11 @@ services:
     tags:
       - { name: event_subscriber }
 
+  # A repo's progress line facts, for the hub card and the review page
+  # (appverse-planning#31).
+  ood_software.repo_progress:
+    class: Drupal\ood_software\Service\RepoProgress
+    arguments: ['@entity_type.manager']
   # Carries out a review's decision on the review, its repo and its apps
   # (appverse-planning#29, #30).
   ood_software.review_decision_applier:

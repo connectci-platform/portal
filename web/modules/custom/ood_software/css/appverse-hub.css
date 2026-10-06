@@ -429,6 +429,17 @@ header:has(> .appverse-hub-add-repo) {
    ----------------------------------------------------------------------------- */
 
 /* Discovery-tag row: full-width, wraps freely below the header grid. */
+/* The review progress line (appverse-planning#31); its own styles are in
+   appverse-progress.css. */
+.appverse-hub-card__progress {
+  margin: 0.5rem 0 0.25rem;
+  max-width: 44rem;
+}
+.appverse-hub-card__progress-sentence {
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+}
+
 .appverse-hub-card__tags {
   display: flex;
   flex-wrap: wrap;
