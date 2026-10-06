@@ -171,7 +171,7 @@ ood_software.repo_request_changes:
       node:
         type: entity:node
   requirements:
-    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminWithoutReviewAccess'
 
 ood_software.create_implementation_tag:
   path: '/appverse/app/{node}/create-implementation-tag'
@@ -194,7 +194,7 @@ ood_software.repo_publish:
       node:
         type: entity:node
   requirements:
-    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminWithoutReviewAccess'
     _csrf_token: 'TRUE'
     _method: POST
 
@@ -245,7 +245,7 @@ ood_software.repo_publish_confirm:
       node:
         type: entity:node
   requirements:
-    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminWithoutReviewAccess'
 ood_software.repo_unpublish_confirm:
   path: '/appverse/repo/{node}/unpublish/confirm'
   defaults:

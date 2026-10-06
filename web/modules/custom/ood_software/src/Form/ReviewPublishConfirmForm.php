@@ -102,11 +102,10 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $form_state->setRedirectUrl($this->getCancelUrl());
-    // The repo can move between building the form and submitting it.
-    $blocker = $this->applier->repoBlocker($this->review);
-    // The applier reports each app and the repo it publishes.
-    if ($blocker !== NULL || !$this->applier->publish($this->review)) {
-      $this->messenger()->addError($blocker ?? $this->t('Nothing was published.'));
+    // The applier reports each app and the repo it publishes, and checks the
+    // repo again, since it can move between building the form and submitting.
+    if (($error = $this->applier->publish($this->review)) !== NULL) {
+      $this->messenger()->addError($error);
       return;
     }
     $this->messenger()->addStatus($this->t('Published the review.'));

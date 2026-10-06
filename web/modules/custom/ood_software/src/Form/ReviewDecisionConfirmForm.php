@@ -53,16 +53,11 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
     }
     $this->review = $node;
-    if (!$node->get('field_arv_decision_sent_at')->isEmpty()) {
-      $this->messenger()->addWarning($this->t('The decision on this review has already been sent.'));
-      throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
-    }
-    if ($node->hasField('field_arv_withdrawn_at') && !$node->get('field_arv_withdrawn_at')->isEmpty()) {
-      $this->messenger()->addWarning($this->t('The contributor withdrew this submission; there is nothing to decide unless they re-submit.'));
-      throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
-    }
-    if (($blocker = $this->applier->repoBlocker($node)) !== NULL) {
-      $this->messenger()->addError($blocker);
+    // Already sent, withdrawn, published, superseded by a newer review, or a
+    // repo no longer awaiting review: the page hides Send decision for these,
+    // and this route can be opened by URL (appverse-planning#50).
+    if (($blocker = $this->applier->decisionBlocker($node)) !== NULL) {
+      $this->messenger()->addWarning($blocker);
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
     $appDecisions = $this->appDecisions();
@@ -173,10 +168,10 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $response = (string) ($this->review->get('field_arv_contributor_response')->value ?? '');
     $form_state->setRedirectUrl($this->getCancelUrl());
-    // The repo can move between building the form and submitting it.
-    $blocker = $this->applier->repoBlocker($this->review);
-    if ($blocker !== NULL || !$this->applier->send($this->review, $response)) {
-      $this->messenger()->addError($blocker ?? $this->t('The decision was not sent.'));
+    // send() checks again under a lock: the repo can move, or a second
+    // submit arrive, between building the form and submitting it.
+    if (($error = $this->applier->send($this->review, $response)) !== NULL) {
+      $this->messenger()->addError($error);
       return;
     }
     $this->messenger()->addStatus($this->mixed

@@ -375,6 +375,26 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
 
 }
 /**
+ * Whether a repo is decided on its review page rather than from the hub.
+ *
+ * True once it has a review, or has had an AI run even when the run failed
+ * and seeded no review: a failed AI report is rerun, never decided by hand
+ * (appverse-planning#34). The hub's Publish and Request changes would be a
+ * second, unrecorded place to act, so the hub hides them and their routes
+ * refuse (#50). Repos without a review (legacy, or before a run) keep them.
+ */
+function _ood_software_repo_has_review(NodeInterface $repo): bool {
+  return (bool) \Drupal::entityQuery('node')
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('field_arv_repo', $repo->id())
+    ->range(0, 1)
+    ->count()
+    ->execute()
+    || ($repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty());
+}
+
+/**
  * Build the preview block for a declared repo.
  *
  * Per-App form fields (Title/Body/AppType/etc.) are hidden client-side
@@ -1971,20 +1991,8 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   $notPublishedActive = in_array($state, ['draft', 'ready_for_review', 'needs_adjustment'], TRUE)
     || (!$published && $state === 'published');
   // A repo with a review is decided on the review page, where the decision
-  // moves the repo and the review together (appverse-planning#29); the hub's
-  // Publish and Request changes would be a second, unrecorded place to act.
-  // Repos without a review (legacy, or before a run) keep them.
-  // A repo that has had an AI run counts too, even when the run failed and
-  // seeded no review: a failed AI report is rerun, never decided by hand
-  // (appverse-planning#34).
-  $hasReview = (bool) \Drupal::entityQuery('node')
-    ->accessCheck(FALSE)
-    ->condition('type', 'appverse_review')
-    ->condition('field_arv_repo', $id)
-    ->range(0, 1)
-    ->count()
-    ->execute()
-    || ($repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty());
+  // moves the repo and the review together (appverse-planning#29).
+  $hasReview = _ood_software_repo_has_review($repo);
 
   if (!$isAdmin && in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
     $actions['send_for_review'] = _ood_software_hub_action_form(

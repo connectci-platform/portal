@@ -22,6 +22,8 @@ final class ReviewDecision {
    * @param array<string, string|null> $appDecisions
    *   App name => its decision (accept, accept_with_suggestions,
    *   request_changes, reject), or NULL when not decided.
+   *
+   * @return array<int, string>
    */
   public static function problems(array $appDecisions, string $response): array {
     $problems = [];
@@ -49,8 +51,10 @@ final class ReviewDecision {
    * back or declined leaves the catalog. With no app accepted, the repo waits
    * for Publish when any app was accepted with suggestions, goes back to the
    * contributor when any app can be fixed, and is declined only when every app
-   * is. An app headed where the repo goes gets no move of its own: the repo's
-   * move takes its live apps with it.
+   * is. Every app makes its own move, also when it goes where the repo goes:
+   * the repo's cascade only takes live apps, and only to draft, which left a
+   * submitted app in ready_for_review under a repo sent back
+   * (appverse-planning#50).
    *
    * @param array<string, string> $appDecisions
    *   App key => its decision.
@@ -71,8 +75,7 @@ final class ReviewDecision {
     };
     $apps = [];
     foreach ($appDecisions as $app => $decision) {
-      $move = self::APP_MOVES[$decision] ?? NULL;
-      $apps[$app] = $move !== 'publish' && $move === $repo ? NULL : $move;
+      $apps[$app] = self::APP_MOVES[$decision] ?? NULL;
     }
     return ['repo' => $repo, 'apps' => $apps, 'review' => $any('accept') ? 'publish' : NULL];
   }
@@ -87,6 +90,8 @@ final class ReviewDecision {
    *
    * @param array<string, string> $appDecisions
    *   App name => its decision.
+   *
+   * @return array<int, array{0: string, 1: string}>
    */
   public static function effectsFor(array $appDecisions, bool $repoPublished): array {
     $distinct = array_values(array_unique(array_values($appDecisions)));

@@ -5,7 +5,9 @@ namespace Drupal\ood_software\Service;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Session\AccountInterface;
@@ -44,7 +46,50 @@ final class ReviewDecisionApplier {
     protected RepoNotificationService $notifier,
     protected ConfigFactoryInterface $configFactory,
     protected LoggerChannelFactoryInterface $loggerFactory,
+    protected Connection $database,
+    protected LockBackendInterface $lock,
   ) {}
+
+  /**
+   * Why a decision cannot be sent on this review now, or NULL when it can.
+   *
+   * The review page offers Send decision only on a current, undecided review.
+   * The confirm route and send() check again, since either can be reached by
+   * URL or by a second submit (appverse-planning#50).
+   */
+  public function decisionBlocker(NodeInterface $review): ?TranslatableMarkup {
+    if (!$review->get('field_arv_decision_sent_at')->isEmpty()) {
+      return $this->t('The decision on this review has already been sent.');
+    }
+    if ($review->hasField('field_arv_withdrawn_at') && !$review->get('field_arv_withdrawn_at')->isEmpty()) {
+      return $this->t('The contributor withdrew this submission; there is nothing to decide unless they re-submit.');
+    }
+    if ($review->hasField('moderation_state') && ($review->get('moderation_state')->value ?? '') === 'published') {
+      return $this->t('This review is already published.');
+    }
+    if ($this->isSuperseded($review)) {
+      return $this->t('A newer review of this repo exists, so this one is out of date. Send the decision on the newer review.');
+    }
+    return $this->repoBlocker($review);
+  }
+
+  /**
+   * Whether a newer review of the same repo exists, as the review page reads it.
+   */
+  protected function isSuperseded(NodeInterface $review): bool {
+    $repo = $review->get('field_arv_repo')->target_id;
+    if (!$repo) {
+      return FALSE;
+    }
+    return (bool) $this->entityTypeManager->getStorage('node')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_review')
+      ->condition('field_arv_repo', $repo)
+      ->condition('created', $review->getCreatedTime(), '>')
+      ->range(0, 1)
+      ->count()
+      ->execute();
+  }
 
   /**
    * Why a decision cannot act on the review's repo now, or NULL when it can.
@@ -74,13 +119,56 @@ final class ReviewDecisionApplier {
   /**
    * Sends the decision: records it and moves the apps, the repo and the review.
    *
-   * @return bool
-   *   FALSE, with nothing changed, when repoBlocker() refuses.
+   * One send at a time per review, re-checked once the lock is held, so a
+   * double submit sends one decision. The moves run in one transaction, so a
+   * failure part way leaves the review undecided rather than decided with the
+   * repo unmoved, and the email goes only once they are committed.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup|null
+   *   Why nothing was sent, or NULL once the decision is sent.
    */
-  public function send(NodeInterface $review, string $response): bool {
-    if ($this->repoBlocker($review) !== NULL) {
-      return FALSE;
+  public function send(NodeInterface $review, string $response): ?TranslatableMarkup {
+    $lock = 'ood_software_review_decision:' . $review->id();
+    if (!$this->lock->acquire($lock)) {
+      return $this->t('A decision on this review is already being sent. Reload the review to see it.');
     }
+    $email = NULL;
+    try {
+      $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($review->id());
+      if (!$fresh instanceof NodeInterface) {
+        return $this->t('The review no longer exists.');
+      }
+      if (($blocker = $this->decisionBlocker($fresh)) !== NULL) {
+        return $blocker;
+      }
+      $transaction = $this->database->startTransaction();
+      try {
+        $email = $this->applyDecision($fresh, $response);
+      }
+      catch (\Throwable $e) {
+        $transaction->rollBack();
+        throw $e;
+      }
+      // Commits.
+      unset($transaction);
+    }
+    finally {
+      $this->lock->release($lock);
+    }
+    if ($email !== NULL) {
+      [$repo, $message] = $email;
+      $this->email($fresh, $repo, 'review_decision', $message);
+    }
+    return NULL;
+  }
+
+  /**
+   * Records the decision and makes its moves.
+   *
+   * @return array{0: \Drupal\node\NodeInterface, 1: array<string, mixed>}|null
+   *   The repo and the decision email to send it, or NULL without a repo.
+   */
+  protected function applyDecision(NodeInterface $review, string $response): ?array {
     $decisions = $this->appDecisions($review);
     $overall = ReviewProgress::strictestDecision(array_values($decisions));
     $review->set('field_arv_decision_sent_at', $this->time->getCurrentTime());
@@ -121,29 +209,29 @@ final class ReviewDecisionApplier {
       $this->publishReview($review);
     }
 
-    if ($repo instanceof NodeInterface) {
-      $names = $this->appNames($review);
-      $byName = [];
-      foreach ($decisions as $pid => $decision) {
-        $byName[$names[$pid]] = $decision;
-      }
-      $this->email($review, $repo, 'review_decision', DecisionEmail::decision(
-        $this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo),
-      ));
+    if (!$repo instanceof NodeInterface) {
+      return NULL;
     }
-    return TRUE;
+    $names = $this->appNames($review);
+    $byName = [];
+    foreach ($decisions as $pid => $decision) {
+      $byName[$names[$pid]] = $decision;
+    }
+    return [$repo, DecisionEmail::decision(
+      $this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo),
+    )];
   }
 
   /**
    * "Publish app and review": publishes every accepted app not yet live, the
    * repo, and the review.
    *
-   * @return bool
-   *   FALSE, with nothing changed, when repoBlocker() refuses.
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup|null
+   *   Why nothing was published, or NULL once it is done.
    */
-  public function publish(NodeInterface $review): bool {
-    if ($this->repoBlocker($review) !== NULL) {
-      return FALSE;
+  public function publish(NodeInterface $review): ?TranslatableMarkup {
+    if (($blocker = $this->repoBlocker($review)) !== NULL) {
+      return $blocker;
     }
     $decisions = $this->appDecisions($review);
     $published = [];
@@ -167,7 +255,7 @@ final class ReviewDecisionApplier {
         $this->siteName(), $repo->label(), $published, count($decisions) > 1, $this->links($review, $repo),
       ));
     }
-    return TRUE;
+    return NULL;
   }
 
   /**

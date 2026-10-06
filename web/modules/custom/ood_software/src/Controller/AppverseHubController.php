@@ -5,6 +5,7 @@ namespace Drupal\ood_software\Controller;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\UrlHelper;
 use Symfony\Component\HttpFoundation\Response;
+use Drupal\content_moderation\ContentModerationState;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Session\AccountInterface;
@@ -303,7 +304,7 @@ final class AppverseHubController extends ControllerBase {
     // visible effect because the cache cascade hides the App
     // regardless. Allow the toggle (it's the user's data) but warn.
     $parent = $node->get('field_appverse_repo')->entity ?? NULL;
-    if ($parent && !$parent->isPublished()) {
+    if ($parent instanceof NodeInterface && !$parent->isPublished()) {
       $this->messenger()->addWarning($this->t(
         '@title is in an unpublished Repo — App-level status has no effect on visibility until the Repo is republished.',
         ['@title' => $node->label()]
@@ -365,8 +366,8 @@ final class AppverseHubController extends ControllerBase {
       //    revision so any in-flight draft edits are what get published.
       $storage = $this->entityTypeManager()->getStorage('node');
       $workflow = $this->moderationInformation->getWorkflowForEntity($node);
-      $isPublishedTarget = $workflow && $workflow->getTypePlugin()
-        ->getState($newState)->isPublishedState();
+      $targetState = $workflow ? $workflow->getTypePlugin()->getState($newState) : NULL;
+      $isPublishedTarget = $targetState instanceof ContentModerationState && $targetState->isPublishedState();
 
       if ($isPublishedTarget) {
         $latestVid = $storage->getLatestRevisionId($node->id());
@@ -377,6 +378,7 @@ final class AppverseHubController extends ControllerBase {
       else {
         $fresh = $storage->loadUnchanged($node->id());
       }
+      assert($fresh instanceof NodeInterface);
       $fresh->set('moderation_state', $newState);
       $fresh->setNewRevision(TRUE);
       // Clear the validation-required flag that content_moderation can set on
@@ -548,7 +550,7 @@ final class AppverseHubController extends ControllerBase {
     $vids = $this->entityTypeManager()->getStorage('node')->revisionIds($repo);
     foreach ($vids as $vid) {
       $rev = $this->entityTypeManager()->getStorage('node')->loadRevision($vid);
-      if ($rev && $rev->hasField('moderation_state') && $rev->get('moderation_state')->value === 'published') {
+      if ($rev instanceof NodeInterface && $rev->hasField('moderation_state') && $rev->get('moderation_state')->value === 'published') {
         return FALSE;
       }
     }
@@ -594,6 +596,22 @@ final class AppverseHubController extends ControllerBase {
         ['@count' => $count, '@title' => $repo->label()]
       ));
     }
+  }
+
+  /**
+   * Access to the hub's repo Publish and Request changes routes.
+   *
+   * Admin only, and only for a repo without a review: one with a review is
+   * decided on its review page, where the decision moves the repo and the
+   * review together. The hub hides these actions then, and the routes refuse
+   * too, since they can be opened by URL (appverse-planning#50).
+   */
+  public function adminWithoutReviewAccess(AccountInterface $account, NodeInterface $node): AccessResult {
+    // A review can appear at any time, so the result is not cached.
+    if (_ood_software_repo_has_review($node)) {
+      return AccessResult::forbidden('This repo is decided on its review page.')->setCacheMaxAge(0);
+    }
+    return $this->adminOnlyAccess($account, $node)->setCacheMaxAge(0);
   }
 
   /**
@@ -646,7 +664,7 @@ final class AppverseHubController extends ControllerBase {
    * Mirrors AddRepoForm::rootDeclaresSingleApp() so resync and submit agree on
    * what a single-app declared repo looks like.
    *
-   * @param array $parsedRootYml
+   * @param array<string, mixed> $parsedRootYml
    *   The decoded root appverse.yml mapping.
    */
   private function rootDeclaresSingleApp(array $parsedRootYml): bool {

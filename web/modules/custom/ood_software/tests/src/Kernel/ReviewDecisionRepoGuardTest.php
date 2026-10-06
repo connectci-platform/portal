@@ -73,8 +73,8 @@ class ReviewDecisionRepoGuardTest extends KernelTestBase {
     $repo = $this->makeRepo('draft');
     $review = $this->makeReview($repo);
 
-    $this->assertFalse($this->applier()->publish($review));
-    $this->assertFalse($this->applier()->send($review, ''));
+    $this->assertNotNull($this->applier()->publish($review));
+    $this->assertNotNull($this->applier()->send($review, ''));
 
     $storage = \Drupal::entityTypeManager()->getStorage('node');
     $storage->resetCache();

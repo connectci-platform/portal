@@ -20,11 +20,19 @@ class ReviewDecisionTest extends UnitTestCase {
    *
    * @covers ::problems
    * @dataProvider problemCases
+   *
+   * @param array<string, string|null> $apps
+   *   App name => its decision.
    */
   public function testProblems(array $apps, string $response, int $expected): void {
     $this->assertCount($expected, ReviewDecision::problems($apps, $response));
   }
 
+  /**
+   * Decisions and a response, with how many problems they raise.
+   *
+   * @return array<string, array<int, mixed>>
+   */
   public static function problemCases(): array {
     return [
       'accept, no response' => [['App' => 'accept'], '', 0],
@@ -72,25 +80,35 @@ class ReviewDecisionTest extends UnitTestCase {
    *
    * @covers ::plan
    * @dataProvider planCases
+   *
+   * @param array<string, string> $apps
+   *   App key => its decision.
+   * @param array<string, string|null> $appMoves
+   *   App key => its expected move.
    */
   public function testPlan(array $apps, ?string $repo, array $appMoves, ?string $review): void {
     $this->assertSame(['repo' => $repo, 'apps' => $appMoves, 'review' => $review], ReviewDecision::plan($apps));
   }
 
+  /**
+   * App decisions, with the repo, app and review moves they plan.
+   *
+   * @return array<string, array<int, mixed>>
+   */
   public static function planCases(): array {
     return [
       'single accept' => [['a' => 'accept'], 'publish', ['a' => 'publish'], 'publish'],
       'single suggestions waits for Publish' => [['a' => 'accept_with_suggestions'], NULL, ['a' => NULL], NULL],
-      // The repo's move takes its live apps with it; no move of their own.
-      'single request changes' => [['a' => 'request_changes'], 'needs_adjustment', ['a' => NULL], NULL],
-      'single reject' => [['a' => 'reject'], 'declined', ['a' => NULL], NULL],
+      // An app moves itself even when it goes where the repo goes (#50).
+      'single request changes' => [['a' => 'request_changes'], 'needs_adjustment', ['a' => 'needs_adjustment'], NULL],
+      'single reject' => [['a' => 'reject'], 'declined', ['a' => 'declined'], NULL],
       'one accepted, one sent back' => [['a' => 'accept', 'b' => 'request_changes'], 'publish', ['a' => 'publish', 'b' => 'needs_adjustment'], 'publish'],
       'one accepted, one declined' => [['a' => 'accept', 'b' => 'reject'], 'publish', ['a' => 'publish', 'b' => 'declined'], 'publish'],
       'suggestions and sent back: the repo waits' => [['a' => 'accept_with_suggestions', 'b' => 'request_changes'], NULL, ['a' => NULL, 'b' => 'needs_adjustment'], NULL],
       'accept and suggestions' => [['a' => 'accept', 'b' => 'accept_with_suggestions'], 'publish', ['a' => 'publish', 'b' => NULL], 'publish'],
       // Declined only when every app is; a fixable app sends the repo back.
-      'sent back and declined' => [['a' => 'request_changes', 'b' => 'reject'], 'needs_adjustment', ['a' => NULL, 'b' => 'declined'], NULL],
-      'all declined' => [['a' => 'reject', 'b' => 'reject'], 'declined', ['a' => NULL, 'b' => NULL], NULL],
+      'sent back and declined' => [['a' => 'request_changes', 'b' => 'reject'], 'needs_adjustment', ['a' => 'needs_adjustment', 'b' => 'declined'], NULL],
+      'all declined' => [['a' => 'reject', 'b' => 'reject'], 'declined', ['a' => 'declined', 'b' => 'declined'], NULL],
     ];
   }
 
