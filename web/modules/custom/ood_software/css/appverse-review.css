@@ -704,6 +704,28 @@
   color: #c9cdd0;
 }
 
+/* Decision: "Publish app and review" after Accept with suggestions, and the
+   sent decision in the sidebar. */
+.arv-page .arv-publish-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: .86rem;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: #e0f3f0;
+  border-left: 3px solid var(--status-green);
+}
+.arv-page .arv-publish-bar .btn {
+  text-decoration: none;
+}
+.arv-page .decision-sent {
+  font-weight: 700;
+  color: var(--ink);
+}
+
 /* Superseded banner and history bar (a repo with more than one review). */
 .arv-page .arv-superseded {
   font-size: .86rem;

@@ -161,6 +161,14 @@
       {% if can_edit and page.state != 'published' %}<span class="arv-superseded-note">{{ 'This one can still be saved, but not published.'|t }}</span>{% endif %}
     </div>
   {% endif %}
+  {# After an Accept with suggestions: publish when the contributor has had a
+     chance to act on the suggestions, or right away (appverse-planning#29). #}
+  {% if can_edit and page.decision.publish_url %}
+    <div class="arv-publish-bar">
+      <span>{{ 'Accepted with suggestions. Publish when the contributor has had a chance to act on them, or right away.'|t }}</span>
+      <a class="btn primary" href="{{ page.decision.publish_url }}">{{ 'Publish app and review'|t }}</a>
+    </div>
+  {% endif %}
   <div class="overview-block">
     <div class="overview-row">
       {# Two lines: what was reviewed, then who/when and the links. One long
@@ -286,12 +294,14 @@
 
       {% if can_edit %}
         <div class="publish-block">
-          <h2 class="sec">{{ 'Publish or save review'|t }}</h2>
+          <h2 class="sec">{{ page.decision.sent ? 'Decision'|t : 'Save or send the decision'|t }}</h2>
           <div class="publish-note">
-            {% if page.state == 'published' %}
-              {{ 'This review is published.'|t }}
+            {% if page.decision.sent %}
+              <span class="decision-sent">{{ 'Decision sent: @d'|t({'@d': page.decision.label}) }}</span>
+              {% if page.decision.by %} · {{ page.decision.by }}{% endif %} · {{ page.decision.at }}
+              {% if page.state == 'published' %}<br>{{ 'The review is published.'|t }}{% else %}<br>{{ 'The contributor can read the review and your response; the public cannot.'|t }}{% endif %}
             {% else %}
-              {{ 'Visible to reviewers only until published.'|t }}
+              {{ 'Visible to reviewers only until a decision is sent. Sending it moves the repo and the review together.'|t }}
             {% endif %}
           </div>
           <div class="publish-row">{{ form.actions }}</div>

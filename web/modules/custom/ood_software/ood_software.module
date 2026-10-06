@@ -1936,6 +1936,17 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
 
   $notPublishedActive = in_array($state, ['draft', 'ready_for_review', 'needs_adjustment'], TRUE)
     || (!$published && $state === 'published');
+  // A repo with a review is decided on the review page, where the decision
+  // moves the repo and the review together (appverse-planning#29); the hub's
+  // Publish and Request changes would be a second, unrecorded place to act.
+  // Repos without a review (legacy, or before a run) keep them.
+  $hasReview = (bool) \Drupal::entityQuery('node')
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('field_arv_repo', $id)
+    ->range(0, 1)
+    ->count()
+    ->execute();
 
   if (!$isAdmin && in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
     $actions['send_for_review'] = _ood_software_hub_action_form(
@@ -1944,7 +1955,7 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
       'bi-send', 'primary'
     );
   }
-  if ($isAdmin && $notPublishedActive) {
+  if ($isAdmin && $notPublishedActive && !$hasReview) {
     $actions['publish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/publish/confirm', t('Publish…'), 'bi-check-circle', 'primary');
   }
   if ($published) {
@@ -1955,7 +1966,7 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // needs_adjustment. Include published so an admin can pull a live Collection
   // back for fixes (AppverseHubRequestChangesForm cascade-unpublishes its
   // member apps in that case).
-  if ($isAdmin && in_array($state, ['published', 'ready_for_review', 'needs_adjustment'], TRUE)) {
+  if ($isAdmin && !$hasReview && in_array($state, ['published', 'ready_for_review', 'needs_adjustment'], TRUE)) {
     $actions['request_changes'] = ['url' => '/appverse/repo/' . $id . '/request-changes?destination=' . $dest];
   }
   if ($isAdmin) {

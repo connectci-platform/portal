@@ -14,6 +14,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\ReviewPageData;
+use Drupal\ood_software\Service\ReviewProgress;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
@@ -46,19 +47,9 @@ final class ReviewPageForm extends FormBase {
   const STATE_LABELS = [
     'draft' => 'Draft',
     'in_review' => 'In review',
-    'waiting_for_contributor' => 'Waiting for contributor',
     'published' => 'Published',
   ];
 
-  /**
-   * The moderation path to Published from each state, in order.
-   */
-  const PUBLISH_PATH = [
-    'draft' => ['in_review', 'published'],
-    'in_review' => ['published'],
-    'waiting_for_contributor' => ['in_review', 'published'],
-    'published' => [],
-  ];
 
   /**
    * Who the page is rendered for (see viewModeFor()).
@@ -265,18 +256,26 @@ final class ReviewPageForm extends FormBase {
       '#value' => $this->t('Save draft'),
       '#attributes' => ['class' => ['btn', 'ghost']],
     ];
-    // A superseded review (a newer one of the same repo exists) can still be
-    // saved, but not published: publishing it would put stale findings in
-    // front of the newer review. The banner links to the newer one.
-    if ($page['state'] !== 'published' && empty($page['superseded_by'])) {
-      $form['actions']['publish'] = [
+    // The decision is sent from here (appverse-planning#29): it saves the page,
+    // then confirms on a page listing what the decision will cause. Not on a
+    // superseded review (a newer one of the same repo exists; deciding on
+    // stale findings is the wrong review), and not once a decision is sent.
+    if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by'])) {
+      $form['actions']['send_decision'] = [
         '#type' => 'submit',
-        '#value' => $this->t('Publish review'),
+        '#value' => $this->t('Send decision…'),
         '#attributes' => ['class' => ['btn', 'primary']],
-        '#submit' => ['::submitForm', '::publish'],
+        '#submit' => ['::submitForm', '::goToDecision'],
       ];
     }
     return $form;
+  }
+
+  /**
+   * Second submit handler for "Send decision…": after the save, confirm.
+   */
+  public function goToDecision(array &$form, FormStateInterface $form_state): void {
+    $form_state->setRedirect('ood_software.review_decision', ['node' => $this->node->id()]);
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state): void {
@@ -341,26 +340,6 @@ final class ReviewPageForm extends FormBase {
     $node->save();
     $this->messenger()->addStatus($this->t('Review saved.'));
     $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
-  }
-
-  /**
-   * Second submit handler for Publish: walk the moderation path to Published.
-   */
-  public function publish(array &$form, FormStateInterface $form_state): void {
-    $storage = $this->entityTypeManager->getStorage('node');
-    $fresh = $storage->loadUnchanged($this->node->id());
-    $state = $fresh->get('moderation_state')->value ?? 'draft';
-    foreach (self::PUBLISH_PATH[$state] ?? [] as $next) {
-      $fresh = $storage->loadUnchanged($this->node->id());
-      $fresh->set('moderation_state', $next);
-      $fresh->setNewRevision(TRUE);
-      $this->stampRevision($fresh, sprintf('Review page: moved to %s by %s', $next, $this->currentUser->getDisplayName()));
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
-    }
-    $this->messenger()->addStatus($this->t('Review published.'));
   }
 
   /**
@@ -467,6 +446,7 @@ final class ReviewPageForm extends FormBase {
       'catalog_html' => $node->hasField('field_arv_catalog_checks') ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
       'history' => $history,
       'superseded_by' => $history['newest'] ?? NULL,
+      'decision' => $this->decisionInfo($node),
       'report_html' => $reportHtml,
       'report_pdf' => $this->fileUrl($node, 'field_arv_report_pdf'),
       'recommendation' => $node->get('field_arv_recommendation')->value,
@@ -591,6 +571,33 @@ final class ReviewPageForm extends FormBase {
       ];
     }
     return $history;
+  }
+
+  /**
+   * The sent decision, if any, for the sidebar and the header's Publish.
+   *
+   * @return array{sent: bool, label: string, by: string, at: string, publish_url: ?string}
+   */
+  protected function decisionInfo(NodeInterface $node): array {
+    if (!$node->hasField('field_arv_decision_sent_at') || $node->get('field_arv_decision_sent_at')->isEmpty()) {
+      return ['sent' => FALSE, 'label' => '', 'by' => '', 'at' => '', 'publish_url' => NULL];
+    }
+    $decisions = [];
+    foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $decisions[] = $verdict->get('field_rvv_conclusion')->value;
+    }
+    $overall = ReviewProgress::strictestDecision($decisions);
+    $by = $node->get('field_arv_decision_sent_by')->entity;
+    return [
+      'sent' => TRUE,
+      'label' => (string) (ReviewProgress::DECISION_LABELS[$overall] ?? ''),
+      'by' => $by ? $by->getDisplayName() : '',
+      'at' => $this->formatDate((int) $node->get('field_arv_decision_sent_at')->value, 'medium'),
+      // After an Accept with suggestions: "Publish app and review".
+      'publish_url' => ReviewPublishConfirmForm::canPublish($node)
+        ? Url::fromRoute('ood_software.review_publish', ['node' => $node->id()])->toString()
+        : NULL,
+    ];
   }
 
   /**

@@ -243,3 +243,31 @@ ood_software.app_toggle_publish_confirm:
         type: entity:node
   requirements:
     _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+
+# The decision on the review page (appverse-planning#29): send it (it moves
+# the repo and the review together), and, after an Accept with suggestions,
+# publish the repo and the review. Reviewers only.
+ood_software.review_decision:
+  path: '/appverse/review/{node}/decision'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewDecisionConfirmForm'
+    _title: 'Send decision'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _permission: 'administer appverse content'
+    node: \d+
+ood_software.review_publish:
+  path: '/appverse/review/{node}/publish'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewPublishConfirmForm'
+    _title: 'Publish app and review'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _permission: 'administer appverse content'
+    node: \d+
