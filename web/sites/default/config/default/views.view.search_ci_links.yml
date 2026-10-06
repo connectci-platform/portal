@@ -986,8 +986,8 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: search_api_boolean
-          operator: '='
-          value: '0'
+          operator: '!='
+          value: '1'
           group: 1
           exposed: false
           expose:
@@ -1710,8 +1710,8 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: search_api_boolean
-          operator: '='
-          value: '0'
+          operator: '!='
+          value: '1'
           group: 1
           exposed: false
           expose:
