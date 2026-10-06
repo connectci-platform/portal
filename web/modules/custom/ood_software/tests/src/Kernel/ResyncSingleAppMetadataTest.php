@@ -14,6 +14,7 @@ use Drupal\taxonomy\Entity\Vocabulary;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Regression test: resync of a single-app repo applies app-level metadata.
@@ -61,7 +62,7 @@ class ResyncSingleAppMetadataTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -178,6 +179,7 @@ class ResyncSingleAppMetadataTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $storage->createFromStorageRecord($data)->save();
     }
 
@@ -292,6 +294,8 @@ YAML;
       $this->container->get('content_moderation.moderation_information'),
       $this->container->get('request_stack'),
       $this->container->get('ood_software.repo_member_apps'),
+      $this->container->get('ood_software.review_dispatcher'),
+      $this->container->get('ood_software.review_assignment'),
     );
   }
 
@@ -461,6 +465,7 @@ YAML;
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

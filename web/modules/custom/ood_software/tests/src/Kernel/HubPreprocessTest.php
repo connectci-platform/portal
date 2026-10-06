@@ -12,6 +12,7 @@ use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Unit-level guard for the maintenance-hub card data builder.
@@ -30,7 +31,7 @@ class HubPreprocessTest extends KernelTestBase {
   protected static $modules = [
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias',
-    'content_moderation', 'workflows', 'key', 'flag', 'ood_software',
+    'content_moderation', 'workflows', 'key', 'flag', 'file', 'ood_software',
   ];
 
   protected function setUp(): void {
@@ -47,6 +48,11 @@ class HubPreprocessTest extends KernelTestBase {
       'content_moderation', 'workflows',
     ]);
     $this->importProdConfig([
+      // Hub cards and the catalog cache look up each repo's newest review
+      // by field_arv_repo, so the review type and that field must exist.
+      'node.type.appverse_review',
+      'field.storage.node.field_arv_repo',
+      'field.field.node.appverse_review.field_arv_repo',
       'node.type.appverse_repo',
       'node.type.appverse_app',
       'workflows.workflow.appverse_editorial',
@@ -90,6 +96,7 @@ class HubPreprocessTest extends KernelTestBase {
       if (!empty($data[$idKey]) && $storage->load($data[$idKey])) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $storage->createFromStorageRecord($data)->save();
     }
     // Vocabularies required by the tag fields.
@@ -108,6 +115,8 @@ class HubPreprocessTest extends KernelTestBase {
 
   /**
    * Helper: create a published appverse_repo with the given shape.
+   *
+   * @param array<string, mixed> $values
    */
   private function makeRepo(array $values = []): NodeInterface {
     $repo = Node::create([
@@ -125,6 +134,8 @@ class HubPreprocessTest extends KernelTestBase {
 
   /**
    * Helper: create a member appverse_app under a repo.
+   *
+   * @param array<string, mixed> $values
    */
   private function makeApp(NodeInterface $repo, array $values = []): NodeInterface {
     $app = Node::create([

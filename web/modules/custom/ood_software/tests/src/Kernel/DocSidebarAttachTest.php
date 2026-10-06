@@ -19,7 +19,7 @@ class DocSidebarAttachTest extends KernelTestBase {
 
   use NodeCreationTrait;
 
-  protected static $modules = ['system', 'user', 'field', 'text', 'node', 'filter', 'key', 'ood_software'];
+  protected static $modules = ['system', 'user', 'field', 'text', 'node', 'filter', 'key', 'workflows', 'content_moderation', 'file', 'ood_software'];
 
   protected function setUp(): void {
     parent::setUp();
