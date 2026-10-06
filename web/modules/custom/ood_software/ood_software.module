@@ -1052,6 +1052,27 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
     ->cachePerPermissions();
 
   if ($node->isPublished()) {
+    // A published review is public only while its repo is published too
+    // (appverse-planning#43, REVIEW-STATES.md "Who can read the review").
+    // A live repo sent back for changes, unpublished or archived would
+    // otherwise keep its old review on show. Reviewers and the repo's owner
+    // still read it, and it is public again once the repo is.
+    if ($node->bundle() === 'appverse_review') {
+      $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
+      if ($repo instanceof NodeInterface) {
+        $access->addCacheableDependency($repo);
+        if (!$repo->isPublished()) {
+          if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
+            return $access->orIf(AccessResult::allowed());
+          }
+          $access->addCacheContexts(['user']);
+          if ($account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+            return $access->orIf(AccessResult::allowed());
+          }
+          return $access->orIf(AccessResult::forbidden('A review is public only while its repo is published.'));
+        }
+      }
+    }
     return $access;
   }
   if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
@@ -1757,6 +1778,9 @@ function _ood_software_hub_badge(string $state): array {
 
 /**
  * Builds the review info block for a hub card.
+ *
+ * @return array<string, mixed>
+ *   The hub card's review info.
  */
 function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array {
   $reviewStatus = $repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty()
@@ -1766,7 +1790,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $reportUrl = NULL;
   if ($repo->hasField('field_review_report') && !$repo->get('field_review_report')->isEmpty()) {
     $file = $repo->get('field_review_report')->entity;
-    if ($file) {
+    if ($file instanceof \Drupal\file\FileInterface) {
       $reportUrl = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
     }
   }
@@ -1875,6 +1899,12 @@ function _ood_software_hub_confirm_link(string $internalPath, string $label, str
   ];
 }
 
+/**
+ * Builds a hub card action that submits by POST with a CSRF token.
+ *
+ * @return array<string, mixed>
+ *   A render array for the action.
+ */
 function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = ''): array {
   $token = \Drupal::service('csrf_token')->get($internalPath);
   // Back to the same list after the action: its filters (the query string)
