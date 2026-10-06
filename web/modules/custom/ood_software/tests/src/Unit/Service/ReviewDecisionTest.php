@@ -64,4 +64,53 @@ class ReviewDecisionTest extends UnitTestCase {
     $this->assertSame([], ReviewDecision::effects('bogus', FALSE));
   }
 
+  /**
+   * Each app goes its own way, and the repo is published when any app is.
+   *
+   * @covers ::plan
+   * @dataProvider planCases
+   */
+  public function testPlan(array $apps, ?string $repo, array $appMoves, ?string $review): void {
+    $this->assertSame(['repo' => $repo, 'apps' => $appMoves, 'review' => $review], ReviewDecision::plan($apps));
+  }
+
+  public static function planCases(): array {
+    return [
+      'single accept' => [['a' => 'accept'], 'publish', ['a' => 'publish'], 'publish'],
+      'single suggestions waits for Publish' => [['a' => 'accept_with_suggestions'], NULL, ['a' => NULL], NULL],
+      // The repo's move takes its live apps with it; no move of their own.
+      'single request changes' => [['a' => 'request_changes'], 'needs_adjustment', ['a' => NULL], NULL],
+      'single reject' => [['a' => 'reject'], 'declined', ['a' => NULL], NULL],
+      'one accepted, one sent back' => [['a' => 'accept', 'b' => 'request_changes'], 'publish', ['a' => 'publish', 'b' => 'needs_adjustment'], 'publish'],
+      'one accepted, one declined' => [['a' => 'accept', 'b' => 'reject'], 'publish', ['a' => 'publish', 'b' => 'declined'], 'publish'],
+      'suggestions and sent back: the repo waits' => [['a' => 'accept_with_suggestions', 'b' => 'request_changes'], NULL, ['a' => NULL, 'b' => 'needs_adjustment'], NULL],
+      'accept and suggestions' => [['a' => 'accept', 'b' => 'accept_with_suggestions'], 'publish', ['a' => 'publish', 'b' => NULL], 'publish'],
+      // Declined only when every app is; a fixable app sends the repo back.
+      'sent back and declined' => [['a' => 'request_changes', 'b' => 'reject'], 'needs_adjustment', ['a' => NULL, 'b' => 'declined'], NULL],
+      'all declined' => [['a' => 'reject', 'b' => 'reject'], 'declined', ['a' => NULL, 'b' => NULL], NULL],
+    ];
+  }
+
+  /**
+   * One decision for every app reads as effects(); a mix lists each app.
+   *
+   * @covers ::effectsFor
+   */
+  public function testEffectsFor(): void {
+    $this->assertSame(ReviewDecision::effects('request_changes', TRUE), ReviewDecision::effectsFor(['A' => 'request_changes', 'B' => 'request_changes'], TRUE));
+
+    $rows = array_column(ReviewDecision::effectsFor(['A' => 'accept', 'B' => 'request_changes'], FALSE), 1, 0);
+    $this->assertSame(['Repo', 'Apps', 'Review', 'Email', 'Contributor', 'Next step'], array_keys($rows));
+    $this->assertStringContainsString('accepted apps only', $rows['Repo']);
+    $this->assertSame('A: published; B: unpublished, back to the contributor as Needs changes.', $rows['Apps']);
+    $this->assertStringStartsWith('Published', $rows['Review']);
+    $this->assertStringContainsString('Re-review', $rows['Next step']);
+
+    $rows = array_column(ReviewDecision::effectsFor(['A' => 'accept_with_suggestions', 'B' => 'reject'], TRUE), 1, 0);
+    $this->assertStringStartsWith('Stays live', $rows['Repo']);
+    $this->assertStringStartsWith('Not public yet', $rows['Review']);
+    $this->assertStringStartsWith('None yet', $rows['Email']);
+    $this->assertStringContainsString('Publish button', $rows['Next step']);
+  }
+
 }

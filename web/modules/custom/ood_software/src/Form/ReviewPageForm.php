@@ -13,6 +13,7 @@ use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
 use Drupal\paragraphs\Entity\Paragraph;
@@ -155,15 +156,24 @@ final class ReviewPageForm extends FormBase {
     }
 
     $levelOptions = $this->levelOptions();
+    // No choice milder than the findings allow (appverse-planning#30): a
+    // saved decision below its floor is not offered, so it shows as not
+    // decided until the reviewer picks again.
+    $floors = ReviewFloors::forReview($node);
     foreach ($page['apps'] as $app) {
       $pid = $app['pid'];
+      $floor = $floors[(string) $pid] ?? NULL;
       $form['conclusion'][$pid] = [
         '#type' => 'select',
         '#title' => $this->t('Decision'),
         '#title_display' => 'invisible',
-        '#options' => $this->conclusionOptions(),
+        '#options' => array_intersect_key($this->conclusionOptions(), array_flip(ReviewFloors::choices($floor['decision'] ?? NULL))),
         '#empty_option' => $this->t('- Not decided -'),
         '#default_value' => $app['conclusion'] ?? '',
+        '#description' => $floor ? $this->t('At least @d: @reason.', [
+          '@d' => ReviewProgress::DECISION_LABELS[$floor['decision']],
+          '@reason' => $floor['reason'],
+        ]) : NULL,
       ];
       foreach (self::AXES as $axis => $prefix) {
         $block = $app['blocks'][$axis];

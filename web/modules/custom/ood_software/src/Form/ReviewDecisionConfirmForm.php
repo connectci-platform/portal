@@ -10,6 +10,7 @@ use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\ReviewDecision;
 use Drupal\ood_software\Service\ReviewDecisionApplier;
+use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewProgress;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -27,6 +28,8 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
   protected NodeInterface $review;
 
   protected string $decision;
+
+  protected bool $mixed = FALSE;
 
   public function __construct(protected ReviewDecisionApplier $applier) {}
 
@@ -49,7 +52,13 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     }
     $appDecisions = $this->appDecisions();
     $response = (string) ($node->get('field_arv_contributor_response')->value ?? '');
-    $problems = ReviewDecision::problems($appDecisions, $response);
+    // The page offers no choice below an app's floor; this catches one saved
+    // before the floor existed or before a finding changed (#30).
+    $names = $this->appNames();
+    $problems = array_merge(
+      ReviewDecision::problems($appDecisions, $response),
+      ReviewFloors::problems($this->applier->appDecisions($node), ReviewFloors::forReview($node), $names),
+    );
     if ($problems !== []) {
       foreach ($problems as $problem) {
         $this->messenger()->addError($problem);
@@ -57,6 +66,9 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
     $this->decision = (string) ReviewProgress::strictestDecision(array_values($appDecisions));
+    // Apps decided differently each go their own way (#30), so the overall
+    // (strictest) decision would mislabel the button.
+    $this->mixed = count(array_unique(array_values($appDecisions))) > 1;
 
     $repo = $node->get('field_arv_repo')->entity;
     $form['apps'] = count($appDecisions) > 1 ? [
@@ -69,7 +81,7 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       '#weight' => -20,
     ] : [];
     $rows = [];
-    foreach (ReviewDecision::effects($this->decision, $repo instanceof NodeInterface && $repo->isPublished()) as [$heading, $text]) {
+    foreach (ReviewDecision::effectsFor($appDecisions, $repo instanceof NodeInterface && $repo->isPublished()) as [$heading, $text]) {
       $rows[] = [['data' => $heading, 'header' => TRUE], $text];
     }
     $form['effects'] = [
@@ -85,17 +97,34 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
    * App name => its decision, from the review's verdicts.
    */
   protected function appDecisions(): array {
+    $names = $this->appNames();
     $decisions = [];
-    foreach ($this->review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      $app = $verdict->get('field_rvv_app_ref')->entity;
-      $name = $app ? $app->label() : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
-      $decisions[$name] = $verdict->get('field_rvv_conclusion')->value;
+    foreach ($this->applier->appDecisions($this->review) as $pid => $decision) {
+      $decisions[$names[$pid]] = $decision;
     }
     return $decisions;
   }
 
+  /**
+   * Verdict paragraph id => the app's name.
+   */
+  protected function appNames(): array {
+    $names = [];
+    foreach ($this->review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $app = $verdict->get('field_rvv_app_ref')->entity;
+      $names[(string) $verdict->id()] = $app ? $app->label() : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
+    }
+    return $names;
+  }
+
   public function getQuestion() {
     $repo = $this->review->get('field_arv_repo')->entity;
+    if ($this->mixed) {
+      return $this->t('Send the decisions for %repo? Overall: %decision', [
+        '%repo' => $repo ? $repo->label() : $this->review->label(),
+        '%decision' => ReviewProgress::DECISION_LABELS[$this->decision] ?? $this->decision,
+      ]);
+    }
     return $this->t('Send the decision for %repo: %decision?', [
       '%repo' => $repo ? $repo->label() : $this->review->label(),
       '%decision' => ReviewProgress::DECISION_LABELS[$this->decision] ?? $this->decision,
@@ -107,6 +136,9 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
   }
 
   public function getConfirmText() {
+    if ($this->mixed) {
+      return $this->t('Send the decisions');
+    }
     return match ($this->decision) {
       'accept' => $this->t('Accept and publish'),
       'accept_with_suggestions' => $this->t('Accept and send suggestions'),
@@ -121,8 +153,10 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
 
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $response = (string) ($this->review->get('field_arv_contributor_response')->value ?? '');
-    $this->applier->send($this->review, $this->decision, $response);
-    $this->messenger()->addStatus($this->t('Decision sent: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]]));
+    $this->applier->send($this->review, $response);
+    $this->messenger()->addStatus($this->mixed
+      ? $this->t('Decisions sent. Overall: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]])
+      : $this->t('Decision sent: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]]));
     $form_state->setRedirectUrl($this->getCancelUrl());
   }
 

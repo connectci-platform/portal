@@ -16,8 +16,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  *
  * Accept publishes at once; Accept with suggestions leaves this step for when
  * the contributor has had a chance to act on the suggestions
- * (appverse-planning#29). Publishes the repo (with its apps, on first
- * publish) and the review.
+ * (appverse-planning#29). Publishes the accepted apps, the repo and the
+ * review.
  */
 final class ReviewPublishConfirmForm extends ConfirmFormBase {
 
@@ -46,19 +46,25 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
   }
 
   /**
-   * Whether "Publish app and review" applies: a decision has been sent, the
-   * review is not yet published, and no app was sent back or declined.
+   * Whether "Publish app and review" applies: a decision has been sent, some
+   * app was accepted with suggestions, and that app or the review is not live
+   * yet. In a monorepo the other apps may have been sent back (#30); only the
+   * accepted ones are published.
    */
   public static function canPublish(NodeInterface $review): bool {
-    if ($review->get('field_arv_decision_sent_at')->isEmpty() || $review->isPublished()) {
+    if ($review->get('field_arv_decision_sent_at')->isEmpty()) {
       return FALSE;
     }
+    $waiting = FALSE;
+    $suggestions = FALSE;
     foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      if (!in_array($verdict->get('field_rvv_conclusion')->value, ['accept', 'accept_with_suggestions'], TRUE)) {
-        return FALSE;
+      if ($verdict->get('field_rvv_conclusion')->value === 'accept_with_suggestions') {
+        $suggestions = TRUE;
+        $app = $verdict->get('field_rvv_app_ref')->entity;
+        $waiting = $waiting || ($app instanceof NodeInterface && !$app->isPublished());
       }
     }
-    return TRUE;
+    return $suggestions && ($waiting || !$review->isPublished());
   }
 
   public function getQuestion() {
@@ -67,7 +73,7 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
   }
 
   public function getDescription() {
-    return $this->t('The repo and its apps become visible in the public AppVerse catalog, and the public sees the review summary.');
+    return $this->t('The accepted apps and their repo become visible in the public AppVerse catalog, and the public sees the review summary. Apps sent back or declined stay out.');
   }
 
   public function getConfirmText() {
@@ -79,8 +85,9 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state): void {
+    // The applier reports each app and the repo it publishes.
     $this->applier->publish($this->review);
-    $this->messenger()->addStatus($this->t('Published the repo and its review.'));
+    $this->messenger()->addStatus($this->t('Published the review.'));
     $form_state->setRedirectUrl($this->getCancelUrl());
   }
 

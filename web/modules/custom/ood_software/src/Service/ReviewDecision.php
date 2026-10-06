@@ -41,7 +41,105 @@ final class ReviewDecision {
   }
 
   /**
-   * The "When you confirm" rows for an overall decision.
+   * What sending moves, from each app's decision (appverse-planning#30).
+   *
+   * Each app gets its own outcome, and the repo is published when any app is:
+   * an accepted app is published with the repo and the review at once; an app
+   * accepted with suggestions waits for the review page's Publish; an app sent
+   * back or declined leaves the catalog. With no app accepted, the repo waits
+   * for Publish when any app was accepted with suggestions, goes back to the
+   * contributor when any app can be fixed, and is declined only when every app
+   * is. An app headed where the repo goes gets no move of its own: the repo's
+   * move takes its live apps with it.
+   *
+   * @param array<string, string> $appDecisions
+   *   App key => its decision.
+   *
+   * @return array{repo: ?string, apps: array<string, ?string>, review: ?string}
+   *   repo and each app: publish, needs_adjustment, declined, or NULL to stay
+   *   as it is; review: publish or NULL.
+   */
+  public static function plan(array $appDecisions): array {
+    $decisions = array_values($appDecisions);
+    $any = static fn (string $d): bool => in_array($d, $decisions, TRUE);
+    $repo = match (TRUE) {
+      $any('accept') => 'publish',
+      $any('accept_with_suggestions') => NULL,
+      $any('request_changes') => 'needs_adjustment',
+      $decisions !== [] => 'declined',
+      default => NULL,
+    };
+    $apps = [];
+    foreach ($appDecisions as $app => $decision) {
+      $move = self::APP_MOVES[$decision] ?? NULL;
+      $apps[$app] = $move !== 'publish' && $move === $repo ? NULL : $move;
+    }
+    return ['repo' => $repo, 'apps' => $apps, 'review' => $any('accept') ? 'publish' : NULL];
+  }
+
+  const APP_MOVES = ['accept' => 'publish', 'request_changes' => 'needs_adjustment', 'reject' => 'declined'];
+
+  /**
+   * The "When you confirm" rows for each app's decision.
+   *
+   * One decision for every app reads as effects() does; a mix adds an Apps
+   * row and follows plan().
+   *
+   * @param array<string, string> $appDecisions
+   *   App name => its decision.
+   */
+  public static function effectsFor(array $appDecisions, bool $repoPublished): array {
+    $distinct = array_values(array_unique(array_values($appDecisions)));
+    if (count($distinct) === 1) {
+      return self::effects($distinct[0], $repoPublished);
+    }
+    $plan = self::plan($appDecisions);
+    $any = static fn (string $d): bool => in_array($d, $appDecisions, TRUE);
+
+    $apps = [];
+    foreach ($appDecisions as $app => $decision) {
+      $apps[] = $app . ': ' . match ($decision) {
+        'accept' => 'published',
+        'accept_with_suggestions' => 'published when you use Publish',
+        'request_changes' => 'unpublished, back to the contributor as Needs changes',
+        default => 'unpublished and declined',
+      };
+    }
+    $next = [];
+    if ($any('accept_with_suggestions')) {
+      $next[] = 'A Publish button stays at the top of this review until you use it.';
+    }
+    if ($any('request_changes')) {
+      $next[] = $plan['repo'] === 'needs_adjustment'
+        ? 'Wait for the re-submission.'
+        : 'When the contributor re-submits the apps sent back, run Re-review on the repo for the next round.';
+    }
+
+    return [
+      ['Repo', match ($plan['repo']) {
+        'publish' => $repoPublished ? 'Stays live in the AppVerse catalog.' : 'Published in the AppVerse catalog, with the accepted apps only.',
+        'needs_adjustment' => $repoPublished ? 'Unpublished, with its apps, and back to the contributor as Needs changes.' : 'Back to the contributor as Needs changes.',
+        'declined' => $repoPublished ? 'Unpublished, with its apps, and declined.' : 'Declined; it does not enter the catalog.',
+        default => $repoPublished ? 'Stays live; nothing changes in the catalog until you publish this review.' : 'Stays in the queue as Ready to publish. A new app is not public yet.',
+      }],
+      ['Apps', implode('; ', $apps) . '.'],
+      ['Review', match (TRUE) {
+        $plan['review'] === 'publish' => "Published with the accepted apps: the public sees its summary, with every app's decision.",
+        $any('accept_with_suggestions') => 'Not public yet; it is published when you use Publish.',
+        default => 'Not public.',
+      }],
+      ['Email', match (TRUE) {
+        $plan['repo'] === 'publish' && !$repoPublished => 'The contributor is told the repo is published. That email does not list the apps sent back yet; your response is on the review.',
+        $plan['repo'] === 'needs_adjustment' => 'The contributor gets your response.',
+        default => 'None yet. The contributor sees the review and your response here.',
+      }],
+      ['Contributor', 'Can read the review and your response.' . ($any('request_changes') ? ' Fixes the apps sent back and re-submits them.' : '')],
+      ['Next step', $next !== [] ? implode(' ', $next) : 'None.'],
+    ];
+  }
+
+  /**
+   * The "When you confirm" rows when every app has the same decision.
    *
    * @param bool $repoPublished
    *   Whether the repo is live now.
