@@ -2176,6 +2176,9 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     // Reviewers only: who is reviewing this repo (appverse-planning#33).
     'assignee' => $isAdmin ? (\Drupal::service('ood_software.review_assignment')->assignee($repo)?->getDisplayName() ?? '') : NULL,
     'progress_sentence' => $isAdmin ? '' : \Drupal\ood_software\Service\ReviewProgress::contributorSentence($steps['contributor']),
+    // One chip for the card; the full five-step line stays on the review page
+    // (appverse-planning#55).
+    'progress_chip' => \Drupal\ood_software\Service\ReviewProgress::chip($isAdmin ? $steps['reviewer'] : $steps['contributor']),
     'apps' => $apps,
   ];
 }

@@ -27,6 +27,17 @@ final class ReviewProgress {
   const NOT_REACHED = 'not_reached';
 
   /**
+   * Badge modifiers for the card chip, one per step state.
+   */
+  const CHIP_MODIFIERS = [
+    self::DONE => 'success',
+    self::CURRENT => 'warning',
+    self::WAITING => 'warning',
+    self::FAILED => 'danger',
+    self::NOT_REACHED => 'secondary',
+  ];
+
+  /**
    * Decisions from mildest to strictest.
    */
   const DECISIONS = ['accept', 'accept_with_suggestions', 'request_changes', 'reject'];
@@ -177,12 +188,51 @@ final class ReviewProgress {
     return match (TRUE) {
       $submitted['state'] === self::WAITING => 'Not submitted yet.',
       $inReview['state'] === self::CURRENT => 'In review. A reviewer will respond by email.',
-      $decision['state'] === self::WAITING => 'Changes requested. Read the review, fix the repo and re-submit.',
+      // Name the button and where to ask, so the contributor does not have to
+      // work out what "re-submit" means here (appverse-planning#55).
+      $decision['state'] === self::WAITING => 'Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.',
       $decision['state'] === self::FAILED => 'Declined. The review says why.',
       $live['state'] === self::CURRENT => 'Accepted. A reviewer will publish it.',
       $live['state'] === self::DONE => 'Live in the AppVerse catalog.',
       default => '',
     };
+  }
+
+  /**
+   * One chip for a hub card: where the repo is, in a few words.
+   *
+   * The five-step line is a lot to scan down a list, so the cards carry a
+   * single chip and the review page keeps the full line
+   * (appverse-planning#55). Built from the same steps the line draws, so the
+   * two can never disagree.
+   *
+   * @param array $steps
+   *   The reviewer or contributor steps from steps().
+   *
+   * @return array{label: string, modifier: string}
+   *   A label and a badge modifier matching the hub's other chips.
+   */
+  public static function chip(array $steps): array {
+    // Walk back from the end: the furthest step that has been reached is
+    // where the repo is now.
+    foreach (array_reverse($steps) as $step) {
+      if ($step['state'] === self::NOT_REACHED || $step['label'] === '') {
+        continue;
+      }
+      // Nothing has happened yet, so nothing is in flight: read it as neutral
+      // rather than as something needing attention.
+      if ($step['step'] === 'Submitted' && $step['state'] === self::WAITING) {
+        return ['label' => 'Not submitted', 'modifier' => 'secondary'];
+      }
+      return [
+        // On a card "In review" says where the repo is; the reviewer step's
+        // own "In progress"/"Not started" belong to the full line, which the
+        // review page still shows.
+        'label' => $step['step'] === 'Review' ? 'In review' : $step['label'],
+        'modifier' => self::CHIP_MODIFIERS[$step['state']] ?? 'secondary',
+      ];
+    }
+    return ['label' => 'Not submitted', 'modifier' => 'secondary'];
   }
 
   protected static function decisionStep(?string $decision, int $round): array {

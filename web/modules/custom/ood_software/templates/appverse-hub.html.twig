@@ -111,13 +111,15 @@
     </div>
   </header>
 
-  {# The review progress line: five steps with labels for reviewers, four
-     with a sentence for contributors (appverse-planning#31). #}
+  {# Where the repo is, in one chip. The full five-step line is a lot to scan
+     down a list, so it lives on the review page and the card carries this
+     (appverse-planning#55). Contributors keep their sentence, which says what
+     to do next when it is their turn. #}
   <div class="appverse-hub-card__progress">
+    <span class="badge badge-{{ hub.progress_chip.modifier }} appverse-hub-card__progress-chip">{{ hub.progress_chip.label }}</span>
     {% if hub.progress_sentence %}
       <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
     {% endif %}
-    {{ hub.progress }}
     {% if hub.assignee is not null %}
       <p class="appverse-hub-card__assignee">
         <i class="bi bi-person" aria-hidden="true"></i>

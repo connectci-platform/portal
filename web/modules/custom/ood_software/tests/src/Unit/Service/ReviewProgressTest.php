@@ -118,7 +118,7 @@ class ReviewProgressTest extends UnitTestCase {
       '4 AI report failed' => 'In review. A reviewer will respond by email.',
       '5 AI report ready, nobody started' => 'In review. A reviewer will respond by email.',
       '6 reviewer working' => 'In review. A reviewer will respond by email.',
-      '7 changes requested' => 'Changes requested. Read the review, fix the repo and re-submit.',
+      '7 changes requested' => 'Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.',
       '8 resubmitted, new AI report' => 'In review. A reviewer will respond by email.',
       '9 accepted, not yet published' => 'Accepted. A reviewer will publish it.',
       '10 published' => 'Live in the AppVerse catalog.',
@@ -126,6 +126,37 @@ class ReviewProgressTest extends UnitTestCase {
     ];
     foreach (self::situations() as $name => [$facts]) {
       $this->assertSame($expected[$name], P::contributorSentence(P::steps($facts)['contributor']), $name);
+    }
+  }
+
+  /**
+   * The card chip: where the repo is, in a few words.
+   *
+   * @covers ::chip
+   */
+  public function testChip(): void {
+    $expected = [
+      // name => [reviewer label, contributor label, reviewer modifier]
+      '1 added, not submitted' => ['Not submitted', 'Not submitted', 'secondary'],
+      '2 submitted, AI report queued' => ['Queued', 'In review', 'warning'],
+      '3 AI report running' => ['Running', 'In review', 'warning'],
+      // A failed run is the reviewer's to rerun and is never shown to the
+      // contributor, who still reads "In review".
+      '4 AI report failed' => ['Failed · rerun', 'In review', 'danger'],
+      '5 AI report ready, nobody started' => ['In review', 'In review', 'warning'],
+      '6 reviewer working' => ['In review', 'In review', 'warning'],
+      '7 changes requested' => ['Changes requested · round 1', 'Changes requested · round 1', 'warning'],
+      '8 resubmitted, new AI report' => ['In review', 'In review', 'warning'],
+      '9 accepted, not yet published' => ['Ready to publish', 'Ready to publish', 'warning'],
+      '10 published' => ['Live', 'Live', 'success'],
+      '11 declined' => ['Declined', 'Declined', 'danger'],
+    ];
+    foreach (self::situations() as $name => [$facts]) {
+      $steps = P::steps($facts);
+      [$reviewer, $contributor, $modifier] = $expected[$name];
+      $this->assertSame($reviewer, P::chip($steps['reviewer'])['label'], "$name (reviewer)");
+      $this->assertSame($contributor, P::chip($steps['contributor'])['label'], "$name (contributor)");
+      $this->assertSame($modifier, P::chip($steps['reviewer'])['modifier'], "$name (modifier)");
     }
   }
 
