@@ -93,7 +93,8 @@ class ReviewSignalsTest extends UnitTestCase {
 
     $out = ReviewSignals::shape($review, $verdict, 1790000500);
 
-    $this->assertSame(['reviewedAt', 'sha7', 'url', 'outOfDate', 'portability', 'documentation', 'upkeep'], array_keys($out), 'no security level in the public cache (schema 1.2)');
+    $this->assertSame(['reviewedAt', 'sha7', 'url', 'outOfDate', 'security', 'portability', 'documentation', 'upkeep'], array_keys($out));
+    $this->assertSame(['count', 'anchor'], array_keys($out['security']), 'security is a count, never a level (schema 1.2)');
     $this->assertSame('a52c443', $out['sha7']);
     $this->assertTrue($out['outOfDate']);
     $this->assertSame(['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '/appverse/review/12334#app-jupyter_example'], $out['documentation']);
@@ -130,6 +131,46 @@ class ReviewSignalsTest extends UnitTestCase {
     $out = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '', 'upkeep' => []], $this->verdict(5, 'x', []), NULL);
     $this->assertSame('', $out['portability']['anchor']);
     $this->assertSame('', $out['upkeep']['anchor']);
+  }
+
+  /**
+   * The security count is the app's findings plus the repo-level ones, which
+   * apply to every app, and links to the app's section.
+   *
+   * @covers ::shape
+   */
+  public function testSecurityCountAddsRepoLevelFindings(): void {
+    $verdict = $this->verdict(5, 'apps/notebook') + ['security' => 2];
+    $out = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/appverse/review/9', 'repo_security' => 1, 'upkeep' => []], $verdict, NULL);
+    $this->assertSame(['count' => 3, 'anchor' => '/appverse/review/9#app-apps/notebook'], $out['security']);
+
+    $none = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/r', 'upkeep' => []], $this->verdict(5, 'x'), NULL);
+    $this->assertSame(0, $none['security']['count'], 'no findings, a zero the card shows as "No findings"');
+  }
+
+  /**
+   * Counts what the review page lists under Security: the tool's OODT
+   * findings and the reviewer's own security findings, failed or warned.
+   *
+   * @covers ::securityCount
+   */
+  public function testSecurityCountFollowsTheReviewPage(): void {
+    $f = fn (string $rule, string $result, string $source = 'ai', ?string $aspect = NULL, ?string $category = NULL): array => [
+      'source' => $source, 'rule' => $rule, 'result' => $result, 'aspect' => $aspect, 'category' => $category,
+    ];
+    $this->assertSame(3, ReviewSignals::securityCount([
+      $f('OODT-02', 'fail'),
+      $f('OODT-05', 'warn'),
+      // A reviewer's finding filed under security, whatever its rule text.
+      $f('Exposed port', 'fail', 'reviewer', 'security', 'security'),
+      // Not counted: a passed check, a skipped one, other blocks.
+      $f('OODT-01', 'pass'),
+      $f('OODT-01', 'not checked'),
+      $f('QUA-02', 'fail'),
+      $f('STR-01', 'fail'),
+    ]));
+    // A tool finding is placed by its rule, not its aspect field.
+    $this->assertSame(0, ReviewSignals::securityCount([$f('QUA-03', 'fail', 'ai', 'security', 'security')]));
   }
 
 }

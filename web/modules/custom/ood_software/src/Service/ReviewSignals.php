@@ -46,6 +46,33 @@ final class ReviewSignals {
   }
 
   /**
+   * How many of a list of findings are security findings to review.
+   *
+   * The review page's rule (ReviewPageForm::findingArray()): a reviewer's
+   * finding sits in the block it was filed under, the tool's by its rule
+   * code, so security means an OODT rule; it is one to review when it failed
+   * or warned (ReviewPageData::isDefect()).
+   *
+   * Pure.
+   *
+   * @param array<int, array<string, mixed>> $findings
+   *   Each with source, rule, aspect, category and result.
+   */
+  public static function securityCount(array $findings): int {
+    $n = 0;
+    foreach ($findings as $finding) {
+      $filed = ($finding['source'] ?? '') === 'reviewer'
+        ? ReviewPageData::blockFromFields($finding['aspect'] ?? NULL, $finding['category'] ?? NULL)
+        : NULL;
+      $block = $filed ?? ReviewPageData::blockFor((string) ($finding['rule'] ?? ''));
+      if ($block === 'security' && ReviewPageData::isDefect($finding)) {
+        $n++;
+      }
+    }
+    return $n;
+  }
+
+  /**
    * A review is out of date when the repo has a commit after it.
    */
   public static function isOutOfDate(int $reviewedAt, ?int $lastCommit): bool {
@@ -93,6 +120,13 @@ final class ReviewSignals {
       'sha7' => substr((string) ($review['sha'] ?? ''), 0, 7),
       'url' => $url,
       'outOfDate' => self::isOutOfDate((int) ($review['reviewed_at'] ?? 0), $lastCommit),
+    ];
+    // Security has no level, only the findings to review: the app's own plus
+    // the repo-level ones, which apply to every app. The count is what the
+    // review page lists, so the two always agree.
+    $out['security'] = [
+      'count' => (int) ($verdict['security'] ?? 0) + (int) ($review['repo_security'] ?? 0),
+      'anchor' => $url !== '' ? $url . '#' . $appSection : '',
     ];
     foreach (self::AXES as $name) {
       $out[$name] = $axis($verdict['axes'][$name] ?? [], $appSection);

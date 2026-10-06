@@ -465,9 +465,12 @@ class AppverseCacheService {
         'app_ref' => $verdict->get('field_rvv_app_ref')->target_id !== NULL ? (int) $verdict->get('field_rvv_app_ref')->target_id : NULL,
         'app_id' => (string) ($verdict->get('field_rvv_app_id')->value ?? ''),
         'axes' => $axes,
+        'security' => ReviewSignals::securityCount($this->findingFacts($verdict, 'field_rvv_findings')),
       ];
     }
+    $repoSecurity = ReviewSignals::securityCount($this->findingFacts($review, 'field_arv_repo_findings'));
     return $this->reviewByRepo[$nid] = [
+      'repo_security' => $repoSecurity,
       'reviewed_at' => (int) ($review->get('field_arv_reviewed_at')->value ?? $review->getCreatedTime()),
       'sha' => (string) ($review->get('field_arv_sha')->value ?? ''),
       'url' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString(),
@@ -479,6 +482,34 @@ class AppverseCacheService {
       'verdicts' => $verdicts,
     ];
   }
+  /**
+   * The facts ReviewSignals::securityCount() needs, for each finding in a
+   * findings reference field.
+   *
+   * @return array<int, array<string, mixed>>
+   *   Source, rule, aspect, category and result per finding.
+   */
+  protected function findingFacts(FieldableEntityInterface $entity, string $field): array {
+    if (!$entity->hasField($field)) {
+      return [];
+    }
+    $facts = [];
+    foreach ($entity->get($field)->referencedEntities() as $finding) {
+      if (!$finding instanceof FieldableEntityInterface) {
+        continue;
+      }
+      $value = fn (string $name): ?string => $finding->hasField($name) ? ($finding->get($name)->getValue()[0]['value'] ?? NULL) : NULL;
+      $facts[] = [
+        'source' => $value('field_rvf_source'),
+        'rule' => $value('field_rvf_rule'),
+        'aspect' => $value('field_rvf_aspect'),
+        'category' => $value('field_rvf_category'),
+        'result' => $value('field_rvf_result'),
+      ];
+    }
+    return $facts;
+  }
+
 
   /**
    * Get multiple taxonomy terms from an entity reference field.
