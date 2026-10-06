@@ -2,6 +2,7 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\node\NodeInterface;
@@ -35,6 +36,7 @@ final class ReleaseWatcher {
     protected EntityTypeManagerInterface $entityTypeManager,
     protected AppverseReviewService $reviews,
     protected LoggerChannelFactoryInterface $loggerFactory,
+    protected TimeInterface $time,
   ) {}
 
   /**
@@ -72,12 +74,22 @@ final class ReleaseWatcher {
    * @param int $coveredUntil
    *   When the repo's latest decided review ran; code committed before that
    *   was already reviewed. 0 without one.
+   * @param int $now
+   *   The current time. Commit dates are set by whoever commits, so one in
+   *   the future is read as now; otherwise a single tag dated 2099 would
+   *   make every later release look older.
    *
    * @return array{store: ?string, review: bool}
    *   store: the value to save, or NULL to leave it; review: start one.
    */
-  public static function decide(?string $stored, ?array $latest, int $coveredUntil = 0): array {
+  public static function decide(?string $stored, ?array $latest, int $coveredUntil = 0, int $now = PHP_INT_MAX): array {
     $seen = self::parse($stored);
+    if ($seen !== NULL) {
+      $seen['at'] = min($seen['at'], $now);
+    }
+    if ($latest !== NULL) {
+      $latest['at'] = min($latest['at'], $now);
+    }
     $value = $latest !== NULL ? $latest['tag'] . '|' . $latest['at'] : self::NO_RELEASE;
     if ($seen === NULL) {
       // First check: a baseline, not news.
@@ -141,7 +153,7 @@ final class ReleaseWatcher {
       $summary['checked']++;
       $stored = $repo->get(self::FIELD)->value;
       $coveredUntil = $newest !== NULL ? (int) ($newest->get('field_arv_reviewed_at')->value ?? $newest->getCreatedTime()) : 0;
-      $do = self::decide($stored, $latest, $coveredUntil);
+      $do = self::decide($stored, $latest, $coveredUntil, $this->time->getRequestTime());
       if ($do['review'] && $latest !== NULL) {
         // Recorded only once the review is started, so a failed dispatch is
         // tried again on the next check.

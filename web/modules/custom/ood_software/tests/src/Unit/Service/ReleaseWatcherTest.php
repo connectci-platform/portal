@@ -67,6 +67,19 @@ class ReleaseWatcherTest extends UnitTestCase {
   }
 
   /**
+   * Commit dates are set by whoever commits: one in the future reads as now,
+   * so it cannot hold back every later release.
+   *
+   * @covers ::decide
+   */
+  public function testAFutureCommitDateIsReadAsNow(): void {
+    $future = ['tag' => 'v9', 'at' => 4102444800];
+    $this->assertSame(['store' => 'v9|' . self::T2, 'review' => TRUE], ReleaseWatcher::decide('v1.2|' . self::T1, $future, 0, self::T2), 'the far-future tag is recorded at now');
+    $later = ['tag' => 'v10', 'at' => self::T3];
+    $this->assertSame(['store' => 'v10|' . self::T3, 'review' => TRUE], ReleaseWatcher::decide('v9|' . self::T2, $later, 0, self::T3), 'a release after it, against the stored now, still counts');
+  }
+
+  /**
    * @covers ::parse
    */
   public function testParse(): void {

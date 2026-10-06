@@ -123,6 +123,33 @@ class ReviewAccessTest extends KernelTestBase {
   }
 
   /**
+   * A published review whose repo was deleted, or never set, is not public.
+   */
+  public function testReviewWithoutARepoIsHidden(): void {
+    // A deleted repo leaves a reference to an id that no longer loads.
+    $orphan = Node::create([
+      'type' => 'appverse_review',
+      'title' => 'Review: deleted/repo',
+      'uid' => $this->reviewer->id(),
+      'status' => 1,
+      'field_arv_repo' => 999999,
+    ]);
+    $orphan->save();
+    $unset = Node::create([
+      'type' => 'appverse_review',
+      'title' => 'Review: no repo',
+      'uid' => $this->reviewer->id(),
+      'status' => 1,
+    ]);
+    $unset->save();
+    foreach (['deleted repo' => $orphan, 'no repo' => $unset] as $case => $review) {
+      $this->assertCanView($review, User::getAnonymousUser(), FALSE, "anonymous ($case)");
+      $this->assertCanView($review, $this->other, FALSE, "another user ($case)");
+      $this->assertCanView($review, $this->reviewer, TRUE, "a reviewer ($case)");
+    }
+  }
+
+  /**
    * An unpublished review: the owner reads it only once a decision is sent.
    */
   public function testUnpublishedReviewOpensToOwnerAfterDecision(): void {

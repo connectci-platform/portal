@@ -80,7 +80,7 @@ services:
   # Re-reviews a listed repo on a new GitHub release (appverse-planning#34).
   ood_software.release_watcher:
     class: Drupal\ood_software\Service\ReleaseWatcher
-    arguments: ['@entity_type.manager', '@ood_software.review_dispatcher', '@logger.factory']
+    arguments: ['@entity_type.manager', '@ood_software.review_dispatcher', '@logger.factory', '@datetime.time']
   # Who reviews a repo (appverse-planning#33).
   ood_software.review_assignment:
     class: Drupal\ood_software\Service\ReviewAssignment
@@ -95,3 +95,7 @@ services:
   ood_software.review_decision_applier:
     class: Drupal\ood_software\Service\ReviewDecisionApplier
     arguments: ['@entity_type.manager', '@current_user', '@datetime.time', '@messenger', '@ood_software.repo_member_apps', '@content_moderation.moderation_information', '@ood_software.repo_notifier', '@config.factory', '@logger.factory']
+  ood_software.review_node_page_redirect:
+    class: Drupal\ood_software\EventSubscriber\ReviewNodePageRedirectSubscriber
+    tags:
+      - { name: event_subscriber }

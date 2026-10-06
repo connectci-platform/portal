@@ -1061,16 +1061,18 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
       $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
       if ($repo instanceof NodeInterface) {
         $access->addCacheableDependency($repo);
-        if (!$repo->isPublished()) {
-          if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
-            return $access->orIf(AccessResult::allowed());
-          }
-          $access->addCacheContexts(['user']);
-          if ($account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
-            return $access->orIf(AccessResult::allowed());
-          }
-          return $access->orIf(AccessResult::forbidden('A review is public only while its repo is published.'));
+      }
+      // A review whose repo was deleted, or never set, has no listing to be
+      // public with, so it is treated like one whose repo is unpublished.
+      if (!$repo instanceof NodeInterface || !$repo->isPublished()) {
+        if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
+          return $access->orIf(AccessResult::allowed());
         }
+        $access->addCacheContexts(['user']);
+        if ($repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+          return $access->orIf(AccessResult::allowed());
+        }
+        return $access->orIf(AccessResult::forbidden('A review is public only while its repo is published.'));
       }
     }
     return $access;
