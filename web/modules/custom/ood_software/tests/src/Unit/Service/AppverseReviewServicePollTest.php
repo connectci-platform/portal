@@ -38,7 +38,7 @@ class AppverseReviewServicePollTest extends UnitTestCase {
   const DISPATCHED_AT = 1790000000;
   const NOW = self::DISPATCHED_AT + 600;
 
-  /** @var array<int, array> */
+  /** @var array<int, array<int, mixed>> */
   protected array $queryConditions = [];
   /** @var array<int, array{0: string, 1: mixed}> */
   protected array $freshSets = [];
@@ -50,12 +50,12 @@ class AppverseReviewServicePollTest extends UnitTestCase {
   /**
    * @param string|null $status
    *   The node's field_review_status, or NULL for no pending node at all.
-   * @param array<string, array> $runsByStatus
+   * @param array<string, array<int, array<string, mixed>>> $runsByStatus
    *   Workflow runs the API returns, keyed by the status filter.
    */
   protected function makeService(?string $status, array $runsByStatus = []): AppverseReviewService {
     $http = $this->createMock(Client::class);
-    $http->method('get')->willReturnCallback(function (string $url) use ($runsByStatus) {
+    $http->method('request')->willReturnCallback(function (string $method, string $url) use ($runsByStatus) {
       $this->httpGets[] = $url;
       parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
       $stream = $this->createMock(StreamInterface::class);
@@ -72,13 +72,20 @@ class AppverseReviewServicePollTest extends UnitTestCase {
     $keys = $this->createMock(KeyRepositoryInterface::class);
     $keys->method('getKey')->willReturn($key);
 
-    $logs = &$this->logs;
-    $logger = new class($logs) extends AbstractLogger {
+    // Collects each log line into $this->logs as [level, message].
+    $logger = new class(function (string $level, string $message): void {
+      $this->logs[] = [$level, $message];
+    }) extends AbstractLogger {
 
-      public function __construct(private array &$logs) {}
+      public function __construct(private \Closure $sink) {}
 
-      public function log($level, $message, array $context = []): void {
-        $this->logs[] = [$level, strtr((string) $message, $context)];
+      /**
+       * {@inheritdoc}
+       *
+       * @param array<string, mixed> $context
+       */
+      public function log($level, string|\Stringable $message, array $context = []): void {
+        ($this->sink)((string) $level, strtr((string) $message, $context));
       }
 
     };
@@ -133,6 +140,9 @@ class AppverseReviewServicePollTest extends UnitTestCase {
 
   /**
    * A run as the workflow-runs API returns it, titled for this node.
+   *
+   * @return array<string, mixed>
+   *   The run.
    */
   protected function workflowRun(int $id, ?string $conclusion = NULL): array {
     $correlationId = AppverseReviewService::correlationId(self::NID, self::DISPATCHED_AT);

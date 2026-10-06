@@ -196,7 +196,7 @@ class AppverseReviewService {
       return FALSE;
     }
     try {
-      $response = $this->httpClient->get(sprintf('https://api.github.com/repos/%s/releases/latest', $ownerRepo), [
+      $response = $this->httpClient->request('GET', sprintf('https://api.github.com/repos/%s/releases/latest', $ownerRepo), [
         'headers' => $this->githubHeaders($token),
         'http_errors' => FALSE,
       ]);
@@ -289,6 +289,9 @@ class AppverseReviewService {
         $fresh->set('field_review_dispatched_by', $starter);
       }
 
+      // A runtime flag ood_software_node_update() reads, not a field; the
+      // Drupal PHPStan extension types every node property as a field list.
+      // @phpstan-ignore-next-line
       $fresh->_ood_software_suppress_notifications = TRUE;
       if (method_exists($fresh, 'setValidationRequired')) {
         $fresh->setValidationRequired(FALSE);
@@ -349,7 +352,7 @@ class AppverseReviewService {
     );
 
     try {
-      $response = $this->httpClient->post($url, [
+      $response = $this->httpClient->request('POST', $url, [
         'headers' => $this->githubHeaders($token) + ['Content-Type' => 'application/json'],
         'json' => [
           'ref' => self::WORKFLOW_REF,
@@ -514,7 +517,7 @@ class AppverseReviewService {
       // No matching run found (completed or active). If the dispatch
       // is older than the stale timeout, mark as error so reviewers
       // can re-trigger via the review_to_review transition.
-      if ($dispatchedAt > 0 && ($now - $dispatchedAt) > self::STALE_TIMEOUT_SECONDS) {
+      if (($now - $dispatchedAt) > self::STALE_TIMEOUT_SECONDS) {
         $this->logger->warning('Review for node @nid has been pending for @hours hours with no matching run — marking as error.', [
           '@nid' => $node->id(),
           '@hours' => round(($now - $dispatchedAt) / 3600, 1),
@@ -577,7 +580,7 @@ class AppverseReviewService {
    * @param string $status
    *   Run status filter: 'completed', 'in_progress', 'queued', etc.
    *
-   * @return array|null
+   * @return array<int, array<string, mixed>>|null
    *   Array of run objects, or NULL on failure.
    */
   protected function fetchWorkflowRuns(string $token, string $status = 'completed'): ?array {
@@ -589,7 +592,7 @@ class AppverseReviewService {
     );
 
     try {
-      $response = $this->httpClient->get($url, [
+      $response = $this->httpClient->request('GET', $url, [
         'headers' => $this->githubHeaders($token),
       ]);
       $body = Json::decode($response->getBody()->getContents());
@@ -610,8 +613,9 @@ class AppverseReviewService {
    * workflow-runs API doesn't return dispatch inputs, so we correlate on
    * the id the workflow echoes into its run title (see correlationId()).
    *
-   * @return array|null
+   * @return array<string, mixed>|null
    *   The matched run object, or NULL if no match.
+   * @param array<int, array<string, mixed>> $runs
    */
   protected function matchRun(array $runs, string $correlationId, int $dispatchedAt): ?array {
     foreach ($runs as $run) {
@@ -633,6 +637,8 @@ class AppverseReviewService {
 
   /**
    * Process a completed workflow run: download artifacts, update the node.
+   *
+   * @param array<string, mixed> $run
    */
   protected function processCompletedRun(NodeInterface $node, array $run, string $token): void {
     $runId = (int) $run['id'];
@@ -699,7 +705,60 @@ class AppverseReviewService {
 
 
   /**
+   * Forgets a repo's review run when the contributor withdraws it.
+   *
+   * Cancels the GitHub run when its id is known, so a withdrawn run stops
+   * spending, then clears the run fields on $repo; the caller saves it.
+   * Clearing field_review_dispatched_at lets a re-submit dispatch at once
+   * instead of falling inside the debounce window. Nothing else reads it once
+   * the run is forgotten: the poller only follows pending and in-progress
+   * runs (appverse-planning#46).
+   *
+   * @return bool
+   *   TRUE when a run was cancelled.
+   */
+  public function forgetRun(NodeInterface $repo): bool {
+    $runId = $repo->hasField('field_review_run_id') ? (int) $repo->get('field_review_run_id')->getString() : 0;
+    $cancelled = $runId > 0 && $this->cancelRun($runId);
+    foreach (['field_review_status', 'field_review_run_id', 'field_review_recommendation', 'field_review_dispatched_at'] as $field) {
+      if ($repo->hasField($field)) {
+        $repo->set($field, NULL);
+      }
+    }
+    return $cancelled;
+  }
+
+  /**
+   * Cancels a review run on GitHub Actions.
+   *
+   * A run that already finished answers 409; that, like any other failure,
+   * is logged and returns FALSE, since there is nothing left to stop.
+   */
+  public function cancelRun(int $runId): bool {
+    $token = $this->getToken();
+    if ($token === NULL) {
+      $this->logger->warning('Cannot cancel review run @id: no GitHub token.', ['@id' => $runId]);
+      return FALSE;
+    }
+    $url = sprintf('https://api.github.com/repos/%s/actions/runs/%d/cancel', self::REVIEW_REPO, $runId);
+    try {
+      $this->httpClient->request('POST', $url, ['headers' => $this->githubHeaders($token)]);
+      $this->logger->info('Cancelled review run @id.', ['@id' => $runId]);
+      return TRUE;
+    }
+    catch (GuzzleException $e) {
+      $this->logger->info('Could not cancel review run @id (it may have finished): @msg', [
+        '@id' => $runId,
+        '@msg' => $e->getMessage(),
+      ]);
+      return FALSE;
+    }
+  }
+
+  /**
    * Fetch the artifacts list for a workflow run.
+   *
+   * @return array<int, array<string, mixed>>|null
    */
   protected function fetchArtifacts(int $runId, string $token): ?array {
     $url = sprintf(
@@ -709,7 +768,7 @@ class AppverseReviewService {
     );
 
     try {
-      $response = $this->httpClient->get($url, [
+      $response = $this->httpClient->request('GET', $url, [
         'headers' => $this->githubHeaders($token),
       ]);
       $body = Json::decode($response->getBody()->getContents());
@@ -732,7 +791,7 @@ class AppverseReviewService {
    */
   protected function downloadArtifactZip(string $url, string $token): ?string {
     try {
-      $response = $this->httpClient->get($url, [
+      $response = $this->httpClient->request('GET', $url, [
         'headers' => $this->githubHeaders($token),
         'allow_redirects' => TRUE,
       ]);
@@ -757,6 +816,8 @@ class AppverseReviewService {
    * that is testing the loop, say, via its settings.php. No name (local ddev)
    * reads as "local". Everything else dispatches dry-runs, which produce a
    * placeholder report and cost nothing.
+   *
+   * @param array<int, string> $allowed
    */
   public static function fullReviewsAllowed(?string $env, array $allowed): bool {
     $env = ($env === NULL || $env === '') ? 'local' : $env;
@@ -831,6 +892,8 @@ class AppverseReviewService {
    *
    * Matches the id as a whole token of the title, so portal-1-10 does not
    * match portal-1-100.
+   *
+   * @param array<string, mixed> $run
    */
   public static function runMatches(array $run, string $correlationId): bool {
     if ($correlationId === '') {
@@ -845,6 +908,8 @@ class AppverseReviewService {
    *
    * The title is "Review <target_repo> · <aspects> · <correlation_id>";
    * NULL when the run predates run-name or was not dispatched that way.
+   *
+   * @param array<string, mixed> $run
    */
   public static function runAspects(array $run): ?string {
     $title = (string) ($run['display_title'] ?? '');
@@ -894,6 +959,8 @@ class AppverseReviewService {
    * pre-review/tool-table.md, zipped ahead of the report — and taking the
    * first .md found would store that instead and leave the report empty.
    * With no artifact JSON (a dry-run), any review-* report file counts.
+   *
+   * @return array<string, string>
    */
   public static function extractReviewFiles(string $zipContents, string $dir): array {
     $tmpFile = tempnam(sys_get_temp_dir(), 'review_zip_');
@@ -957,7 +1024,7 @@ class AppverseReviewService {
   /**
    * Downloads the run's review-* artifact and extracts the review files.
    *
-   * @return array|null
+   * @return array<string, string>|null
    *   The extracted files as extractReviewFiles() returns them, or NULL when
    *   the run has no review-* artifact or it could not be fetched.
    */
@@ -991,6 +1058,8 @@ class AppverseReviewService {
 
   /**
    * Removes the extracted review files and their temp directory.
+   *
+   * @param array<string, string>|null $files
    */
   protected function cleanupReviewFiles(?array $files): void {
     if (!$files) {
@@ -1033,6 +1102,9 @@ class AppverseReviewService {
         }
         $fresh->set('field_review_recommendation', $mapped);
       }
+      // A runtime flag ood_software_node_update() reads, not a field; the
+      // Drupal PHPStan extension types every node property as a field list.
+      // @phpstan-ignore-next-line
       $fresh->_ood_software_suppress_notifications = TRUE;
       if (method_exists($fresh, 'setValidationRequired')) {
         $fresh->setValidationRequired(FALSE);
@@ -1074,6 +1146,9 @@ class AppverseReviewService {
         $fresh->set('field_review_run_id', $runId);
       }
 
+      // A runtime flag ood_software_node_update() reads, not a field; the
+      // Drupal PHPStan extension types every node property as a field list.
+      // @phpstan-ignore-next-line
       $fresh->_ood_software_suppress_notifications = TRUE;
       if (method_exists($fresh, 'setValidationRequired')) {
         $fresh->setValidationRequired(FALSE);
@@ -1090,6 +1165,8 @@ class AppverseReviewService {
 
   /**
    * Build standard GitHub API headers.
+   *
+   * @return array<string, string>
    */
   protected function githubHeaders(string $token): array {
     return [

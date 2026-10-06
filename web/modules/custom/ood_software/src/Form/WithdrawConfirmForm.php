@@ -9,6 +9,7 @@ use Drupal\Core\Form\EnforcedResponseException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoProgress;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -31,6 +32,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     protected EntityTypeManagerInterface $entityTypeManager,
     protected RepoProgress $repoProgress,
     protected TimeInterface $time,
+    protected AppverseReviewService $reviews,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -38,6 +40,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
       $container->get('entity_type.manager'),
       $container->get('ood_software.repo_progress'),
       $container->get('datetime.time'),
+      $container->get('ood_software.review_dispatcher'),
     );
   }
 
@@ -54,6 +57,10 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
       && !$progress->facts($repo)['decision_sent'];
   }
 
+  /**
+   * @param array<string, mixed> $form
+   * @return array<string, mixed>
+   */
   public function buildForm(array $form, FormStateInterface $form_state, ?NodeInterface $node = NULL): array {
     if ($node === NULL || $node->bundle() !== 'appverse_repo') {
       throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
@@ -82,6 +89,9 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     return Url::fromUserInput('/user/' . $this->currentUser()->id() . '/my-appverse');
   }
 
+  /**
+   * @param array<string, mixed> $form
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $storage = $this->entityTypeManager->getStorage('node');
     $now = $this->time->getCurrentTime();
@@ -109,13 +119,11 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
 
     $repo = $storage->loadUnchanged($this->repo->id());
     $repo->set('moderation_state', 'draft');
-    // Forget the run: the poller only follows pending / in-progress runs, so
-    // one still in flight seeds no review.
-    foreach (['field_review_status', 'field_review_run_id', 'field_review_recommendation'] as $field) {
-      if ($repo->hasField($field)) {
-        $repo->set($field, NULL);
-      }
-    }
+    // Forget the run: cancel it on GitHub if it is still going, and clear
+    // the run fields so a re-submit dispatches at once. The poller only
+    // follows pending and in-progress runs, so one still in flight seeds no
+    // review.
+    $this->reviews->forgetRun($repo);
     $repo->setNewRevision(TRUE);
     $repo->setRevisionUserId((int) $this->currentUser()->id());
     $repo->setRevisionCreationTime($now);

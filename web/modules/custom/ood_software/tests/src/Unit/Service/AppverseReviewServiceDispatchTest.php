@@ -43,15 +43,15 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
   /** @var array<int, array{0: string, 1: mixed}> */
   protected array $freshSets = [];
   protected int $freshSaves = 0;
+  /** @var array<string, mixed>|null */
   protected ?array $postOptions = NULL;
 
   protected function makeService(int $httpStatus, ?AccountInterface $user = NULL): AppverseReviewService {
     $response = $this->createMock(ResponseInterface::class);
     $response->method('getStatusCode')->willReturn($httpStatus);
-    // Guzzle 7's ClientInterface does not declare post(); it is a trait
-    // method on the concrete Client, so that is what has to be mocked.
+    // The service calls request(), which ClientInterface declares.
     $http = $this->createMock(Client::class);
-    $http->method('post')->willReturnCallback(function (string $url, array $options) use ($response) {
+    $http->method('request')->willReturnCallback(function (string $method, string $url, array $options = []) use ($response) {
       $this->postOptions = $options + ['url' => $url];
       return $response;
     });
