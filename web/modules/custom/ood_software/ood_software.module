@@ -12,6 +12,8 @@ use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
 use Drupal\Component\Utility\Html;
@@ -1056,6 +1058,30 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
     'progress_message' => t('Processed @current of @total.'),
     'error_message' => t('Sync hit an error.'),
   ]);
+}
+
+/**
+ * Implements hook_entity_field_access().
+ *
+ * A repo awaiting review keeps its moderation state until a reviewer moves
+ * it: a contributor cannot change it while it is ready_for_review, from the
+ * edit form or a JSON:API PATCH (appverse-planning#41). The edit form's own
+ * alter drops Draft from the widget, but JSON:API is writable on this site
+ * and checks field access, not the form. The hub's Withdraw sets the state in
+ * code, so this does not stop it.
+ */
+function ood_software_entity_field_access(string $operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL): AccessResultInterface {
+  if ($operation !== 'edit' || $field_definition->getName() !== 'moderation_state' || $items === NULL) {
+    return AccessResult::neutral();
+  }
+  $entity = $items->getEntity();
+  if (!$entity instanceof NodeInterface || $entity->bundle() !== 'appverse_repo') {
+    return AccessResult::neutral();
+  }
+  $awaitingReview = ($entity->get('moderation_state')->value ?? '') === 'ready_for_review';
+  return AccessResult::forbiddenIf($awaitingReview && !$account->hasPermission('administer appverse content'))
+    ->addCacheableDependency($entity)
+    ->cachePerPermissions();
 }
 
 /**
