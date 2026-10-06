@@ -10,6 +10,7 @@ use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 
@@ -46,9 +47,40 @@ final class ReviewDecisionApplier {
   ) {}
 
   /**
-   * Sends the decision: records it and moves the apps, the repo and the review.
+   * Why a decision cannot act on the review's repo now, or NULL when it can.
+   *
+   * A decision acts on what was submitted: a repo awaiting review, or a live
+   * repo under re-review. A contributor can still move a submitted repo back
+   * to draft from its edit form, and publishing it then would put edits made
+   * after the review into the catalog (appverse-planning#41). Nothing is
+   * applied until they re-submit.
    */
-  public function send(NodeInterface $review, string $response): void {
+  public function repoBlocker(NodeInterface $review): ?TranslatableMarkup {
+    $ref = $review->get('field_arv_repo')->target_id;
+    $repo = $ref ? $this->entityTypeManager->getStorage('node')->loadUnchanged($ref) : NULL;
+    if (!$repo instanceof NodeInterface) {
+      return NULL;
+    }
+    $state = (string) ($repo->get('moderation_state')->value ?? '');
+    if (in_array($state, ['ready_for_review', 'published'], TRUE)) {
+      return NULL;
+    }
+    return $this->t('%repo is @state, not awaiting review, so nothing was changed. The contributor needs to re-submit it first.', [
+      '%repo' => $repo->label(),
+      '@state' => str_replace('_', ' ', $state),
+    ]);
+  }
+
+  /**
+   * Sends the decision: records it and moves the apps, the repo and the review.
+   *
+   * @return bool
+   *   FALSE, with nothing changed, when repoBlocker() refuses.
+   */
+  public function send(NodeInterface $review, string $response): bool {
+    if ($this->repoBlocker($review) !== NULL) {
+      return FALSE;
+    }
     $decisions = $this->appDecisions($review);
     $overall = ReviewProgress::strictestDecision(array_values($decisions));
     $review->set('field_arv_decision_sent_at', $this->time->getCurrentTime());
@@ -99,13 +131,20 @@ final class ReviewDecisionApplier {
         $this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo),
       ));
     }
+    return TRUE;
   }
 
   /**
    * "Publish app and review": publishes every accepted app not yet live, the
    * repo, and the review.
+   *
+   * @return bool
+   *   FALSE, with nothing changed, when repoBlocker() refuses.
    */
-  public function publish(NodeInterface $review): void {
+  public function publish(NodeInterface $review): bool {
+    if ($this->repoBlocker($review) !== NULL) {
+      return FALSE;
+    }
     $decisions = $this->appDecisions($review);
     $published = [];
     foreach ($this->appNodes($review) as $pid => $app) {
@@ -128,22 +167,28 @@ final class ReviewDecisionApplier {
         $this->siteName(), $repo->label(), $published, count($decisions) > 1, $this->links($review, $repo),
       ));
     }
+    return TRUE;
   }
 
   /**
    * Verdict paragraph id => the app's name.
+   *
+   * @return array<string, string>
    */
   public function appNames(NodeInterface $review): array {
     $names = [];
     foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $app = $verdict->get('field_rvv_app_ref')->entity;
-      $names[(string) $verdict->id()] = $app ? $app->label() : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
+      $names[(string) $verdict->id()] = $app instanceof NodeInterface ? (string) $app->label() : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
     }
     return $names;
   }
 
   /**
    * Sends a review email to the repo's owner and records that it went.
+   *
+   * @param array<string, mixed> $email
+   *   As DecisionEmail builds it, with at least a subject.
    */
   protected function email(NodeInterface $review, NodeInterface $repo, string $key, array $email): void {
     $sent = $this->notifier->sendReviewEmail($repo, $key, $email);
@@ -156,7 +201,8 @@ final class ReviewDecisionApplier {
       '@repo' => $repo->id(),
     ]);
     if ($sent) {
-      $this->messenger->addStatus($this->t('Emailed @name.', ['@name' => $owner ? $owner->getDisplayName() : $this->t('the contributor')]));
+      // A repo whose owner was deleted belongs to the anonymous user.
+      $this->messenger->addStatus($this->t('Emailed @name.', ['@name' => $repo->getOwnerId() ? $owner->getDisplayName() : $this->t('the contributor')]));
     }
     else {
       $this->messenger->addWarning($this->t('The email to the contributor could not be sent; see the site log.'));
@@ -169,6 +215,8 @@ final class ReviewDecisionApplier {
 
   /**
    * The links a review email carries.
+   *
+   * @return array<string, string>
    */
   protected function links(NodeInterface $review, NodeInterface $repo): array {
     return [
@@ -180,6 +228,8 @@ final class ReviewDecisionApplier {
 
   /**
    * Verdict paragraph id => its decision.
+   *
+   * @return array<string, string|null>
    */
   public function appDecisions(NodeInterface $review): array {
     $decisions = [];
@@ -231,7 +281,9 @@ final class ReviewDecisionApplier {
       return;
     }
     $fresh->set('moderation_state', 'published');
-    // The decision email replaces the repo's "published" email.
+    // The decision email replaces the repo's "published" email. The flag is
+    // read at runtime by hook_node_update(); it is not a field.
+    // @phpstan-ignore-next-line
     $fresh->_ood_software_suppress_notifications = TRUE;
     $this->saveRevision($fresh, $log);
     $this->messenger->addStatus($this->t('Published @title.', ['@title' => $fresh->label()]));
@@ -275,6 +327,8 @@ final class ReviewDecisionApplier {
     $repo->set('moderation_state', $state);
     $repo->setRevisionLogMessage($response);
     $repo->setNewRevision(TRUE);
+    // A runtime flag hook_node_update() reads; not a field.
+    // @phpstan-ignore-next-line
     $repo->_ood_software_suppress_notifications = TRUE;
     $repo->save();
     if ($wasPublished) {

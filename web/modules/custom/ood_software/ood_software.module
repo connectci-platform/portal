@@ -358,6 +358,21 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
     }
   }
 
+  if ($form_id === 'node_appverse_repo_edit_form') {
+    // A submitted repo goes back to draft through the hub's Withdraw, which
+    // refuses once a decision is sent. The edit form's state widget would
+    // skip that check (appverse-planning#41), so contributors lose the option
+    // while their repo awaits review. Reviewers keep it.
+    $form_object = $form_state->getFormObject();
+    $node = $form_object instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_object->getEntity() : NULL;
+    $user_roles = \Drupal::currentUser()->getRoles();
+    if ($node instanceof NodeInterface
+      && ($node->get('moderation_state')->value ?? '') === 'ready_for_review'
+      && !in_array('administrator', $user_roles, TRUE) && !in_array('appverse_pm', $user_roles, TRUE)) {
+      unset($form['moderation_state']['widget'][0]['state']['#options']['draft']);
+    }
+  }
+
 }
 /**
  * Build the preview block for a declared repo.

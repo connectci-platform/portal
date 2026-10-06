@@ -33,6 +33,13 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
     return 'ood_software_review_publish_confirm';
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   public function buildForm(array $form, FormStateInterface $form_state, ?NodeInterface $node = NULL): array {
     if ($node === NULL || $node->bundle() !== 'appverse_review') {
       throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
@@ -40,6 +47,10 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
     $this->review = $node;
     if (!self::canPublish($node)) {
       $this->messenger()->addWarning($this->t('This review has nothing to publish: publishing follows an Accept with suggestions decision.'));
+      throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
+    }
+    if (($blocker = $this->applier->repoBlocker($node)) !== NULL) {
+      $this->messenger()->addError($blocker);
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
     return parent::buildForm($form, $form_state);
@@ -69,7 +80,7 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
 
   public function getQuestion() {
     $repo = $this->review->get('field_arv_repo')->entity;
-    return $this->t('Publish %repo and its review?', ['%repo' => $repo ? $repo->label() : $this->review->label()]);
+    return $this->t('Publish %repo and its review?', ['%repo' => $repo instanceof NodeInterface ? $repo->label() : $this->review->label()]);
   }
 
   public function getDescription() {
@@ -84,11 +95,21 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
     return Url::fromRoute('ood_software.review_page', ['node' => $this->review->id()]);
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    // The applier reports each app and the repo it publishes.
-    $this->applier->publish($this->review);
-    $this->messenger()->addStatus($this->t('Published the review.'));
     $form_state->setRedirectUrl($this->getCancelUrl());
+    // The repo can move between building the form and submitting it.
+    $blocker = $this->applier->repoBlocker($this->review);
+    // The applier reports each app and the repo it publishes.
+    if ($blocker !== NULL || !$this->applier->publish($this->review)) {
+      $this->messenger()->addError($blocker ?? $this->t('Nothing was published.'));
+      return;
+    }
+    $this->messenger()->addStatus($this->t('Published the review.'));
   }
 
 }

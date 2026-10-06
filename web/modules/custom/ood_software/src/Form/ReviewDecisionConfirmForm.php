@@ -41,6 +41,13 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     return 'ood_software_review_decision_confirm';
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   public function buildForm(array $form, FormStateInterface $form_state, ?NodeInterface $node = NULL): array {
     if ($node === NULL || $node->bundle() !== 'appverse_review') {
       throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
@@ -52,6 +59,10 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     }
     if ($node->hasField('field_arv_withdrawn_at') && !$node->get('field_arv_withdrawn_at')->isEmpty()) {
       $this->messenger()->addWarning($this->t('The contributor withdrew this submission; there is nothing to decide unless they re-submit.'));
+      throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
+    }
+    if (($blocker = $this->applier->repoBlocker($node)) !== NULL) {
+      $this->messenger()->addError($blocker);
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
     $appDecisions = $this->appDecisions();
@@ -99,6 +110,8 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
 
   /**
    * App name => its decision, from the review's verdicts.
+   *
+   * @return array<string, string>
    */
   protected function appDecisions(): array {
     $names = $this->appNames();
@@ -111,6 +124,8 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
 
   /**
    * Verdict paragraph id => the app's name.
+   *
+   * @return array<string, string>
    */
   protected function appNames(): array {
     return $this->applier->appNames($this->review);
@@ -120,12 +135,12 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     $repo = $this->review->get('field_arv_repo')->entity;
     if ($this->mixed) {
       return $this->t('Send the decisions for %repo? Overall: %decision', [
-        '%repo' => $repo ? $repo->label() : $this->review->label(),
+        '%repo' => $repo instanceof NodeInterface ? $repo->label() : $this->review->label(),
         '%decision' => ReviewProgress::DECISION_LABELS[$this->decision] ?? $this->decision,
       ]);
     }
     return $this->t('Send the decision for %repo: %decision?', [
-      '%repo' => $repo ? $repo->label() : $this->review->label(),
+      '%repo' => $repo instanceof NodeInterface ? $repo->label() : $this->review->label(),
       '%decision' => ReviewProgress::DECISION_LABELS[$this->decision] ?? $this->decision,
     ]);
   }
@@ -150,13 +165,23 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     return Url::fromRoute('ood_software.review_page', ['node' => $this->review->id()]);
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $response = (string) ($this->review->get('field_arv_contributor_response')->value ?? '');
-    $this->applier->send($this->review, $response);
+    $form_state->setRedirectUrl($this->getCancelUrl());
+    // The repo can move between building the form and submitting it.
+    $blocker = $this->applier->repoBlocker($this->review);
+    if ($blocker !== NULL || !$this->applier->send($this->review, $response)) {
+      $this->messenger()->addError($blocker ?? $this->t('The decision was not sent.'));
+      return;
+    }
     $this->messenger()->addStatus($this->mixed
       ? $this->t('Decisions sent. Overall: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]])
       : $this->t('Decision sent: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]]));
-    $form_state->setRedirectUrl($this->getCancelUrl());
   }
 
 }
