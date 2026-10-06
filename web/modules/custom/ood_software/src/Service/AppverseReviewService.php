@@ -181,23 +181,34 @@ class AppverseReviewService {
   }
 
   /**
-   * The tag of a repo's latest GitHub release.
+   * The repo's newest release, or its newest tag when it has no releases.
    *
-   * @return string|false|null
-   *   The tag; NULL when the repo has no release (or GitHub has no such
-   *   repo); FALSE when GitHub could not be asked, so the caller changes
-   *   nothing.
+   * One GraphQL call returns the latest release and the newest tag, each
+   * with the commit date it points at, so the watcher can tell newer code
+   * from a deleted, re-created or older tag (appverse-planning#45).
+   *
+   * @return array{tag: string, at: int}|false|null
+   *   The tag and its commit time; NULL when the repo has neither a release
+   *   nor a tag; FALSE when it could not be checked, including a repo that
+   *   is private, gone or out of the token's reach, which must not read as
+   *   "no release".
    */
-  public function latestRelease(NodeInterface $repo): string|false|null {
+  public function latestRelease(NodeInterface $repo): array|false|null {
     $url = $this->extractRepoUrl($repo);
     $ownerRepo = $url !== NULL ? $this->parseOwnerRepo($url) : NULL;
     $token = $this->getToken();
     if ($ownerRepo === NULL || $token === NULL) {
       return FALSE;
     }
+    [$owner, $name] = explode('/', $ownerRepo, 2);
+    $query = 'query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) {'
+      . ' latestRelease { tagName tagCommit { committedDate } }'
+      . ' refs(refPrefix: "refs/tags/", first: 1, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {'
+      . ' nodes { name target { ... on Commit { committedDate } ... on Tag { target { ... on Commit { committedDate } } } } } } } }';
     try {
-      $response = $this->httpClient->request('GET', sprintf('https://api.github.com/repos/%s/releases/latest', $ownerRepo), [
+      $response = $this->httpClient->request('POST', 'https://api.github.com/graphql', [
         'headers' => $this->githubHeaders($token),
+        'json' => ['query' => $query, 'variables' => ['owner' => $owner, 'name' => $name]],
         'http_errors' => FALSE,
       ]);
     }
@@ -205,17 +216,44 @@ class AppverseReviewService {
       $this->logger->warning('Release check for @repo failed: @msg', ['@repo' => $ownerRepo, '@msg' => $e->getMessage()]);
       return FALSE;
     }
-    $status = $response->getStatusCode();
-    if ($status === 404) {
-      return NULL;
-    }
-    if ($status !== 200) {
-      $this->logger->warning('Release check for @repo: GitHub answered @status.', ['@repo' => $ownerRepo, '@status' => $status]);
+    $body = json_decode((string) $response->getBody(), TRUE);
+    $repository = is_array($body) ? ($body['data']['repository'] ?? NULL) : NULL;
+    if ($response->getStatusCode() !== 200 || !is_array($repository)) {
+      $this->logger->warning('Release check for @repo: GitHub answered @status without the repository.', [
+        '@repo' => $ownerRepo,
+        '@status' => $response->getStatusCode(),
+      ]);
       return FALSE;
     }
-    $tag = json_decode((string) $response->getBody(), TRUE)['tag_name'] ?? NULL;
-    return is_string($tag) && $tag !== '' ? $tag : NULL;
+    return self::newestTag($repository);
   }
+
+  /**
+   * The newest release, else the newest tag, from a GraphQL repository.
+   *
+   * Pure.
+   *
+   * @param array<string, mixed> $repository
+   *   data.repository from the latestRelease() query.
+   *
+   * @return array{tag: string, at: int}|null
+   *   The tag and its commit time, or NULL with neither.
+   */
+  public static function newestTag(array $repository): ?array {
+    $release = $repository['latestRelease'] ?? NULL;
+    if (is_array($release) && !empty($release['tagName'])) {
+      $at = strtotime((string) ($release['tagCommit']['committedDate'] ?? ''));
+      return ['tag' => (string) $release['tagName'], 'at' => $at === FALSE ? 0 : $at];
+    }
+    $node = $repository['refs']['nodes'][0] ?? NULL;
+    if (is_array($node) && !empty($node['name'])) {
+      $date = $node['target']['committedDate'] ?? $node['target']['target']['committedDate'] ?? '';
+      $at = strtotime((string) $date);
+      return ['tag' => (string) $node['name'], 'at' => $at === FALSE ? 0 : $at];
+    }
+    return NULL;
+  }
+
 
   /**
    * The newest appverse_review node for a repo, or NULL.
