@@ -435,14 +435,51 @@ final class AppverseHubController extends ControllerBase {
    * Allowed for owner or admin.
    */
   public function sendForReview(NodeInterface $node): RedirectResponse {
+    // A live repo with apps sent back is re-submitted whole and stays live
+    // (appverse-planning#48); it does not go through the transition below.
     if ($node->bundle() === 'appverse_repo' && $node->isPublished()) {
       return $this->resubmitLive($node);
     }
-    return $this->applyTransition(
+    $response = $this->applyTransition(
       $node,
       'ready_for_review',
       $this->t('Sent @title for review.', ['@title' => $node->label()])
     );
+
+    // A review is a review of a Repo, so its member apps have to travel with
+    // it. Without this the repo sat in ready_for_review while its apps stayed
+    // in draft, and a reviewer opening the queue saw a repo whose apps claimed
+    // not to be submitted (D8-2881). Mirrors the cascades adminPublish(),
+    // requestChanges() and unpublish() already perform.
+    if ($node->bundle() === 'appverse_repo') {
+      $verify = $this->entityTypeManager()->getStorage('node')->loadUnchanged($node->id());
+      if ($verify && $verify->get('moderation_state')->value === 'ready_for_review') {
+        $this->cascadeSendMemberAppsForReview($verify);
+      }
+    }
+
+    return $response;
+  }
+
+  /**
+   * Cascade a Repo's send-for-review to its member apps.
+   *
+   * Only apps still in draft or needs_adjustment move; an app already in
+   * ready_for_review or published is left alone, so a resubmission does not
+   * drag a published app back out of the catalog.
+   */
+  protected function cascadeSendMemberAppsForReview(NodeInterface $repo): void {
+    $count = $this->repoMemberApps->cascadeModeration(
+      $repo, 'ready_for_review',
+      ['draft', 'needs_adjustment'],
+      'Auto-sent for review via parent Repo.'
+    );
+    if ($count > 0) {
+      $this->messenger()->addStatus($this->t(
+        'Also sent @count member apps under @title for review.',
+        ['@count' => $count, '@title' => $repo->label()]
+      ));
+    }
   }
 
   /**

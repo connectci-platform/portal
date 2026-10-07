@@ -10,7 +10,6 @@ dependencies:
     - access_misc
     - access_news
     - ccmnet
-    - cssn
     - field_inheritance
     - recurring_events
     - webform_submission_search_api
@@ -260,11 +259,6 @@ processor_settings:
     ignored: ._
     overlap_cjk: 1
     minimum_word_size: '3'
-  user_affinity_groups: {  }
-  user_badges: {  }
-  user_interests: {  }
-  user_skills: {  }
-  user_skills_id: {  }
   webform_submission_category: {  }
   webform_submission_description: {  }
   webform_submission_domain: {  }

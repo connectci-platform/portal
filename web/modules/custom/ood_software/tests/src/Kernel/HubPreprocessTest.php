@@ -338,6 +338,118 @@ class HubPreprocessTest extends KernelTestBase {
     $this->assertNotNull($hub['actions']['resync']);
   }
 
+
+
+
+
+
+  public function testDraftAppDoesNotClaimItWasSubmitted(): void {
+    // D8-2881: hook_node_insert() announced "Thanks for your submission! The
+    // Appverse team reviews new apps on Fridays" on every appverse_app
+    // creation. Registering a repo also creates its app, so contributors saw
+    // that alongside AddRepoForm's accurate "in your hub as a draft — send it
+    // for review when you are ready", believed the first, and never submitted.
+    \Drupal::messenger()->deleteAll();
+    $repo = $this->makeRepo(['moderation_state' => 'draft']);
+    $this->makeApp($repo, ['moderation_state' => 'draft']);
+
+    $this->assertStringNotContainsString(
+      'Thanks for your submission',
+      $this->queuedMessages(),
+      'A draft app must not tell its author it was submitted for review.'
+    );
+  }
+
+  public function testAppCreatedInReviewSaysItWasSubmitted(): void {
+    \Drupal::messenger()->deleteAll();
+    $repo = $this->makeRepo(['moderation_state' => 'draft']);
+    $this->makeApp($repo, ['moderation_state' => 'ready_for_review']);
+
+    $this->assertStringContainsString(
+      'Thanks for your submission',
+      $this->queuedMessages()
+    );
+  }
+
+  /**
+   * Helper: every status message currently queued, as one string.
+   */
+  private function queuedMessages(): string {
+    $out = '';
+    foreach (\Drupal::messenger()->all() as $messages) {
+      foreach ($messages as $message) {
+        $out .= (string) $message . "\n";
+      }
+    }
+    return $out;
+  }
+
+  public function testAppSentForReviewCarriesItsRepo(): void {
+    // D8-2881: an inferred single-app repo has no appverse.yml, so the author
+    // edits the app's own node form. Moving only the app left the repo in
+    // draft, and the review queue filters repos on their own state, so the
+    // submission was invisible to reviewers while the author saw it as sent.
+    $repo = $this->makeRepo(['moderation_state' => 'draft']);
+    $app = $this->makeApp($repo, ['moderation_state' => 'draft']);
+
+    $app->set('moderation_state', 'ready_for_review');
+    $app->setNewRevision(TRUE);
+    $app->save();
+
+    $storage = $this->container->get('entity_type.manager')->getStorage('node');
+    $this->assertSame(
+      'ready_for_review',
+      $storage->loadUnchanged($repo->id())->get('moderation_state')->value,
+      'Sending an app for review must carry its parent repo into the queue.'
+    );
+  }
+
+  public function testRepoSentForReviewCarriesItsMemberApps(): void {
+    // The other direction: the hub's repo action must take member apps with
+    // it, so a reviewer never opens a queued repo whose apps still read draft.
+    $repo = $this->makeRepo(['moderation_state' => 'draft']);
+    $draftApp = $this->makeApp($repo, ['title' => 'a', 'subpath' => 'a', 'moderation_state' => 'draft']);
+    $liveApp = $this->makeApp($repo, ['title' => 'b', 'subpath' => 'b', 'moderation_state' => 'published']);
+
+    $controller = \Drupal::classResolver(\Drupal\ood_software\Controller\AppverseHubController::class);
+    $controller->sendForReview($repo);
+
+    $storage = $this->container->get('entity_type.manager')->getStorage('node');
+    $this->assertSame(
+      'ready_for_review',
+      $storage->loadUnchanged($draftApp->id())->get('moderation_state')->value,
+      'A draft member app must travel with its repo into review.'
+    );
+    $this->assertSame(
+      'published',
+      $storage->loadUnchanged($liveApp->id())->get('moderation_state')->value,
+      'An already-published member app must not be pulled back out of the catalog.'
+    );
+  }
+
+  public function testAppSentForReviewUnderPublishedRepoIsNotQueued(): void {
+    // A published repo is deliberately left alone: ready_for_review is
+    // unpublished, so moving it would pull a live app out of the catalog.
+    // The consequence is that an app submitted under an already-published repo
+    // does NOT reach the reviewer queue, which filters repos on their own
+    // state. Pinned here so the trade-off is visible and deliberate rather
+    // than rediscovered as a bug (see D8-2882).
+    $repo = $this->makeRepo(['moderation_state' => 'published']);
+    $app = $this->makeApp($repo, ['moderation_state' => 'draft']);
+
+    $app->set('moderation_state', 'ready_for_review');
+    $app->setNewRevision(TRUE);
+    $app->save();
+
+    $storage = $this->container->get('entity_type.manager')->getStorage('node');
+    $fresh = $storage->loadUnchanged($repo->id());
+    $this->assertSame('published', $fresh->get('moderation_state')->value);
+    $this->assertTrue(
+      $fresh->isPublished(),
+      'The repo must stay live in the catalog while its app is under review.'
+    );
+  }
+
   public function testNonAdminGetsNoAdminActions(): void {
     // An authenticated non-admin (no 'administer appverse content') must NOT
     // get the admin lifecycle actions on a ready_for_review repo. This proves

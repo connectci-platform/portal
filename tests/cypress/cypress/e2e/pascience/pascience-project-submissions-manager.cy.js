@@ -146,6 +146,49 @@ describe("PA Science - Project Submissions (Manager View)", () => {
       .should('be.visible');
   });
 
+  it("Clearing the status filter and applying keeps Declined shown instead of re-applying the default", () => {
+    // D8-2880: an empty multi-select sends no query parameter, so "Apply with
+    // nothing selected" used to look like a first load and the default
+    // (exclude Declined) came back. The form now adds ps=1 on every Apply.
+    // Test Project 2 was set to Declined by the previous test.
+    cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    cy.visit('/project-submissions');
+
+    // First load: Declined is excluded by default and hidden from the queue.
+    cy.get('select[name="webform_submission_value_1[]"]')
+      .invoke('val')
+      .should('deep.equal', ['Declined']);
+    cy.contains('PA Science Manager Test Project 2').should('not.exist');
+
+    // Deselect Declined (the widget is select2, so drive the underlying
+    // select) and apply.
+    cy.get('select[name="webform_submission_value_1[]"]')
+      .invoke('val', [])
+      .trigger('change', { force: true });
+    cy.get('form.views-exposed-form')
+      .find('input[type="submit"], button[type="submit"]')
+      .first()
+      .click();
+
+    cy.url().should('include', 'ps=1');
+    cy.get('select[name="webform_submission_value_1[]"]')
+      .invoke('val')
+      .should((val) => expect(val || []).to.not.include('Declined'));
+    cy.contains('PA Science Manager Test Project 2')
+      .should('be.visible')
+      .closest('tr')
+      .contains('Declined')
+      .should('be.visible');
+
+    // The marker survives a sort link, so the choice persists.
+    cy.get('table thead th a').first().click();
+    cy.url().should('include', 'ps=1');
+    cy.get('select[name="webform_submission_value_1[]"]')
+      .invoke('val')
+      .should((val) => expect(val || []).to.not.include('Declined'));
+    cy.contains('PA Science Manager Test Project 2').should('be.visible');
+  });
+
   it("Cleanup - Delete test projects", () => {
     cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
     cy.visit('/admin/structure/webform/manage/project/results/submissions');
