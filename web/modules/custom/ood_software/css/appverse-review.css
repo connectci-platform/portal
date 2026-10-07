@@ -42,16 +42,41 @@
   color: var(--ink);
 }
 
+/* One box for both kinds of button. The confirm forms pair an <input
+   type="submit"> with an <a>, and with no display set each took its own
+   default, inline-block against inline: different heights, text off the same
+   baseline, and the link free to wrap mid-phrase. inline-flex centres the
+   label in both and nowrap keeps "Back to the review" on one line
+   (appverse-planning#53). */
 .arv-page .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  white-space: nowrap;
   font-family: inherit;
   font-size: .76rem;
   font-weight: 700;
+  line-height: 1.2;
   border-radius: 3px;
   padding: 6px 12px;
   cursor: pointer;
   border: 1.5px solid var(--ink);
   background: var(--white);
   color: var(--ink);
+  text-decoration: none;
+}
+.arv-page .btn:hover {
+  text-decoration: none;
+}
+/* The confirm forms' button row: a real gap rather than the whitespace
+   between two inline elements, and both aligned on one line. On these forms
+   .arv-page is the <form> and .form-actions its own child. */
+.arv-page > .form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .arv-page .btn.primary {
   background: var(--red);
@@ -164,16 +189,15 @@
   gap: 24px;
   align-items: start;
 }
-.arv-page .sidebar {
-  position: sticky;
-  top: 20px;
-}
+/* The sidebar scrolls with the page. Sticky kept the decision in view at the
+   cost of odd behaviour: the column is taller than the viewport on a review
+   with notes, so it re-anchored as you scrolled and its lower half was never
+   reachable. Capping it and giving it its own scrollbar was worse again, a
+   bar the wheel would not drive. Scrolling with everything else is what a
+   reader expects (appverse-planning#53). */
 @media (max-width: 900px) {
   .arv-page .layout {
     grid-template-columns: 1fr;
-  }
-  .arv-page .sidebar {
-    position: static;
   }
 }
 
