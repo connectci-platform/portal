@@ -68,9 +68,25 @@
 
   <div class="overview-block">
     <div class="overview-row">
+      {# The same two lines as the full page: what was reviewed, then the
+         commit and when (appverse-planning#53). #}
       <div class="overview-meta">
-        {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} {{ 'on @date'|t({'@date': page.reviewed_at}) }}{% endif %}
-        {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
+        <div class="overview-line overview-facts">
+          {% if page.repo_url %}
+            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
+          {% endif %}
+          {% if page.maintainer %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ 'Maintainer: @m'|t({'@m': page.maintainer}) }}
+          {% endif %}
+          {% if page.shape %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ page.shape }}
+          {% endif %}
+        </div>
+        <div class="overview-line overview-line--sub">
+          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
+        </div>
       </div>
       {% if page.history and page.history.total > 1 %}
         <div class="prev-reviews review-history">
@@ -84,7 +100,7 @@
 
   {% if page.assessment %}
     <section class="summary-assessment">
-      <h2 class="sec">{{ 'Reviewer assessment'|t }}</h2>
+      <h2 class="sec">{{ 'Summary'|t }}</h2>
       <div class="arv-text">{{ page.assessment }}</div>
     </section>
   {% endif %}
@@ -122,6 +138,10 @@
       {{ m.summary_row(page.maintenance, page, level_class) }}
     </dl>
   </section>
+
+  {% if page.tool_version %}
+    <p class="arv-footnote">{{ 'Report produced by @tool'|t({'@tool': page.tool_version}) }}</p>
+  {% endif %}
 
   <p class="summary-disclaimer">{{ 'This is an automated review with human curation. It is provided without warranty of any kind and does not certify the app as secure or fit for any purpose. A listing is not an endorsement.'|t }}</p>
 
