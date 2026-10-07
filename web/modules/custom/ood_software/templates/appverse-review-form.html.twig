@@ -124,7 +124,10 @@
     </div>
     {% for group in block.groups %}
       <div class="sev-group">
-        <div class="sev-head{% if loop.first %} sev-head--open{% endif %}">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span><span class="car">▸</span></div>
+        {# The worst group opens, except info, which starts collapsed even when
+           it is the only one: it is the group nobody is reading first
+           (appverse-planning#54). #}
+        <div class="sev-head{% if loop.first and group.severity != 'info' %} sev-head--open{% endif %}">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span><span class="car">▸</span></div>
         <div class="sev-body">
           {% for finding in group.findings %}
             {{ m.finding_row(finding, form, can_edit) }}
