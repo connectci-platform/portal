@@ -164,15 +164,6 @@
 .arv-page .sidebar {
   position: sticky;
   top: 20px;
-  /* Sticky alone was not enough: the sidebar is taller than the viewport on a
-     review with notes, so its lower half, the decision and the response, sat
-     permanently off screen and scrolled away while you read findings. Cap it
-     to the viewport and let it scroll on its own instead
-     (appverse-planning#53). */
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  /* Room for the scrollbar so it does not sit on top of the controls. */
-  padding-right: 4px;
 }
 @media (max-width: 900px) {
   .arv-page .layout {
