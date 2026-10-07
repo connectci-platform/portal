@@ -489,12 +489,20 @@
             </div>
           {% else %}
             <h2 class="sec">{{ 'Finish Review'|t }}</h2>
-            <div class="publish-note">{{ 'Public Summary will be visible to public after the app is published.'|t }}</div>
+            {# One sentence, under the heading and about the buttons below it.
+               It used to open with what the Public Summary does, which
+               belongs to that field's own bar above, and close with a second
+               line under the buttons, so the block explained two other things
+               and nothing about itself. There is no opt-out on the email:
+               sending the decision sends it, and the next screen is its
+               preview (appverse-planning#53). #}
+            <div class="publish-note">
+              {{ can_decide
+                ? 'Save your work, or send the decision. Sending opens a preview of the email first.'|t
+                : 'Save your work on this review.'|t }}
+            </div>
           {% endif %}
           <div class="publish-row">{{ form.actions }}</div>
-          {% if can_decide %}
-            <div class="next-step">{{ 'Next Step: Option to send above email to the contributor.'|t }}</div>
-          {% endif %}
         </div>
 
         <div class="internal-notes-block">

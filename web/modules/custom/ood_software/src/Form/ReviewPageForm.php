@@ -340,7 +340,9 @@ final class ReviewPageForm extends FormBase {
       // decision is sent (appverse-planning#53). The rest says what not to
       // write, because the email already greets them, lists each app's
       // decision and says how to re-submit (appverse-planning#48).
-      '#description' => $this->t('Make the changes you want, you can send this on the next screen.'),
+      // The next screen previews this email; it does not offer to skip it.
+      // Sending the decision sends the email (appverse-planning#53).
+      '#description' => $this->t('Sent to the contributor with your decision. The next screen previews it before it goes.'),
       // Above the field, not below it: it says what the field is for, which
       // is worth knowing before you start typing rather than after
       // (appverse-planning#53).
