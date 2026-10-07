@@ -101,12 +101,12 @@ class ReviewDecisionTest extends UnitTestCase {
    * @covers ::sendLabel
    */
   public function testSendLabel(): void {
-    $this->assertSame('Request changes…', (string) ReviewDecision::sendLabel(['a' => 'request_changes']));
-    $this->assertSame('Accept and publish…', (string) ReviewDecision::sendLabel(['a' => 'accept', 'b' => 'accept']));
-    $this->assertSame('Accept with suggestions…', (string) ReviewDecision::sendLabel(['a' => 'accept_with_suggestions']));
-    $this->assertSame('Decline…', (string) ReviewDecision::sendLabel(['a' => 'reject']));
-    $this->assertSame('Send decision…', (string) ReviewDecision::sendLabel(['a' => NULL]));
-    $this->assertSame('Send decisions (1 accepted, 2 changes requested)…', (string) ReviewDecision::sendLabel(['a' => 'request_changes', 'b' => 'accept', 'c' => 'request_changes']));
+    $this->assertSame('Request changes', (string) ReviewDecision::sendLabel(['a' => 'request_changes']));
+    $this->assertSame('Accept and publish', (string) ReviewDecision::sendLabel(['a' => 'accept', 'b' => 'accept']));
+    $this->assertSame('Accept with suggestions', (string) ReviewDecision::sendLabel(['a' => 'accept_with_suggestions']));
+    $this->assertSame('Decline', (string) ReviewDecision::sendLabel(['a' => 'reject']));
+    $this->assertSame('Send decision', (string) ReviewDecision::sendLabel(['a' => NULL]));
+    $this->assertSame('Send decisions (1 accepted, 2 changes requested)', (string) ReviewDecision::sendLabel(['a' => 'request_changes', 'b' => 'accept', 'c' => 'request_changes']));
   }
 
   /**

@@ -339,6 +339,10 @@ final class ReviewPageForm extends FormBase {
       // write, because the email already greets them, lists each app's
       // decision and says how to re-submit (appverse-planning#48).
       '#description' => $this->t('Emailed to the contributor when you send the decision. The email already greets them, lists each app\'s decision and says how to re-submit, so write only the review itself: what to change and why.'),
+      // Above the field, not below it: it says what the field is for, which
+      // is worth knowing before you start typing rather than after
+      // (appverse-planning#53).
+      '#description_display' => 'before',
     ];
   }
 
@@ -426,6 +430,7 @@ final class ReviewPageForm extends FormBase {
       // Where it ends up (appverse-planning#53): this one is public, which the
       // placeholder alone did not make clear.
       '#description' => $this->t('Published with the review when the app is accepted, so anyone can read it.'),
+      '#description_display' => 'before',
     ];
   }
 
@@ -510,7 +515,7 @@ final class ReviewPageForm extends FormBase {
       'data-labels' => json_encode([
         'none' => (string) ReviewDecision::sendLabel([]),
         'single' => $single,
-        'mixed' => (string) $this->t('Send decisions (@summary)…'),
+        'mixed' => (string) $this->t('Send decisions (@summary)'),
         'count' => [
           'accept' => (string) $this->t('@count accepted'),
           'accept_with_suggestions' => (string) $this->t('@count accepted with suggestions'),
@@ -747,6 +752,13 @@ final class ReviewPageForm extends FormBase {
       // The same gates as one line: a count of the passes, with anything that
       // is not a pass held out in full (appverse-planning#54).
       'repo_gate_summary' => ReviewPageData::gateSummary($repoGates),
+      // Everything the gates box used to hold, for the Structure block that
+      // now carries it (appverse-planning#53).
+      'repo_gate_block' => ReviewPageData::gateSummary($repoGates) + [
+        'rows' => $this->gateRows($node),
+        'catalog_html' => $node->hasField('field_arv_catalog_checks')
+          ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
+      ],
       'gate_rows' => $this->gateRows($node),
       'catalog_html' => $node->hasField('field_arv_catalog_checks') ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
       'history' => $history,

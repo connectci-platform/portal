@@ -166,14 +166,14 @@ final class ReviewDecision {
     $distinct = array_values(array_unique($decided));
     if (count($distinct) === 1) {
       return match ($distinct[0]) {
-        'accept' => new TranslatableMarkup('Accept and publish…'),
-        'accept_with_suggestions' => new TranslatableMarkup('Accept with suggestions…'),
-        'request_changes' => new TranslatableMarkup('Request changes…'),
-        default => new TranslatableMarkup('Decline…'),
+        'accept' => new TranslatableMarkup('Accept and publish'),
+        'accept_with_suggestions' => new TranslatableMarkup('Accept with suggestions'),
+        'request_changes' => new TranslatableMarkup('Request changes'),
+        default => new TranslatableMarkup('Decline'),
       };
     }
     if ($distinct === []) {
-      return new TranslatableMarkup('Send decision…');
+      return new TranslatableMarkup('Send decision');
     }
     $counts = array_count_values($decided);
     $parts = [];
@@ -188,7 +188,7 @@ final class ReviewDecision {
         };
       }
     }
-    return new TranslatableMarkup('Send decisions (@summary)…', ['@summary' => implode(', ', $parts)]);
+    return new TranslatableMarkup('Send decisions (@summary)', ['@summary' => implode(', ', $parts)]);
   }
 
   /**

@@ -470,6 +470,14 @@
 /* Changing a rating is rare, so the icon sits back: smaller than the badge it
    follows and grey rather than ink, coming forward only on hover and focus
    (appverse-planning#54). */
+/* The shield on the Security heading, in the slot the rated blocks use for
+   their badge (appverse-planning#53). */
+.arv-page .cat-icon {
+  color: var(--gray-700);
+  font-size: .9rem;
+  line-height: 1;
+}
+
 .arv-page .edit-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -737,14 +745,20 @@
 .arv-page .frow .sum {
   font-size: .86rem;
 }
+/* Evidence is a list of file:line references and can run long; OODT-05 cites
+   a dozen. Monospace with no wrapping ran it past the card's edge, so it
+   wraps, breaking inside a path when one reference is itself too long to fit
+   (appverse-planning#53). */
 .arv-page .frow .ev {
   font-family: ui-monospace, "Courier New", monospace;
   font-size: .72rem;
-  color: var(--gray-500);
+  color: var(--gray-700);
   margin-top: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .arv-page .frow .ev a {
-  color: var(--blue);
+  color: var(--blue-text);
   text-decoration: none;
 }
 .arv-page .frow .ev a:hover {
@@ -1185,10 +1199,23 @@
   opacity: .5;
   cursor: not-allowed;
 }
+/* The send button's label grows with the decision ("Send decisions (2
+   accepted, 1 changes requested)"), so in a 320px sidebar it ran off the
+   right edge. Full width on its own line below Save draft, wrapping if it
+   still needs to (appverse-planning#53). */
+.arv-page .sidebar .arv-send {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+  margin-top: 8px;
+}
 .arv-page .arv-send-reason {
-  margin-left: 10px;
-  font-size: .8rem;
-  color: var(--gray-700);
+  display: block;
+  margin-left: 0;
+  margin-top: 6px;
+  font-size: var(--sb-helper);
+  color: var(--sb-helper-color);
 }
 
 /* The decision confirm page: the email as the contributor will get it. */
