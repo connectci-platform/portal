@@ -330,7 +330,7 @@ final class ReviewPageForm extends FormBase {
     }
     $form['response'] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Response to contributor'),
+      '#title' => $this->t('Email to contributor'),
       '#title_display' => 'invisible',
       '#rows' => 8,
       '#default_value' => $page['response'],
@@ -338,7 +338,7 @@ final class ReviewPageForm extends FormBase {
       // decision is sent (appverse-planning#53). The rest says what not to
       // write, because the email already greets them, lists each app's
       // decision and says how to re-submit (appverse-planning#48).
-      '#description' => $this->t('Emailed to the contributor when you send the decision. The email already greets them, lists each app\'s decision and says how to re-submit, so write only the review itself: what to change and why.'),
+      '#description' => $this->t('Write only what to change and why. The email already greets them and says how to re-submit.'),
       // Above the field, not below it: it says what the field is for, which
       // is worth knowing before you start typing rather than after
       // (appverse-planning#53).
@@ -422,14 +422,14 @@ final class ReviewPageForm extends FormBase {
 
     $form['assessment'] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Reviewer assessment'),
+      '#title' => $this->t('Public summary'),
       '#title_display' => 'invisible',
       '#rows' => 5,
       '#default_value' => $page['assessment'],
       '#attributes' => ['placeholder' => $this->t('The published assessment, in your words…')],
       // Where it ends up (appverse-planning#53): this one is public, which the
       // placeholder alone did not make clear.
-      '#description' => $this->t('Published with the review when the app is accepted, so anyone can read it.'),
+      '#description' => $this->t('Anyone can read this once the app is accepted.'),
       '#description_display' => 'before',
     ];
   }
@@ -770,6 +770,13 @@ final class ReviewPageForm extends FormBase {
       'recommendation' => $node->get('field_arv_recommendation')->value,
       'recommendation_label' => $this->conclusionOptions()[$node->get('field_arv_recommendation')->value] ?? '',
       'recommendation_note' => (string) ($node->get('field_arv_recommendation_note')->value ?? ''),
+      // Only worth saying once a decision differs from what the tool
+      // suggested; while they agree, the caption repeats the value above it
+      // (appverse-planning#53). An app not yet decided does not differ.
+      'recommendation_differs' => self::decisionDiffersFromSuggestion(
+        (string) ($node->get('field_arv_recommendation')->value ?? ''),
+        $apps
+      ),
       'apps' => $apps,
       'maintenance' => $repoSection['maintenance'],
       'repo_blocks' => $repoSection['blocks'],
@@ -820,6 +827,24 @@ final class ReviewPageForm extends FormBase {
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
     ];
+  }
+
+  /**
+   * Whether any app was decided differently from the tool's suggestion.
+   *
+   * @param array<int, array<string, mixed>> $apps
+   */
+  protected static function decisionDiffersFromSuggestion(string $suggestion, array $apps): bool {
+    if ($suggestion === '') {
+      return FALSE;
+    }
+    foreach ($apps as $app) {
+      $conclusion = (string) ($app['conclusion'] ?? '');
+      if ($conclusion !== '' && $conclusion !== $suggestion) {
+        return TRUE;
+      }
+    }
+    return FALSE;
   }
 
   /**

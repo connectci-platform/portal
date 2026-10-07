@@ -410,35 +410,36 @@
         </div>
       {% endfor %}
       {# The tool's suggestion is for reviewers; contributors never see AI
-         state (appverse-planning#42). #}
-      {% if is_reviewer and page.recommendation %}
-        <div class="concl-caption" title="{{ page.recommendation_note }}">{{ 'Automated suggestion'|t }}: {{ page.recommendation_label }}</div>
+         state (appverse-planning#42). Only once a decision differs from it:
+         while they agree the caption repeats the value right above it
+         (appverse-planning#53). #}
+      {% if is_reviewer and page.recommendation and page.recommendation_differs %}
+        <div class="concl-caption" title="{{ page.recommendation_note }}">{{ 'Changed from the automated suggestion: @s'|t({'@s': page.recommendation_label}) }}</div>
       {% endif %}
       <hr class="sidebar-rule">
 
-      <div class="sec-head-row"><h2 class="sec">{{ 'Response to contributor'|t }}</h2></div>
+      <div class="sec-head-row"><h2 class="sec">{{ 'Email to contributor'|t }}</h2></div>
       {% if can_decide %}{{ form.response }}{% else %}<div class="arv-text">{{ page.response }}</div>{% endif %}
 
-      <div class="sec-head-row"><h2 class="sec">{{ 'Reviewer assessment'|t }}</h2></div>
+      <div class="sec-head-row"><h2 class="sec">{{ 'Public summary'|t }}</h2></div>
       {% if can_edit %}{{ form.assessment }}{% else %}<div class="arv-text">{{ page.assessment }}</div>{% endif %}
 
       {% if is_reviewer %}
         <div class="publish-block">
           {% if page.decision.sent %}
             <div class="publish-note">
-              {{ page.state == 'published' ? 'The review is published.'|t : 'The contributor can read the review and your response; the public cannot.'|t }}
-              {{ 'The review is a record of what was sent; internal notes can still be added.'|t }}
+              {{ page.state == 'published' ? 'Published.'|t : 'The contributor can read this; the public cannot.'|t }}
             </div>
           {% else %}
             <h2 class="sec">{{ 'Save or send the decision'|t }}</h2>
-            <div class="publish-note">{{ 'Visible to reviewers only until a decision is sent. Sending it moves the repo and the review together.'|t }}</div>
+            <div class="publish-note">{{ 'Reviewers only until the decision is sent.'|t }}</div>
           {% endif %}
           <div class="publish-row">{{ form.actions }}</div>
         </div>
 
         <div class="internal-notes-block">
           <h2 class="sec">{{ 'Internal notes'|t }}</h2>
-          <p class="notes-help">{{ 'Not visible to the contributor. Log context for other reviewers — conversations, decisions, anything worth remembering if someone else picks this review up.'|t }}</p>
+          <p class="notes-help">{{ 'Reviewers only. Context for whoever picks this up next.'|t }}</p>
           <div class="note-add">{{ form.new_note }}</div>
           <div class="notes-list">
             {% for note in page.notes %}

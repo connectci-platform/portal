@@ -44,6 +44,10 @@
   --sb-helper-color: var(--gray-700);
   color: var(--ink);
   line-height: 1.5;
+  /* Both this page and the decision confirm page ended flush against the
+     site footer. The confirm form carries .arv-page too, so one rule covers
+     them (appverse-planning#53). */
+  padding-bottom: 48px;
 }
 
 /* One type family throughout, as the wireframe. The theme sets its serif
