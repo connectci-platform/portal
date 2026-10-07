@@ -3,6 +3,7 @@
 namespace Drupal\ood_software\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
+use Drupal\content_moderation\ContentModerationState;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
@@ -438,9 +439,13 @@ final class ReviewDecisionApplier {
     }
     foreach ($path as $state) {
       $latest = $storage->getLatestRevisionId($node->id());
-      $step = $workflow->getState($state)->isPublishedState() && $latest
+      $published = $workflow->getState($state);
+      $step = $published instanceof ContentModerationState && $published->isPublishedState() && $latest
         ? $storage->loadRevision($latest)
         : $storage->loadUnchanged($node->id());
+      if (!$step instanceof NodeInterface) {
+        return;
+      }
       $step->set('moderation_state', $state);
       // Read at runtime by hook_node_update(); it is not a field.
       // @phpstan-ignore-next-line

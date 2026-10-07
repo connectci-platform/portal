@@ -172,11 +172,23 @@ class ReviewDecisionTest extends UnitTestCase {
    *
    * @covers ::updateTargets
    * @dataProvider updateCases
+   *
+   * @param array<string, string> $apps
+   *   Verdict id => decision.
+   * @param array<string, bool> $live
+   *   Verdict id => whether the app is live.
+   * @param array<string, mixed> $expected
+   *   The targets.
    */
   public function testUpdateTargets(array $apps, array $live, bool $wasLive, array $expected): void {
     $this->assertSame($expected, ReviewDecision::updateTargets($apps, $live, $wasLive));
   }
 
+  /**
+   * Decisions, live apps and the targets an update moves them to.
+   *
+   * @return array<string, array<int, mixed>>
+   */
   public static function updateCases(): array {
     return [
       'changes requested, now accepted' => [['a' => 'accept'], ['a' => FALSE], FALSE,

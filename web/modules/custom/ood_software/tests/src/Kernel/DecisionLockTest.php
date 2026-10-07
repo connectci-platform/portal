@@ -84,6 +84,11 @@ class DecisionLockTest extends KernelTestBase {
 
   /**
    * A review of the repo whose sent decision is $apps.
+   *
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo.
+   * @param array<int|string, string> $apps
+   *   Verdict id => the decision sent.
    */
   protected function sentReview(NodeInterface $repo, array $apps): NodeInterface {
     $review = Node::create([
@@ -104,7 +109,8 @@ class DecisionLockTest extends KernelTestBase {
    */
   public function testSentReadsTheStoredDecision(): void {
     $review = $this->sentReview($this->repo(), ['7' => 'reject']);
-    $this->assertSame(['apps' => ['7' => 'reject'], 'response' => 'Thanks.', 'email' => NULL, 'was_live' => NULL, 'history' => []], ReviewDecisionApplier::sent($review));
+    // assertEquals: the stored verdict ids come back as integer keys.
+    $this->assertEquals(['apps' => ['7' => 'reject'], 'response' => 'Thanks.', 'email' => NULL, 'was_live' => NULL, 'history' => []], ReviewDecisionApplier::sent($review));
     $unsent = Node::create(['type' => 'appverse_review', 'title' => 'Unsent', 'moderation_state' => 'draft']);
     $unsent->save();
     $this->assertNull(ReviewDecisionApplier::sent($unsent));
