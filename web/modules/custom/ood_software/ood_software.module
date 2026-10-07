@@ -1341,6 +1341,13 @@ function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
   if ($node->bundle() !== 'appverse_app' || !$node->hasField('moderation_state')) {
     return;
   }
+  // A save the review's decision code makes (moving an app through
+  // ready_for_review on its way to its new state) is not a contributor
+  // submitting: re-submitting the repo would email every reviewer and start
+  // an AI run (appverse-planning#56).
+  if (!empty($node->_ood_software_suppress_notifications)) {
+    return;
+  }
   if ($node->get('moderation_state')->value !== 'ready_for_review') {
     return;
   }

@@ -129,6 +129,7 @@ class ReviewDecisionUpdateTest extends KernelTestBase {
     $this->assertState('ready_for_review', $app);
     $this->assertState('in_review', $review);
     $this->assertTrue($this->reload($repo)->get('field_review_dispatched_at')->isEmpty(), 'no AI run was dispatched');
+    $this->assertNotResubmitted($repo);
 
     $sent = ReviewDecisionApplier::sent($this->reload($review));
     $this->assertSame(['accept_with_suggestions'], array_values($sent['apps']));
@@ -150,6 +151,7 @@ class ReviewDecisionUpdateTest extends KernelTestBase {
     $this->assertState('declined', $repo);
     $this->assertState('declined', $app);
     $this->assertTrue($this->reload($repo)->get('field_review_dispatched_at')->isEmpty(), 'passing through ready_for_review started no run');
+    $this->assertNotResubmitted($repo);
   }
 
   /**
@@ -220,6 +222,22 @@ class ReviewDecisionUpdateTest extends KernelTestBase {
     $fresh = \Drupal::entityTypeManager()->getStorage('node')->loadUnchanged($node->id());
     $this->assertInstanceOf(NodeInterface::class, $fresh);
     return $fresh;
+  }
+
+  /**
+   * Asserts an update never re-submitted the repo.
+   */
+  protected function assertNotResubmitted(NodeInterface $repo): void {
+    // The app's pass through ready_for_review must not re-submit its repo:
+    // the test repo has no URL, so a dispatch could not be seen, but the sync
+    // that re-submits it leaves this log.
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    assert($storage instanceof \Drupal\Core\Entity\RevisionableStorageInterface);
+    foreach ($storage->revisionIds($repo) as $vid) {
+      $revision = $storage->loadRevision($vid);
+      $this->assertInstanceOf(NodeInterface::class, $revision);
+      $this->assertNotSame('Auto-sent for review with its member app.', $revision->getRevisionLogMessage(), 'the repo was not re-submitted');
+    }
   }
 
   /**
