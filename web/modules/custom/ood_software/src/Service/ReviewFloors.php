@@ -14,9 +14,11 @@ use Drupal\node\NodeInterface;
  * - A security FAIL (aspect "security", or an OODT rule) at High or Critical
  *   sets the floor for every app, wherever in the repo it was found:
  *   installing any one app clones the whole repo.
- * - A structure gate FAIL (an STR rule) sets at least Request changes at any
- *   severity, since every Structure row is a gate and a missing gate
- *   criterion is Request changes; Critical sets Reject. The upkeep gate
+ * - A structure gate FAIL (an STR rule, whichever aspect filed it) sets at
+ *   least Request changes at any severity, since every Structure row is a
+ *   gate and a missing gate criterion is Request changes; Critical sets
+ *   Reject. An STR note tagged "other" is not a gate row and floors only at
+ *   High or Critical. The upkeep gate
  *   (MNT-01) sets a floor at High or Critical. Both apply to their own app,
  *   or to every app when the finding is repo-level.
  * - A failed not_archived or public repo gate sets Request changes for every
@@ -70,11 +72,14 @@ final class ReviewFloors {
         $severity = strtolower(trim((string) ($f['severity'] ?? '')));
         $decision = self::SEVERITY_FLOOR[$severity] ?? NULL;
         $rule = strtoupper(trim((string) ($f['rule'] ?? '')));
-        $security = strtolower(trim((string) ($f['aspect'] ?? ''))) === 'security' || str_starts_with($rule, 'OODT');
+        $gate = self::isGate($f);
+        // A gate row the security aspect filed (a shellcheck code that maps
+        // to STR-04, say) is still a gate, so its floor matches its pill.
+        $security = !$gate && (strtolower(trim((string) ($f['aspect'] ?? ''))) === 'security' || str_starts_with($rule, 'OODT'));
         if (!$security && !str_starts_with($rule, 'STR') && $rule !== 'MNT-01') {
           continue;
         }
-        if ($decision === NULL && !$security && str_starts_with($rule, 'STR') && $result === 'FAIL') {
+        if ($decision === NULL && $gate && $result === 'FAIL') {
           $decision = 'request_changes';
         }
         if ($decision === NULL) {
@@ -168,6 +173,7 @@ final class ReviewFloors {
       'severity' => (string) ($p->get('field_rvf_severity')->value ?? ''),
       'result' => $p->hasField('field_rvf_result') ? (string) ($p->get('field_rvf_result')->value ?? '') : '',
       'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
+      'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
     ], $paragraphs);
     $apps = [];
     foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
@@ -178,6 +184,21 @@ final class ReviewFloors {
       $apps,
       json_decode((string) ($review->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: [],
     );
+  }
+
+  /**
+   * Whether a finding is a Structure gate row, as appverse-review's
+   * report_parse.is_gate_finding() decides it: an STR rule, whichever aspect
+   * filed it, unless its defect_key tag is "other", the structure skill's
+   * note for anything else worth a look.
+   *
+   * @param array<string, mixed> $finding
+   */
+  public static function isGate(array $finding): bool {
+    $rule = strtoupper(trim((string) ($finding['rule'] ?? '')));
+    $key = (string) ($finding['defect_key'] ?? '');
+    $tag = str_contains($key, ':') ? explode(':', $key, 2)[1] : $key;
+    return str_starts_with($rule, 'STR') && explode(':', $tag, 2)[0] !== 'other';
   }
 
   protected static function rank(string $decision): int {

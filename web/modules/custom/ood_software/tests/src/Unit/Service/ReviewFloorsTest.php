@@ -33,8 +33,8 @@ class ReviewFloorsTest extends UnitTestCase {
    *
    * @return array<string, string>
    */
-  protected static function finding(string $rule, string $severity, string $result = 'fail', string $aspect = '', string $evidence = 'x.sh:1'): array {
-    return ['rule' => $rule, 'aspect' => $aspect, 'severity' => $severity, 'result' => $result, 'evidence' => $evidence];
+  protected static function finding(string $rule, string $severity, string $result = 'fail', string $aspect = '', string $evidence = 'x.sh:1', string $defectKey = 'x.sh:tag'): array {
+    return ['rule' => $rule, 'aspect' => $aspect, 'severity' => $severity, 'result' => $result, 'evidence' => $evidence, 'defect_key' => $defectKey];
   }
 
   /**
@@ -84,6 +84,11 @@ class ReviewFloorsTest extends UnitTestCase {
       // A row seeded before results were stored is mostly a PASS at Info; only
       // an explicit FAIL sets the gate floor below High.
       'an Info gate row with no stored result' => [[], $two([self::finding('STR-02', 'info', '')]), [], []],
+      // An STR note tagged other: is not a gate row, so only High floors it.
+      'a Low other: note sets no floor' => [[], $two([self::finding('STR-07', 'low', 'fail', 'structure', 'form.yml', 'form.yml:other:both-form-variants')]), [], []],
+      'a High other: note still does' => [[], $two([self::finding('STR-07', 'high', 'fail', 'structure', 'form.yml', 'form.yml:other:both-form-variants')]), [], ['one' => 'request_changes']],
+      // A gate row the security aspect filed is still a gate, for its own app.
+      'a Low gate FAIL filed as security' => [[], $two([], [self::finding('STR-04', 'low', 'fail', 'security', 'x.sh:4', 'x.sh:undefined-variable')]), [], ['other' => 'request_changes']],
       // Security and upkeep keep their High floor.
       'a Low security FAIL sets no floor' => [[], $two([self::finding('OODT-05', 'low')]), [], []],
       'a Medium upkeep FAIL sets no floor' => [[self::finding('MNT-01', 'medium')], $two(), [], []],
