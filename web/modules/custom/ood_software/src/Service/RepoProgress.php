@@ -27,11 +27,13 @@ final class RepoProgress {
   /**
    * The facts ReviewProgress::steps() takes, for one repo.
    *
-   * The newest review is the current round's unless its decision was sent
-   * before the repo's latest run was dispatched: then the contributor has
-   * re-submitted, and that review belongs to the previous round. The round is
-   * one more than the reviews of earlier rounds that requested changes. A
-   * review the contributor withdrew is never the current one.
+   * The newest review is the current round's unless the contributor has
+   * re-submitted since its decision was sent, in which case it belongs to the
+   * previous round. Re-submitting means a run dispatched after the decision
+   * AND the repo having moved off the state that decision left it in: an
+   * admin re-running the AI report dispatches too but moves nothing. The
+   * round is one more than the reviews of earlier rounds that requested
+   * changes. A review the contributor withdrew is never the current one.
    */
   public function facts(NodeInterface $repo): array {
     $storage = $this->entityTypeManager->getStorage('node');
@@ -49,7 +51,19 @@ final class RepoProgress {
     $newestSentAt = $newest ? (int) ($newest->get('field_arv_decision_sent_at')->value ?? 0) : 0;
     // A review the contributor withdrew (appverse-planning#34) is set aside.
     $withdrawn = $newest && $newest->hasField('field_arv_withdrawn_at') && !$newest->get('field_arv_withdrawn_at')->isEmpty();
-    $current = $newest && !$withdrawn && !($newestSentAt && $dispatchedAt > $newestSentAt) ? $newest : NULL;
+    // A run dispatched after the decision was sent only starts a new round if
+    // the contributor re-submitted. Sending for review moves the repo to
+    // ready_for_review (or, for a live repo, leaves it published with its
+    // sent-back apps moved); an admin's Run AI report moves nothing, so a
+    // rerun on a repo still sitting in needs_adjustment or declined used to
+    // read as "Resubmitted · round 2" and told the contributor their repo was
+    // in review while the Re-submit button was still in front of them
+    // (appverse-planning#49).
+    $repoState = (string) ($repo->get('moderation_state')->value ?? 'draft');
+    $resubmitted = $newestSentAt
+      && $dispatchedAt > $newestSentAt
+      && !in_array($repoState, ['needs_adjustment', 'declined'], TRUE);
+    $current = $newest && !$withdrawn && !$resubmitted ? $newest : NULL;
 
     $changesRequested = 0;
     foreach ($reviews as $review) {
@@ -61,7 +75,7 @@ final class RepoProgress {
 
     $sent = $current && !$current->get('field_arv_decision_sent_at')->isEmpty();
     return [
-      'repo_state' => (string) ($repo->get('moderation_state')->value ?? 'draft'),
+      'repo_state' => $repoState,
       'run_status' => $repo->hasField('field_review_status') ? ($repo->get('field_review_status')->value ?: NULL) : NULL,
       'review_state' => $current?->get('moderation_state')->value,
       'decision_sent' => $sent,
