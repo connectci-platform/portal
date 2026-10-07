@@ -305,14 +305,16 @@
         <div class="overview-line overview-line--sub">
           {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
           {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
-          {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
-          {% if is_reviewer %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
+          {% if page.tool_version %} · <span class="tool-version" title="{{ 'The review tool that produced this report'|t }}">{{ page.tool_version }}</span>{% endif %}
         </div>
       </div>
       {# The header keeps the position and the rerun note; the reviews
          themselves are listed below it, one line each, rather than as a
          prev/next pair (appverse-planning#54). #}
+      {# Right-aligned: the public view link over how many reviews this repo
+         has had (appverse-planning#53). #}
       <div class="prev-reviews review-history">
+        {% if is_reviewer %}<div><a href="{{ page.public_url }}">{{ 'Public view'|t }}</a></div>{% endif %}
         {% if page.history and page.history.total > 1 %}
           <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
           {% if page.history.is_rerun %}

@@ -230,9 +230,10 @@
 .arv-page .prev-reviews {
   font-size: .83rem;
   color: var(--gray-700);
+  text-align: right;
 }
 .arv-page .prev-reviews a {
-  margin-left: 8px;
+  margin-left: 0;
 }
 .arv-page .overview-block .muted {
   color: var(--gray-700);
@@ -930,6 +931,28 @@
   margin-top: 2px;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+/* Clamped to two lines until the toggle opens it. Without JS the class is
+   never added, so the evidence is simply all there. */
+.arv-page .frow .ev--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.arv-page .ev-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: .72rem;
+  color: var(--blue-text);
+  cursor: pointer;
+}
+.arv-page .ev-toggle:hover,
+.arv-page .ev-toggle:focus-visible {
+  text-decoration: underline;
 }
 .arv-page .frow .ev a {
   color: var(--blue-text);

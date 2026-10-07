@@ -79,6 +79,29 @@
         });
       });
 
+      // Long evidence clamps to two lines with a toggle. OODT-05 cites a
+      // dozen file:line references and filled a third of its card
+      // (appverse-planning#53). The threshold is characters rather than
+      // measured height: it reads the same before and after layout, and
+      // avoids a reflow on every finding.
+      once('arv-evidence', '.arv-page .frow .ev', context).forEach((ev) => {
+        if (ev.textContent.trim().length <= 90) {
+          return;
+        }
+        ev.classList.add('ev--clamped');
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'ev-toggle';
+        toggle.textContent = Drupal.t('Show all');
+        toggle.setAttribute('aria-expanded', 'false');
+        ev.after(toggle);
+        toggle.addEventListener('click', () => {
+          const clamped = ev.classList.toggle('ev--clamped');
+          toggle.textContent = clamped ? Drupal.t('Show all') : Drupal.t('Show less');
+          toggle.setAttribute('aria-expanded', clamped ? 'false' : 'true');
+        });
+      });
+
       once('arv-note', '.arv-page .finding', context).forEach((finding) => {
         const box = finding.querySelector('.fnote');
         const hint = finding.querySelector('.expand-hint');
