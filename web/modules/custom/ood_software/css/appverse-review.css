@@ -1010,12 +1010,12 @@
 
 /* The repo's progress line at the top of the page (appverse-planning#31);
    the line itself is styled in appverse-progress.css. */
+/* No box: the line is the page's own progress, not a panel of content, and
+   the border made it read as another card among the findings
+   (appverse-planning#53). */
 .arv-page .arv-progress-block {
-  padding: 12px 16px;
+  padding: 4px 0 16px;
   margin-bottom: 12px;
-  background: #fff;
-  border: 1px solid var(--gray-150);
-  border-radius: 3px;
   font-size: .86rem;
 }
 
