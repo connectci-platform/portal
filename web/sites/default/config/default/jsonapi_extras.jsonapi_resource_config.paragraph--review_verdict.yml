@@ -146,6 +146,18 @@ resourceFields:
     publicName: field_rvv_docs_summary
     enhancer:
       id: ''
+  field_rvv_duplicate:
+    disabled: false
+    fieldName: field_rvv_duplicate
+    publicName: field_rvv_duplicate
+    enhancer:
+      id: ''
+  field_rvv_duplicate_note:
+    disabled: false
+    fieldName: field_rvv_duplicate_note
+    publicName: field_rvv_duplicate_note
+    enhancer:
+      id: ''
   field_rvv_findings:
     disabled: false
     fieldName: field_rvv_findings

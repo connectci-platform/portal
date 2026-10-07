@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\ReviewDecision;
 use Drupal\ood_software\Service\ReviewDecisionApplier;
+use Drupal\ood_software\Service\DuplicateCheck;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewProgress;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -91,15 +92,22 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     $response = (string) ($node->get('field_arv_contributor_response')->value ?? '');
     // The page offers no choice below an app's floor; this catches one saved
     // before the floor existed or before a finding changed (#30).
+    $duplicates = $this->applier->appDuplicateChecks($node);
     $problems = array_merge(
       ReviewDecision::problems($appDecisions, $response, $names),
       ReviewFloors::problems($appDecisions, ReviewFloors::forReview($node), $names),
+      // Any Accept is conditional on the duplicate check (A4).
+      DuplicateCheck::problems($appDecisions, $duplicates, $names),
     );
     if ($problems !== []) {
       foreach ($problems as $problem) {
         $this->messenger()->addError($problem);
       }
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
+    }
+    // Accepting an app marked a duplicate is the reviewer's call; say so.
+    foreach (DuplicateCheck::warnings($appDecisions, $duplicates, $names) as $warning) {
+      $this->messenger()->addWarning($warning);
     }
     $this->decision = (string) ReviewProgress::strictestDecision(array_values($appDecisions));
     // Apps decided differently each go their own way (#30), so the overall

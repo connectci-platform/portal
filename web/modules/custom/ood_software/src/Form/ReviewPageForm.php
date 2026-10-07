@@ -15,6 +15,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Drupal\ood_software\Service\DuplicateCheck;
 use Drupal\ood_software\Service\FindingOverride;
 use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
@@ -361,6 +362,24 @@ final class ReviewPageForm extends FormBase {
     $this->addDecisionElements($form, $page, $node);
     foreach ($page['apps'] as $app) {
       $pid = $app['pid'];
+      $form['duplicate'][$pid] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['duplicate-check']],
+        'outcome' => [
+          '#type' => 'radios',
+          '#title' => $this->t('Duplicate check'),
+          '#options' => $this->duplicateOptions(),
+          '#default_value' => $app['duplicate']['outcome'],
+          '#description' => $this->t('Compare the published apps for this software. Required to accept the app; it does not limit the decision.'),
+        ],
+        'note' => [
+          '#type' => 'textarea',
+          '#title' => $this->t('Rationale'),
+          '#rows' => 2,
+          '#default_value' => $app['duplicate']['note'],
+          '#description' => $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.'),
+        ],
+      ];
       foreach (self::AXES as $axis => $prefix) {
         $block = $app['blocks'][$axis];
         $form['level'][$pid][$axis] = [
@@ -516,10 +535,13 @@ final class ReviewPageForm extends FormBase {
    */
   protected function sendButton(array $page, FormStateInterface $form_state): array {
     $decisions = [];
+    $duplicates = [];
     foreach ($page['apps'] as $app) {
       $decisions[(string) $app['pid']] = $app['conclusion'] ?? NULL;
+      $duplicates[(string) $app['pid']] = $app['duplicate']['outcome'] ?? NULL;
     }
-    $blocker = ReviewDecision::sendBlocker($decisions, (string) $page['response']);
+    $blocker = ReviewDecision::sendBlocker($decisions, (string) $page['response'])
+      ?? (DuplicateCheck::problems($decisions, $duplicates) !== [] ? $this->t('Record the duplicate check for each app you accept first.') : NULL);
     $single = [];
     foreach (ReviewProgress::DECISIONS as $d) {
       $single[$d] = (string) ReviewDecision::sendLabel(['x' => $d]);
@@ -541,6 +563,7 @@ final class ReviewPageForm extends FormBase {
       'data-reasons' => json_encode([
         'undecided' => (string) $this->t('Choose a decision for every app first.'),
         'response' => (string) $this->t('Write the response to the contributor first.'),
+        'duplicate' => (string) $this->t('Record the duplicate check for each app you accept first.'),
       ]),
       'aria-describedby' => 'arv-send-reason',
     ];
@@ -581,6 +604,12 @@ final class ReviewPageForm extends FormBase {
         $changed = FALSE;
         if (array_key_exists($pid, $values['conclusion'] ?? [])) {
           $verdict->set('field_rvv_conclusion', $values['conclusion'][$pid] !== '' ? $values['conclusion'][$pid] : NULL);
+          $changed = TRUE;
+        }
+        if (isset($values['duplicate'][$pid]) && $verdict->hasField('field_rvv_duplicate')) {
+          $outcome = (string) ($values['duplicate'][$pid]['outcome'] ?? '');
+          $verdict->set('field_rvv_duplicate', isset(DuplicateCheck::OUTCOMES[$outcome]) ? $outcome : NULL);
+          $this->setText($verdict, 'field_rvv_duplicate_note', (string) ($values['duplicate'][$pid]['note'] ?? ''));
           $changed = TRUE;
         }
         foreach (self::AXES as $axis => $prefix) {
@@ -706,6 +735,13 @@ final class ReviewPageForm extends FormBase {
         'findings' => array_map([$this, 'findingArray'], $verdict->get('field_rvv_findings')->referencedEntities()),
       ], $previous);
       $app['pid'] = $verdict->id();
+      // The reviewer's duplicate check (A4, DuplicateCheck).
+      $outcome = $verdict->hasField('field_rvv_duplicate') ? $verdict->get('field_rvv_duplicate')->value : NULL;
+      $app['duplicate'] = [
+        'outcome' => $outcome,
+        'label' => (string) ($this->duplicateOptions()[$outcome ?? ''] ?? ''),
+        'note' => $verdict->hasField('field_rvv_duplicate_note') ? (string) ($verdict->get('field_rvv_duplicate_note')->value ?? '') : '',
+      ];
       // Where an "Add finding" in each block puts the new finding.
       foreach (array_keys($app['blocks']) as $key) {
         $app['blocks'][$key]['target'] = 'app:' . $verdict->id() . ':' . $key;
@@ -782,10 +818,10 @@ final class ReviewPageForm extends FormBase {
       'repo_gate_block' => ReviewPageData::gateSummary($repoGates) + [
         'rows' => $this->gateRows($node),
         'catalog_html' => $node->hasField('field_arv_catalog_checks')
-          ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
+          ? $this->renderMarkdown(ReviewPageData::catalogChecks((string) ($node->get('field_arv_catalog_checks')->value ?? ''))) : NULL,
       ],
       'gate_rows' => $this->gateRows($node),
-      'catalog_html' => $node->hasField('field_arv_catalog_checks') ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
+      'catalog_html' => $node->hasField('field_arv_catalog_checks') ? $this->renderMarkdown(ReviewPageData::catalogChecks((string) ($node->get('field_arv_catalog_checks')->value ?? ''))) : NULL,
       'history' => $history,
       'superseded_by' => $history['newest'] ?? NULL,
       'decision' => $this->decisionInfo($node),
@@ -1444,6 +1480,11 @@ final class ReviewPageForm extends FormBase {
         $form_state->setErrorByName('edit_finding][' . $pid . '][summary', $this->t('A finding needs a rule and a summary.'));
       }
     }
+    foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
+      if (DuplicateCheck::needsNote((string) ($input['outcome'] ?? ''), (string) ($input['note'] ?? ''))) {
+        $form_state->setErrorByName('duplicate][' . $pid . '][note', $this->t('Give the rationale for the duplicate check: which apps you compared, and how this one differs or which one it duplicates.'));
+      }
+    }
     $overrides = $form_state->getValue('override') ?? [];
     if ($overrides !== []) {
       $tool = [];
@@ -1476,6 +1517,19 @@ final class ReviewPageForm extends FormBase {
       'severity' => (string) ($finding->get('field_rvf_severity')->value ?? ''),
       'summary' => (string) ($finding->get('field_rvf_summary')->value ?? ''),
       'evidence' => (string) ($finding->get('field_rvf_evidence')->value ?? ''),
+    ];
+  }
+
+  /**
+   * The duplicate-check outcomes (DuplicateCheck::OUTCOMES), translated.
+   *
+   * @return array<string, \Drupal\Core\StringTranslation\TranslatableMarkup>
+   */
+  protected function duplicateOptions(): array {
+    return [
+      'none' => $this->t('No other app for this software'),
+      'distinct' => $this->t('Same software, a meaningfully different approach'),
+      'duplicate' => $this->t('Duplicate of an existing app'),
     ];
   }
 

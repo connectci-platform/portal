@@ -11,6 +11,8 @@ dependencies:
     - field.field.paragraph.review_verdict.field_rvv_docs_level
     - field.field.paragraph.review_verdict.field_rvv_docs_level_note
     - field.field.paragraph.review_verdict.field_rvv_docs_summary
+    - field.field.paragraph.review_verdict.field_rvv_duplicate
+    - field.field.paragraph.review_verdict.field_rvv_duplicate_note
     - field.field.paragraph.review_verdict.field_rvv_findings
     - field.field.paragraph.review_verdict.field_rvv_indicators_default
     - field.field.paragraph.review_verdict.field_rvv_moderator_notes
@@ -208,5 +210,7 @@ content:
     third_party_settings: {  }
 hidden:
   created: true
+  field_rvv_duplicate: true
+  field_rvv_duplicate_note: true
   field_rvv_moderator_notes: true
   status: true

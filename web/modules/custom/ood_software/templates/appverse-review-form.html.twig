@@ -148,7 +148,7 @@
   {% endif %}
 {% endmacro %}
 
-{% macro catblock(block, form, can_edit, page, level_el, note_el, scope, repo_gates) %}
+{% macro catblock(block, form, can_edit, page, level_el, note_el, scope, repo_gates, duplicate) %}
   {% import _self as m %}
   {# level-changed: the reviewer has moved off the automated rating, so the
      dropdown and the note stay open rather than collapsing behind the icon. #}
@@ -234,6 +234,19 @@
       <div class="catalog-checks">
         <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
         {{ repo_gates.catalog_html }}
+      </div>
+    {% endif %}
+    {# The reviewer's duplicate check for this app (A4): the decision the
+       catalog checks above leave to them. Required to accept the app. #}
+    {% if duplicate and (duplicate.el or duplicate.data.outcome) %}
+      <div class="duplicate-check-block">
+        {% if duplicate.el %}
+          {{ duplicate.el }}
+        {% else %}
+          <div class="catalog-checks-title">{{ 'Duplicate check'|t }}</div>
+          <div>{{ duplicate.data.label }}</div>
+          {% if duplicate.data.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ duplicate.data.note }}</div>{% endif %}
+        {% endif %}
       </div>
     {% endif %}
     {% for group in block.groups %}
@@ -414,7 +427,7 @@
               {# Repo gates ride on the first app's Structure block: they are
                  the repo's, so they are shown once however many apps there
                  are. #}
-              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null) }}
+              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': can_edit ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate} : null) }}
             {% endfor %}
           </div>
         </div>
@@ -536,7 +549,7 @@
     </aside>
   </div>
 
-  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'assignee', 'actions', 'add_finding', 'edit_finding', 'delete_finding', 'override', 'save_finding') }}
+  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'assignee', 'actions', 'add_finding', 'edit_finding', 'delete_finding', 'override', 'save_finding', 'duplicate') }}
 
   {# Which build of the tool wrote this report. It matters when a finding
      looks wrong and someone is working out whether the tool has changed

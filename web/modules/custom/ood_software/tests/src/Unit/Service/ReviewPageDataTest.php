@@ -123,6 +123,16 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * The report's rationale placeholder is left out; the rest is kept.
+   *
+   * @covers ::catalogChecks
+   */
+  public function testCatalogChecksDropTheRationalePlaceholder(): void {
+    $md = "Read from the catalog.\n\n- Duplicate check — No published app implements `HiGlass`.\n  - **Duplicate-check rationale:** _<reviewer fills in — the outcome and why>_\n- `software` — matches.";
+    $this->assertSame("Read from the catalog.\n\n- Duplicate check — No published app implements `HiGlass`.\n- `software` — matches.", ReviewPageData::catalogChecks($md));
+  }
+
+  /**
    * @covers ::gatePills
    */
   public function testGatePillsKeepTheToolsOrderAndVocabulary(): void {

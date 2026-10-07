@@ -1072,6 +1072,61 @@
   padding: 6px 0;
   border-top: 1px solid var(--gray-150);
 }
+/* The reviewer's duplicate check, under Catalog checks (A4). */
+.arv-page .duplicate-check-block {
+  border-top: 1px solid var(--gray-150);
+  padding: 10px 14px;
+}
+.arv-page .duplicate-check-block fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+/* The theme's fieldset legend is a heading-sized paragraph; this one reads
+   like the "Catalog checks" title above it. */
+.arv-page .duplicate-check-block .fieldset-legend {
+  font-size: .86rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.arv-page .duplicate-check-block .fieldset-wrapper > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.arv-page .duplicate-check-block .description,
+.arv-page .duplicate-check-block .form-text,
+.arv-page .duplicate-check-block small {
+  font-size: .78rem;
+  color: var(--gray-700);
+  margin-top: 4px;
+}
+.arv-page .duplicate-check-block .js-form-type-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+.arv-page .duplicate-check-block .js-form-type-radio input {
+  position: static;
+  margin: 0;
+}
+.arv-page .duplicate-check-block .js-form-type-radio label {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font-size: .86rem;
+  font-weight: 400;
+}
+.arv-page .duplicate-check-block .js-form-type-textarea {
+  margin-top: 10px;
+}
+.arv-page .duplicate-check-block legend,
+.arv-page .duplicate-check-block > div > .form-item > label {
+  font-size: .78rem;
+  font-weight: 700;
+}
 /* A reviewer's change to an automated finding (A1). */
 .arv-page .override-mark {
   font-size: .8rem;

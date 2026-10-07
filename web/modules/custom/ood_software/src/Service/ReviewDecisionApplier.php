@@ -667,6 +667,20 @@ final class ReviewDecisionApplier {
   }
 
   /**
+   * Verdict paragraph id => its duplicate-check outcome (DuplicateCheck), or
+   * NULL where none is recorded.
+   *
+   * @return array<string, string|null>
+   */
+  public function appDuplicateChecks(NodeInterface $review): array {
+    $outcomes = [];
+    foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $outcomes[(string) $verdict->id()] = $verdict->hasField('field_rvv_duplicate') ? $verdict->get('field_rvv_duplicate')->value : NULL;
+    }
+    return $outcomes;
+  }
+
+  /**
    * Verdict paragraph id => its decision.
    *
    * @return array<string, string|null>

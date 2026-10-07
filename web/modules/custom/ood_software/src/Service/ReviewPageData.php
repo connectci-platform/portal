@@ -476,6 +476,16 @@ final class ReviewPageData {
   }
 
   /**
+   * The report's Catalog checks without its "Duplicate-check rationale"
+   * placeholder (A4): the page records the rationale in its own control, so
+   * the report's "<reviewer fills in …>" line would only read as unfinished.
+   */
+  public static function catalogChecks(string $markdown): string {
+    $lines = preg_split('/\R/', $markdown) ?: [];
+    return implode("\n", array_filter($lines, static fn (string $line): bool => stripos($line, 'Duplicate-check rationale') === FALSE));
+  }
+
+  /**
    * The gate pills as one line: the passes counted, anything else listed.
    *
    * @param array<int, array{key: string, label: string, value: string}> $pills

@@ -53,6 +53,14 @@
           else if (distinct.some((d) => d !== 'accept') && (!response || response.value.trim() === '')) {
             why = reasons.response;
           }
+          // An app being accepted needs its duplicate check recorded (A4).
+          else if (Array.from(selects).some((s) => {
+            const pid = (s.name.match(/^conclusion\[(\d+)\]$/) || [])[1];
+            return ['accept', 'accept_with_suggestions'].includes(s.value)
+              && pid && !form.querySelector(`input[name="duplicate[${pid}][outcome]"]:checked`);
+          })) {
+            why = reasons.duplicate;
+          }
           button.disabled = why !== '';
           if (reason) {
             reason.textContent = why;
@@ -62,6 +70,7 @@
         if (response) {
           response.addEventListener('input', update);
         }
+        form.querySelectorAll('input[name^="duplicate["]').forEach((r) => r.addEventListener('change', update));
       });
 
       once('arv-sev', '.arv-page .sev-head', context).forEach((head) => {
