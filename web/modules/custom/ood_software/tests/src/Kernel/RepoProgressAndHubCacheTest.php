@@ -11,7 +11,10 @@ use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
 
 /**
- * Which dispatches start a new round (appverse-planning#49).
+ * Which dispatches start a new round, and what a hub card is tagged with.
+ *
+ * Both are appverse-planning#49 and both are about a card showing something
+ * that is no longer true.
  *
  * A run dispatched after a decision was sent used to mean the contributor had
  * re-submitted, whoever started it. An admin's Run AI report dispatches too,
@@ -26,7 +29,7 @@ use Drupal\Tests\user\Traits\UserCreationTrait;
  *
  * @coversDefaultClass \Drupal\ood_software\Service\RepoProgress
  */
-class RepoProgressRoundTest extends KernelTestBase {
+class RepoProgressAndHubCacheTest extends KernelTestBase {
 
   use ProdConfigTrait;
   use UserCreationTrait;
@@ -82,6 +85,11 @@ class RepoProgressRoundTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_review_status',
       'field.storage.node.field_review_dispatched_at',
       'field.field.node.appverse_repo.field_review_dispatched_at',
+      'field.storage.node.field_repo_assigned_reviewer',
+      'field.field.node.appverse_repo.field_repo_assigned_reviewer',
+      // The cache metadata walks the repo's member apps.
+      'field.storage.node.field_appverse_repo',
+      'field.field.node.appverse_app.field_appverse_repo',
     ]);
     $this->createUser();
   }
@@ -155,6 +163,43 @@ class RepoProgressRoundTest extends KernelTestBase {
     $this->assertSame(1, $facts['round']);
     $this->assertTrue($facts['decision_sent']);
     $this->assertSame('request_changes', $facts['decision']);
+  }
+
+  /**
+   * The card's cache tags include the assigned reviewer's.
+   *
+   * The card prints that reviewer's name, so renaming the account has to
+   * invalidate the card; without the tag the old name stayed on it
+   * (appverse-planning#49).
+   */
+  public function testTheCardIsTaggedWithItsAssignedReviewer(): void {
+    $reviewer = $this->createUser([], 'a-reviewer');
+    $repo = $this->repoWithSentDecision('needs_adjustment');
+    $repo->set('field_repo_assigned_reviewer', $reviewer->id())->save();
+
+    $meta = _ood_software_hub_cache_meta($repo);
+
+    $this->assertContains(
+      'user:' . $reviewer->id(),
+      $meta['tags'],
+      'Renaming the reviewer must invalidate the cards that name them.'
+    );
+  }
+
+  /**
+   * An unassigned repo is not tagged with a reviewer that is not there.
+   */
+  public function testAnUnassignedRepoHasNoReviewerTag(): void {
+    $repo = $this->repoWithSentDecision('needs_adjustment');
+
+    $meta = _ood_software_hub_cache_meta($repo);
+
+    $this->assertSame(
+      [],
+      array_filter($meta['tags'], static fn (string $t): bool => str_starts_with($t, 'user:')
+        && $t !== 'user:' . $repo->getOwnerId()),
+      'Only the owner, who is tagged separately.'
+    );
   }
 
   /**

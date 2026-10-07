@@ -2012,6 +2012,15 @@ function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
   if ($ownerAccount) {
     $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $ownerAccount->getCacheTags());
   }
+  // The card prints the assigned reviewer's name (appverse-planning#33), so
+  // renaming that account has to invalidate the card; without this tag the
+  // old name stayed on it (appverse-planning#49).
+  $assignee = \Drupal::service('ood_software.review_assignment')->assignee($repo);
+  // AccountInterface alone does not carry cache tags; the loaded user entity
+  // does, and that is what the field returns.
+  if ($assignee instanceof \Drupal\Core\Entity\EntityInterface) {
+    $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $assignee->getCacheTags());
+  }
   // The progress line reads the repo's reviews (a new one, a sent decision).
   $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, ['node_list:appverse_review']);
   return ['tags' => $tags, 'contexts' => ['user.permissions', 'user']];
