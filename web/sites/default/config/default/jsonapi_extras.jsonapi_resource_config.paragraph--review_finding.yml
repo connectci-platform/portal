@@ -170,16 +170,22 @@ resourceFields:
     publicName: field_rvf_override_by
     enhancer:
       id: ''
-  field_rvf_override_reason:
+  field_rvf_override_evidence:
     disabled: false
-    fieldName: field_rvf_override_reason
-    publicName: field_rvf_override_reason
+    fieldName: field_rvf_override_evidence
+    publicName: field_rvf_override_evidence
     enhancer:
       id: ''
   field_rvf_override_severity:
     disabled: false
     fieldName: field_rvf_override_severity
     publicName: field_rvf_override_severity
+    enhancer:
+      id: ''
+  field_rvf_override_summary:
+    disabled: false
+    fieldName: field_rvf_override_summary
+    publicName: field_rvf_override_summary
     enhancer:
       id: ''
   field_rvf_result:

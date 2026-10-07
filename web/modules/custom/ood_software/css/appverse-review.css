@@ -144,6 +144,21 @@
   border-color: var(--gray-300);
   color: var(--gray-700);
 }
+/* Drupal puts btn-primary on every submit input, and nect-theme's
+   .btn-primary:hover fills it red with !important. Only .primary is red
+   here; the others take a light grey and keep their own text and border,
+   which needs !important of its own to win. */
+.arv-page .btn:not(.primary):hover,
+.arv-page .btn:not(.primary):focus-visible {
+  background-color: var(--gray-100) !important;
+  border-color: var(--ink) !important;
+  color: var(--ink);
+}
+.arv-page .btn.ghost:hover,
+.arv-page .btn.ghost:focus-visible {
+  border-color: var(--gray-500) !important;
+  color: var(--gray-900);
+}
 
 .arv-page code {
   font-family: ui-monospace, "Courier New", monospace;
@@ -1066,9 +1081,70 @@
   background: #fff8ec;
   border-left: 3px solid var(--status-amber);
 }
-.arv-page .override-reason {
-  display: block;
+.arv-page .finding-note {
+  font-size: .82rem;
+  color: var(--gray-900);
+  margin-top: .3rem;
+}
+.arv-page .finding-note-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .02em;
   color: var(--gray-700);
+  margin-right: .25rem;
+}
+.arv-page .finding-edited {
+  font-size: .7rem;
+  color: var(--gray-700);
+  font-style: italic;
+}
+.arv-page .finding-original {
+  font-size: .78rem;
+  color: var(--gray-700);
+  margin-top: .3rem;
+}
+.arv-page .finding-original > summary {
+  cursor: pointer;
+}
+.arv-page .fnote-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.arv-page .fnote-actions .finding-delete {
+  margin: 0 0 0 auto;
+}
+/* The theme gives <button> a bottom margin and rounded corners that a
+   submit input does not get; one row of buttons should line up. */
+.arv-page .fnote-actions input,
+.arv-page .fnote-actions button {
+  margin: 0;
+  border-radius: 0;
+}
+/* The dismissal sits beside the severity, its label inline. */
+.arv-page .finding-fields .js-form-type-checkbox {
+  align-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 8px;
+}
+.arv-page .finding-fields .js-form-type-checkbox input {
+  position: static;
+  margin: 0;
+}
+.arv-page .finding-fields .js-form-type-checkbox label {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font-weight: 600;
+}
+.arv-page .fnote .form-item-prose,
+.arv-page .fnote [class*="form-item-prose"] {
+  margin-top: 8px;
 }
 .arv-page .dismissed-rows {
   border-top: 1px solid var(--gray-150);
@@ -1079,11 +1155,7 @@
   color: var(--gray-700);
   cursor: pointer;
 }
-.arv-page .finding-override {
-  margin-top: .5rem;
-  padding-top: .5rem;
-  border-top: 1px dashed var(--gray-150);
-}
+
 .arv-page .result-pill {
   display: inline-block;
   font-size: .64rem;

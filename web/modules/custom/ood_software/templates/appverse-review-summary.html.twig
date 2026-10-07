@@ -38,10 +38,10 @@
               <div class="frow">
                 <div class="rule">{{ finding.rule }}</div>
                 <div>
-                  <div class="sum">{{ finding.summary }}{% if finding.source == 'reviewer' %} <span class="reviewer-tag">{{ 'Reviewer'|t }}</span>{% endif %}</div>
-                  {# A re-rated finding says so, with the reason (A1). Dismissed
+                  <div class="sum">{{ finding.summary }}{% if finding.source == 'reviewer' %} <span class="reviewer-tag">{{ 'Reviewer'|t }}</span>{% endif %}{% if finding.override and finding.override.edited %} <span class="finding-edited">{{ 'Edited by the reviewer'|t }}</span>{% endif %}</div>
+                  {# A re-rated finding says so (A1); the reason is a note, which stays off the public page. Dismissed
                      findings are not in the groups, so never shown here. #}
-                  {% if finding.override and not finding.dismissed %}<div class="override-mark">{{ 'Reviewer changed this from @severity'|t({'@severity': finding.tool_severity|capitalize}) }}{% if finding.override.reason %}<span class="override-reason">{{ finding.override.reason }}</span>{% endif %}</div>{% endif %}
+                  {% if finding.override and finding.override.severity %}<div class="override-mark">{{ 'Reviewer changed the severity from @severity'|t({'@severity': finding.tool_severity|capitalize}) }}</div>{% endif %}
                   {% if finding.evidence %}<div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>{% endif %}
                 </div>
               </div>

@@ -7,13 +7,17 @@ use Drupal\Tests\UnitTestCase;
 
 /**
  * A reviewer's change to an automated finding (A1 in the 2026-10-07
- * guidelines alignment plan): a new severity or a dismissal, with a reason.
+ * guidelines alignment plan): a new severity, a dismissal, or their wording.
  *
  * @group ood_software
  *
  * @coversDefaultClass \Drupal\ood_software\Service\FindingOverride
  */
 class FindingOverrideTest extends UnitTestCase {
+
+  const TOOL = ['severity' => 'high', 'summary' => 'Binds to all interfaces.', 'evidence' => 'script.sh.erb:9'];
+
+  const NONE = ['severity' => NULL, 'dismissed' => FALSE, 'summary' => NULL, 'evidence' => NULL];
 
   /**
    * @covers ::effectiveSeverity
@@ -43,23 +47,31 @@ class FindingOverrideTest extends UnitTestCase {
 
   /**
    * @covers ::normalize
+   * @covers ::isChanged
    */
   public function testNormalize(): void {
-    $none = ['severity' => NULL, 'dismissed' => FALSE, 'reason' => ''];
-    $this->assertSame($none, FindingOverride::normalize([], 'high'));
-    $this->assertSame($none, FindingOverride::normalize(['severity' => 'high', 'reason' => 'x'], 'high'), "Choosing the tool's own severity is no change, and a reason alone is dropped.");
-    $this->assertSame(['severity' => 'low', 'dismissed' => FALSE, 'reason' => 'Only reachable by admins.'], FindingOverride::normalize(['severity' => 'low', 'reason' => ' Only reachable by admins. '], 'high'));
-    $this->assertSame(['severity' => NULL, 'dismissed' => TRUE, 'reason' => 'False positive.'], FindingOverride::normalize(['severity' => 'low', 'dismissed' => '1', 'reason' => 'False positive.'], 'high'), 'A dismissal makes the severity moot.');
+    $this->assertSame(self::NONE, FindingOverride::normalize([], self::TOOL));
+    $this->assertSame(self::NONE, FindingOverride::normalize(self::TOOL, self::TOOL), "The tool's own values are no change.");
+    $this->assertSame(self::NONE, FindingOverride::normalize(['summary' => '  ', 'evidence' => ''], self::TOOL), "An emptied field means the tool's.");
+    $this->assertFalse(FindingOverride::isChanged(self::NONE));
+    $this->assertSame(array_replace(self::NONE, ['severity' => 'low']), FindingOverride::normalize(['severity' => 'low'] + self::TOOL, self::TOOL));
+    $this->assertSame(array_replace(self::NONE, ['dismissed' => TRUE]), FindingOverride::normalize(['severity' => 'low', 'dismissed' => '1'], self::TOOL), 'A dismissal makes the severity moot.');
+    $this->assertSame(array_replace(self::NONE, ['summary' => 'Binds to all interfaces inside its own container.']),
+      FindingOverride::normalize(['summary' => ' Binds to all interfaces inside its own container. '] + self::TOOL, self::TOOL));
   }
 
   /**
-   * @covers ::error
+   * A new severity or a dismissal needs the note as its reason; a wording
+   * change does not.
+   *
+   * @covers ::needsNote
    */
-  public function testAChangeNeedsAReason(): void {
-    $this->assertNull(FindingOverride::error(['severity' => NULL, 'dismissed' => FALSE, 'reason' => '']));
-    $this->assertNotNull(FindingOverride::error(['severity' => 'low', 'dismissed' => FALSE, 'reason' => '']));
-    $this->assertNotNull(FindingOverride::error(['severity' => NULL, 'dismissed' => TRUE, 'reason' => '']));
-    $this->assertNull(FindingOverride::error(['severity' => NULL, 'dismissed' => TRUE, 'reason' => 'Test fixture.']));
+  public function testANoteIsTheReason(): void {
+    $this->assertFalse(FindingOverride::needsNote(self::NONE, ''));
+    $this->assertTrue(FindingOverride::needsNote(array_replace(self::NONE, ['severity' => 'low']), ''));
+    $this->assertTrue(FindingOverride::needsNote(array_replace(self::NONE, ['dismissed' => TRUE]), '  '));
+    $this->assertFalse(FindingOverride::needsNote(array_replace(self::NONE, ['dismissed' => TRUE]), 'Test fixture.'));
+    $this->assertFalse(FindingOverride::needsNote(array_replace(self::NONE, ['summary' => 'Clearer.']), ''));
   }
 
   /**
@@ -68,14 +80,16 @@ class FindingOverrideTest extends UnitTestCase {
    * @covers ::describe
    */
   public function testDescribe(): void {
-    $none = ['severity' => NULL, 'dismissed' => FALSE, 'reason' => ''];
-    $low = ['severity' => 'low', 'dismissed' => FALSE, 'reason' => 'r'];
-    $gone = ['severity' => NULL, 'dismissed' => TRUE, 'reason' => 'r'];
-    $this->assertNull(FindingOverride::describe('OODT-02', 'high', $none, $none));
-    $this->assertSame('changed OODT-02 from High to Low', FindingOverride::describe('OODT-02', 'high', $none, $low));
+    $low = array_replace(self::NONE, ['severity' => 'low']);
+    $gone = array_replace(self::NONE, ['dismissed' => TRUE]);
+    $reworded = array_replace(self::NONE, ['summary' => 'Clearer.']);
+    $this->assertNull(FindingOverride::describe('OODT-02', 'high', self::NONE, self::NONE));
+    $this->assertSame('changed OODT-02 from High to Low', FindingOverride::describe('OODT-02', 'high', self::NONE, $low));
     $this->assertSame('dismissed OODT-02', FindingOverride::describe('OODT-02', 'high', $low, $gone));
-    $this->assertSame('undid the change to OODT-02', FindingOverride::describe('OODT-02', 'high', $gone, $none));
-    $this->assertSame('changed the reason on OODT-02', FindingOverride::describe('OODT-02', 'high', $low, ['reason' => 'new'] + $low));
+    $this->assertSame('undid the change to OODT-02', FindingOverride::describe('OODT-02', 'high', $gone, self::NONE));
+    $this->assertSame('edited the wording of OODT-02', FindingOverride::describe('OODT-02', 'high', self::NONE, $reworded));
+    $this->assertSame('changed OODT-02 from High to Low, edited the wording of OODT-02', FindingOverride::describe('OODT-02', 'high', self::NONE, array_replace(self::NONE, ['severity' => 'low', 'summary' => 'Clearer.'])));
+    $this->assertSame("restored OODT-02", FindingOverride::describe('OODT-02', 'high', array_replace(self::NONE, ['dismissed' => TRUE, 'summary' => 'Clearer.']), $reworded));
   }
 
 }

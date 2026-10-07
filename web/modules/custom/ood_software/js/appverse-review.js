@@ -102,30 +102,48 @@
         });
       });
 
+      // A finding's edit box starts closed; the note and any change show in
+      // the row itself. It stays open when it holds a validation error.
       once('arv-note', '.arv-page .finding', context).forEach((finding) => {
         const box = finding.querySelector('.fnote');
         const hint = finding.querySelector('.expand-hint');
         if (!box || !hint) {
           return;
         }
-        const textarea = box.querySelector('textarea');
-        const hasText = textarea ? textarea.value.trim() !== '' : box.textContent.trim() !== '';
-        // A box holding a validation error stays open so the error is seen.
-        const hasError = box.querySelector('.error') !== null;
-        if (!hasText && !hasError) {
-          box.classList.add('collapsed');
-        }
-        else if (hint.dataset.hasNote) {
-          // Automated findings say "has note"; a reviewer's own keeps "Edit".
-          hint.textContent = hint.dataset.hasNote;
-        }
+        const fields = box.querySelectorAll('input, select, textarea');
+        const setOpen = (open) => {
+          box.classList.toggle('collapsed', !open);
+          hint.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+        setOpen(box.querySelector('.error') !== null);
         hint.addEventListener('click', (e) => {
           e.stopPropagation();
-          box.classList.toggle('collapsed');
-          if (textarea && !box.classList.contains('collapsed')) {
-            textarea.focus();
+          const open = box.classList.contains('collapsed');
+          setOpen(open);
+          if (open && fields.length) {
+            fields[0].focus();
           }
         });
+        // Cancel puts every field back as the page loaded it, so a later
+        // Save draft does not save what was cancelled.
+        const cancel = box.querySelector('.finding-cancel');
+        if (cancel) {
+          cancel.addEventListener('click', () => {
+            fields.forEach((el) => {
+              if (el.type === 'checkbox' || el.type === 'radio') {
+                el.checked = el.defaultChecked;
+              }
+              else if (el.tagName === 'SELECT') {
+                Array.from(el.options).forEach((o) => { o.selected = o.defaultSelected; });
+              }
+              else if (el.type !== 'submit' && el.type !== 'button') {
+                el.value = el.defaultValue;
+              }
+            });
+            setOpen(false);
+            hint.focus();
+          });
+        }
       });
 
       // The rating shows as a badge until the edit icon is clicked, which

@@ -5,16 +5,20 @@ namespace Drupal\ood_software\Service;
 use Drupal\Core\Entity\FieldableEntityInterface;
 
 /**
- * A reviewer's change to an automated finding: a new severity, or a
- * dismissal, always with a reason (A1 in the 2026-10-07 guidelines alignment
- * plan).
+ * A reviewer's change to an automated finding: a new severity, a dismissal,
+ * or their own wording of its summary and evidence (A1 in the 2026-10-07
+ * guidelines alignment plan).
  *
- * The tool's own values (field_rvf_severity, field_rvf_result) are never
- * written; the change sits beside them on the finding, so the record keeps
- * what the tool said and a later re-review can read both. Nothing carries
- * into the next round: a new review seeds fresh findings with no overrides.
+ * The tool's own values are never written; the change sits beside them on
+ * the finding, so the record keeps what the tool said and a later re-review
+ * can read both. Nothing carries into the next round: a new review seeds
+ * fresh findings with no changes.
  *
- * Everything that reads a finding uses the effective severity, and treats a
+ * The reason for a new severity or a dismissal is the finding's note to the
+ * contributor (field_rvf_reviewer_prose), which is then required. A wording
+ * change needs no reason: the tool's text stays on the record beside it.
+ *
+ * Everything that reads a finding uses the effective values, and treats a
  * dismissed finding as no finding: the review page's counts and groups, the
  * decision floors and the catalog's security count.
  */
@@ -47,74 +51,103 @@ final class FindingOverride {
   /**
    * The change a form submission asks for, in one shape.
    *
-   * Choosing the tool's own severity is no change; a dismissal makes the
-   * severity moot; with no change the reason is dropped, so undoing a change
-   * clears it.
+   * A value equal to the tool's is no change, so putting the tool's back
+   * undoes it; a dismissal makes the severity moot; an emptied text field
+   * also means the tool's.
    *
    * @param array<string, mixed> $input
-   *   severity ('' for the tool's), dismissed, reason.
+   *   severity ('' for the tool's), dismissed, summary, evidence.
+   * @param array{severity: string, summary: string, evidence: string} $tool
+   *   The tool's values.
    *
-   * @return array{severity: ?string, dismissed: bool, reason: string}
+   * @return array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string}
    */
-  public static function normalize(array $input, string $toolSeverity): array {
+  public static function normalize(array $input, array $tool): array {
     $dismissed = !empty($input['dismissed']);
     $severity = strtolower(trim((string) ($input['severity'] ?? '')));
-    $severity = !$dismissed && in_array($severity, self::SEVERITIES, TRUE) && $severity !== strtolower($toolSeverity) ? $severity : NULL;
-    $reason = $dismissed || $severity !== NULL ? trim((string) ($input['reason'] ?? '')) : '';
-    return ['severity' => $severity, 'dismissed' => $dismissed, 'reason' => $reason];
+    $text = static function (string $key) use ($input, $tool): ?string {
+      $value = trim((string) ($input[$key] ?? ''));
+      return $value === '' || $value === trim($tool[$key]) ? NULL : $value;
+    };
+    return [
+      'severity' => !$dismissed && in_array($severity, self::SEVERITIES, TRUE) && $severity !== strtolower($tool['severity']) ? $severity : NULL,
+      'dismissed' => $dismissed,
+      'summary' => $text('summary'),
+      'evidence' => $text('evidence'),
+    ];
   }
 
   /**
-   * Why a change cannot be saved, or NULL.
+   * Whether a change needs a note, the reason, and has none.
    *
-   * @param array{severity: ?string, dismissed: bool, reason: string} $change
+   * @param array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string} $change
    */
-  public static function error(array $change): ?string {
-    return ($change['dismissed'] || $change['severity'] !== NULL) && $change['reason'] === ''
-      ? 'Give a reason for changing an automated finding.'
-      : NULL;
+  public static function needsNote(array $change, string $note): bool {
+    return ($change['dismissed'] || $change['severity'] !== NULL) && trim($note) === '';
+  }
+
+  /**
+   * Whether a change changes anything.
+   *
+   * @param array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string} $change
+   */
+  public static function isChanged(array $change): bool {
+    return $change['dismissed'] || $change['severity'] !== NULL || $change['summary'] !== NULL || $change['evidence'] !== NULL;
   }
 
   /**
    * The change stored on a finding, in normalize()'s shape.
    *
-   * @return array{severity: ?string, dismissed: bool, reason: string}
+   * @return array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string}
    */
   public static function stored(FieldableEntityInterface $finding): array {
-    $value = fn (string $field) => $finding->hasField($field) ? $finding->get($field)->value : NULL;
-    $severity = (string) ($value('field_rvf_override_severity') ?? '');
+    $value = static function (string $field) use ($finding): ?string {
+      $v = $finding->hasField($field) ? trim((string) ($finding->get($field)->value ?? '')) : '';
+      return $v !== '' ? $v : NULL;
+    };
     return [
-      'severity' => $severity !== '' ? $severity : NULL,
-      'dismissed' => (bool) $value('field_rvf_dismissed'),
-      'reason' => trim((string) ($value('field_rvf_override_reason') ?? '')),
+      'severity' => $value('field_rvf_override_severity'),
+      'dismissed' => $finding->hasField('field_rvf_dismissed') && (bool) $finding->get('field_rvf_dismissed')->value,
+      'summary' => $value('field_rvf_override_summary'),
+      'evidence' => $value('field_rvf_override_evidence'),
     ];
   }
 
   /**
    * The revision log line for going from one change to another, or NULL.
    *
-   * @param array{severity: ?string, dismissed: bool, reason: string} $from
-   * @param array{severity: ?string, dismissed: bool, reason: string} $to
+   * @param array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string} $from
+   * @param array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string} $to
    */
   public static function describe(string $rule, string $toolSeverity, array $from, array $to): ?string {
     if ($from === $to) {
       return NULL;
     }
-    if ($to['dismissed']) {
-      return $from['dismissed'] ? sprintf('changed the reason on %s', $rule) : sprintf('dismissed %s', $rule);
+    if (!self::isChanged($to)) {
+      return sprintf('undid the change to %s', $rule);
     }
-    if ($to['severity'] !== NULL) {
-      return $from['severity'] === $to['severity'] && !$from['dismissed']
-        ? sprintf('changed the reason on %s', $rule)
-        : sprintf('changed %s from %s to %s', $rule, ucfirst($toolSeverity), ucfirst($to['severity']));
+    $parts = [];
+    if ($to['dismissed'] && !$from['dismissed']) {
+      $parts[] = sprintf('dismissed %s', $rule);
     }
-    return sprintf('undid the change to %s', $rule);
+    elseif (!$to['dismissed'] && $from['dismissed']) {
+      $parts[] = sprintf('restored %s', $rule);
+    }
+    if ($to['severity'] !== $from['severity'] && !$to['dismissed']) {
+      $parts[] = $to['severity'] !== NULL
+        ? sprintf('changed %s from %s to %s', $rule, ucfirst($toolSeverity), ucfirst($to['severity']))
+        : sprintf("put %s back to the review's severity", $rule);
+    }
+    if ($to['summary'] !== $from['summary'] || $to['evidence'] !== $from['evidence']) {
+      $parts[] = sprintf('edited the wording of %s', $rule);
+    }
+    return $parts !== [] ? implode(', ', $parts) : NULL;
   }
 
   /**
    * Stores a change on a finding; the caller saves it.
    *
-   * @param array{severity: ?string, dismissed: bool, reason: string} $change
+   * @param array{severity: ?string, dismissed: bool, summary: ?string, evidence: ?string} $change
    *
    * @return string|null
    *   The revision log line, or NULL when nothing changed.
@@ -129,10 +162,11 @@ final class FindingOverride {
     if ($line === NULL) {
       return NULL;
     }
-    $changed = $change['dismissed'] || $change['severity'] !== NULL;
+    $changed = self::isChanged($change);
     $finding->set('field_rvf_override_severity', $change['severity']);
     $finding->set('field_rvf_dismissed', $change['dismissed']);
-    $finding->set('field_rvf_override_reason', $changed ? $change['reason'] : NULL);
+    $finding->set('field_rvf_override_summary', $change['summary']);
+    $finding->set('field_rvf_override_evidence', $change['evidence']);
     $finding->set('field_rvf_override_by', $changed ? $uid : NULL);
     $finding->set('field_rvf_override_at', $changed ? $time : NULL);
     return $line;

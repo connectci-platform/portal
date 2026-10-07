@@ -655,7 +655,9 @@ final class ReviewPageForm extends FormBase {
       return;
     }
     $this->messenger()->addStatus($this->t('Review saved.'));
-    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
+    // A finding's own Save returns to that finding.
+    $pid = $form_state->getTriggeringElement()['#finding_pid'] ?? NULL;
+    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], $pid ? ['fragment' => 'finding-' . $pid] : []);
   }
 
   /**
@@ -847,19 +849,25 @@ final class ReviewPageForm extends FormBase {
       'severity' => FindingOverride::effectiveSeverity($toolSeverity, $change['severity']),
       'tool_severity' => $toolSeverity,
       'dismissed' => $change['dismissed'],
-      'override' => $change['dismissed'] || $change['severity'] !== NULL ? [
+      'override' => FindingOverride::isChanged($change) ? [
         'severity' => $change['severity'],
-        'reason' => $change['reason'],
+        'edited' => $change['summary'] !== NULL || $change['evidence'] !== NULL,
         'by' => $changedBy instanceof UserInterface ? $changedBy->getDisplayName() : '',
         'at' => $this->formatDate((int) ($p->get('field_rvf_override_at')->value ?? 0), 'medium'),
+      ] : NULL,
+      // The tool's own wording, shown to the reviewer once they edit it.
+      'original' => $change['summary'] !== NULL || $change['evidence'] !== NULL ? [
+        'summary' => (string) ($p->get('field_rvf_summary')->value ?? ''),
+        'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
       ] : NULL,
       // FAIL / WARN / PASS / NOT CHECKED. Rows seeded before the result was
       // stored have none and count as findings, as they always have.
       'result' => strtoupper(str_replace('_', ' ', (string) ($p->hasField('field_rvf_result') ? ($p->get('field_rvf_result')->value ?? '') : ''))) ?: 'FAIL',
       'stable_id' => (string) ($p->get('field_rvf_stable_id')->value ?? ''),
-      'summary' => (string) ($p->get('field_rvf_summary')->value ?? ''),
-      'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
-      'evidence_parts' => ReviewPageData::evidenceParts((string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
+      // The reviewer's wording when they edited it, else the tool's.
+      'summary' => $change['summary'] ?? (string) ($p->get('field_rvf_summary')->value ?? ''),
+      'evidence' => $change['evidence'] ?? (string) ($p->get('field_rvf_evidence')->value ?? ''),
+      'evidence_parts' => ReviewPageData::evidenceParts($change['evidence'] ?? (string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       // unintentional / potentially_malicious on a security finding, else ''.
       'tag' => $p->hasField('field_rvf_tag') ? (string) ($p->get('field_rvf_tag')->value ?? '') : '',
@@ -1129,32 +1137,69 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * The edit box for one finding: its fields, the note to the contributor,
+   * and a Save beside it (saves the whole page, as Save draft does, and
+   * returns to the finding).
+   *
+   * A tool finding takes a new severity, a dismissal or the reviewer's
+   * wording, beside the tool's values (A1, FindingOverride); the note is the
+   * reason for a new severity or a dismissal. A reviewer's own finding is
+   * edited directly and can be deleted.
+   *
    * @param array<string, mixed> $form
    * @param array<mixed> $finding
    */
   protected function addProseElement(array &$form, array $finding): void {
-    $form['prose'][$finding['pid']] = [
+    $pid = $finding['pid'];
+    $form['prose'][$pid] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Reviewer note'),
-      '#title_display' => 'invisible',
+      '#title' => $this->t('Note to the contributor'),
       '#rows' => 2,
       '#default_value' => $finding['prose'],
-      '#attributes' => ['placeholder' => $this->t('Reviewer note…')],
+    ];
+    $form['save_finding'][$pid] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Save'),
+      '#name' => 'save_finding__' . $pid,
+      '#finding_pid' => $pid,
+      // The box's own action: the page's default button, so it reads above
+      // Cancel without competing with Send decision, the one red button.
+      '#attributes' => ['class' => ['btn', 'btn-save-finding']],
     ];
     if ($finding['source'] !== 'reviewer') {
-      $this->addOverrideElement($form, $finding);
+      if (!FindingOverride::applies($finding)) {
+        return;
+      }
+      $override = $finding['override'] ?? NULL;
+      $form['prose'][$pid]['#description'] = $this->t('Required if you change the severity or dismiss it.');
+      $form['override'][$pid] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['finding-fields']],
+        'severity' => [
+          '#type' => 'select',
+          '#title' => $this->t('Severity'),
+          '#options' => $this->severityOptions(),
+          '#empty_option' => $this->t('@s (as reviewed)', ['@s' => ucfirst((string) $finding['tool_severity'])]),
+          '#empty_value' => '',
+          '#default_value' => $override['severity'] ?? '',
+        ],
+        'dismissed' => [
+          '#type' => 'checkbox',
+          '#title' => $this->t('Not a finding'),
+          '#default_value' => !empty($finding['dismissed']),
+        ],
+        'summary' => ['#type' => 'textarea', '#title' => $this->t('Summary'), '#rows' => 2, '#maxlength' => 512, '#default_value' => $finding['summary']],
+        'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 512, '#default_value' => $finding['evidence']],
+      ];
       return;
     }
-    // A reviewer's own finding is editable (saved with Save draft) and
-    // deletable by any reviewer; automated findings are annotated only.
-    $pid = $finding['pid'];
     $form['edit_finding'][$pid] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['finding-fields']],
       'rule' => ['#type' => 'textfield', '#title' => $this->t('Rule'), '#size' => 10, '#maxlength' => 32, '#default_value' => $finding['rule']],
       'severity' => ['#type' => 'select', '#title' => $this->t('Severity'), '#options' => $this->severityOptions(), '#default_value' => $finding['severity']],
-      'summary' => ['#type' => 'textfield', '#title' => $this->t('Summary'), '#maxlength' => 255, '#default_value' => $finding['summary']],
-      'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 255, '#default_value' => $finding['evidence'], '#attributes' => ['placeholder' => 'path/to/file:line — what is there']],
+      'summary' => ['#type' => 'textarea', '#title' => $this->t('Summary'), '#rows' => 2, '#maxlength' => 512, '#default_value' => $finding['summary']],
+      'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 512, '#default_value' => $finding['evidence'], '#attributes' => ['placeholder' => 'path/to/file:line — what is there']],
     ];
     $form['delete_finding'][$pid] = [
       '#type' => 'submit',
@@ -1164,47 +1209,6 @@ final class ReviewPageForm extends FormBase {
       '#submit' => ['::deleteFinding'],
       '#limit_validation_errors' => [],
       '#attributes' => ['class' => ['btn', 'ghost', 'btn-delete-finding']],
-    ];
-  }
-
-  /**
-   * Change an automated finding: a new severity or a dismissal, with a
-   * reason, saved with Save draft (A1, FindingOverride). Choosing the
-   * tool's own severity and unticking the dismissal undoes a change.
-   *
-   * @param array<string, mixed> $form
-   * @param array<mixed> $finding
-   */
-  protected function addOverrideElement(array &$form, array $finding): void {
-    if (!FindingOverride::applies($finding)) {
-      return;
-    }
-    $override = $finding['override'] ?? NULL;
-    $tool = (string) $finding['tool_severity'];
-    $form['override'][$finding['pid']] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['finding-override']],
-      'severity' => [
-        '#type' => 'select',
-        '#title' => $this->t('Severity'),
-        '#options' => $this->severityOptions(),
-        '#empty_option' => $this->t('As the review rated it (@s)', ['@s' => ucfirst($tool)]),
-        '#empty_value' => '',
-        '#default_value' => $override['severity'] ?? '',
-      ],
-      'dismissed' => [
-        '#type' => 'checkbox',
-        '#title' => $this->t('Not a finding: dismiss it'),
-        '#default_value' => !empty($finding['dismissed']),
-      ],
-      'reason' => [
-        '#type' => 'textarea',
-        '#title' => $this->t('Reason for the change'),
-        '#rows' => 2,
-        '#default_value' => $override['reason'] ?? '',
-        '#attributes' => ['placeholder' => $this->t('Why the automated finding is wrong or rated wrong…')],
-        '#description' => $this->t('Required to change or dismiss it. The contributor sees it; a dismissed finding is not shown publicly.'),
-      ],
     ];
   }
 
@@ -1244,7 +1248,7 @@ final class ReviewPageForm extends FormBase {
         '#validate' => ['::validateAddFinding'],
         '#submit' => ['::addFinding'],
         '#limit_validation_errors' => [['add_finding', $target]],
-        '#attributes' => ['class' => ['btn', 'ghost']],
+        '#attributes' => ['class' => ['btn']],
       ],
     ];
   }
@@ -1419,8 +1423,9 @@ final class ReviewPageForm extends FormBase {
     if (!isset($values['override'][$pid]) || ($finding->get('field_rvf_source')->value ?? '') === 'reviewer') {
       return NULL;
     }
-    $change = FindingOverride::normalize($values['override'][$pid], (string) ($finding->get('field_rvf_severity')->value ?? ''));
-    if (FindingOverride::error($change) !== NULL) {
+    $change = FindingOverride::normalize($values['override'][$pid], self::toolValues($finding));
+    if (FindingOverride::needsNote($change, (string) ($values['prose'][$pid] ?? ''))) {
+      // validateForm() reported it.
       return NULL;
     }
     $line = FindingOverride::apply($finding, $change, (int) $this->currentUser->id(), $this->time->getRequestTime());
@@ -1441,22 +1446,37 @@ final class ReviewPageForm extends FormBase {
     }
     $overrides = $form_state->getValue('override') ?? [];
     if ($overrides !== []) {
-      $severities = [];
+      $tool = [];
+      $findings = $this->node->get('field_arv_repo_findings')->referencedEntities();
       foreach ($this->node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-        foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $finding) {
-          $severities[$finding->id()] = (string) ($finding->get('field_rvf_severity')->value ?? '');
-        }
+        $findings = array_merge($findings, $verdict->get('field_rvv_findings')->referencedEntities());
       }
-      foreach ($this->node->get('field_arv_repo_findings')->referencedEntities() as $finding) {
-        $severities[$finding->id()] = (string) ($finding->get('field_rvf_severity')->value ?? '');
+      foreach ($findings as $finding) {
+        $tool[$finding->id()] = self::toolValues($finding);
       }
+      $notes = $form_state->getValue('prose') ?? [];
       foreach ($overrides as $pid => $input) {
-        $error = FindingOverride::error(FindingOverride::normalize((array) $input, $severities[$pid] ?? ''));
-        if ($error !== NULL) {
-          $form_state->setErrorByName('override][' . $pid . '][reason', $this->t('Give a reason for changing an automated finding.'));
+        if (!isset($tool[$pid])) {
+          continue;
+        }
+        if (FindingOverride::needsNote(FindingOverride::normalize((array) $input, $tool[$pid]), (string) ($notes[$pid] ?? ''))) {
+          $form_state->setErrorByName('prose][' . $pid, $this->t('Add a note saying why: it is required to change the severity of an automated finding or dismiss it.'));
         }
       }
     }
+  }
+
+  /**
+   * The tool's own values on a finding, as FindingOverride compares them.
+   *
+   * @return array{severity: string, summary: string, evidence: string}
+   */
+  protected static function toolValues(ParagraphInterface $finding): array {
+    return [
+      'severity' => (string) ($finding->get('field_rvf_severity')->value ?? ''),
+      'summary' => (string) ($finding->get('field_rvf_summary')->value ?? ''),
+      'evidence' => (string) ($finding->get('field_rvf_evidence')->value ?? ''),
+    ];
   }
 
   /**

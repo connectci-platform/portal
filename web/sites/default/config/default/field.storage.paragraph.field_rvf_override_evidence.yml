@@ -1,14 +1,17 @@
+uuid: 3ec4231a-d7ec-4c21-92d9-222cd426299f
 langcode: en
 status: true
 dependencies:
   module:
     - paragraphs
-id: paragraph.field_rvf_override_reason
-field_name: field_rvf_override_reason
+id: paragraph.field_rvf_override_evidence
+field_name: field_rvf_override_evidence
 entity_type: paragraph
-type: string_long
+type: string
 settings:
+  max_length: 512
   case_sensitive: false
+  is_ascii: false
 module: core
 locked: false
 cardinality: 1

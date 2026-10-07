@@ -15,8 +15,9 @@ dependencies:
     - field.field.paragraph.review_finding.field_rvf_line
     - field.field.paragraph.review_finding.field_rvf_override_at
     - field.field.paragraph.review_finding.field_rvf_override_by
-    - field.field.paragraph.review_finding.field_rvf_override_reason
+    - field.field.paragraph.review_finding.field_rvf_override_evidence
     - field.field.paragraph.review_finding.field_rvf_override_severity
+    - field.field.paragraph.review_finding.field_rvf_override_summary
     - field.field.paragraph.review_finding.field_rvf_result
     - field.field.paragraph.review_finding.field_rvf_reviewer_prose
     - field.field.paragraph.review_finding.field_rvf_rule
@@ -84,8 +85,9 @@ hidden:
   field_rvf_line: true
   field_rvf_override_at: true
   field_rvf_override_by: true
-  field_rvf_override_reason: true
+  field_rvf_override_evidence: true
   field_rvf_override_severity: true
+  field_rvf_override_summary: true
   field_rvf_result: true
   field_rvf_source: true
   field_rvf_stable_id: true
