@@ -1,0 +1,1684 @@
+/* Appverse review page. Ported from appverse-planning review-system/mockups/
+   review-moderation-wireframe.html (2026-09-13); every rule is scoped under
+   .arv-page so the wireframe's generic class names stay local to this page. */
+
+/* The wireframe's design tokens. Every var() below depends on these; without
+   them the borders, pills and button colours silently drop out. */
+.arv-page {
+  --ink: #232323;
+  --gray-900: #2c2a29;
+  --gray-700: #545860;
+  --gray-500: #8b9195;
+  --gray-300: #c9cdd0;
+  --gray-150: #dddedf;
+  --gray-100: #eceded;
+  /* The fill behind the facts bar, the rating badges and the internal notes.
+     Its own token, not one of the greys above: those also draw borders and
+     dividers, where a lighter value would weaken the structure
+     (appverse-planning#53). */
+  --surface: #f2f3f3;
+  --white: #fff;
+  --blue: #0076af;
+  --blue-soft: #e2eff6;
+  --red: #c91235;
+  --status-green: #00857a;
+  --status-amber: #c98a2b;
+  --status-red: #c91235;
+  /* The same three, deep enough to carry small text on their own soft
+     backgrounds. The brand shades above sit at 3.94:1 (green) and 2.60:1
+     (amber) there, under the 4.5:1 AA floor for body-size text; these reach
+     5.2 and 5.1. Borders, icons and large type keep the brand shades
+     (appverse-planning#53). */
+  --status-green-text: #007066;
+  --status-amber-text: #8a5d12;
+  /* The brand blue sits at 4.25:1 on its own soft background, under the AA
+     floor for small text, so tinted chips use this instead. */
+  --blue-text: #00628f;
+
+  /* The sidebar's three text roles. It had six sizes and two different
+     muted greys; these are the only ones it should use
+     (appverse-planning#53).
+
+     heading   a section's name
+     control   anything you type in or pick from, and the buttons that act
+               on it, so a control and its button read as one size
+     helper    the muted line under a control saying what it does */
+  --sb-heading: 1.1rem;
+  --sb-control: .86rem;
+  --sb-helper: .78rem;
+  --sb-helper-color: var(--gray-700);
+  color: var(--ink);
+  line-height: 1.5;
+  /* Both this page and the decision confirm page ended flush against the
+     site footer. The confirm form carries .arv-page too, so one rule covers
+     them (appverse-planning#53). */
+  padding-bottom: 48px;
+}
+
+/* One type family throughout, as the wireframe. The theme sets its serif
+   heading face with `.open-ondemand h2` (0,1,1), which loads after this file
+   and wins a tie, so these selectors carry the extra class to outrank it. */
+.arv-page h2.sec,
+.arv-page h2.app-name {
+  font-family: inherit;
+  color: var(--ink);
+}
+
+/* One box for both kinds of button. The confirm forms pair an <input
+   type="submit"> with an <a>, and with no display set each took its own
+   default, inline-block against inline: different heights, text off the same
+   baseline, and the link free to wrap mid-phrase. inline-flex centres the
+   label in both and nowrap keeps "Back to the review" on one line
+   (appverse-planning#53). */
+.arv-page .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-family: inherit;
+  /* The theme tracks buttons at 1px, which nothing else on this page does,
+     so they read as a different typeface. Field text, like the controls they
+     act on (appverse-planning#53). */
+  font-size: var(--sb-control);
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 1.2;
+  border-radius: 3px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border: 1.5px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  text-decoration: none;
+}
+.arv-page .btn:hover {
+  text-decoration: none;
+}
+/* The sidebar's controls and the buttons that act on them share one size, so
+   a button does not read as a smaller thing than the field above it
+   (appverse-planning#53). */
+.arv-page .sidebar select,
+.arv-page .sidebar textarea,
+.arv-page .sidebar input[type="text"],
+.arv-page .sidebar .form-control,
+.arv-page .sidebar .btn,
+.arv-page .sidebar input[type="submit"] {
+  font-size: var(--sb-control);
+}
+
+/* The theme sets appearance: none on selects without putting an arrow back,
+   so Reviewer and Decision read as plain text boxes and nothing says they
+   open a list. An inline SVG chevron restores that, with room on the right so
+   a long option does not run under it (appverse-planning#53). */
+.arv-page .sidebar select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23545860' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* The confirm forms' button row: a real gap rather than the whitespace
+   between two inline elements, and both aligned on one line. On these forms
+   .arv-page is the <form> and .form-actions its own child. */
+.arv-page > .form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+/* The theme gives the cancel link a 10px bottom margin. align-items centres
+   each item's margin box, so that margin lifted the link 5px above the
+   submit button beside it. The row's own gap does the spacing. */
+.arv-page > .form-actions > .btn {
+  margin: 0;
+}
+.arv-page .btn.primary {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.arv-page .btn.ghost {
+  border-color: var(--gray-300);
+  color: var(--gray-700);
+}
+/* Drupal puts btn-primary on every submit input, and nect-theme's
+   .btn-primary:hover fills it red with !important. Only .primary is red
+   here; the others take a light grey and keep their own text and border,
+   which needs !important of its own to win. */
+.arv-page .btn:not(.primary):hover,
+.arv-page .btn:not(.primary):focus-visible {
+  background-color: var(--gray-100) !important;
+  border-color: var(--ink) !important;
+  color: var(--ink);
+}
+.arv-page .btn.ghost:hover,
+.arv-page .btn.ghost:focus-visible {
+  border-color: var(--gray-500) !important;
+  color: var(--gray-900);
+}
+
+.arv-page code {
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: .86em;
+  /* The theme colours code pink; on this page it is plain ink. */
+  color: var(--gray-900);
+  background: var(--gray-150);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* Reviewer-written text shown read-only (finding notes, response,
+   assessment): ordinary prose, line breaks kept. */
+.arv-page .arv-text {
+  font-size: .86rem;
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+.arv-page h2.sec {
+  font-size: var(--sb-heading);
+  font-weight: 800;
+  margin: 26px 0 10px;
+}
+.arv-page h2.sec:first-child {
+  margin-top: 0;
+}
+.arv-page .sec-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 26px 0 10px;
+}
+.arv-page .sec-head-row h2.sec {
+  margin: 0;
+}
+
+/* Overview bar. */
+/* Light grey, not the brand black: the black now belongs to the one section
+   that acts, and a header of facts should sit back from it
+   (appverse-planning#53). */
+.arv-page .overview-block {
+  background: var(--surface);
+  padding: 10px 18px;
+  margin-bottom: 20px;
+  border-radius: 3px;
+}
+.arv-page .overview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+}
+.arv-page .overview-meta {
+  font-size: .85rem;
+  color: var(--ink);
+}
+/* The facts line: repo / contributor / maintainer / shape. */
+.arv-page .overview-facts {
+  font-weight: 600;
+}
+.arv-page .overview-sep {
+  color: var(--gray-700);
+  font-weight: 400;
+  margin: 0 .3rem;
+}
+.arv-page .overview-line + .overview-line {
+  margin-top: 2px;
+}
+.arv-page .overview-line .state-pill {
+  margin-left: .35rem;
+}
+.arv-page .overview-line--sub {
+  font-size: .78rem;
+  color: var(--gray-700);
+  font-weight: 400;
+}
+.arv-page .overview-meta code {
+  font-size: .85em;
+  background: rgba(0, 0, 0, .06);
+  color: var(--ink);
+}
+.arv-page .overview-meta a,
+.arv-page .prev-reviews a {
+  color: var(--blue-text);
+  text-decoration: underline;
+}
+.arv-page .prev-reviews {
+  font-size: .83rem;
+  color: var(--gray-700);
+  text-align: right;
+}
+.arv-page .prev-reviews a {
+  margin-left: 0;
+}
+.arv-page .overview-block .muted {
+  color: var(--gray-700);
+}
+
+/* Two columns: findings, and the sticky reviewer sidebar.
+
+   minmax(0, …) rather than a bare 1fr: a flexible track's default floor is its
+   content's min-content width, and the findings column's content (long paths,
+   code spans, finding text) floors well above the space left once the sidebar
+   takes its 320px. The track then refused to shrink, so the sidebar was laid
+   out past the container and off the right of the page, taking the decision
+   and the response with it and giving the page a horizontal scrollbar
+   (appverse-planning#53). Zero as the floor lets the column give way instead,
+   and its own content wraps. */
+.arv-page .layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+/* The sidebar scrolls with the page. Sticky kept the decision in view at the
+   cost of odd behaviour: the column is taller than the viewport on a review
+   with notes, so it re-anchored as you scrolled and its lower half was never
+   reachable. Capping it and giving it its own scrollbar was worse again, a
+   bar the wheel would not drive. Scrolling with everything else is what a
+   reader expects (appverse-planning#53). */
+@media (max-width: 900px) {
+  .arv-page .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sidebar. */
+.arv-page .decision-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.arv-page .decision-app {
+  margin-bottom: .5rem;
+}
+.arv-page .decision-app-name {
+  font-size: .82rem;
+  color: var(--gray-700);
+}
+.arv-page .decision-value {
+  font-weight: 600;
+}
+/* The sidebar's one muted helper style. Drupal's own .form-text came in at
+   12.8px/#6c757d and this at 12.16px/#8b9195, two greys a few tenths of a
+   pixel apart; both read as one thing now (appverse-planning#53). */
+.arv-page .concl-caption,
+.arv-page .sidebar .form-text,
+.arv-page .sidebar .form-text.text-muted,
+.arv-page .sidebar .description,
+.arv-page .publish-note,
+.arv-page .notes-help {
+  font-size: var(--sb-helper);
+  color: var(--sb-helper-color);
+  /* It belongs to the heading above it and introduces the control below, so
+     it sits close to the heading and leaves room before the control: a
+     paragraph's own symmetrical margins had it floating between the two
+     (appverse-planning#53). */
+  margin: 2px 0 8px;
+  /* Tighter than body leading: at .78rem the page's 1.4 left the two-line
+     helpers looking double-spaced against the control they introduce
+     (appverse-planning#53). */
+  line-height: 1.25;
+}
+.arv-page .sidebar-rule {
+  border: none;
+  border-top: 1px solid var(--gray-300);
+  margin: 20px 0;
+}
+/* The sidebar's one acting section, on the brand black so it reads as the
+   place where something happens rather than another field to fill in
+   (appverse-planning#53). The dark ground carries its own heading, helper
+   text and ghost-button colours, since the page's are for white. */
+.arv-page .publish-block {
+  background: var(--ink);
+  color: #fff;
+  /* More below than above: the heading carries its own bottom margin, so
+     symmetrical padding leaves the last button crowded against the edge
+     (appverse-planning#53). */
+  padding: 14px 16px 18px;
+  border-radius: 3px;
+  /* Room above as well as below: the dark block sat flush against the Public
+     summary field over it (appverse-planning#53). */
+  margin: 24px 0 28px;
+}
+.arv-page .publish-block h2.sec {
+  color: #fff;
+  margin-top: 0;
+}
+.arv-page .publish-block .publish-note {
+  color: var(--gray-300);
+}
+.arv-page .publish-block .btn.ghost {
+  border-color: rgba(255, 255, 255, .6);
+  color: #fff;
+  background: transparent;
+}
+.arv-page .publish-block .btn.ghost:hover {
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+}
+/* Square on a dark fill; the rounded corners are for the soft grey fields
+   (appverse-planning#53). */
+.arv-page .publish-block,
+.arv-page .publish-block .btn {
+  border-radius: 0;
+}
+.arv-page .next-step {
+  margin-top: 10px;
+  font-size: .8rem;
+  color: #dddedf;
+}
+.arv-page .publish-block .arv-send-reason {
+  color: var(--gray-300);
+}
+
+/* Stacked, not side by side. The primary's label names the decision and runs
+   to two lines in a 320px sidebar, so beside Save draft the two buttons came
+   out different heights. Full width each, Save draft above the primary, and
+   the primary is free to be as tall as its label needs
+   (appverse-planning#53). */
+.arv-page .publish-row,
+.arv-page .publish-row .form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.arv-page .publish-row .btn {
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+/* Save draft first, whatever order the form builds them in. */
+.arv-page .publish-row .btn.ghost {
+  order: -1;
+}
+
+/* The black bar over the two fields the reviewer writes. Square, because a
+   solid dark fill is square on this page, and tight so it reads as a label
+   for the field under it rather than a block of its own
+   (appverse-planning#53). */
+.arv-page .sidebar-bar {
+  background: var(--ink);
+  padding: 8px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+}
+.arv-page .sidebar-bar h2.sec {
+  color: #fff;
+  margin: 0;
+}
+/* The helper sits under the bar, then the field; nothing below it. */
+.arv-page .sidebar-bar + .js-form-item .description,
+.arv-page .sidebar-bar + .js-form-item .form-text {
+  margin-top: 10px;
+}
+
+/* The corner rule: rounded only where the fill is soft grey. Anything with
+   a stroke or a solid dark fill is square — cards, inputs, selects,
+   textareas, buttons, the black bars (appverse-planning#53). */
+.arv-page .catblock,
+.arv-page .sidebar input[type="text"],
+.arv-page .sidebar select,
+.arv-page .sidebar textarea,
+.arv-page .btn,
+.arv-page input[type="submit"],
+.arv-page .sidebar-bar {
+  border-radius: 0;
+}
+/* …and the soft grey fields keep theirs. */
+/* The grey bar is a soft grey fill, so it rounds with the rest of them. */
+.arv-page .overview-block,
+.arv-page .internal-notes-block,
+.arv-page .rating-badge,
+.arv-page .cat-icon,
+.arv-page .gate,
+.arv-page .gate-passes__count {
+  border-radius: .25rem;
+}
+
+.arv-page .internal-notes-block {
+  background: var(--surface);
+  padding: 16px 16px 18px;
+  border-radius: 6px;
+  margin-top: 26px;
+}
+
+.arv-page .note-add {
+  margin-bottom: 14px;
+}
+.arv-page .internal-notes-block textarea {
+  font-size: .74rem;
+}
+.arv-page .notes-list {
+  margin-bottom: 28px;
+}
+.arv-page .note-entry {
+  border-top: 1px solid var(--gray-150);
+  padding: 10px 0;
+}
+.arv-page .note-entry:first-child {
+  border-top: 0;
+}
+.arv-page .note-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+.arv-page .note-name {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.arv-page .note-date {
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: .62rem;
+  color: var(--gray-500);
+}
+.arv-page .note-text {
+  font-size: .75rem;
+  color: var(--ink);
+}
+
+/* Form controls. */
+.arv-page select,
+.arv-page textarea,
+.arv-page input[type=text] {
+  font-family: inherit;
+  font-size: .86rem;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  padding: 6px 8px;
+  width: 100%;
+  background: #fff;
+  color: var(--ink);
+}
+.arv-page select:focus,
+.arv-page textarea:focus,
+.arv-page input[type=text]:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+.arv-page textarea {
+  resize: vertical;
+  min-height: 44px;
+}
+.arv-page .form-item {
+  margin: 0;
+}
+
+/* Monorepo app headings. */
+.arv-page .app-name {
+  font-size: 1.15rem;
+  margin: 1.5rem 0 .5rem;
+}
+.arv-page .muted {
+  color: var(--gray-500);
+  font-weight: 400;
+  font-size: .9em;
+}
+
+/* Category block: rating (optional) + its own findings. */
+.arv-page .catblock {
+  border: 1px solid var(--gray-300);
+  border-radius: 2px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.arv-page .cat-top {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .cat-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.arv-page .cat-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.arv-page .cat-name {
+  font-weight: 800;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.arv-page .cat-count {
+  font-size: .8rem;
+  color: var(--gray-700);
+}
+.arv-page .cat-summary {
+  font-size: .86rem;
+  color: var(--gray-700);
+  margin-top: .25rem;
+}
+
+/* The same fill and corner as the grey bar, not a full pill: a rounded
+   rectangle reads as part of the page's one shape language
+   (appverse-planning#53). */
+.arv-page .rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: .25rem;
+  padding: 4px 10px;
+  font-family: inherit;
+}
+.arv-page .rating-badge--none {
+  /* gray-500 on the badge fill was 2.87:1, under AA, and was so on the old
+     grey too. gray-700 keeps it quiet at 6.42:1 (appverse-planning#53). */
+  color: var(--gray-700);
+  font-size: .78rem;
+}
+.arv-page .rating-label {
+  font-size: .78rem;
+}
+.arv-page .rating-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid;
+  box-sizing: border-box;
+  flex: none;
+}
+.arv-page .rating-dot.level-high {
+  background: var(--status-green);
+  border-color: var(--status-green);
+}
+.arv-page .rating-dot.level-medium {
+  background: linear-gradient(90deg, var(--status-amber) 50%, transparent 50%);
+  border-color: var(--status-amber);
+}
+.arv-page .rating-dot.level-low {
+  background: transparent;
+  border-color: var(--status-red);
+}
+.arv-page .rating-dot.level-none {
+  background: var(--gray-300);
+  border-color: var(--gray-300);
+}
+
+/* Changing a rating is rare, so the icon sits back: smaller than the badge it
+   follows and grey rather than ink, coming forward only on hover and focus
+   (appverse-planning#54). */
+/* The shield on the Security heading, in the slot the rated blocks use for
+   their badge, and on the same grey pill so it reads as one of them
+   (appverse-planning#53). */
+.arv-page .cat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-150);
+  border-radius: .25rem;
+  width: 26px;
+  height: 26px;
+  color: var(--gray-700);
+  font-size: .9rem;
+  line-height: 1;
+}
+
+.arv-page .edit-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--gray-500);
+  font-size: .8rem;
+  cursor: pointer;
+  flex: none;
+  padding: 0;
+}
+.arv-page .edit-icon-btn:hover,
+.arv-page .edit-icon-btn:focus-visible {
+  background: var(--gray-100);
+  color: var(--ink);
+}
+
+/* Shown unless JS collapses it (no JS: everything stays open). */
+.arv-page .override-box {
+  border-radius: 2px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  background: var(--gray-150);
+  max-width: 420px;
+}
+.arv-page .override-note {
+  font-size: .86rem;
+  color: var(--gray-900);
+  margin-top: .35rem;
+  padding: .4rem .6rem;
+  background: #fff8ec;
+  border-left: 3px solid var(--status-amber);
+}
+
+/* Gate pills. */
+.arv-page .gates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+.arv-page .gate {
+  font-size: .76rem;
+  padding: .1rem .5rem;
+  border-radius: 4px;
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+.arv-page .gate b {
+  font-weight: 600;
+}
+/* A gate's result as a 16px circle after its label: the words "pass" and
+   "fail" repeated down a row of chips read as noise, and a mark is quicker
+   to scan. Colour is never the only cue, so each carries a title and
+   visually-hidden text (appverse-planning#53). */
+.arv-page .gate-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  margin-left: .2rem;
+  font-size: .62rem;
+  line-height: 1;
+  color: #fff;
+  vertical-align: text-bottom;
+}
+.arv-page .gate-mark--pass {
+  background: var(--status-green);
+}
+.arv-page .gate-mark--fail {
+  background: var(--red);
+}
+.arv-page .gate-word {
+  font-weight: 600;
+}
+.arv-page .gate--pass b {
+  color: var(--status-green);
+}
+.arv-page .gate--fail b {
+  color: var(--status-red);
+}
+.arv-page .gate--warn b {
+  color: var(--status-amber);
+}
+.arv-page .gate--not_checked b {
+  color: var(--gray-500);
+}
+
+/* The passes, folded into a count (appverse-planning#54). Closed it is one
+   quiet line; open it lists the gates that passed. A failure never goes in
+   here: it renders as its own pill beside this. */
+/* Repo beside Files. Each group is its own block, so stacked they took two
+   full rows for two short lines and made the Structure card taller than its
+   content. Aligned to the top so an open group grows downward without
+   dragging the other with it (appverse-planning#53). */
+.arv-page .gate-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: .35rem .75rem;
+  margin-top: .5rem;
+}
+/* Inside the row each group is already laid out by .gates; its top margin
+   would double the row's own gap. */
+.arv-page .gate-groups > .gates {
+  margin-top: 0;
+}
+
+.arv-page .gate-passes {
+  display: inline-block;
+}
+.arv-page .gate-passes__count {
+  font-size: .76rem;
+  color: var(--status-green-text);
+  cursor: pointer;
+  list-style: none;
+  padding: .1rem .5rem;
+  border-radius: 4px;
+  background: #e0f3f0;
+}
+/* Safari draws its own disclosure triangle through ::-webkit-details-marker
+   rather than list-style. */
+.arv-page .gate-passes__count::-webkit-details-marker {
+  display: none;
+}
+/* One chevron everywhere: down when closed, rotated up when open. It
+   replaced a solid right-pointing triangle here and another in the severity
+   heads (appverse-planning#53). */
+.arv-page .gate-passes__count::before {
+  content: '⌄';
+  display: inline-block;
+  margin-right: .35rem;
+  line-height: 1;
+  transform: translateY(-.15em);
+  transition: transform .15s;
+}
+.arv-page .gate-passes[open] .gate-passes__count::before {
+  transform: translateY(.1em) rotate(180deg);
+}
+.arv-page .gate-passes__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .3rem;
+}
+
+/* The rating: a badge until the edit icon is clicked (appverse-planning#54).
+   Both controls are in the markup and the dropdown is what shows by default,
+   so without JS the page still edits; .level-collapsed, which the JS adds, is
+   what swaps them. */
+.arv-page .catblock .level-readonly {
+  display: none;
+}
+.arv-page .catblock.level-collapsed .level-readonly {
+  display: inline;
+}
+.arv-page .catblock.level-collapsed .level-control {
+  display: none;
+}
+
+/* What moved since the last round (appverse-planning#54). */
+.arv-page .finding-new {
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  padding: .05rem .35rem;
+  border-radius: 3px;
+  background: var(--blue-soft);
+  color: var(--blue-text);
+  vertical-align: .05rem;
+}
+/* The rubric's Reject trigger, on the reviewer's view only. */
+.arv-page .finding-malicious {
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  padding: .05rem .35rem;
+  border-radius: 3px;
+  border: 1px solid var(--red);
+  color: var(--red);
+  vertical-align: .05rem;
+}
+.arv-page .round-delta {
+  font-size: .78rem;
+  margin-top: .35rem;
+  color: var(--gray-700);
+}
+.arv-page .round-delta__new {
+  color: var(--blue);
+  font-weight: 600;
+}
+.arv-page .round-delta__resolved {
+  color: var(--status-green-text);
+  font-weight: 600;
+}
+
+/* Earlier reviews: one line each, behind a toggle, because they need far less
+   than the review being read (appverse-planning#54). */
+.arv-page .other-reviews {
+  font-size: .78rem;
+  margin-top: .35rem;
+}
+.arv-page .other-reviews__count {
+  cursor: pointer;
+  color: var(--gray-700);
+}
+.arv-page .other-reviews__list {
+  margin: .35rem 0 0;
+  padding-left: 1rem;
+}
+.arv-page .other-reviews__list li {
+  margin-bottom: .15rem;
+}
+.arv-page .other-reviews__list code {
+  font-size: .9em;
+}
+.arv-page .rerun-note {
+  font-style: italic;
+  color: var(--gray-700);
+}
+
+/* Gates and catalog checks (Reviewer Process step 1), top of the main column. */
+.arv-page .gate-rows {
+  list-style: none;
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .gate-rows li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: .84rem;
+  padding: 3px 0;
+}
+.arv-page .gate-rows .rule {
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: .74rem;
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+.arv-page .gate-result {
+  flex: none;
+  min-width: 3.2rem;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+.arv-page .gate-result--pass {
+  color: var(--status-green);
+}
+.arv-page .gate-result--fail {
+  color: var(--status-red);
+}
+.arv-page .gate-result--warn {
+  color: var(--status-amber);
+}
+.arv-page .gate-result--na {
+  color: var(--gray-500);
+}
+/* Catalog checks as rows (A4b): the gate rows' grid inside the block. */
+.arv-page .catalog-checks--rows .gate-rows {
+  padding: 4px 0 0;
+  border-bottom: 0;
+}
+.arv-page .catalog-check {
+  flex: none;
+  min-width: 9.5rem;
+  font-weight: 600;
+}
+.arv-page .catalog-read {
+  font-size: .78rem;
+  color: var(--gray-700);
+}
+.arv-page .catalog-checks {
+  padding: 8px 14px 12px;
+  font-size: .84rem;
+}
+.arv-page .catalog-checks-title {
+  font-weight: 700;
+  font-size: .86rem;
+  margin-bottom: 4px;
+}
+.arv-page .catalog-checks ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.arv-page .catalog-checks li {
+  margin: 3px 0;
+}
+
+/* Severity groups. */
+.arv-page .sev-group {
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .sev-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  background: var(--white);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  user-select: none;
+}
+.arv-page .sev-head .n {
+  color: var(--gray-700);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.arv-page .sev-head .car {
+  margin-left: auto;
+  color: var(--gray-700);
+  line-height: 1;
+  transition: transform .15s;
+}
+.arv-page .sev-head--open .car {
+  transform: rotate(180deg);
+}
+
+/* Findings. */
+.arv-page .finding {
+  padding: 10px 14px;
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .frow {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+.arv-page .frow .rule {
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: .74rem;
+  color: var(--gray-700);
+  padding-top: 2px;
+}
+.arv-page .frow .sum {
+  font-size: .86rem;
+}
+/* Evidence is a list of file:line references and can run long; OODT-05 cites
+   a dozen. Monospace with no wrapping ran it past the card's edge, so it
+   wraps, breaking inside a path when one reference is itself too long to fit
+   (appverse-planning#53). */
+.arv-page .frow .ev {
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: .72rem;
+  color: var(--gray-700);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* Clamped to two lines until the toggle opens it. Without JS the class is
+   never added, so the evidence is simply all there. */
+.arv-page .frow .ev--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.arv-page .ev-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: .72rem;
+  color: var(--blue-text);
+  cursor: pointer;
+}
+.arv-page .ev-toggle:hover,
+.arv-page .ev-toggle:focus-visible {
+  text-decoration: underline;
+}
+.arv-page .frow .ev a {
+  color: var(--blue-text);
+  text-decoration: none;
+}
+.arv-page .frow .ev a:hover {
+  text-decoration: underline;
+}
+.arv-page .frow .also-flagged {
+  color: var(--status-amber);
+}
+.arv-page .frow-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+}
+.arv-page .expand-hint {
+  font-family: inherit;
+  font-size: .72rem;
+  color: var(--blue);
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.arv-page .expand-hint:hover {
+  text-decoration: underline;
+}
+.arv-page .fnote {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--gray-300);
+}
+.arv-page .fnote label {
+  font-size: .74rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Checked rows (PASS / NOT CHECKED) under a block's findings. */
+.arv-page .checked-rows {
+  border-top: 1px solid var(--gray-150);
+  padding: 8px 14px;
+}
+.arv-page .checked-rows > summary {
+  font-size: .78rem;
+  color: var(--gray-700);
+  cursor: pointer;
+  list-style: none;
+}
+.arv-page .checked-rows > summary::-webkit-details-marker {
+  display: none;
+}
+/* The same chevron as the gate groups and severity heads: this line sits in
+   the same card as them and was still showing the browser's native triangle
+   (appverse-planning#53). */
+.arv-page .checked-rows > summary::before {
+  content: '\2304';
+  display: inline-block;
+  margin-right: .35rem;
+  line-height: 1;
+  transform: translateY(-.15em);
+  transition: transform .15s;
+}
+.arv-page .checked-rows[open] > summary::before {
+  transform: translateY(.1em) rotate(180deg);
+}
+.arv-page .checked-rows .frow {
+  padding: 6px 0;
+  border-top: 1px solid var(--gray-150);
+}
+/* The reviewer's duplicate check, under Catalog checks (A4). */
+.arv-page .duplicate-check-block {
+  border-top: 1px solid var(--gray-150);
+  padding: 10px 14px;
+}
+.arv-page .duplicate-check-block fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+/* The theme's fieldset legend is a heading-sized paragraph; this one reads
+   like the "Catalog checks" title above it. */
+.arv-page .duplicate-check-block .fieldset-legend {
+  font-size: .86rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.arv-page .duplicate-check-block .fieldset-wrapper > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.arv-page .duplicate-check-block .description,
+.arv-page .duplicate-check-block .form-text,
+.arv-page .duplicate-check-block small {
+  font-size: .78rem;
+  color: var(--gray-700);
+  margin-top: 4px;
+}
+.arv-page .duplicate-check-block .js-form-type-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+.arv-page .duplicate-check-block .js-form-type-radio input {
+  position: static;
+  margin: 0;
+}
+.arv-page .duplicate-check-block .js-form-type-radio label {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font-size: .86rem;
+  font-weight: 400;
+}
+.arv-page .duplicate-check-block .js-form-type-textarea {
+  margin-top: 10px;
+}
+.arv-page .duplicate-check-block legend,
+.arv-page .duplicate-check-block > div > .form-item > label {
+  font-size: .78rem;
+  font-weight: 700;
+}
+/* A reviewer's change to an automated finding (A1). */
+.arv-page .override-mark {
+  font-size: .8rem;
+  color: var(--gray-900);
+  margin-top: .3rem;
+  padding: .3rem .55rem;
+  background: #fff8ec;
+  border-left: 3px solid var(--status-amber);
+}
+.arv-page .finding-note {
+  font-size: .82rem;
+  color: var(--gray-900);
+  margin-top: .3rem;
+}
+.arv-page .finding-note-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  color: var(--gray-700);
+  margin-right: .25rem;
+}
+.arv-page .finding-edited {
+  font-size: .7rem;
+  color: var(--gray-700);
+  font-style: italic;
+}
+.arv-page .finding-original {
+  font-size: .78rem;
+  color: var(--gray-700);
+  margin-top: .3rem;
+}
+.arv-page .finding-original > summary {
+  cursor: pointer;
+}
+.arv-page .fnote-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.arv-page .fnote-actions .finding-delete {
+  margin: 0 0 0 auto;
+}
+/* The theme gives <button> a bottom margin and rounded corners that a
+   submit input does not get; one row of buttons should line up. */
+.arv-page .fnote-actions input,
+.arv-page .fnote-actions button {
+  margin: 0;
+  border-radius: 0;
+}
+/* The dismissal sits beside the severity, its label inline. */
+.arv-page .finding-fields .js-form-type-checkbox {
+  align-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 8px;
+}
+.arv-page .finding-fields .js-form-type-checkbox input {
+  position: static;
+  margin: 0;
+}
+.arv-page .finding-fields .js-form-type-checkbox label {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font-weight: 600;
+}
+.arv-page .fnote .form-item-prose,
+.arv-page .fnote [class*="form-item-prose"] {
+  margin-top: 8px;
+}
+.arv-page .dismissed-rows {
+  border-top: 1px solid var(--gray-150);
+  padding: 8px 14px;
+}
+.arv-page .dismissed-rows > summary {
+  font-size: .78rem;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+
+.arv-page .result-pill {
+  display: inline-block;
+  font-size: .64rem;
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+.arv-page .result-pill--pass {
+  background: #e0f3f0;
+  color: var(--status-green-text);
+}
+
+/* Reviewer-added findings: tag + who/when, inline edit fields, add form. */
+.arv-page .added-by {
+  font-size: .72rem;
+  color: var(--gray-700);
+  margin-top: 3px;
+}
+.arv-page .reviewer-tag {
+  display: inline-block;
+  font-size: .66rem;
+  font-weight: 700;
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 20px;
+  padding: 0 7px;
+  margin-right: 4px;
+}
+.arv-page .finding-fields {
+  display: grid;
+  grid-template-columns: 9rem 8rem 1fr;
+  gap: 8px 10px;
+  margin-top: 8px;
+}
+.arv-page .finding-fields > .form-item-summary,
+.arv-page .finding-fields > [class*="-summary"],
+.arv-page .finding-fields > [class*="-evidence"],
+.arv-page .finding-fields > .form-actions,
+.arv-page .finding-fields > input[type=submit] {
+  grid-column: 1 / -1;
+}
+.arv-page .finding-fields label {
+  font-size: .74rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.arv-page .finding-delete {
+  margin-top: 8px;
+  text-align: right;
+}
+.arv-page .btn-delete-finding {
+  color: var(--red);
+  border-color: var(--gray-300);
+}
+.arv-page .add-finding {
+  border-top: 1px solid var(--gray-150);
+  padding: 8px 14px;
+}
+.arv-page .add-finding > summary {
+  /* Six of these down a page, one per block: quieter than a link, since
+     adding a finding is the exception (appverse-planning#53). */
+  font-size: .74rem;
+  color: var(--gray-700);
+  cursor: pointer;
+  /* No disclosure triangle: the "+" already says what this opens.
+     list-style covers most browsers, the pseudo-element covers Safari. */
+  list-style: none;
+}
+.arv-page .add-finding > summary::-webkit-details-marker {
+  display: none;
+}
+.arv-page .add-finding > summary:hover,
+.arv-page .add-finding > summary:focus-visible {
+  color: var(--blue-text);
+  text-decoration: underline;
+}
+.arv-page .add-finding .finding-fields input[type=submit] {
+  justify-self: start;
+}
+@media (max-width: 600px) {
+  .arv-page .finding-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* State pill. */
+.arv-page .state-pill {
+  display: inline-block;
+  padding: .05rem .5rem;
+  border-radius: 999px;
+  font-size: .78rem;
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+/* Modifiers follow ReviewProgress::chip(), which is what fills the pill, so
+   they are the step states rather than the review node's moderation states
+   (appverse-planning#53). Blue is the current step, green done, amber waiting
+   on the contributor, red failed or declined, per the brand palette. */
+.arv-page .state-pill--success {
+  background: #e0f3f0;
+  color: var(--status-green-text);
+}
+.arv-page .state-pill--warning {
+  background: #fbf0dd;
+  color: var(--status-amber-text);
+}
+.arv-page .state-pill--danger {
+  background: #fae3e8;
+  color: var(--status-red);
+}
+.arv-page .state-pill--secondary {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+/* The page's one footnote, under everything and quiet with it: which build
+   of the tool wrote the report (appverse-planning#53). */
+.arv-page .arv-footnote {
+  margin: 28px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-150);
+  font-family: ui-monospace, monospace;
+  font-size: .74rem;
+  color: var(--gray-700);
+}
+.arv-page .tool-version {
+  font-family: ui-monospace, monospace;
+  font-size: .78rem;
+  color: var(--gray-700);
+}
+
+/* Decision: "Publish app and review" after Accept with suggestions, and the
+   sent decision in the sidebar. */
+.arv-page .arv-publish-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: .86rem;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: #e0f3f0;
+  border-left: 3px solid var(--status-green);
+}
+.arv-page .arv-publish-bar .btn {
+  text-decoration: none;
+}
+.arv-page .decision-sent {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* The decision-sent view (appverse-planning#56): the decision, who the
+   repo waits on, and the email as it was sent. */
+.arv-page .decision-sent-panel {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: var(--blue-soft);
+  border-left: 3px solid var(--blue);
+  font-size: .86rem;
+}
+.arv-page .decision-sent-panel .sec {
+  margin-top: 0;
+}
+.arv-page .decision-sent-line,
+.arv-page .decision-waiting {
+  margin: 0 0 6px;
+}
+.arv-page .decision-email {
+  margin-top: 8px;
+  background: var(--white);
+  border: 1px solid var(--gray-150);
+  padding: 6px 10px;
+}
+.arv-page .decision-email summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.arv-page .decision-email .email-head {
+  margin: 6px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .decision-email .email-body p,
+.arv-page .decision-email .email-body ul {
+  margin: 0 0 6px;
+}
+.arv-page .decision-email .email-body {
+  /* Links are full URLs; break them inside the narrow sidebar. */
+  overflow-wrap: anywhere;
+}
+.arv-page .decision-email blockquote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--gray-300);
+  color: var(--gray-700);
+}
+
+/* The repo's reviewer, at the top of the sidebar (appverse-planning#33). */
+.arv-page .assignee-block {
+  margin-bottom: 14px;
+}
+
+/* The repo's progress line at the top of the page (appverse-planning#31);
+   the line itself is styled in appverse-progress.css. */
+/* No box: the line is the page's own progress, not a panel of content, and
+   the border made it read as another card among the findings
+   (appverse-planning#53). */
+.arv-page .arv-progress-block {
+  padding: 4px 0 16px;
+  margin-bottom: 12px;
+  font-size: .86rem;
+}
+
+/* Superseded banner and history bar (a repo with more than one review). */
+.arv-page .arv-superseded {
+  font-size: .86rem;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: #fff8ec;
+  border-left: 3px solid var(--status-amber);
+}
+.arv-page .arv-superseded a {
+  margin-left: .35rem;
+  color: var(--blue);
+  font-weight: 600;
+}
+.arv-page .arv-superseded-note {
+  display: block;
+  font-size: .78rem;
+  color: var(--gray-700);
+  margin-top: 2px;
+}
+.arv-page .review-history a {
+  margin-left: 4px;
+}
+
+/* Public summary (appverse-review-summary.html.twig): one column, one row per
+   category, no findings. */
+.arv-summary {
+  max-width: 820px;
+}
+.arv-page .arv-preview-banner {
+  font-size: .86rem;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--blue-soft);
+  border-left: 3px solid var(--blue);
+}
+.arv-page .arv-preview-banner a {
+  margin-left: .5rem;
+  color: var(--blue);
+}
+.arv-page .summary-assessment {
+  margin-bottom: 20px;
+}
+.arv-page .summary-app {
+  border: 1px solid var(--gray-300);
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+.arv-page .summary-app-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .summary-app-head .app-name {
+  margin: 0;
+}
+.arv-page .decision-pill {
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+.arv-page .decision-pill--accept,
+.arv-page .decision-pill--accept_with_suggestions {
+  background: #e0f3f0;
+  color: var(--status-green-text);
+}
+.arv-page .decision-pill--request_changes {
+  background: #fff8ec;
+  color: #8a5a12;
+}
+.arv-page .decision-pill--reject {
+  background: #fbe7eb;
+  color: var(--status-red);
+}
+.arv-page .summary-rows {
+  margin: 0;
+}
+.arv-page .summary-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .summary-row:first-child {
+  border-top: 0;
+}
+.arv-page .summary-row dt {
+  font-weight: 700;
+  font-size: .9rem;
+}
+.arv-page .summary-row dd {
+  margin: 0;
+}
+.arv-page .summary-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.arv-page .summary-findings {
+  margin-top: 6px;
+}
+.arv-page .summary-findings > summary {
+  font-size: .78rem;
+  color: var(--blue);
+  cursor: pointer;
+}
+.arv-page .summary-findings > summary:hover {
+  text-decoration: underline;
+}
+.arv-page .summary-sev {
+  font-size: .76rem;
+  font-weight: 700;
+  margin: 10px 0 4px;
+}
+.arv-page .summary-sev .n {
+  color: var(--gray-500);
+  font-weight: 400;
+}
+.arv-page .summary-findings .frow {
+  grid-template-columns: 70px 1fr;
+  padding: 6px 0;
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .summary-line {
+  font-size: .86rem;
+  color: var(--gray-700);
+}
+.arv-page .summary-disclaimer {
+  font-size: .76rem;
+  color: var(--gray-500);
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .arv-page .summary-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+/* JS collapse (sev groups, finding notes, override boxes). */
+.arv-page .collapsed {
+  display: none;
+}
+
+/* Printing drops background colours, which would leave the overview's white
+   text on white: give it dark text and a rule instead. */
+@media print {
+  .arv-page .overview-block {
+    background: none;
+    border: 1px solid var(--gray-300);
+  }
+  .arv-page .overview-meta,
+  .arv-page .overview-line--sub,
+  .arv-page .overview-meta a,
+  .arv-page .overview-meta code,
+  .arv-page .prev-reviews,
+  .arv-page .prev-reviews a,
+  .arv-page .tool-version {
+    color: var(--ink);
+  }
+  .arv-page .layout {
+    grid-template-columns: 1fr;
+  }
+  /* Print every finding, not just the groups left open on screen. */
+  .arv-page .sev-body.collapsed {
+    display: block;
+  }
+}
+
+/* The review page's send button names the decision; its reason sits beside
+   it while the decision is incomplete (appverse-planning#52). */
+.arv-page .btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+/* The send button's label grows with the decision ("Send decisions (2
+   accepted, 1 changes requested)"), so in a 320px sidebar it ran off the
+   right edge. Full width on its own line below Save draft, wrapping if it
+   still needs to (appverse-planning#53). */
+.arv-page .sidebar .arv-send {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+  margin-top: 8px;
+}
+.arv-page .arv-send-reason {
+  display: block;
+  margin-left: 0;
+  margin-top: 6px;
+  font-size: var(--sb-helper);
+  color: var(--sb-helper-color);
+}
+
+/* The decision confirm page: the email as the contributor will get it. */
+.arv-page .arv-email {
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  margin: 1rem 0 1.25rem;
+  max-width: 46rem;
+}
+.arv-page .arv-email__headers {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-300);
+  font-size: .85rem;
+}
+.arv-page .arv-email__headers dt {
+  color: var(--gray-700);
+  font-weight: 700;
+}
+.arv-page .arv-email__headers dd {
+  margin: 0;
+}
+.arv-page .arv-email__body {
+  padding: 14px;
+}
+.arv-page .arv-email__body blockquote {
+  margin: 0 0 1rem;
+  padding-left: 12px;
+  border-left: 3px solid var(--gray-300);
+  /* The theme sets quotes in italics; the mail has no theme. */
+  font-style: normal;
+}

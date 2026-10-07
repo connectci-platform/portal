@@ -1,0 +1,30 @@
+uuid: f0be7b98-9095-4310-b385-cbe15d2f865c
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - options
+id: node.field_arv_maint_level
+field_name: field_arv_maint_level
+entity_type: node
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: solid
+      label: Solid
+    -
+      value: some_notes
+      label: 'Some notes'
+    -
+      value: needs_attention
+      label: 'Needs attention'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

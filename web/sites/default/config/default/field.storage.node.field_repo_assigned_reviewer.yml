@@ -1,0 +1,19 @@
+uuid: a627324c-f8ed-4ef4-9841-7ac09402edbb
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_repo_assigned_reviewer
+field_name: field_repo_assigned_reviewer
+entity_type: node
+type: entity_reference
+settings:
+  target_type: user
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

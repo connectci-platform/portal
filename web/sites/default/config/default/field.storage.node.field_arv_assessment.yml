@@ -1,0 +1,18 @@
+uuid: 25491d47-6a72-41af-829d-be82d1a3b2a5
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_assessment
+field_name: field_arv_assessment
+entity_type: node
+type: text_long
+settings: {  }
+module: text
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

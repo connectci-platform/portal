@@ -1,0 +1,21 @@
+uuid: a29c7e7b-19ea-419b-9a08-a559676dadb0
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_source
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_source
+field_name: field_rvf_source
+entity_type: paragraph
+bundle: review_finding
+label: Source
+description: 'Who produced the finding: the automated review (empty on findings seeded before this field existed) or a reviewer, on the review page.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

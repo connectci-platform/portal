@@ -1,0 +1,27 @@
+uuid: d196cfee-7606-40b8-8679-d430b6890342
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_assigned_reviewer
+    - node.type.appverse_repo
+    - user.role.appverse_pm
+id: node.appverse_repo.field_repo_assigned_reviewer
+field_name: field_repo_assigned_reviewer
+entity_type: node
+bundle: appverse_repo
+label: 'Assigned reviewer'
+description: 'The reviewer responsible for this repo''s review, across rounds. Set from the hub and the review page.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:user'
+  handler_settings:
+    auto_create: false
+    filter:
+      type: role
+      role:
+        appverse_pm: appverse_pm
+field_type: entity_reference
