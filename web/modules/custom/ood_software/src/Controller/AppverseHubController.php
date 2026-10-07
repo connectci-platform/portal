@@ -445,7 +445,10 @@ final class AppverseHubController extends ControllerBase {
   public function sendForReview(NodeInterface $node): RedirectResponse {
     // A live repo with apps sent back is re-submitted whole and stays live
     // (appverse-planning#48); it does not go through the transition below.
-    if ($node->bundle() === 'appverse_repo' && $node->isPublished()) {
+    // So does one awaiting the reviewer's Publish for its other apps, which
+    // cannot move to ready_for_review again.
+    if ($node->bundle() === 'appverse_repo' && ($node->isPublished()
+      || (($node->get('moderation_state')->value ?? '') === 'ready_for_review' && $this->repoMemberApps->sentBackCount($node) > 0))) {
       return $this->resubmitLive($node);
     }
     $response = $this->applyTransition(
@@ -499,7 +502,7 @@ final class AppverseHubController extends ControllerBase {
    */
   protected function resubmitLive(NodeInterface $repo): RedirectResponse {
     if ($this->repoMemberApps->sentBackCount($repo) === 0) {
-      $this->messenger()->addError($this->t('@title is live and no app in it is waiting on changes, so there is nothing to re-submit.', ['@title' => $repo->label()]));
+      $this->messenger()->addError($this->t('No app in @title is waiting on changes, so there is nothing to re-submit.', ['@title' => $repo->label()]));
       return $this->redirectToHub();
     }
     $status = $repo->hasField('field_review_status') ? (string) ($repo->get('field_review_status')->value ?? '') : '';
@@ -513,7 +516,9 @@ final class AppverseHubController extends ControllerBase {
     }
     $this->repoMemberApps->cascadeModeration($repo, 'ready_for_review', ['needs_adjustment'], 'Re-submitted with the repo.');
     $this->notifier->notifyResubmitted($repo);
-    $this->messenger()->addStatus($this->t('Re-submitted @title. A new review has started, and the apps already accepted stay live.', ['@title' => $repo->label()]));
+    $this->messenger()->addStatus($repo->isPublished()
+      ? $this->t('Re-submitted @title. A new review has started, and the apps already accepted stay live.', ['@title' => $repo->label()])
+      : $this->t('Re-submitted @title. A new review of the whole repo has started.', ['@title' => $repo->label()]));
     return $this->redirectToHub();
   }
 

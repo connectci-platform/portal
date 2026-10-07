@@ -185,6 +185,19 @@ class DecisionEmailTest extends UnitTestCase {
   }
 
   /**
+   * Suggestions for one app and changes for the other, on a new repo:
+   * nothing is live yet, so the email does not say the accepted apps stay
+   * listed.
+   *
+   * @covers ::decision
+   */
+  public function testSuggestionsAndChangesOnANewRepo(): void {
+    $p = self::paragraphs(self::email(['v1' => 'accept_with_suggestions', 'v2' => 'request_changes'], 'Fix the second app.'));
+    $this->assertContains('When you have made the changes on GitHub, click Re-submit on your Appverse page. The whole repo is reviewed again.', $p);
+    $this->assertEmpty(array_filter($p, fn (string $line): bool => str_contains($line, 'stay listed')));
+  }
+
+  /**
    * Two apps with the same name are both listed, each with its own decision.
    *
    * @covers ::decision

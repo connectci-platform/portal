@@ -112,9 +112,13 @@ final class DecisionEmail {
     if ($any('request_changes')) {
       // One commit gives one AI report, so the contributor re-submits the
       // whole repo once, never app by app.
-      $blocks[] = ['p', $mixed && $plan['repo'] !== 'needs_adjustment'
-        ? new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page. The whole repo is reviewed again, and the apps already accepted stay listed.')
-        : new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page and a new review will start.')];
+      // Only an accepted app is live; one accepted with suggestions waits for
+      // the reviewer's Publish, so "stay listed" would be untrue for it.
+      $blocks[] = ['p', match (TRUE) {
+        $mixed && ($wasLive || $any('accept')) => new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page. The whole repo is reviewed again, and the apps already accepted stay listed.'),
+        $mixed && $plan['repo'] !== 'needs_adjustment' => new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page. The whole repo is reviewed again.'),
+        default => new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page and a new review will start.'),
+      }];
     }
 
     if (trim($response) !== '') {

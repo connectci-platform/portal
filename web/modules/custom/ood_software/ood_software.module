@@ -2350,9 +2350,11 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // moves the repo and the review together (appverse-planning#29).
   $hasReview = _ood_software_repo_has_review($repo);
 
-  // A live repo with apps sent back is re-submitted whole, staying live
-  // (appverse-planning#48).
-  $liveWithSentBack = $published && $state === 'published'
+  // A repo with apps sent back is re-submitted whole (appverse-planning#48):
+  // a live one stays live, and a new one whose other apps were accepted with
+  // suggestions waits in ready_for_review for the reviewer's Publish, which
+  // used to leave the contributor no Re-submit at all.
+  $liveWithSentBack = (($published && $state === 'published') || $state === 'ready_for_review')
     && \Drupal::service('ood_software.repo_member_apps')->sentBackCount($repo) > 0;
   if (!$isAdmin && (in_array($state, ['draft', 'needs_adjustment'], TRUE) || $liveWithSentBack)) {
     $label = $state === 'draft' ? t('Send for review') : t('Re-submit');

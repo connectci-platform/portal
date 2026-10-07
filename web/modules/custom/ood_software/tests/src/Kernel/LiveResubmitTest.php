@@ -138,6 +138,24 @@ class LiveResubmitTest extends KernelTestBase {
   }
 
   /**
+   * A new repo with one app accepted with suggestions and one sent back
+   * waits for the reviewer's Publish; the contributor can still re-submit.
+   */
+  public function testResubmitRepoAwaitingPublish(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $suggested = $this->makeApp($repo, 'ready_for_review');
+    $sentBack = $this->makeApp($repo, 'needs_adjustment');
+    $this->assertNotEmpty(_ood_software_hub_repo_actions($repo, FALSE, 'ready_for_review', FALSE)['send_for_review'], 'the hub offers Re-submit');
+
+    $this->controller(TRUE)->sendForReview($repo);
+
+    $this->assertSame([$repo->id()], $this->dispatched);
+    $this->assertState('ready_for_review', $repo);
+    $this->assertState('ready_for_review', $suggested);
+    $this->assertState('ready_for_review', $sentBack);
+  }
+
+  /**
    * A contributor can take their app down but not put one up: the review
    * sent this one back.
    */
