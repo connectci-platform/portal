@@ -36,6 +36,20 @@
   color: var(--arv-p-muted);
 }
 
+/* A monorepo's per-app decisions, under the Decision step's own label
+   (appverse-planning#49). Quieter than the label: the label is the repo's
+   decision, these are the detail behind it. */
+.arv-progress__apps {
+  display: block;
+  margin-top: 0.15em;
+}
+.arv-progress__app {
+  display: block;
+  font-size: 0.78em;
+  line-height: 1.35;
+  color: var(--arv-p-muted);
+}
+
 .arv-progress__step.is-done .arv-progress__label { color: var(--arv-p-done); }
 .arv-progress__step.is-current .arv-progress__label { color: var(--arv-p-current); }
 .arv-progress__step.is-waiting .arv-progress__label { color: var(--arv-p-waiting); }

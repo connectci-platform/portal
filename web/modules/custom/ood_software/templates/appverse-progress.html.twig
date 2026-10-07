@@ -42,6 +42,15 @@
       {% if s.label and s.label != s.step and not (s.state == 'done' and s.label == 'Done') and (variant == 'steps' or labels) %}
         <span class="arv-progress__label">{{ s.label }}</span>
       {% endif %}
+      {# A monorepo whose apps were decided differently: the label above is the
+         strictest of them, so name each app (appverse-planning#49). #}
+      {% if s.apps is defined and s.apps is not empty and variant == 'steps' %}
+        <span class="arv-progress__apps">
+          {% for app, decision in s.apps %}
+            <span class="arv-progress__app">{{ app }}: {{ decision }}</span>
+          {% endfor %}
+        </span>
+      {% endif %}
     </li>
   {% endfor %}
 </ol>

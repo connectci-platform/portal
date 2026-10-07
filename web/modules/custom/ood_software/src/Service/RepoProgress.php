@@ -75,6 +75,12 @@ final class RepoProgress {
 
     $sent = $current && !$current->get('field_arv_decision_sent_at')->isEmpty();
     return [
+      // Per-app decisions, for a monorepo whose apps did not all go the same
+      // way: the single collapsed decision shows the strictest one, so a
+      // mixed repo said "Changes requested" with no word on which apps went
+      // live (appverse-planning#49). Empty for a single-app repo, where the
+      // one decision already says it.
+      'app_decisions' => $sent ? $this->appDecisions($current) : [],
       'repo_state' => $repoState,
       'run_status' => $repo->hasField('field_review_status') ? ($repo->get('field_review_status')->value ?: NULL) : NULL,
       'review_state' => $current?->get('moderation_state')->value,
@@ -83,6 +89,36 @@ final class RepoProgress {
       'suggestion' => $current?->get('field_arv_recommendation')->value,
       'round' => 1 + $changesRequested,
     ];
+  }
+
+  /**
+   * Each app's own sent decision, as name => decision.
+   *
+   * Only for a repo with more than one app: with one app the repo's decision
+   * and the app's are the same thing said twice.
+   *
+   * @return array<string, string>
+   */
+  protected function appDecisions(NodeInterface $review): array {
+    $sent = ReviewDecisionApplier::sent($review);
+    if ($sent === NULL || count($sent['apps']) < 2) {
+      return [];
+    }
+    $names = [];
+    foreach ($review->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $app = $verdict->get('field_rvv_app_ref')->entity;
+      $names[(string) $verdict->id()] = $app instanceof NodeInterface
+        ? (string) $app->label()
+        : (string) ($verdict->get('field_rvv_app_id')->value ?? 'App');
+    }
+    $decisions = [];
+    foreach ($sent['apps'] as $verdictId => $decision) {
+      $name = $names[(string) $verdictId] ?? NULL;
+      if ($name !== NULL && $decision !== '') {
+        $decisions[$name] = (string) $decision;
+      }
+    }
+    return $decisions;
   }
 
   /**

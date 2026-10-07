@@ -99,6 +99,7 @@ final class ReviewProgress {
     $decision = $sent ? ($facts['decision'] ?? NULL) : NULL;
     $suggestion = $facts['suggestion'] ?? NULL;
     $round = max(1, (int) ($facts['round'] ?? 1));
+    $appDecisions = is_array($facts['app_decisions'] ?? NULL) ? $facts['app_decisions'] : [];
 
     // 1. Submitted: not until the repo has left draft (or a run started).
     $submitted = !($repoState === 'draft' && $run === NULL);
@@ -144,7 +145,7 @@ final class ReviewProgress {
     }
 
     // 4. Decision.
-    $decisionStep = self::decisionStep($decision, $round);
+    $decisionStep = self::decisionStep($decision, $round, $appDecisions);
 
     // 5. Live.
     if ($repoState === 'published') {
@@ -256,13 +257,24 @@ final class ReviewProgress {
     return ['label' => 'Not submitted', 'modifier' => 'secondary'];
   }
 
-  protected static function decisionStep(?string $decision, int $round): array {
-    return match ($decision) {
+  protected static function decisionStep(?string $decision, int $round, array $appDecisions = []): array {
+    $step = match ($decision) {
       'accept', 'accept_with_suggestions' => self::step('Decision', self::DONE, self::DECISION_LABELS[$decision]),
       'request_changes' => self::step('Decision', self::WAITING, self::DECISION_LABELS[$decision] . " · round $round"),
       'reject' => self::step('Decision', self::FAILED, self::DECISION_LABELS[$decision]),
       default => self::step('Decision', self::NOT_REACHED, ''),
     };
+    // A monorepo whose apps went different ways: the label above is the
+    // strictest of them, which on its own said "Changes requested" next to a
+    // Live step with no word on which apps went live (appverse-planning#49).
+    // Only when they differ; all-the-same repeats the label per app.
+    if ($appDecisions !== [] && count(array_unique($appDecisions)) > 1) {
+      $step['apps'] = array_map(
+        static fn (string $d): string => self::DECISION_LABELS[$d] ?? $d,
+        $appDecisions
+      );
+    }
+    return $step;
   }
 
   /**

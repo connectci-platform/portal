@@ -196,4 +196,51 @@ class ReviewProgressTest extends UnitTestCase {
     $this->assertNull(P::strictestDecision([NULL, 'bogus']));
   }
 
+  /**
+   * A monorepo whose apps went different ways names each one.
+   *
+   * The step's own label is the strictest decision, which on its own said
+   * "Changes requested" with no word on which apps went live.
+   *
+   * @covers ::steps
+   */
+  public function testMixedMonorepoNamesEachApp(): void {
+    $steps = P::steps([
+      'repo_state' => 'published',
+      'run_status' => 'complete',
+      'review_state' => 'in_review',
+      'decision_sent' => TRUE,
+      'decision' => 'request_changes',
+      'app_decisions' => ['jupyter' => 'accept', 'rstudio' => 'request_changes'],
+      'round' => 1,
+    ]);
+    $decision = $steps['reviewer'][3];
+
+    $this->assertSame('Changes requested · round 1', $decision['label'], 'The step still shows the strictest.');
+    $this->assertSame(
+      ['jupyter' => 'Accepted', 'rstudio' => 'Changes requested'],
+      $decision['apps'],
+      'Each app is named with its own decision.'
+    );
+  }
+
+  /**
+   * When every app went the same way there is nothing to break out.
+   *
+   * @covers ::steps
+   */
+  public function testMonorepoWithOneDecisionDoesNotRepeatIt(): void {
+    $steps = P::steps([
+      'repo_state' => 'published',
+      'run_status' => 'complete',
+      'review_state' => 'in_review',
+      'decision_sent' => TRUE,
+      'decision' => 'accept',
+      'app_decisions' => ['jupyter' => 'accept', 'rstudio' => 'accept'],
+      'round' => 1,
+    ]);
+
+    $this->assertArrayNotHasKey('apps', $steps['reviewer'][3], 'All the same says it once.');
+  }
+
 }
