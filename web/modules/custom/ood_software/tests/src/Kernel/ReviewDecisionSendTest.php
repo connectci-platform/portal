@@ -142,7 +142,7 @@ class ReviewDecisionSendTest extends KernelTestBase {
     $repo = $this->makeRepo('ready_for_review');
     $review = $this->makeReview($repo, ['request_changes' => $this->makeApp($repo, 'ready_for_review')]);
 
-    $this->assertNull($this->applier()->send($review, 'Please add a <LICENSE>.'));
+    $this->assertNull($this->applier()->send($review, "Please add a <LICENSE>.\n\n**Required:** fix `form.yml`."));
 
     $mail = $this->mails()[0];
     $this->assertSame('owner@example.com', $mail['to']);
@@ -154,6 +154,9 @@ class ReviewDecisionSendTest extends KernelTestBase {
     // The response is escaped: the mail is turned into plain text, which
     // strips a tag but keeps escaped text as written.
     $this->assertStringContainsString('Please add a <LICENSE>.', $mail['body']);
+    // The response is Markdown: rendered, not shown as typed.
+    $this->assertStringNotContainsString('**Required:**', $mail['body']);
+    $this->assertStringNotContainsString('`form.yml`', $mail['body']);
   }
 
   /**

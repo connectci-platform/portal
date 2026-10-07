@@ -23,6 +23,7 @@ use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
 use League\CommonMark\Environment\Environment;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
 
@@ -1398,8 +1399,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       foreach ($email['blocks'] ?? [] as $block) {
         $message['body'][] = match ($block[0]) {
           'p' => Markup::create('<p>' . _ood_software_mail_text($block[1], $langcode) . '</p>'),
-          // The response keeps its own line breaks.
-          'response' => Markup::create('<blockquote><p>' . nl2br(Html::escape($block[1])) . '</p></blockquote>'),
+          'response' => Markup::create('<blockquote>' . _ood_software_mail_markdown($block[1]) . '</blockquote>'),
           'apps' => Markup::create('<ul>' . implode('', array_map(
             static fn (array $app) => '<li>' . Html::escape((string) $app[0]) . ': <strong>' . _ood_software_mail_text($app[1], $langcode) . '</strong></li>',
             $block[1],
@@ -1410,6 +1410,22 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       }
       break;
   }
+}
+
+/**
+ * The reviewer's response, Markdown rendered as safe HTML for the email.
+ *
+ * The AI's draft and reviewers write Markdown (bold labels, file names in
+ * backticks). Raw HTML is escaped, so it shows as written rather than
+ * vanishing, unsafe links are dropped, and line breaks are kept as typed.
+ */
+function _ood_software_mail_markdown(string $markdown): string {
+  $converter = new GithubFlavoredMarkdownConverter([
+    'html_input' => 'escape',
+    'allow_unsafe_links' => FALSE,
+    'renderer' => ['soft_break' => "<br>\n"],
+  ]);
+  return (string) $converter->convert($markdown);
 }
 
 /**
