@@ -78,6 +78,12 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+/* The theme gives the cancel link a 10px bottom margin. align-items centres
+   each item's margin box, so that margin lifted the link 5px above the
+   submit button beside it. The row's own gap does the spacing. */
+.arv-page > .form-actions > .btn {
+  margin: 0;
+}
 .arv-page .btn.primary {
   background: var(--red);
   border-color: var(--red);
