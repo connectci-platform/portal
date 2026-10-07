@@ -353,6 +353,8 @@ describe('Appverse Maintenance Hub', () => {
         // github is the header link; resync sits with the lifecycle actions;
         // the submitted date is shown as text, not an icon.)
         cy.get('.appverse-hub-card').first().within(() => {
+          // In the Actions menu, so present in the DOM but not visible until
+          // the menu opens (appverse-planning#55).
           cy.get('.appverse-hub-card__cell--actions .bi-arrow-clockwise').should('exist');
           cy.get('.bi-github').should('exist');
           cy.get('.appverse-hub-card__submitted').should('exist')
@@ -399,12 +401,16 @@ describe('Appverse Maintenance Hub', () => {
       resolveContributorUid().then((uid) => { contributorUid = uid; });
     });
 
-    it('exposes an inline Re-sync action', () => {
+    it('offers Re-sync in the card\'s Actions menu', () => {
       cy.visit(`/user/${contributorUid}/my-appverse`, { failOnStatusCode: false });
       cy.get('.appverse-hub-card', { timeout: 10000 }).first().within(() => {
-        cy.get('.appverse-hub-card__cell--actions form[action*="/resync"]').should('exist');
-        cy.get('form[action*="/resync"] button[type="submit"]')
-          .should('have.attr', 'aria-label', 'Re-sync from GitHub');
+        // Re-sync is a named item in the menu rather than an icon button, so
+        // its label is the visible text, not an aria-label
+        // (appverse-planning#55).
+        cy.get('.appverse-hub-card__menu .dropdown-toggle').click();
+        cy.get('.appverse-hub-card__cell--actions form[action*="/resync"] button[type="submit"]')
+          .should('be.visible')
+          .and('contain.text', 'Re-sync from GitHub');
         cy.get('form[action*="/resync"] .bi-arrow-clockwise').should('exist');
       });
     });
