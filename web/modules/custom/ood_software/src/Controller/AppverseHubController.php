@@ -510,13 +510,9 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Admin action: re-trigger an AI review via the review_to_review transition.
+   * Admin action: rerun the AI report.
    *
    * Route: POST /appverse/repo/{node}/re-review
-   *
-   * Uses the review_to_review self-transition (ready_for_review →
-   * ready_for_review) which bypasses the dispatch debounce in
-   * AppverseReviewService, ensuring a new review is always dispatched.
    */
   public function reReview(NodeInterface $node): RedirectResponse {
     // Kept for existing links; the action itself no longer moves the app's

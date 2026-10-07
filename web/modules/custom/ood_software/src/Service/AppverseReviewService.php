@@ -29,13 +29,12 @@ class AppverseReviewService {
 
   /**
    * Minimum seconds between dispatches for the same node.
-   * Self-transitions (review_to_review) bypass this.
    */
   const DEBOUNCE_SECONDS = 300;
 
   /**
    * Seconds after which a pending review is considered stale.
-   * Reviewers can re-trigger via the review_to_review transition.
+   * Reviewers then rerun it with Run AI report.
    */
   const STALE_TIMEOUT_SECONDS = 7200;
 
@@ -103,8 +102,12 @@ class AppverseReviewService {
    * React to a moderation state transition on an appverse_repo node.
    *
    * Only dispatches a review when entering ready_for_review from a
-   * different state. The review_to_review self-transition is allowed
-   * so admins can explicitly re-trigger a review.
+   * different state, and never while a run is pending or in progress. A save
+   * that stays in ready_for_review is not a request for a new run: the app
+   * updater, Re-sync and a contributor's edit all save a repo that is
+   * awaiting review, and each used to start a run that superseded the review
+   * being curated. A deliberate rerun is Run AI report (runReview()) or Start
+   * the next round.
    *
    * @param \Drupal\node\NodeInterface $node
    *   The appverse_repo node (post-save).
@@ -127,11 +130,19 @@ class AppverseReviewService {
       return;
     }
 
-    // Self-transition (review_to_review) is an explicit admin action
-    // to re-trigger a review — it always bypasses the debounce.
-    $isSelfTransition = ($previousState === 'ready_for_review');
+    if ($previousState === 'ready_for_review') {
+      return;
+    }
+    $status = $node->hasField('field_review_status') ? (string) ($node->get('field_review_status')->value ?? '') : '';
+    if (in_array($status, ['pending', 'in_progress'], TRUE)) {
+      $this->logger->info('Skipping review dispatch for node @nid: a run is already @status.', [
+        '@nid' => $node->id(),
+        '@status' => $status,
+      ]);
+      return;
+    }
 
-    if (!$isSelfTransition && $this->isWithinDebounce($node)) {
+    if ($this->isWithinDebounce($node)) {
       $this->logger->info('Skipping review dispatch for node @nid: debounce window (@sec s).', [
         '@nid' => $node->id(),
         '@sec' => self::DEBOUNCE_SECONDS,
@@ -556,7 +567,7 @@ class AppverseReviewService {
 
       // No matching run found (completed or active). If the dispatch
       // is older than the stale timeout, mark as error so reviewers
-      // can re-trigger via the review_to_review transition.
+      // can rerun it with Run AI report.
       if (($now - $dispatchedAt) > self::STALE_TIMEOUT_SECONDS) {
         $this->logger->warning('Review for node @nid has been pending for @hours hours with no matching run — marking as error.', [
           '@nid' => $node->id(),
