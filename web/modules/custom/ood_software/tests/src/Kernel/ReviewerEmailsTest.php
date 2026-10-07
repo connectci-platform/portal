@@ -126,6 +126,19 @@ class ReviewerEmailsTest extends KernelTestBase {
   }
 
   /**
+   * A contributor who sent their repo for review is recorded as the run's
+   * starter, but never gets the reviewers' AI report emails.
+   */
+  public function testContributorNeverGetsTheRunEmails(): void {
+    $repo = $this->makeRepo('ready_for_review', ['field_review_dispatched_by' => $this->owner->id()]);
+    $review = Node::create(['type' => 'appverse_review', 'title' => 'Review', 'field_arv_repo' => $repo->id()]);
+    $review->save();
+    $this->notifier()->notifyRunReady($repo, $review);
+    $this->notifier()->notifyRunFailed($repo, 'the run concluded with failure', 7);
+    $this->assertNotContains('owner@example.com', array_merge($this->recipients('review_run_ready'), $this->recipients('review_run_failed')));
+  }
+
+  /**
    * A failure emails the admins once, whatever their opt-out, with the
    * reason; a later poll of the same failure sends nothing.
    */

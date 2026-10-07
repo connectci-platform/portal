@@ -182,11 +182,16 @@ class RepoNotificationService {
   }
 
   /**
-   * Who started the repo's last run; nobody for one started by cron.
+   * The reviewer who started the repo's last run, if a reviewer did.
+   *
+   * A contributor's send for review records them as the starter too, but the
+   * AI report and its failures are the reviewers' business: a contributor
+   * never sees AI state (appverse-planning#42). Nobody for a run cron
+   * started.
    */
   protected function starter(NodeInterface $repo): ?UserInterface {
     $user = $repo->hasField('field_review_dispatched_by') ? $repo->get('field_review_dispatched_by')->entity : NULL;
-    return $user instanceof UserInterface && !$user->isAnonymous() ? $user : NULL;
+    return $user instanceof UserInterface && !$user->isAnonymous() && $user->hasPermission('administer appverse content') ? $user : NULL;
   }
 
   /**
