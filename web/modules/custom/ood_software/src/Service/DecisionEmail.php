@@ -79,7 +79,7 @@ final class DecisionEmail {
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it. It is now listed in the catalog.', $args),
       'accept_with_suggestions' => $wasLive
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it, with suggestions below. It stays listed in the Appverse catalog, and the suggestions are worth a look when you next update it.', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it, with suggestions below. @reviewer will publish it in the catalog. You are welcome to act on the suggestions first, but you do not have to.', $args),
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it, with suggestions below, and will publish it in the catalog shortly. The suggestions are not blocking: act on them whenever you next update the repo.', $args),
       'request_changes' => $wasLive
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and is asking for changes. It is out of the Appverse catalog until they are made.', $args)
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and is asking for changes before it can be listed.', $args),
@@ -103,7 +103,7 @@ final class DecisionEmail {
         $blocks[] = ['p', new TranslatableMarkup('The accepted apps are now listed in the catalog.')];
       }
       elseif ($any('accept_with_suggestions') && !$any('accept')) {
-        $blocks[] = ['p', new TranslatableMarkup('@reviewer will publish the accepted apps in the catalog.', $args)];
+        $blocks[] = ['p', new TranslatableMarkup('@reviewer will publish the accepted apps in the catalog shortly.', $args)];
       }
     }
 
@@ -122,13 +122,13 @@ final class DecisionEmail {
     }
 
     if (trim($response) !== '') {
-      $blocks[] = ['p', new TranslatableMarkup("@reviewer's response:", $args)];
+      $blocks[] = ['p', new TranslatableMarkup('Their response:')];
       $blocks[] = ['response', trim($response)];
     }
     if ($decision === 'reject') {
       $blocks[] = ['p', new TranslatableMarkup('The review is visible only to you and the Appverse reviewers.')];
     }
-    $blocks[] = ['p', new TranslatableMarkup('Questions about the review? Reply to this email and it goes to @reviewer.', $args)];
+    $blocks[] = ['p', new TranslatableMarkup('Questions about the review? Reply to this email and it goes to the reviewer.')];
 
     if ($any('request_changes')) {
       $blocks[] = ['link', new TranslatableMarkup('Your Appverse page'), $links['hub']];

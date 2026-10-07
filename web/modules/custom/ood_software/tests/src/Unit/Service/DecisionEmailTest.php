@@ -129,7 +129,7 @@ class DecisionEmailTest extends UnitTestCase {
   }
 
   /**
-   * Changes requested: greeting, the reviewer by name, the response, the
+   * Changes requested: greeting, the reviewer named once, the response, the
    * next step in plain words and where a reply goes.
    *
    * @covers ::decision
@@ -139,10 +139,10 @@ class DecisionEmailTest extends UnitTestCase {
     $p = self::paragraphs($email);
     $this->assertSame('Hi Ada,', $p[0]);
     $this->assertSame('Grace reviewed your repo "Repo" for the Appverse catalog and is asking for changes before it can be listed.', $p[1]);
-    $this->assertContains("Grace's response:", $p);
+    $this->assertContains('Their response:', $p);
     $this->assertSame([['response', "Add a LICENSE.\nPin the module."]], self::of($email, 'response'));
     $this->assertContains('When you have made the changes on GitHub, click Re-submit on your Appverse page and a new review will start.', $p);
-    $this->assertSame('Questions about the review? Reply to this email and it goes to Grace.', end($p));
+    $this->assertSame('Questions about the review? Reply to this email and it goes to the reviewer.', end($p));
     $this->assertSame([], self::of($email, 'apps'), 'a single app lists no apps');
     $this->assertSame(['Your Appverse page', 'The full review'], self::links($email));
   }

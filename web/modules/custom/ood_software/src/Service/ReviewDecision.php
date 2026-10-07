@@ -259,34 +259,47 @@ final class ReviewDecision {
       // that leaves work to do says so last (appverse-planning#53).
       $out[] = match ($distinct[0]) {
         'accept' => $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo stays live. Review: published now.')
-          : new TranslatableMarkup('Catalog: the repo and its apps go live now. Review: published with them.'),
+          ? new TranslatableMarkup('Catalog: the repo stays live.')
+          : new TranslatableMarkup('Catalog: the repo and its apps go live now.'),
         'accept_with_suggestions' => $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo stays live. Review: not published yet — use Publish on this review when you are ready.')
-          : new TranslatableMarkup('Catalog: nothing goes live yet; the repo waits as Ready to publish. Review: not published yet — use Publish on this review when you are ready.'),
+          ? new TranslatableMarkup('Catalog: the repo stays live.')
+          : new TranslatableMarkup('Catalog: nothing goes live yet; the repo waits as Ready to publish.'),
         'request_changes' => $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo and its apps come down. Review: stays unpublished while the contributor works.')
-          : new TranslatableMarkup('Catalog: nothing goes live; the repo moves to Needs changes. Review: stays unpublished while the contributor works.'),
+          ? new TranslatableMarkup('Catalog: the repo and its apps come down.')
+          : new TranslatableMarkup('Catalog: nothing goes live; the repo moves to Needs changes.'),
         default => $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo and its apps come down. Review: never published.')
-          : new TranslatableMarkup('Catalog: the repo does not go live. Review: never published.'),
+          ? new TranslatableMarkup('Catalog: the repo and its apps come down.')
+          : new TranslatableMarkup('Catalog: the repo does not go live.'),
+      };
+      $out[] = match ($distinct[0]) {
+        'accept' => $repoPublished
+          ? new TranslatableMarkup('Review: published now.')
+          : new TranslatableMarkup('Review: published with them.'),
+        'accept_with_suggestions' => new TranslatableMarkup('Review: not published yet — use Publish on this review when you are ready.'),
+        'request_changes' => new TranslatableMarkup('Review: stays unpublished while the contributor works.'),
+        default => new TranslatableMarkup('Review: never published.'),
       };
     }
     else {
       if ($any('accept')) {
         $out[] = $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo stays live and the accepted apps go live. Review: published now.')
-          : new TranslatableMarkup('Catalog: the repo goes live with the accepted apps. Review: published with them.');
+          ? new TranslatableMarkup('Catalog: the repo stays live and the accepted apps go live.')
+          : new TranslatableMarkup('Catalog: the repo goes live with the accepted apps.');
+        $out[] = $repoPublished
+          ? new TranslatableMarkup('Review: published now.')
+          : new TranslatableMarkup('Review: published with them.');
       }
       elseif ($any('accept_with_suggestions')) {
         $out[] = $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo stays live. Review: not published yet — use Publish on this review for the apps accepted with suggestions.')
-          : new TranslatableMarkup('Catalog: nothing goes live yet. Review: not published yet — use Publish on this review for the apps accepted with suggestions.');
+          ? new TranslatableMarkup('Catalog: the repo stays live.')
+          : new TranslatableMarkup('Catalog: nothing goes live yet.');
+        $out[] = new TranslatableMarkup('Review: not published yet — use Publish on this review for the apps accepted with suggestions.');
       }
       elseif ($any('request_changes')) {
         $out[] = $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo and its apps come down. Review: stays unpublished while the contributor works.')
-          : new TranslatableMarkup('Catalog: nothing goes live; the repo moves to Needs changes. Review: stays unpublished while the contributor works.');
+          ? new TranslatableMarkup('Catalog: the repo and its apps come down.')
+          : new TranslatableMarkup('Catalog: nothing goes live; the repo moves to Needs changes.');
+        $out[] = new TranslatableMarkup('Review: stays unpublished while the contributor works.');
       }
       if ($any('reject')) {
         $out[] = new TranslatableMarkup('The declined apps stay out of the catalog.');

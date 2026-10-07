@@ -129,17 +129,23 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
         '#weight' => -10,
       ];
     }
-    // An update moves things from where they are now; say where each ends up.
-    if ($this->updating) {
+    // What sending moves, one line per thing that moves. An update says where
+    // each ends up from where it is now; a send says what the decision causes.
+    // Both were a run-together paragraph of "Catalog: ... Review: ..." clauses
+    // on the send path (appverse-planning#53).
+    $moves = $this->updating ? $this->updateMoves($node) : $this->sendMoves($node);
+    if ($moves !== []) {
       $form['moves'] = [
         '#theme' => 'item_list',
-        '#items' => $this->updateMoves($node),
+        '#items' => $moves,
         '#weight' => -15,
       ];
     }
     $form = parent::buildForm($form, $form_state);
-    // What sending causes reads before the email, not after it.
-    $form['description']['#weight'] = -20;
+    // What sending causes reads before the email, not after it. On a send the
+    // moves are listed first (-15) and this closing sentence follows them; on
+    // an update the description introduces the list, so it leads.
+    $form['description']['#weight'] = $this->updating ? -20 : -14;
     $form['actions']['submit']['#attributes']['class'] = ['btn', 'primary'];
     $form['actions']['cancel']['#attributes']['class'] = ['btn', 'ghost'];
     return $form;
@@ -185,13 +191,38 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     return ReviewDecision::headline($this->appDecisions, (string) ($repo instanceof NodeInterface ? $repo->label() : $this->review->label()));
   }
 
+  /**
+   * What sending moves, one line each: the catalog, the review, and anything
+   * a mixed decision leaves out. The sentence about what the contributor can
+   * do is not a move, so it stays in the description under them.
+   *
+   * @return array<int, string>
+   */
+  protected function sendMoves(NodeInterface $review): array {
+    $sentences = $this->consequences($review);
+    array_pop($sentences);
+    return array_map('strval', $sentences);
+  }
+
+  /**
+   * @return array<int, \Drupal\Core\StringTranslation\TranslatableMarkup>
+   */
+  protected function consequences(NodeInterface $review): array {
+    $repo = $review->get('field_arv_repo')->entity;
+    return ReviewDecision::consequences(
+      $this->appDecisions,
+      $repo instanceof NodeInterface && $repo->isPublished(),
+      $this->preview['contributor'] ?? '',
+    );
+  }
+
   public function getDescription() {
     if ($this->updating) {
       return $this->t('This replaces the decision sent earlier, which stays on record, and moves the repo and the review to match.');
     }
-    $repo = $this->review->get('field_arv_repo')->entity;
-    $sentences = ReviewDecision::consequences($this->appDecisions, $repo instanceof NodeInterface && $repo->isPublished(), $this->preview['contributor'] ?? '');
-    return $this->t('@consequences', ['@consequences' => implode(' ', array_map('strval', $sentences))]);
+    // The moves are listed above; this is the one sentence that is not one.
+    $sentences = $this->consequences($this->review);
+    return end($sentences) ?: '';
   }
 
   public function getConfirmText() {
