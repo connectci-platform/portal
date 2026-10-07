@@ -121,6 +121,8 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       ];
     }
     $form = parent::buildForm($form, $form_state);
+    // What sending causes reads before the email, not after it.
+    $form['description']['#weight'] = -20;
     $form['actions']['submit']['#attributes']['class'] = ['btn', 'primary'];
     $form['actions']['cancel']['#attributes']['class'] = ['btn', 'ghost'];
     return $form;

@@ -991,4 +991,6 @@
   margin: 0 0 1rem;
   padding-left: 12px;
   border-left: 3px solid var(--gray-300);
+  /* The theme sets quotes in italics; the mail has no theme. */
+  font-style: normal;
 }
