@@ -28,6 +28,11 @@ class ReviewFloorsTest extends UnitTestCase {
     \Drupal::setContainer($container);
   }
 
+  /**
+   * A finding record as floors() reads it.
+   *
+   * @return array<string, string>
+   */
   protected static function finding(string $rule, string $severity, string $result = 'fail', string $aspect = '', string $evidence = 'x.sh:1'): array {
     return ['rule' => $rule, 'aspect' => $aspect, 'severity' => $severity, 'result' => $result, 'evidence' => $evidence];
   }
@@ -35,11 +40,19 @@ class ReviewFloorsTest extends UnitTestCase {
   /**
    * @covers ::floors
    * @dataProvider floorCases
+   *
+   * @param array<int, array<string, string>> $repo
+   * @param array<string, array<int, array<string, string>>> $apps
+   * @param array<string, string> $criteria
+   * @param array<string, string> $expected
    */
   public function testFloors(array $repo, array $apps, array $criteria, array $expected): void {
     $this->assertSame($expected, array_map(fn ($f) => $f['decision'], ReviewFloors::floors($repo, $apps, $criteria)));
   }
 
+  /**
+   * @return array<string, array<int, array<mixed>>>
+   */
   public static function floorCases(): array {
     $two = static fn (array $one = [], array $other = []) => ['one' => $one, 'other' => $other];
     return [
@@ -61,6 +74,19 @@ class ReviewFloorsTest extends UnitTestCase {
       'a High quality finding' => [[], $two([self::finding('DOC-02', 'high', 'fail', 'quality')]), [], []],
       'a failed repo gate' => [[], $two(), ['not_archived' => 'fail', 'license' => 'fail'], ['one' => 'request_changes', 'other' => 'request_changes']],
       'a passed repo gate' => [[], $two(), ['public' => 'pass'], []],
+      // Every Structure row is a gate: a FAIL is Request changes at any
+      // severity, and Critical still Reject.
+      'a Medium gate FAIL in one app' => [[], $two([self::finding('STR-01', 'medium')]), [], ['one' => 'request_changes']],
+      'a Low gate FAIL at repo level' => [[self::finding('STR-06', 'low', 'FAIL')], $two(), [], ['one' => 'request_changes', 'other' => 'request_changes']],
+      'an Info gate FAIL' => [[], $two([], [self::finding('STR-02', 'info')]), [], ['other' => 'request_changes']],
+      'a Critical gate FAIL' => [[], $two([self::finding('STR-07', 'critical')]), [], ['one' => 'reject']],
+      'a Medium gate WARN sets no floor' => [[], $two([self::finding('STR-01', 'medium', 'warn')]), [], []],
+      // A row seeded before results were stored is mostly a PASS at Info; only
+      // an explicit FAIL sets the gate floor below High.
+      'an Info gate row with no stored result' => [[], $two([self::finding('STR-02', 'info', '')]), [], []],
+      // Security and upkeep keep their High floor.
+      'a Low security FAIL sets no floor' => [[], $two([self::finding('OODT-05', 'low')]), [], []],
+      'a Medium upkeep FAIL sets no floor' => [[self::finding('MNT-01', 'medium')], $two(), [], []],
     ];
   }
 

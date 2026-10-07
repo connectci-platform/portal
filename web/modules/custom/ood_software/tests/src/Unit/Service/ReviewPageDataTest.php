@@ -131,6 +131,9 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame(['fail', 'pass', 'not_checked', 'warn'], array_column($pills, 'value'));
     $this->assertSame('YAML valid', $pills[1]['label']);
     $this->assertSame([], ReviewPageData::gatePills([]));
+    // Schema 1.4: template syntax (STR-05/06) is its own gate, not layout.
+    $pills = ReviewPageData::gatePills(['structure' => 'pass', 'template_syntax' => 'fail']);
+    $this->assertSame(['Standard layout', 'Template syntax'], array_column($pills, 'label'));
   }
 
   /**

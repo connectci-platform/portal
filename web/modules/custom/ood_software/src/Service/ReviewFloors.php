@@ -14,16 +14,19 @@ use Drupal\node\NodeInterface;
  * - A security FAIL (aspect "security", or an OODT rule) at High or Critical
  *   sets the floor for every app, wherever in the repo it was found:
  *   installing any one app clones the whole repo.
- * - A structure gate FAIL (an STR rule) or the upkeep gate (MNT-01) at High
- *   or Critical sets the floor for its own app, or for every app when it is a
- *   repo-level finding.
+ * - A structure gate FAIL (an STR rule) sets at least Request changes at any
+ *   severity, since every Structure row is a gate and a missing gate
+ *   criterion is Request changes; Critical sets Reject. The upkeep gate
+ *   (MNT-01) sets a floor at High or Critical. Both apply to their own app,
+ *   or to every app when the finding is repo-level.
  * - A failed not_archived or public repo gate sets Request changes for every
  *   app.
  *
  * High is at least Request changes and Critical is Reject. Documentation,
  * portability and code-quality findings never set a floor. A finding with no
  * stored result (seeded before results were) counts as a FAIL, as it does on
- * the review page.
+ * the review page, but only at High or Critical: most such rows are passes
+ * at Info, so a gate needs a stored FAIL to set its any-severity floor.
  */
 final class ReviewFloors {
 
@@ -34,9 +37,9 @@ final class ReviewFloors {
   /**
    * Each app's floor.
    *
-   * @param array<int, array> $repoFindings
+   * @param array<int, array<string, mixed>> $repoFindings
    *   Repo-level findings, each with rule, aspect, severity, result, evidence.
-   * @param array<string, array<int, array>> $appFindings
+   * @param array<string, array<int, array<string, mixed>>> $appFindings
    *   App key => that app's findings, in the same shape.
    * @param array<string, string> $repoCriteria
    *   The repo gates, gate => pass / fail.
@@ -66,12 +69,15 @@ final class ReviewFloors {
         }
         $severity = strtolower(trim((string) ($f['severity'] ?? '')));
         $decision = self::SEVERITY_FLOOR[$severity] ?? NULL;
-        if ($decision === NULL) {
-          continue;
-        }
         $rule = strtoupper(trim((string) ($f['rule'] ?? '')));
         $security = strtolower(trim((string) ($f['aspect'] ?? ''))) === 'security' || str_starts_with($rule, 'OODT');
         if (!$security && !str_starts_with($rule, 'STR') && $rule !== 'MNT-01') {
+          continue;
+        }
+        if ($decision === NULL && !$security && str_starts_with($rule, 'STR') && $result === 'FAIL') {
+          $decision = 'request_changes';
+        }
+        if ($decision === NULL) {
           continue;
         }
         $repoWide = $security || $app === NULL;
@@ -112,6 +118,8 @@ final class ReviewFloors {
 
   /**
    * The decisions at or above a floor, mildest first.
+   *
+   * @return array<int, string>
    */
   public static function choices(?string $floor): array {
     $rank = $floor === NULL ? 0 : max(0, self::rank($floor));
@@ -128,6 +136,8 @@ final class ReviewFloors {
    *   From floors().
    * @param array<string, string> $names
    *   App key => the name to show; the key is shown when absent.
+   *
+   * @return array<int, string>
    */
   public static function problems(array $appDecisions, array $floors, array $names = []): array {
     $problems = [];
@@ -148,6 +158,8 @@ final class ReviewFloors {
 
   /**
    * The floors of a stored review, keyed by verdict paragraph id.
+   *
+   * @return array<string, array{decision: string, reason: string}>
    */
   public static function forReview(NodeInterface $review): array {
     $read = static fn (array $paragraphs): array => array_map(static fn ($p) => [

@@ -112,6 +112,9 @@ final class ReviewPageData {
     'metadata' => 'Metadata',
     'yaml_valid' => 'YAML valid',
     'structure' => 'Standard layout',
+    // Schema 1.4 (STR-05/06). Earlier artifacts counted a shell syntax error
+    // under the layout gate.
+    'template_syntax' => 'Template syntax',
     'references' => 'References resolve',
     'license' => 'License',
     'readme_substantive' => 'README substantive',
