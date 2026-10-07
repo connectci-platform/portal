@@ -274,8 +274,14 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertNull($oldest['older']);
     $this->assertSame(30, $oldest['newest']['nid']);
 
+    // The neighbours, not the whole array: asserting every key made this fail
+    // whenever one was added, which says nothing about the ends.
     $only = ReviewPageData::historyPosition([['nid' => 10]], 10);
-    $this->assertSame(['position' => 1, 'total' => 1, 'older' => NULL, 'newer' => NULL, 'newest' => NULL], $only);
+    $this->assertSame(1, $only['position']);
+    $this->assertSame(1, $only['total']);
+    $this->assertNull($only['older']);
+    $this->assertNull($only['newer']);
+    $this->assertNull($only['newest']);
   }
 
   /**
@@ -498,6 +504,36 @@ class ReviewPageDataTest extends UnitTestCase {
       array_column($summary['others'], 'key'),
       'The three non-passes are held out, in the tool\'s order.'
     );
+  }
+
+  /**
+   * The others are every review but this one, newest first.
+   *
+   * @covers ::historyPosition
+   */
+  public function testHistoryPositionListsTheOtherReviewsNewestFirst(): void {
+    $history = ReviewPageData::historyPosition([
+      ['nid' => 1, 'is_rerun' => FALSE],
+      ['nid' => 2, 'is_rerun' => TRUE],
+      ['nid' => 3, 'is_rerun' => FALSE],
+    ], 2);
+
+    $this->assertSame(2, $history['position']);
+    $this->assertSame(3, $history['total']);
+    $this->assertTrue($history['is_rerun'], 'Review 2 is a rerun of review 1.');
+    $this->assertSame([3, 1], array_column($history['others'], 'nid'), 'Newest first, this one left out.');
+  }
+
+  /**
+   * The only review of a repo has no others to list.
+   *
+   * @covers ::historyPosition
+   */
+  public function testHistoryPositionOfTheOnlyReview(): void {
+    $history = ReviewPageData::historyPosition([['nid' => 7]], 7);
+
+    $this->assertSame([], $history['others']);
+    $this->assertFalse($history['is_rerun'], 'A first review cannot be a rerun.');
   }
 
   /**

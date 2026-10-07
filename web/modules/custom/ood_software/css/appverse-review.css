@@ -533,6 +533,31 @@
   font-weight: 600;
 }
 
+/* Earlier reviews: one line each, behind a toggle, because they need far less
+   than the review being read (appverse-planning#54). */
+.arv-page .other-reviews {
+  font-size: .78rem;
+  margin-top: .35rem;
+}
+.arv-page .other-reviews__count {
+  cursor: pointer;
+  color: var(--gray-700);
+}
+.arv-page .other-reviews__list {
+  margin: .35rem 0 0;
+  padding-left: 1rem;
+}
+.arv-page .other-reviews__list li {
+  margin-bottom: .15rem;
+}
+.arv-page .other-reviews__list code {
+  font-size: .9em;
+}
+.arv-page .rerun-note {
+  font-style: italic;
+  color: var(--gray-700);
+}
+
 /* Gates and catalog checks (Reviewer Process step 1), top of the main column. */
 .arv-page .gate-rows {
   list-style: none;

@@ -747,11 +747,31 @@ final class ReviewPageForm extends FormBase {
         continue;
       }
       $at = (int) ($review->get('field_arv_reviewed_at')->value ?? $review->getCreatedTime());
+      $sha = (string) $review->get('field_arv_sha')->value;
+      $sent = $review->hasField('field_arv_decision_sent_at') && !$review->get('field_arv_decision_sent_at')->isEmpty();
+      $by = $sent ? $review->get('field_arv_decision_sent_by')->entity : NULL;
+      $decision = $sent
+        ? ReviewProgress::strictestDecision(array_values(ReviewDecisionApplier::sent($review)['apps'] ?? []))
+        : NULL;
       $history[] = [
         'nid' => (int) $review->id(),
-        'label' => $this->formatDate($at, 'short') . ' · ' . substr((string) $review->get('field_arv_sha')->value, 0, 7),
+        'label' => $this->formatDate($at, 'short') . ' · ' . substr($sha, 0, 7),
         'url' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString(),
+        'sha' => $sha,
+        'at' => $this->formatDate($at, 'short'),
+        'sha7' => substr($sha, 0, 7),
+        'decision' => $decision !== NULL ? (string) (ReviewProgress::DECISION_LABELS[$decision] ?? '') : '',
+        'reviewer' => $by instanceof UserInterface ? $by->getDisplayName() : '',
+        // Filled in below, once the entry before it is known.
+        'is_rerun' => FALSE,
       ];
+    }
+    // A review of the same commit as the one before it is a rerun, not a new
+    // round: nothing changed in the repo between them (appverse-planning#54).
+    foreach ($history as $i => $entry) {
+      if ($i > 0 && $entry['sha'] !== '' && $entry['sha'] === $history[$i - 1]['sha']) {
+        $history[$i]['is_rerun'] = TRUE;
+      }
     }
     return $history;
   }

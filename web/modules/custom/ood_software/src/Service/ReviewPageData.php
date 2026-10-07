@@ -370,9 +370,17 @@ final class ReviewPageData {
     return [
       'position' => $index + 1,
       'total' => count($reviews),
+      // This review is of the same commit as the one before it.
+      'is_rerun' => (bool) ($reviews[$index]['is_rerun'] ?? FALSE),
       'older' => $index > 0 ? $reviews[$index - 1] : NULL,
       'newer' => $index < $last ? $reviews[$index + 1] : NULL,
       'newest' => $index < $last ? $reviews[$last] : NULL,
+      // The others, newest first, as one line each rather than a prev/next
+      // pair (appverse-planning#54).
+      'others' => array_values(array_reverse(array_filter(
+        $reviews,
+        static fn (array $r): bool => (int) $r['nid'] !== $currentNid
+      ))),
     ];
   }
 

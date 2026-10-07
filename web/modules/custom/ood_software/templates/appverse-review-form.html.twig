@@ -217,11 +217,15 @@
           {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
         </div>
       </div>
+      {# The header keeps the position and the rerun note; the reviews
+         themselves are listed below it, one line each, rather than as a
+         prev/next pair (appverse-planning#54). #}
       <div class="prev-reviews review-history">
         {% if page.history and page.history.total > 1 %}
           <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
-          {% if page.history.older %}· <a href="{{ page.history.older.url }}">‹ {{ 'Older'|t }} ({{ page.history.older.label }})</a>{% endif %}
-          {% if page.history.newer %}· <a href="{{ page.history.newer.url }}">{{ 'Newer'|t }} ({{ page.history.newer.label }}) ›</a>{% endif %}
+          {% if page.history.is_rerun %}
+            · <span class="rerun-note">{{ 'Rerun of the same commit'|t }}</span>
+          {% endif %}
         {% else %}
           <span class="muted">{{ 'First review of this repo'|t }}</span>
         {% endif %}
@@ -245,7 +249,25 @@
                passes are the common case. So the passes read as a count, with
                the names behind a toggle, and anything that is not a pass stays
                out in full (appverse-planning#54). #}
-            {% if page.round_delta.has_previous and (page.round_delta.new or page.round_delta.resolved) %}
+            {# One line per earlier review: decision, date, reviewer, commit. They
+         need much less than the review you are reading (appverse-planning#54). #}
+      {% if page.history.others is not empty %}
+        <details class="other-reviews">
+          <summary class="other-reviews__count">{{ '@n other review(s) of this repo'|t({'@n': page.history.others|length}) }}</summary>
+          <ul class="other-reviews__list">
+            {% for other in page.history.others %}
+              <li>
+                <a href="{{ other.url }}">{{ other.at }}</a>
+                <code>{{ other.sha7 }}</code>
+                {% if other.is_rerun %}<span class="rerun-note">{{ 'rerun'|t }}</span>{% endif %}
+                {% if other.decision %}· {{ other.decision }}{% endif %}
+                {% if other.reviewer %}· {{ other.reviewer }}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+      {% if page.round_delta.has_previous and (page.round_delta.new or page.round_delta.resolved) %}
         <div class="round-delta">
           {% if page.round_delta.new %}<span class="round-delta__new">{{ '@n new since the last round'|t({'@n': page.round_delta.new}) }}</span>{% endif %}
           {% if page.round_delta.new and page.round_delta.resolved %} · {% endif %}
