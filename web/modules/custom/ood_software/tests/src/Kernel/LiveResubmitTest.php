@@ -138,6 +138,20 @@ class LiveResubmitTest extends KernelTestBase {
   }
 
   /**
+   * A contributor can take their app down but not put one up: the review
+   * sent this one back.
+   */
+  public function testContributorCannotPublishAnApp(): void {
+    [, , $sentBack] = $this->liveMonorepo();
+    $this->controller(TRUE)->toggleAppPublish($sentBack);
+    $this->assertState('needs_adjustment', $sentBack);
+
+    [, $live] = $this->liveMonorepo();
+    $this->controller(TRUE)->toggleAppPublish($live);
+    $this->assertState('draft', $live);
+  }
+
+  /**
    * The contributor's hub card offers Re-submit only with an app sent back.
    */
   public function testHubOffersResubmit(): void {

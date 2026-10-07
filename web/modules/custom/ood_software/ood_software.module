@@ -2686,7 +2686,11 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
     'edit_url' => ($parentInferred && $canEdit) ? '/node/' . $app->id() . '/edit' : NULL,
     'status' => $status,
     'tags' => $tags,
-    'unpublish_form' => $repoPublished
+    // A contributor may take their app down but not put one up: publishing is
+    // the review's call, and an unpublished app may be one it sent back or
+    // declined. Letting them put back an app the review accepted is
+    // appverse-planning#61.
+    'unpublish_form' => $repoPublished && ($app->isPublished() || \Drupal::currentUser()->hasPermission('administer appverse content'))
       ? _ood_software_hub_confirm_link('appverse/app/' . $app->id() . '/unpublish/confirm', $app->isPublished() ? t('Unpublish app…') : t('Publish app…'), $app->isPublished() ? 'bi-slash-circle' : 'bi-check-circle')
       : NULL,
   ];

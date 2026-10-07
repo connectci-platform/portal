@@ -3,11 +3,14 @@
 namespace Drupal\ood_software\Form;
 
 use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\DependencyInjection\ClassResolverInterface;
 use Drupal\Core\Form\ConfirmFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Confirms a hub Publish / Unpublish before it happens.
@@ -29,13 +32,30 @@ final class HubPublishConfirmForm extends ConfirmFormBase {
 
   protected NodeInterface $node;
 
+  public function __construct(protected ClassResolverInterface $classResolver) {}
+
+  public static function create(ContainerInterface $container): self {
+    return new self($container->get('class_resolver'));
+  }
+
   public function getFormId(): string {
     return 'ood_software_hub_publish_confirm';
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<string, mixed>
+   */
   public function buildForm(array $form, FormStateInterface $form_state, ?NodeInterface $node = NULL, string $op = 'publish'): array {
     $this->node = $node;
     $this->op = $op;
+    // Only a reviewer publishes an app; a contributor may unpublish theirs.
+    if ($op === 'toggle_app' && $this->publishes() && !$this->currentUser()->hasPermission('administer appverse content')) {
+      throw new AccessDeniedHttpException();
+    }
     return parent::buildForm($form, $form_state);
   }
 
@@ -78,10 +98,15 @@ final class HubPublishConfirmForm extends ConfirmFormBase {
     return Url::fromUserInput('/appverse/manage-repos');
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     // The controller redirects to ?destination, which this form's URL still
     // carries, so the reviewer lands back on the same filtered list.
-    $controller = \Drupal::classResolver(AppverseHubController::class);
+    $controller = $this->classResolver->getInstanceFromDefinition(AppverseHubController::class);
     $response = match ($this->op) {
       'publish' => $controller->adminPublish($this->node),
       'unpublish' => $controller->toggleRepoPublish($this->node),

@@ -314,11 +314,19 @@ final class AppverseHubController extends ControllerBase {
       ));
     }
 
+    // Publishing is the review's call: an unpublished app may be one it sent
+    // back or declined. A contributor may only take their app down
+    // (appverse-planning#61 lets them put back what the review accepted).
+    $wasPublished = $node->isPublished();
+    if (!$wasPublished && !$this->currentUser()->hasPermission('administer appverse content')) {
+      $this->messenger()->addError($this->t('Only a reviewer can publish @title.', ['@title' => $node->label()]));
+      return $this->redirectToHub();
+    }
+
     // appverse_app uses content_moderation. setPublished() alone won't
     // stick because the workflow forces status from moderation_state on
     // save. Drive the toggle via the moderation field instead: publish
     // → 'published', unpublish → 'draft'.
-    $wasPublished = $node->isPublished();
     $newState = $wasPublished ? 'draft' : 'published';
     $message = $wasPublished
       ? $this->t('Unpublished @title.', ['@title' => $node->label()])
