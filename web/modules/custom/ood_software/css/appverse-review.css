@@ -956,3 +956,48 @@
     display: block;
   }
 }
+
+/* The review page's send button names the decision; its reason sits beside
+   it while the decision is incomplete (appverse-planning#52). */
+.arv-page .btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.arv-page .arv-send-reason {
+  margin-left: 10px;
+  font-size: .8rem;
+  color: var(--gray-700);
+}
+
+/* The decision confirm page: the email as the contributor will get it. */
+.arv-page .arv-email {
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  margin: 1rem 0 1.25rem;
+  max-width: 46rem;
+}
+.arv-page .arv-email__headers {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-300);
+  font-size: .85rem;
+}
+.arv-page .arv-email__headers dt {
+  color: var(--gray-700);
+  font-weight: 700;
+}
+.arv-page .arv-email__headers dd {
+  margin: 0;
+}
+.arv-page .arv-email__body {
+  padding: 14px;
+}
+.arv-page .arv-email__body blockquote {
+  margin: 0 0 1rem;
+  padding-left: 12px;
+  border-left: 3px solid var(--gray-300);
+}

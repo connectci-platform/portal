@@ -74,6 +74,8 @@ class ReviewDecisionSendTest extends KernelTestBase {
       'field.field.node.appverse_review.field_arv_sent_decisions',
       'field.storage.node.field_arv_decision_sent_by',
       'field.field.node.appverse_review.field_arv_decision_sent_by',
+      'field.storage.node.field_arv_contributor_response',
+      'field.field.node.appverse_review.field_arv_contributor_response',
       'field.storage.node.field_arv_withdrawn_at',
       'field.field.node.appverse_review.field_arv_withdrawn_at',
       'field.storage.node.field_arv_verdicts',
@@ -157,6 +159,29 @@ class ReviewDecisionSendTest extends KernelTestBase {
     // The response is Markdown: rendered, not shown as typed.
     $this->assertStringNotContainsString('**Required:**', $mail['body']);
     $this->assertStringNotContainsString('`form.yml`', $mail['body']);
+  }
+
+  /**
+   * The confirm page previews the email that send() then mails.
+   */
+  public function testPreviewIsWhatIsSent(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $review = $this->makeReview($repo, ['request_changes' => $this->makeApp($repo, 'ready_for_review')]);
+    $review->set('field_arv_contributor_response', "**Required:** add a LICENSE.")->save();
+
+    $preview = $this->applier()->previewDecision($review);
+    $this->assertNotNull($preview);
+    $this->assertSame('owner@example.com', $preview['to']);
+    $this->assertSame('reviewer@example.com', $preview['reply_to']);
+    $this->assertSame('owner', $preview['contributor']);
+    $html = implode('', array_map('strval', $preview['body']));
+    $this->assertStringContainsString('<strong>Required:</strong> add a LICENSE.', $html);
+
+    $this->assertNull($this->applier()->send($review, "**Required:** add a LICENSE."));
+    $mail = $this->mails()[0];
+    $this->assertSame($preview['subject'], $mail['subject']);
+    $this->assertSame($preview['to'], $mail['to']);
+    $this->assertSame($preview['reply_to'], $mail['reply-to']);
   }
 
   /**

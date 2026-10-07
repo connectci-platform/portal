@@ -9,6 +9,52 @@
 
   Drupal.behaviors.appverseReview = {
     attach(context) {
+      // The send button names the decision it will send and waits until every
+      // app has one and, unless all are Accept, a response is written
+      // (appverse-planning#52). The server sets the same from the saved page;
+      // this keeps it current as the reviewer chooses.
+      once('arv-send', '.arv-page .arv-send', context).forEach((button) => {
+        const form = button.form;
+        const labels = JSON.parse(button.dataset.labels || '{}');
+        const reasons = JSON.parse(button.dataset.reasons || '{}');
+        const reason = document.getElementById(button.getAttribute('aria-describedby'));
+        const selects = form.querySelectorAll('select[name^="conclusion["]');
+        const response = form.querySelector('textarea[name="response"]');
+        const order = ['accept', 'accept_with_suggestions', 'request_changes', 'reject'];
+        const update = () => {
+          const chosen = Array.from(selects, (s) => s.value);
+          const decided = chosen.filter((v) => order.includes(v));
+          const distinct = [...new Set(decided)];
+          if (distinct.length === 0) {
+            button.textContent = labels.none;
+          }
+          else if (distinct.length === 1) {
+            button.textContent = labels.single[distinct[0]];
+          }
+          else {
+            const parts = order
+              .filter((d) => distinct.includes(d))
+              .map((d) => labels.count[d].replace('@count', decided.filter((v) => v === d).length));
+            button.textContent = labels.mixed.replace('@summary', parts.join(', '));
+          }
+          let why = '';
+          if (decided.length < chosen.length || chosen.length === 0) {
+            why = reasons.undecided;
+          }
+          else if (distinct.some((d) => d !== 'accept') && (!response || response.value.trim() === '')) {
+            why = reasons.response;
+          }
+          button.disabled = why !== '';
+          if (reason) {
+            reason.textContent = why;
+          }
+        };
+        selects.forEach((s) => s.addEventListener('change', update));
+        if (response) {
+          response.addEventListener('input', update);
+        }
+      });
+
       once('arv-sev', '.arv-page .sev-head', context).forEach((head) => {
         const body = head.nextElementSibling;
         if (!body) {

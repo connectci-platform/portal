@@ -245,10 +245,7 @@ final class ReviewDecisionApplier {
     if (!$repo instanceof NodeInterface) {
       return NULL;
     }
-    return [$repo, DecisionEmail::decision(
-      $this->siteName(), (string) $repo->label(), $decisions, $this->appNames($review), $response, $wasLive,
-      $this->people($review, $repo), $this->links($review, $repo),
-    )];
+    return [$repo, $this->composeDecision($review, $repo, $response, $wasLive)];
   }
 
   /**
@@ -331,6 +328,48 @@ final class ReviewDecisionApplier {
     else {
       $this->messenger->addWarning($this->t('The email to the contributor could not be sent; see the site log.'));
     }
+  }
+
+  /**
+   * The decision email as it would go out now, for the confirm page.
+   *
+   * Built from the same parts as send(), and rendered as hook_mail() renders
+   * it, so the preview is what the contributor gets (appverse-planning#52).
+   *
+   * @return array{to: string, reply_to: string, subject: string, body: array<int, \Drupal\Component\Render\MarkupInterface|string>, contributor: string}|null
+   *   NULL without a repo.
+   */
+  public function previewDecision(NodeInterface $review): ?array {
+    $repo = $review->get('field_arv_repo')->entity;
+    if (!$repo instanceof NodeInterface) {
+      return NULL;
+    }
+    $response = (string) ($review->get('field_arv_contributor_response')->value ?? '');
+    $email = $this->composeDecision($review, $repo, $response, $repo->isPublished());
+    // A repo whose owner was deleted belongs to the anonymous user.
+    $owner = $repo->getOwnerId() ? $repo->getOwner() : NULL;
+    $rendered = DecisionEmail::render($email, $owner ? $owner->getPreferredLangcode() : 'en');
+    return [
+      'to' => $owner ? (string) $owner->getEmail() : '',
+      // Without the reviewer's address, replies go to the site's.
+      'reply_to' => (string) ($this->reviewer($review)?->getEmail() ?: $this->configFactory->get('system.site')->get('mail')),
+      'subject' => $rendered['subject'],
+      'body' => $rendered['body'],
+      'contributor' => $this->people($review, $repo)['contributor'],
+    ];
+  }
+
+  /**
+   * The decision email for a review, before anything moves.
+   *
+   * @return array<string, mixed>
+   *   As DecisionEmail::decision() builds it.
+   */
+  protected function composeDecision(NodeInterface $review, NodeInterface $repo, string $response, bool $wasLive): array {
+    return DecisionEmail::decision(
+      $this->siteName(), (string) $repo->label(), $this->appDecisions($review), $this->appNames($review), $response, $wasLive,
+      $this->people($review, $repo), $this->links($review, $repo),
+    );
   }
 
   /**

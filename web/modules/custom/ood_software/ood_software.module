@@ -11,19 +11,17 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
-use Drupal\Component\Render\PlainTextOutput;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\DecisionEmail;
 use League\CommonMark\Environment\Environment;
-use League\CommonMark\GithubFlavoredMarkdownConverter;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
 
@@ -1393,55 +1391,11 @@ function ood_software_mail(string $key, array &$message, array $params): void {
     // Publish (appverse-planning#32), composed by DecisionEmail.
     case 'review_decision':
     case 'review_published':
-      $email = $params['email'] ?? [];
-      $langcode = $message['langcode'];
-      $message['subject'] = PlainTextOutput::renderFromHtml(_ood_software_mail_text($email['subject'] ?? '', $langcode));
-      foreach ($email['blocks'] ?? [] as $block) {
-        $message['body'][] = match ($block[0]) {
-          'p' => Markup::create('<p>' . _ood_software_mail_text($block[1], $langcode) . '</p>'),
-          'response' => Markup::create('<blockquote>' . _ood_software_mail_markdown($block[1]) . '</blockquote>'),
-          'apps' => Markup::create('<ul>' . implode('', array_map(
-            static fn (array $app) => '<li>' . Html::escape((string) $app[0]) . ': <strong>' . _ood_software_mail_text($app[1], $langcode) . '</strong></li>',
-            $block[1],
-          )) . '</ul>'),
-          'link' => Markup::create('<p>' . _ood_software_mail_text($block[1], $langcode) . ': <a href="' . Html::escape($block[2]) . '">' . Html::escape($block[2]) . '</a></p>'),
-          default => '',
-        };
-      }
+      $rendered = DecisionEmail::render($params['email'] ?? [], $message['langcode']);
+      $message['subject'] = $rendered['subject'];
+      $message['body'] = array_merge($message['body'], $rendered['body']);
       break;
   }
-}
-
-/**
- * The reviewer's response, Markdown rendered as safe HTML for the email.
- *
- * The AI's draft and reviewers write Markdown (bold labels, file names in
- * backticks). Raw HTML is escaped, so it shows as written rather than
- * vanishing, unsafe links are dropped, and line breaks are kept as typed.
- */
-function _ood_software_mail_markdown(string $markdown): string {
-  $converter = new GithubFlavoredMarkdownConverter([
-    'html_input' => 'escape',
-    'allow_unsafe_links' => FALSE,
-    'renderer' => ['soft_break' => "<br>\n"],
-  ]);
-  return (string) $converter->convert($markdown);
-}
-
-/**
- * Email text in the recipient's language, as safe HTML.
- *
- * DecisionEmail builds TranslatableMarkup without knowing who it goes to;
- * this translates it into the mail's language. Its placeholders (repo and
- * reviewer names) are escaped by the markup itself. A plain string is
- * escaped.
- */
-function _ood_software_mail_text(mixed $text, string $langcode): string {
-  if ($text instanceof TranslatableMarkup) {
-    // phpcs:ignore Drupal.Semantics.FunctionT.NotLiteralString
-    return (string) new TranslatableMarkup($text->getUntranslatedString(), $text->getArguments(), ['langcode' => $langcode] + $text->getOptions());
-  }
-  return Html::escape((string) $text);
 }
 
 /**

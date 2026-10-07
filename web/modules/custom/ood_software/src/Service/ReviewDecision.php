@@ -2,14 +2,16 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+
 /**
  * What sending a review's decision means: the checks and the wording.
  *
  * Pure. The decision is made on the review page and moves the repo and the
- * review together (appverse-planning#29; REVIEW-STATES.md). Before
- * confirming, the reviewer sees every effect the choice causes: these are
- * the "When you confirm" rows of the decision panel mock. ReviewDecisionApplier
- * carries the decision out.
+ * review together (appverse-planning#29; REVIEW-STATES.md). The page's send
+ * button names the decision and says why it is not ready yet; the confirm
+ * page heads the email preview with the decision and what it causes
+ * (appverse-planning#52). ReviewDecisionApplier carries the decision out.
  */
 final class ReviewDecision {
 
@@ -87,121 +89,146 @@ final class ReviewDecision {
   const APP_MOVES = ['accept' => 'publish', 'request_changes' => 'needs_adjustment', 'reject' => 'declined'];
 
   /**
-   * The "When you confirm" rows for each app's decision.
+   * The review page's send button: it names the decision it will send.
    *
-   * One decision for every app reads as effects() does; a mix adds an Apps
-   * row and follows plan().
+   * @param array<string, string|null> $appDecisions
+   *   Verdict id => its decision, or NULL when not decided.
+   */
+  public static function sendLabel(array $appDecisions): TranslatableMarkup {
+    $decided = array_values(array_filter($appDecisions, static fn ($d) => in_array($d, ReviewProgress::DECISIONS, TRUE)));
+    $distinct = array_values(array_unique($decided));
+    if (count($distinct) === 1) {
+      return match ($distinct[0]) {
+        'accept' => new TranslatableMarkup('Accept and publish…'),
+        'accept_with_suggestions' => new TranslatableMarkup('Accept with suggestions…'),
+        'request_changes' => new TranslatableMarkup('Request changes…'),
+        default => new TranslatableMarkup('Decline…'),
+      };
+    }
+    if ($distinct === []) {
+      return new TranslatableMarkup('Send decision…');
+    }
+    $counts = array_count_values($decided);
+    $parts = [];
+    foreach (ReviewProgress::DECISIONS as $decision) {
+      if (isset($counts[$decision])) {
+        $args = ['@count' => $counts[$decision]];
+        $parts[] = (string) match ($decision) {
+          'accept' => new TranslatableMarkup('@count accepted', $args),
+          'accept_with_suggestions' => new TranslatableMarkup('@count accepted with suggestions', $args),
+          'request_changes' => new TranslatableMarkup('@count changes requested', $args),
+          default => new TranslatableMarkup('@count declined', $args),
+        };
+      }
+    }
+    return new TranslatableMarkup('Send decisions (@summary)…', ['@summary' => implode(', ', $parts)]);
+  }
+
+  /**
+   * Why the send button is not ready yet, or NULL when it is.
+   *
+   * @param array<string, string|null> $appDecisions
+   *   Verdict id => its decision, or NULL when not decided.
+   * @param string $response
+   *   The response to the contributor.
+   */
+  public static function sendBlocker(array $appDecisions, string $response): ?TranslatableMarkup {
+    if ($appDecisions === []) {
+      return new TranslatableMarkup('The review has no apps to decide.');
+    }
+    foreach ($appDecisions as $decision) {
+      if (!in_array($decision, ReviewProgress::DECISIONS, TRUE)) {
+        return new TranslatableMarkup('Choose a decision for every app first.');
+      }
+    }
+    if (ReviewProgress::strictestDecision(array_values($appDecisions)) !== 'accept' && trim($response) === '') {
+      return new TranslatableMarkup('Write the response to the contributor first.');
+    }
+    return NULL;
+  }
+
+  /**
+   * The confirm page's heading: the decision, said whole.
+   *
+   * @param array<string, string> $appDecisions
+   *   Verdict id => its decision.
+   * @param string $repo
+   *   The repo's name.
+   */
+  public static function headline(array $appDecisions, string $repo): TranslatableMarkup {
+    $distinct = array_values(array_unique(array_values($appDecisions)));
+    $args = ['@repo' => $repo];
+    if (count($distinct) !== 1) {
+      return new TranslatableMarkup('Send the decisions on @repo', $args);
+    }
+    return match ($distinct[0]) {
+      'accept' => new TranslatableMarkup('Accept and publish @repo', $args),
+      'accept_with_suggestions' => new TranslatableMarkup('Accept @repo with suggestions', $args),
+      'request_changes' => new TranslatableMarkup('Request changes on @repo', $args),
+      default => new TranslatableMarkup('Decline @repo', $args),
+    };
+  }
+
+  /**
+   * What sending causes, in a sentence or two, the public side stated plainly.
    *
    * @param array<string, string> $appDecisions
    *   Verdict id => its decision.
    * @param bool $repoPublished
    *   Whether the repo is live.
-   * @param array<string, string> $names
-   *   Verdict id => the app's name; the key stands in without one.
+   * @param string $contributor
+   *   The contributor's name.
    *
-   * @return array<int, array{0: string, 1: string}>
+   * @return array<int, \Drupal\Core\StringTranslation\TranslatableMarkup>
    */
-  public static function effectsFor(array $appDecisions, bool $repoPublished, array $names = []): array {
+  public static function consequences(array $appDecisions, bool $repoPublished, string $contributor): array {
     $distinct = array_values(array_unique(array_values($appDecisions)));
-    if (count($distinct) === 1) {
-      return self::effects($distinct[0], $repoPublished);
-    }
-    $plan = self::plan($appDecisions);
     $any = static fn (string $d): bool => in_array($d, $appDecisions, TRUE);
-
-    $apps = [];
-    foreach ($appDecisions as $app => $decision) {
-      $apps[] = ($names[$app] ?? $app) . ': ' . match ($decision) {
-        'accept' => 'published',
-        'accept_with_suggestions' => 'published when you use Publish',
-        'request_changes' => 'unpublished, back to the contributor as Needs changes',
-        default => 'unpublished and declined',
+    $args = ['@name' => $contributor !== '' ? $contributor : new TranslatableMarkup('The contributor')];
+    $out = [];
+    if (count($distinct) === 1) {
+      $out[] = match ($distinct[0]) {
+        'accept' => $repoPublished
+          ? new TranslatableMarkup('The repo stays live, and the review is published.')
+          : new TranslatableMarkup('The repo, its apps and the review are published in the AppVerse catalog.'),
+        'accept_with_suggestions' => $repoPublished
+          ? new TranslatableMarkup('The repo stays live. The review is published when you use Publish on this review.')
+          : new TranslatableMarkup('Nothing is published yet. The repo waits as Ready to publish, and a Publish button stays on this review until you use it.'),
+        'request_changes' => $repoPublished
+          ? new TranslatableMarkup('The repo moves to Needs changes and leaves the catalog with its apps.')
+          : new TranslatableMarkup('The repo moves to Needs changes.'),
+        default => $repoPublished
+          ? new TranslatableMarkup('The repo is declined and leaves the catalog with its apps. The review is never published.')
+          : new TranslatableMarkup('The repo is declined and does not enter the catalog. The review is never published.'),
       };
     }
-    $next = [];
-    if ($any('accept_with_suggestions')) {
-      $next[] = 'A Publish button stays at the top of this review until you use it.';
+    else {
+      if ($any('accept')) {
+        $out[] = $repoPublished
+          ? new TranslatableMarkup('The repo stays live, the accepted apps are published, and so is the review.')
+          : new TranslatableMarkup('The repo is published in the AppVerse catalog with the accepted apps, and so is the review.');
+      }
+      elseif ($any('accept_with_suggestions')) {
+        $out[] = $repoPublished
+          ? new TranslatableMarkup('The repo stays live. The apps accepted with suggestions and the review are published when you use Publish on this review.')
+          : new TranslatableMarkup('Nothing is published yet. A Publish button stays on this review for the apps accepted with suggestions.');
+      }
+      elseif ($any('request_changes')) {
+        $out[] = $repoPublished
+          ? new TranslatableMarkup('The repo moves to Needs changes and leaves the catalog with its apps.')
+          : new TranslatableMarkup('The repo moves to Needs changes.');
+      }
+      if ($any('reject')) {
+        $out[] = new TranslatableMarkup('The declined apps stay out of the catalog.');
+      }
     }
     if ($any('request_changes')) {
-      $next[] = $plan['repo'] === 'needs_adjustment'
-        ? 'Wait for the re-submission.'
-        : 'When the contributor re-submits the apps sent back, run Re-review on the repo for the next round.';
+      $out[] = new TranslatableMarkup('@name can read the review and re-submit the whole repo, which starts the next round.', $args);
     }
-
-    return [
-      ['Repo', match ($plan['repo']) {
-        'publish' => $repoPublished ? 'Stays live in the AppVerse catalog.' : 'Published in the AppVerse catalog, with the accepted apps only.',
-        'needs_adjustment' => $repoPublished ? 'Unpublished, with its apps, and back to the contributor as Needs changes.' : 'Back to the contributor as Needs changes.',
-        'declined' => $repoPublished ? 'Unpublished, with its apps, and declined.' : 'Declined; it does not enter the catalog.',
-        default => $repoPublished ? 'Stays live; nothing changes in the catalog until you publish this review.' : 'Stays in the queue as Ready to publish. A new app is not public yet.',
-      }],
-      ['Apps', implode('; ', $apps) . '.'],
-      ['Review', match (TRUE) {
-        $plan['review'] === 'publish' => "Published with the accepted apps: the public sees its summary, with every app's decision.",
-        $any('accept_with_suggestions') => 'Not public yet; it is published when you use Publish.',
-        default => 'Not public.',
-      }],
-      ['Email', 'One email to the contributor, listing each app\'s decision, with your response.'
-        . ($any('accept_with_suggestions') && !$repoPublished ? ' Another goes out when you publish.' : '')],
-      ['Contributor', 'Can read the review and your response.' . ($any('request_changes') ? ' Fixes the apps sent back and re-submits them.' : '')],
-      ['Next step', $next !== [] ? implode(' ', $next) : 'None.'],
-    ];
-  }
-
-  /**
-   * The "When you confirm" rows when every app has the same decision.
-   *
-   * @param bool $repoPublished
-   *   Whether the repo is live now.
-   *
-   * @return array<int, array{0: string, 1: string}>
-   *   [heading, what happens] for Repo, Review, Email, Contributor, Next step.
-   */
-  public static function effects(string $decision, bool $repoPublished): array {
-    return match ($decision) {
-      // Every decision sends one email for the repo (#32; DecisionEmail).
-      'accept' => [
-        ['Repo', $repoPublished
-          ? 'Stays live in the AppVerse catalog.'
-          : 'Published, with its apps, in the AppVerse catalog.'],
-        ['Review', 'Published: the public sees its summary.'],
-        ['Email', $repoPublished
-          ? 'The contributor is told it is accepted and stays live.'
-          : 'The contributor is told the repo is accepted and published.'],
-        ['Contributor', 'Can read the review and your response.'],
-        ['Next step', 'None: the repo is live.'],
-      ],
-      'accept_with_suggestions' => [
-        ['Repo', $repoPublished
-          ? 'Stays live; nothing changes in the catalog until you publish this review.'
-          : 'Stays in the queue as Ready to publish. A new app is not public yet.'],
-        ['Review', 'Not public yet.'],
-        ['Email', $repoPublished
-          ? 'The contributor gets your suggestions and is told it is accepted.'
-          : 'The contributor gets your suggestions and is told it is accepted. Another goes out when you publish.'],
-        ['Contributor', 'Can read the review and your suggestions. The public cannot yet.'],
-        ['Next step', 'A Publish button stays at the top of this review until you use it.'],
-      ],
-      'request_changes' => [
-        ['Repo', $repoPublished
-          ? 'Unpublished, with its apps, and back to the contributor as Needs changes.'
-          : 'Back to the contributor as Needs changes.'],
-        ['Review', 'Not public.'],
-        ['Email', 'The contributor gets your requested changes.'],
-        ['Contributor', 'Can read the review and your response, fix the repo, and re-submit (a new review round).'],
-        ['Next step', 'Wait for the re-submission.'],
-      ],
-      'reject' => [
-        ['Repo', $repoPublished
-          ? 'Unpublished, with its apps, and declined.'
-          : 'Declined; it does not enter the catalog.'],
-        ['Review', 'Never public.'],
-        ['Email', 'The contributor is told it is declined, with your response.'],
-        ['Contributor', 'Can read the review and your response.'],
-        ['Next step', 'None.'],
-      ],
-      default => [],
-    };
+    else {
+      $out[] = new TranslatableMarkup('@name can read the review and your response.', $args);
+    }
+    return $out;
   }
 
 }

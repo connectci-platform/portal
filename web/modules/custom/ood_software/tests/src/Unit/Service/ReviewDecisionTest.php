@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\ood_software\Unit\Service;
 
+use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Tests\UnitTestCase;
 use Drupal\ood_software\Service\ReviewDecision;
 
@@ -13,6 +14,16 @@ use Drupal\ood_software\Service\ReviewDecision;
  * @coversDefaultClass \Drupal\ood_software\Service\ReviewDecision
  */
 class ReviewDecisionTest extends UnitTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
+    parent::setUp();
+    $container = new ContainerBuilder();
+    $container->set('string_translation', $this->getStringTranslationStub());
+    \Drupal::setContainer($container);
+  }
 
   /**
    * Every app needs a decision; the response is required unless the overall
@@ -45,34 +56,6 @@ class ReviewDecisionTest extends UnitTestCase {
       'monorepo, one app sent back' => [['One' => 'accept', 'Two' => 'request_changes'], '', 1],
       'no apps' => [[], 'text', 1],
     ];
-  }
-
-  /**
-   * The "When you confirm" rows say what happens to the repo, the review,
-   * the email, the contributor and the next step, and depend on whether the
-   * repo is live.
-   *
-   * @covers ::effects
-   */
-  public function testEffects(): void {
-    foreach (['accept', 'accept_with_suggestions', 'request_changes', 'reject'] as $decision) {
-      $rows = ReviewDecision::effects($decision, FALSE);
-      $this->assertSame(['Repo', 'Review', 'Email', 'Contributor', 'Next step'], array_column($rows, 0), $decision);
-    }
-    $this->assertStringContainsString('Ready to publish', ReviewDecision::effects('accept_with_suggestions', FALSE)[0][1]);
-    $this->assertStringContainsString('Stays live', ReviewDecision::effects('accept_with_suggestions', TRUE)[0][1]);
-    $this->assertStringContainsString('Unpublished', ReviewDecision::effects('request_changes', TRUE)[0][1]);
-    $this->assertStringNotContainsString('Unpublished', ReviewDecision::effects('request_changes', FALSE)[0][1]);
-    $this->assertStringContainsString('Publish button', ReviewDecision::effects('accept_with_suggestions', FALSE)[4][1]);
-    // Accept on a live repo changes nothing in the catalog; the email says so.
-    $this->assertStringContainsString('Published', ReviewDecision::effects('accept', FALSE)[0][1]);
-    $this->assertStringContainsString('Stays live', ReviewDecision::effects('accept', TRUE)[0][1]);
-    $this->assertStringContainsString('stays live', ReviewDecision::effects('accept', TRUE)[2][1]);
-    $this->assertStringContainsString('published', ReviewDecision::effects('accept', FALSE)[2][1]);
-    // Accept with suggestions on a new repo: a second email when published.
-    $this->assertStringContainsString('Another goes out', ReviewDecision::effects('accept_with_suggestions', FALSE)[2][1]);
-    $this->assertStringNotContainsString('Another goes out', ReviewDecision::effects('accept_with_suggestions', TRUE)[2][1]);
-    $this->assertSame([], ReviewDecision::effects('bogus', FALSE));
   }
 
   /**
@@ -113,26 +96,60 @@ class ReviewDecisionTest extends UnitTestCase {
   }
 
   /**
-   * One decision for every app reads as effects(); a mix lists each app.
+   * The send button names the decision, and a monorepo's mix in counts.
    *
-   * @covers ::effectsFor
+   * @covers ::sendLabel
    */
-  public function testEffectsFor(): void {
-    $this->assertSame(ReviewDecision::effects('request_changes', TRUE), ReviewDecision::effectsFor(['A' => 'request_changes', 'B' => 'request_changes'], TRUE));
+  public function testSendLabel(): void {
+    $this->assertSame('Request changes…', (string) ReviewDecision::sendLabel(['a' => 'request_changes']));
+    $this->assertSame('Accept and publish…', (string) ReviewDecision::sendLabel(['a' => 'accept', 'b' => 'accept']));
+    $this->assertSame('Accept with suggestions…', (string) ReviewDecision::sendLabel(['a' => 'accept_with_suggestions']));
+    $this->assertSame('Decline…', (string) ReviewDecision::sendLabel(['a' => 'reject']));
+    $this->assertSame('Send decision…', (string) ReviewDecision::sendLabel(['a' => NULL]));
+    $this->assertSame('Send decisions (1 accepted, 2 changes requested)…', (string) ReviewDecision::sendLabel(['a' => 'request_changes', 'b' => 'accept', 'c' => 'request_changes']));
+  }
 
-    $rows = array_column(ReviewDecision::effectsFor(['A' => 'accept', 'B' => 'request_changes'], FALSE), 1, 0);
-    $this->assertSame(['Repo', 'Apps', 'Review', 'Email', 'Contributor', 'Next step'], array_keys($rows));
-    $this->assertStringContainsString('accepted apps only', $rows['Repo']);
-    $this->assertSame('A: published; B: unpublished, back to the contributor as Needs changes.', $rows['Apps']);
-    $this->assertStringStartsWith('Published', $rows['Review']);
-    $this->assertStringContainsString('Re-review', $rows['Next step']);
+  /**
+   * The button waits for every app's decision and, unless all are Accept, a
+   * response.
+   *
+   * @covers ::sendBlocker
+   */
+  public function testSendBlocker(): void {
+    $this->assertNull(ReviewDecision::sendBlocker(['a' => 'accept'], ''));
+    $this->assertNull(ReviewDecision::sendBlocker(['a' => 'request_changes'], 'Fix the form.'));
+    $this->assertSame('Choose a decision for every app first.', (string) ReviewDecision::sendBlocker(['a' => 'accept', 'b' => NULL], 'x'));
+    $this->assertSame('Write the response to the contributor first.', (string) ReviewDecision::sendBlocker(['a' => 'accept', 'b' => 'reject'], ' '));
+    $this->assertNotNull(ReviewDecision::sendBlocker([], 'x'));
+  }
 
-    $rows = array_column(ReviewDecision::effectsFor(['A' => 'accept_with_suggestions', 'B' => 'reject'], TRUE), 1, 0);
-    $this->assertStringStartsWith('Stays live', $rows['Repo']);
-    $this->assertStringStartsWith('Not public yet', $rows['Review']);
-    $this->assertStringStartsWith('One email', $rows['Email']);
-    $this->assertStringNotContainsString('Another goes out', $rows['Email'], 'a live repo: nothing new to publish');
-    $this->assertStringContainsString('Publish button', $rows['Next step']);
+  /**
+   * The confirm page's heading says the decision whole.
+   *
+   * @covers ::headline
+   */
+  public function testHeadline(): void {
+    $this->assertSame('Request changes on example', (string) ReviewDecision::headline(['a' => 'request_changes'], 'example'));
+    $this->assertSame('Accept example with suggestions', (string) ReviewDecision::headline(['a' => 'accept_with_suggestions'], 'example'));
+    $this->assertSame('Send the decisions on example', (string) ReviewDecision::headline(['a' => 'accept', 'b' => 'reject'], 'example'));
+  }
+
+  /**
+   * What sending causes, the public side stated plainly.
+   *
+   * @covers ::consequences
+   */
+  public function testConsequences(): void {
+    $say = fn (array $d, bool $live): string => implode(' ', array_map('strval', ReviewDecision::consequences($d, $live, 'Ada')));
+    $this->assertStringContainsString('published in the AppVerse catalog', $say(['a' => 'accept'], FALSE));
+    $this->assertStringContainsString('Nothing is published yet', $say(['a' => 'accept_with_suggestions'], FALSE));
+    $this->assertStringContainsString('leaves the catalog', $say(['a' => 'request_changes'], TRUE));
+    $this->assertStringNotContainsString('leaves the catalog', $say(['a' => 'request_changes'], FALSE));
+    $this->assertStringContainsString('Ada can read the review and re-submit', $say(['a' => 'request_changes'], FALSE));
+    $this->assertStringContainsString('The review is never published', $say(['a' => 'reject'], FALSE));
+    $mixed = $say(['a' => 'accept', 'b' => 'reject'], FALSE);
+    $this->assertStringContainsString('with the accepted apps, and so is the review', $mixed);
+    $this->assertStringContainsString('The declined apps stay out of the catalog.', $mixed);
   }
 
 }

@@ -2,7 +2,11 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\Component\Render\PlainTextOutput;
+use Drupal\Component\Utility\Html;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 
 /**
  * The contributor's decision email, and the "now live" email after Publish.
@@ -11,9 +15,10 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
  * it replaces the generic "changes requested" and "published" emails on the
  * review flow. It greets the contributor, names the reviewer, carries the
  * reviewer's response and, for a monorepo, each app's decision, then says
- * what to do next and that a reply reaches the reviewer (#48). hook_mail()
- * renders the blocks in the recipient's language; RepoNotificationService
- * sends them to the repo's owner with the reviewer as Reply-To.
+ * what to do next and that a reply reaches the reviewer (#48). render() turns
+ * the blocks into the mail in the recipient's language, for hook_mail() and
+ * for the confirm page's preview (#52); RepoNotificationService sends them to
+ * the repo's owner with the reviewer as Reply-To.
  *
  * Text is TranslatableMarkup; app names, the repo name and the response are
  * the contributor's own words and stay as they are. A block is one of:
@@ -162,6 +167,74 @@ final class DecisionEmail {
     $blocks[] = ['link', new TranslatableMarkup('The repo in the catalog'), $links['catalog']];
     $blocks[] = ['link', new TranslatableMarkup('The full review'), $links['review']];
     return ['subject' => new TranslatableMarkup('[@site] @repo is now in the AppVerse', $args), 'blocks' => $blocks];
+  }
+
+  /**
+   * An email's subject and body, in the recipient's language.
+   *
+   * Used by hook_mail() and by the confirm page's preview, so the preview is
+   * what goes out.
+   *
+   * @param array<string, mixed> $email
+   *   As decision() or nowLive() builds it.
+   * @param string $langcode
+   *   The recipient's language.
+   *
+   * @return array{subject: string, body: array<int, \Drupal\Component\Render\MarkupInterface|string>}
+   */
+  public static function render(array $email, string $langcode): array {
+    $body = [];
+    foreach ($email['blocks'] ?? [] as $block) {
+      $html = match ($block[0]) {
+        'p' => '<p>' . self::text($block[1], $langcode) . '</p>',
+        'response' => '<blockquote>' . self::markdown($block[1]) . '</blockquote>',
+        'apps' => '<ul>' . implode('', array_map(
+          static fn (array $app) => '<li>' . Html::escape((string) $app[0]) . ': <strong>' . self::text($app[1], $langcode) . '</strong></li>',
+          $block[1],
+        )) . '</ul>',
+        'link' => '<p>' . self::text($block[1], $langcode) . ': <a href="' . Html::escape($block[2]) . '">' . Html::escape($block[2]) . '</a></p>',
+        default => '',
+      };
+      if ($html !== '') {
+        $body[] = Markup::create($html);
+      }
+    }
+    return [
+      'subject' => PlainTextOutput::renderFromHtml(self::text($email['subject'] ?? '', $langcode)),
+      'body' => $body,
+    ];
+  }
+
+  /**
+   * Email text in the recipient's language, as safe HTML.
+   *
+   * The blocks hold TranslatableMarkup built without knowing who the email
+   * goes to; this translates it into the mail's language. Its placeholders
+   * (repo and reviewer names) are escaped by the markup itself. A plain
+   * string is escaped.
+   */
+  protected static function text(mixed $text, string $langcode): string {
+    if ($text instanceof TranslatableMarkup) {
+      // phpcs:ignore Drupal.Semantics.FunctionT.NotLiteralString
+      return (string) new TranslatableMarkup($text->getUntranslatedString(), $text->getArguments(), ['langcode' => $langcode] + $text->getOptions());
+    }
+    return Html::escape((string) $text);
+  }
+
+  /**
+   * The reviewer's response, Markdown rendered as safe HTML.
+   *
+   * The AI's draft and reviewers write Markdown (bold labels, file names in
+   * backticks). Raw HTML is escaped, so it shows as written rather than
+   * vanishing, unsafe links are dropped, and line breaks are kept as typed.
+   */
+  protected static function markdown(string $markdown): string {
+    $converter = new GithubFlavoredMarkdownConverter([
+      'html_input' => 'escape',
+      'allow_unsafe_links' => FALSE,
+      'renderer' => ['soft_break' => "<br>\n"],
+    ]);
+    return (string) $converter->convert($markdown);
   }
 
   /**

@@ -14,6 +14,7 @@ use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
+use Drupal\ood_software\Service\ReviewDecision;
 use Drupal\ood_software\Service\ReviewDecisionApplier;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
@@ -328,27 +329,79 @@ final class ReviewPageForm extends FormBase {
       '#attributes' => ['class' => ['btn', 'ghost']],
     ];
     // The decision is sent from here (appverse-planning#29): it saves the page,
-    // then confirms on a page listing what the decision will cause. Not on a
-    // superseded review (a newer one of the same repo exists; deciding on
-    // stale findings is the wrong review), and not once a decision is sent.
+    // then previews the email on the confirm page. Not on a superseded review
+    // (a newer one of the same repo exists; deciding on stale findings is the
+    // wrong review), and not once a decision is sent.
     if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by']) && !$page['withdrawn']) {
-      $form['actions']['send_decision'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('Send decision…'),
-        '#attributes' => ['class' => ['btn', 'primary']],
-        '#submit' => ['::submitForm', '::goToDecision'],
-      ];
+      $form['actions']['send_decision'] = $this->sendButton($page);
     }
     return $form;
   }
 
   /**
-   * Second submit handler for "Send decision…": after the save, confirm.
+   * The send button: it names the decision and stays disabled, with the
+   * reason beside it, until the decision is complete (appverse-planning#52).
    *
-   * @param array<string, mixed> $form
+   * A plain button with a fixed name, not a Drupal submit: the page's script
+   * relabels it as the reviewer chooses, and Drupal matches a submit by its
+   * label. The form's own save runs, then submitForm() sees the name.
+   *
+   * @param array<string, mixed> $page
+   *   The page data.
+   *
+   * @return array<string, mixed>
+   *   A render array.
    */
-  public function goToDecision(array &$form, FormStateInterface $form_state): void {
-    $form_state->setRedirect('ood_software.review_decision', ['node' => $this->node->id()]);
+  protected function sendButton(array $page): array {
+    $decisions = [];
+    foreach ($page['apps'] as $app) {
+      $decisions[(string) $app['pid']] = $app['conclusion'] ?? NULL;
+    }
+    $blocker = ReviewDecision::sendBlocker($decisions, (string) $page['response']);
+    $single = [];
+    foreach (ReviewProgress::DECISIONS as $d) {
+      $single[$d] = (string) ReviewDecision::sendLabel(['x' => $d]);
+    }
+    $attributes = [
+      'type' => 'submit',
+      'name' => 'send_decision',
+      'value' => '1',
+      'class' => ['btn', 'primary', 'arv-send'],
+      // What the script needs to relabel the button as the reviewer chooses.
+      'data-labels' => json_encode([
+        'none' => (string) ReviewDecision::sendLabel([]),
+        'single' => $single,
+        'mixed' => (string) $this->t('Send decisions (@summary)…'),
+        'count' => [
+          'accept' => (string) $this->t('@count accepted'),
+          'accept_with_suggestions' => (string) $this->t('@count accepted with suggestions'),
+          'request_changes' => (string) $this->t('@count changes requested'),
+          'reject' => (string) $this->t('@count declined'),
+        ],
+      ]),
+      'data-reasons' => json_encode([
+        'undecided' => (string) $this->t('Choose a decision for every app first.'),
+        'response' => (string) $this->t('Write the response to the contributor first.'),
+      ]),
+      'aria-describedby' => 'arv-send-reason',
+    ];
+    if ($blocker !== NULL) {
+      $attributes['disabled'] = 'disabled';
+    }
+    return [
+      'button' => [
+        '#type' => 'html_tag',
+        '#tag' => 'button',
+        '#value' => ReviewDecision::sendLabel($decisions),
+        '#attributes' => $attributes,
+      ],
+      'reason' => [
+        '#type' => 'html_tag',
+        '#tag' => 'span',
+        '#value' => $blocker ?? '',
+        '#attributes' => ['id' => 'arv-send-reason', 'class' => ['arv-send-reason']],
+      ],
+    ];
   }
 
   /**
@@ -422,6 +475,12 @@ final class ReviewPageForm extends FormBase {
     $node->setNewRevision(TRUE);
     $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName());
     $node->save();
+    // The send button saves, then goes on to the email preview.
+    if (!empty($form_state->getUserInput()['send_decision'])) {
+      $this->messenger()->addStatus($this->t('Your edits are saved. Nothing is sent until you confirm.'));
+      $form_state->setRedirect('ood_software.review_decision', ['node' => $node->id()]);
+      return;
+    }
     $this->messenger()->addStatus($this->t('Review saved.'));
     $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
   }
