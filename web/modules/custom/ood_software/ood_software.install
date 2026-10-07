@@ -489,7 +489,9 @@ function ood_software_update_10507(): TranslatableMarkup {
     return t('Node 12116 not found or has no layout override; nothing else to do.');
   }
 
-  $sections = $node->get('layout_builder__layout')->getSections();
+  $layout = $node->get('layout_builder__layout');
+  assert($layout instanceof \Drupal\layout_builder\Field\LayoutSectionItemList);
+  $sections = $layout->getSections();
   if (!$sections) {
     return t('Node 12116 has no layout sections; nothing else to do.');
   }
@@ -500,7 +502,7 @@ function ood_software_update_10507(): TranslatableMarkup {
   $found = FALSE;
   foreach ($sections as $existing_section) {
     foreach ($existing_section->getComponents() as $component) {
-      if (($component->getPluginId() ?? '') === $plugin_id) {
+      if ($component->getPluginId() === $plugin_id) {
         $found = TRUE;
       }
     }
@@ -542,4 +544,99 @@ function ood_software_update_10507(): TranslatableMarkup {
   $node->save();
 
   return t('Added the "Classroom Stories" slideshow view block to node 12116 (or reasserted its position).');
+}
+
+/**
+ * Move reviews out of the retired "Waiting for Contributor" state.
+ *
+ * The review workflow drops waiting_for_contributor (appverse-planning#28,
+ * REVIEW-STATES.md): a sent decision is now a field on the review, not a
+ * state. drush deploy runs this before the config import removes the state,
+ * so any review still in it moves to In Review rather than being left in a
+ * state the workflow no longer has.
+ */
+function ood_software_update_10508(): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $nids = $storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->execute();
+  $moved = 0;
+  foreach ($storage->loadMultiple($nids) as $review) {
+    if ($review->get('moderation_state')->value !== 'waiting_for_contributor') {
+      continue;
+    }
+    $review->set('moderation_state', 'in_review');
+    $review->setNewRevision(TRUE);
+    $review->setRevisionLogMessage('Moved from the retired Waiting for Contributor state (appverse-planning#28).');
+    $review->save();
+    $moved++;
+  }
+  return t('Moved @n review(s) from Waiting for Contributor to In Review.', ['@n' => $moved]);
+}
+
+/**
+ * Reviews are no longer authored by contributors (appverse-planning#44).
+ *
+ * A review was authored by whoever started its run, often the contributor,
+ * whose "view own unpublished content" then reached the undecided review
+ * through JSON:API filters. The seeder now authors a contributor-started run
+ * as the site admin; this moves existing reviews whose author is not a
+ * reviewer to the site admin too. Ownership only: no new revision, no
+ * moderation change.
+ */
+function ood_software_update_10509(): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $nids = $storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('uid', 1, '<>')
+    ->execute();
+  $moved = 0;
+  foreach ($storage->loadMultiple($nids) as $review) {
+    $owner = $review->getOwner();
+    if ($owner->hasPermission('administer appverse content')) {
+      continue;
+    }
+    $review->setOwnerId(1);
+    $review->setSyncing(TRUE);
+    $review->setNewRevision(FALSE);
+    $review->save();
+    $moved++;
+  }
+  return t('Moved @n review(s) authored by a non-reviewer to the site admin.', ['@n' => $moved]);
+}
+
+/**
+ * Keep a reviewer's reason for changing an automated finding as its note.
+ *
+ * The first version of finding changes stored the reason in its own field,
+ * field_rvf_override_reason; the reason is now the finding's note to the
+ * contributor, and the field is removed by config import. Runs before that
+ * import (drush deploy), so a reason saved in between is copied into an
+ * empty note rather than lost, and the change keeps the note it needs.
+ */
+function ood_software_update_10510(): TranslatableMarkup {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('paragraph__field_rvf_override_reason')) {
+    return t('No finding change reasons to keep.');
+  }
+  $rows = \Drupal::database()->select('paragraph__field_rvf_override_reason', 'r')
+    ->fields('r', ['entity_id', 'field_rvf_override_reason_value'])
+    ->execute()
+    ->fetchAllKeyed();
+  $storage = \Drupal::entityTypeManager()->getStorage('paragraph');
+  $kept = 0;
+  foreach ($rows as $pid => $reason) {
+    $finding = $storage->load($pid);
+    if (!$finding instanceof \Drupal\paragraphs\ParagraphInterface || trim((string) $reason) === '' || !$finding->hasField('field_rvf_reviewer_prose')
+      || trim((string) ($finding->get('field_rvf_reviewer_prose')->value ?? '')) !== '') {
+      continue;
+    }
+    $finding->set('field_rvf_reviewer_prose', ['value' => (string) $reason, 'format' => 'plain_text']);
+    $finding->setNewRevision(FALSE);
+    $finding->save();
+    $kept++;
+  }
+  return t('Kept @n finding change reason(s) as the finding note.', ['@n' => $kept]);
 }

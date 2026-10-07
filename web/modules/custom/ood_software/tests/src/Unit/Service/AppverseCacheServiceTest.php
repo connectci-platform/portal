@@ -11,6 +11,7 @@ use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Tests\UnitTestCase;
 use Drupal\ood_software\Service\AppverseCacheService;
+use Drupal\ood_software\Service\AppverseLogoUrl;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 
@@ -65,13 +66,15 @@ class AppverseCacheServiceTest extends UnitTestCase {
     $loggerFactory = $this->createMock(LoggerChannelFactoryInterface::class);
     $loggerFactory->method('get')->willReturn($logger);
 
-    return new AppverseCacheService($entityTypeManager, $fileUrlGenerator, $fileSystem, $loggerFactory);
+    $appverseLogoUrl = $this->createMock(AppverseLogoUrl::class);
+
+    return new AppverseCacheService($entityTypeManager, $fileUrlGenerator, $fileSystem, $loggerFactory, $appverseLogoUrl);
   }
 
   /**
    * Build an OR-group mock that records every notExists() / condition() call.
    *
-   * @param array $capturedOrGroupCalls
+   * @param array<int, array<string, mixed>> $capturedOrGroupCalls
    *   Out-parameter: each call lands here as ['method' => ..., 'args' => [...]].
    *
    * @return \Drupal\Core\Entity\Query\ConditionInterface&\PHPUnit\Framework\MockObject\MockObject
@@ -92,6 +95,8 @@ class AppverseCacheServiceTest extends UnitTestCase {
   /**
    * Build an app-query mock that records condition() calls and returns the
    * given OR group from orConditionGroup().
+   *
+   * @param array<int, mixed> $capturedConditions
    */
   protected function buildAppQuery(array &$capturedConditions, ConditionInterface $orGroup): QueryInterface {
     $appQuery = $this->createMock(QueryInterface::class);
@@ -105,8 +110,10 @@ class AppverseCacheServiceTest extends UnitTestCase {
 
   /**
    * Invoke a protected method on the service under test.
+   *
+   * @param array<int, mixed> $args
    */
-  protected function invokeProtected(AppverseCacheService $service, string $method, array $args) {
+  protected function invokeProtected(AppverseCacheService $service, string $method, array $args): mixed {
     $ref = new \ReflectionMethod($service, $method);
     $ref->setAccessible(TRUE);
     return $ref->invokeArgs($service, $args);

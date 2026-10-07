@@ -1,0 +1,20 @@
+uuid: 390da6e1-b308-46c2-88f1-2d23fdad7c70
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_duplicate_note
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_duplicate_note
+field_name: field_rvv_duplicate_note
+entity_type: paragraph
+bundle: review_verdict
+label: 'Duplicate check rationale'
+description: 'Why: which published apps were compared and how this one differs, or which app it duplicates. Required for a different approach or a duplicate.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

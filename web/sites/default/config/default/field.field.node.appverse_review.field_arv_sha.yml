@@ -1,0 +1,19 @@
+uuid: 9dfe136b-46ef-4cb6-b8b8-4c24e90e950e
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_sha
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_sha
+field_name: field_arv_sha
+entity_type: node
+bundle: appverse_review
+label: 'Reviewed commit SHA'
+description: 'Full SHA of the commit reviewed. Immutable — set on ingest from the artifact.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

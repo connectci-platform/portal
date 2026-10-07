@@ -1,0 +1,19 @@
+uuid: a987efaf-27e8-462c-bc83-59ffc76a4b05
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_catalog_checks
+field_name: field_arv_catalog_checks
+entity_type: node
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

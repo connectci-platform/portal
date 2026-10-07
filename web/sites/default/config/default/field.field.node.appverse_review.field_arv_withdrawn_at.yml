@@ -1,0 +1,19 @@
+uuid: 41805e37-d6f6-4442-aee2-9b49f71ffb6c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_withdrawn_at
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_withdrawn_at
+field_name: field_arv_withdrawn_at
+entity_type: node
+bundle: appverse_review
+label: 'Withdrawn at'
+description: 'When the contributor withdrew the submission this review was for, before a decision was sent; the review is set aside (appverse-planning#34).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

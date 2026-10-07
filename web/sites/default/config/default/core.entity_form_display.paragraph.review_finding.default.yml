@@ -1,0 +1,98 @@
+uuid: 77271c1d-af23-4cb0-b0c4-f0eaa33164c4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_finding.field_rvf_anchor
+    - field.field.paragraph.review_finding.field_rvf_app_id
+    - field.field.paragraph.review_finding.field_rvf_aspect
+    - field.field.paragraph.review_finding.field_rvf_author
+    - field.field.paragraph.review_finding.field_rvf_category
+    - field.field.paragraph.review_finding.field_rvf_created
+    - field.field.paragraph.review_finding.field_rvf_defect_key
+    - field.field.paragraph.review_finding.field_rvf_dismissed
+    - field.field.paragraph.review_finding.field_rvf_evidence
+    - field.field.paragraph.review_finding.field_rvf_line
+    - field.field.paragraph.review_finding.field_rvf_override_at
+    - field.field.paragraph.review_finding.field_rvf_override_by
+    - field.field.paragraph.review_finding.field_rvf_override_evidence
+    - field.field.paragraph.review_finding.field_rvf_override_severity
+    - field.field.paragraph.review_finding.field_rvf_override_summary
+    - field.field.paragraph.review_finding.field_rvf_result
+    - field.field.paragraph.review_finding.field_rvf_reviewer_prose
+    - field.field.paragraph.review_finding.field_rvf_rule
+    - field.field.paragraph.review_finding.field_rvf_severity
+    - field.field.paragraph.review_finding.field_rvf_source
+    - field.field.paragraph.review_finding.field_rvf_stable_id
+    - field.field.paragraph.review_finding.field_rvf_summary
+    - field.field.paragraph.review_finding.field_rvf_tag
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - field_group
+    - paragraphs
+    - text
+third_party_settings:
+  field_group:
+    group_fd_machine:
+      children:
+        - field_rvf_severity
+        - field_rvf_rule
+        - field_rvf_evidence
+        - field_rvf_line
+        - field_rvf_aspect
+        - field_rvf_category
+        - field_rvf_stable_id
+        - field_rvf_app_id
+        - field_rvf_defect_key
+        - field_rvf_anchor
+      label: 'Machine data - seeded from the artifact, do not edit'
+      region: content
+      parent_name: ''
+      weight: 5
+      format_type: details
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        open: false
+        description: ''
+        required_fields: true
+id: paragraph.review_finding.default
+targetEntityType: paragraph
+bundle: review_finding
+mode: default
+content:
+  field_rvf_reviewer_prose:
+    type: text_textarea
+    weight: 1
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+hidden:
+  created: true
+  field_rvf_anchor: true
+  field_rvf_app_id: true
+  field_rvf_aspect: true
+  field_rvf_author: true
+  field_rvf_category: true
+  field_rvf_created: true
+  field_rvf_defect_key: true
+  field_rvf_dismissed: true
+  field_rvf_evidence: true
+  field_rvf_line: true
+  field_rvf_override_at: true
+  field_rvf_override_by: true
+  field_rvf_override_evidence: true
+  field_rvf_override_severity: true
+  field_rvf_override_summary: true
+  field_rvf_result: true
+  field_rvf_rule: true
+  field_rvf_severity: true
+  field_rvf_source: true
+  field_rvf_stable_id: true
+  field_rvf_summary: true
+  field_rvf_tag: true
+  status: true

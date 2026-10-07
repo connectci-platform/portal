@@ -5,6 +5,7 @@ namespace Drupal\ood_software\Controller;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\UrlHelper;
 use Symfony\Component\HttpFoundation\Response;
+use Drupal\content_moderation\ContentModerationState;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Session\AccountInterface;
@@ -14,8 +15,11 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\node\NodeInterface;
 use Drupal\user\UserInterface;
+use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\ood_software\Service\RepoMemberApps;
+use Drupal\ood_software\Service\RepoNotificationService;
+use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Plugin\GitHubService;
 
 /**
@@ -33,6 +37,9 @@ final class AppverseHubController extends ControllerBase {
     protected ModerationInformationInterface $moderationInformation,
     protected RequestStack $requestStack,
     protected RepoMemberApps $repoMemberApps,
+    protected AppverseReviewService $reviewService,
+    protected ReviewAssignment $reviewAssignment,
+    protected RepoNotificationService $notifier,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -43,6 +50,9 @@ final class AppverseHubController extends ControllerBase {
       $container->get('content_moderation.moderation_information'),
       $container->get('request_stack'),
       $container->get('ood_software.repo_member_apps'),
+      $container->get('ood_software.review_dispatcher'),
+      $container->get('ood_software.review_assignment'),
+      $container->get('ood_software.repo_notifier'),
     );
   }
 
@@ -297,18 +307,26 @@ final class AppverseHubController extends ControllerBase {
     // visible effect because the cache cascade hides the App
     // regardless. Allow the toggle (it's the user's data) but warn.
     $parent = $node->get('field_appverse_repo')->entity ?? NULL;
-    if ($parent && !$parent->isPublished()) {
+    if ($parent instanceof NodeInterface && !$parent->isPublished()) {
       $this->messenger()->addWarning($this->t(
         '@title is in an unpublished Repo — App-level status has no effect on visibility until the Repo is republished.',
         ['@title' => $node->label()]
       ));
     }
 
+    // Publishing is the review's call: an unpublished app may be one it sent
+    // back or declined. A contributor may only take their app down
+    // (appverse-planning#61 lets them put back what the review accepted).
+    $wasPublished = $node->isPublished();
+    if (!$wasPublished && !$this->currentUser()->hasPermission('administer appverse content')) {
+      $this->messenger()->addError($this->t('Only a reviewer can publish @title.', ['@title' => $node->label()]));
+      return $this->redirectToHub();
+    }
+
     // appverse_app uses content_moderation. setPublished() alone won't
     // stick because the workflow forces status from moderation_state on
     // save. Drive the toggle via the moderation field instead: publish
     // → 'published', unpublish → 'draft'.
-    $wasPublished = $node->isPublished();
     $newState = $wasPublished ? 'draft' : 'published';
     $message = $wasPublished
       ? $this->t('Unpublished @title.', ['@title' => $node->label()])
@@ -359,8 +377,8 @@ final class AppverseHubController extends ControllerBase {
       //    revision so any in-flight draft edits are what get published.
       $storage = $this->entityTypeManager()->getStorage('node');
       $workflow = $this->moderationInformation->getWorkflowForEntity($node);
-      $isPublishedTarget = $workflow && $workflow->getTypePlugin()
-        ->getState($newState)->isPublishedState();
+      $targetState = $workflow ? $workflow->getTypePlugin()->getState($newState) : NULL;
+      $isPublishedTarget = $targetState instanceof ContentModerationState && $targetState->isPublishedState();
 
       if ($isPublishedTarget) {
         $latestVid = $storage->getLatestRevisionId($node->id());
@@ -371,6 +389,7 @@ final class AppverseHubController extends ControllerBase {
       else {
         $fresh = $storage->loadUnchanged($node->id());
       }
+      assert($fresh instanceof NodeInterface);
       $fresh->set('moderation_state', $newState);
       $fresh->setNewRevision(TRUE);
       // Clear the validation-required flag that content_moderation can set on
@@ -424,6 +443,14 @@ final class AppverseHubController extends ControllerBase {
    * Allowed for owner or admin.
    */
   public function sendForReview(NodeInterface $node): RedirectResponse {
+    // A live repo with apps sent back is re-submitted whole and stays live
+    // (appverse-planning#48); it does not go through the transition below.
+    // So does one awaiting the reviewer's Publish for its other apps, which
+    // cannot move to ready_for_review again.
+    if ($node->bundle() === 'appverse_repo' && ($node->isPublished()
+      || (($node->get('moderation_state')->value ?? '') === 'ready_for_review' && $this->repoMemberApps->sentBackCount($node) > 0))) {
+      return $this->resubmitLive($node);
+    }
     $response = $this->applyTransition(
       $node,
       'ready_for_review',
@@ -464,6 +491,94 @@ final class AppverseHubController extends ControllerBase {
         ['@count' => $count, '@title' => $repo->label()]
       ));
     }
+  }
+
+  /**
+   * Re-submits a live repo whose apps were sent back (appverse-planning#48).
+   *
+   * One commit gives one AI report, so the whole repo is reviewed again. The
+   * repo and its accepted apps stay live; the apps sent back return to Ready
+   * for review. The run starts first, so a failed dispatch moves nothing.
+   */
+  protected function resubmitLive(NodeInterface $repo): RedirectResponse {
+    if ($this->repoMemberApps->sentBackCount($repo) === 0) {
+      $this->messenger()->addError($this->t('No app in @title is waiting on changes, so there is nothing to re-submit.', ['@title' => $repo->label()]));
+      return $this->redirectToHub();
+    }
+    $status = $repo->hasField('field_review_status') ? (string) ($repo->get('field_review_status')->value ?? '') : '';
+    if (in_array($status, ['pending', 'in_progress'], TRUE)) {
+      $this->messenger()->addWarning($this->t('A review of @title is already running.', ['@title' => $repo->label()]));
+      return $this->redirectToHub();
+    }
+    if (!$this->reviewService->dispatchForNode($repo)) {
+      $this->messenger()->addError($this->t('Could not start the review for @title. Please try again later.', ['@title' => $repo->label()]));
+      return $this->redirectToHub();
+    }
+    $this->repoMemberApps->cascadeModeration($repo, 'ready_for_review', ['needs_adjustment'], 'Re-submitted with the repo.');
+    $this->notifier->notifyResubmitted($repo);
+    $this->messenger()->addStatus($repo->isPublished()
+      ? $this->t('Re-submitted @title. A new review has started, and the apps already accepted stay live.', ['@title' => $repo->label()])
+      : $this->t('Re-submitted @title. A new review of the whole repo has started.', ['@title' => $repo->label()]));
+    return $this->redirectToHub();
+  }
+
+  /**
+   * Admin action: rerun the AI report.
+   *
+   * Route: POST /appverse/repo/{node}/re-review
+   */
+  public function reReview(NodeInterface $node): RedirectResponse {
+    // Kept for existing links; the action itself no longer moves the app's
+    // moderation state (from a published repo that used to demote it).
+    return $this->runReview($node);
+  }
+
+  /**
+   * Admin action: start an AI review of a repo, whatever its editorial state.
+   *
+   * Running the tool and moving the app to Ready for review are different
+   * intents; this does only the first. The result is polled for by cron and
+   * lands as an appverse_review node linked from the hub card.
+   */
+  /**
+   * The hub card's "Assign to me": assigns the repo to the current reviewer,
+   * taking it over from anyone else, or unassigns it when it is already
+   * theirs (appverse-planning#33).
+   */
+  public function assignMe(NodeInterface $node): RedirectResponse {
+    if ($node->bundle() !== 'appverse_repo') {
+      $this->messenger()->addError($this->t('Only Repos can be assigned.'));
+      return $this->redirectToHub();
+    }
+    $current = $this->reviewAssignment->assignee($node);
+    $mine = $current && (int) $current->id() === (int) $this->currentUser()->id();
+    if ($mine) {
+      $this->reviewAssignment->assign($node, NULL);
+      $this->messenger()->addStatus($this->t('You are no longer assigned to @title.', ['@title' => $node->label()]));
+    }
+    elseif ($this->reviewAssignment->assign($node, (int) $this->currentUser()->id())) {
+      $this->messenger()->addStatus($current
+        ? $this->t('You are now assigned to @title, taking over from @name.', ['@title' => $node->label(), '@name' => $current->getDisplayName()])
+        : $this->t('You are now assigned to @title.', ['@title' => $node->label()]));
+    }
+    else {
+      $this->messenger()->addError($this->t('You cannot be assigned: only Appverse reviewers can.'));
+    }
+    return $this->redirectToHub();
+  }
+
+  public function runReview(NodeInterface $node): RedirectResponse {
+    if ($node->bundle() !== 'appverse_repo') {
+      $this->messenger()->addError($this->t('Reviews are only available for Repos.'));
+      return $this->redirectToHub();
+    }
+    if ($this->reviewService->dispatchForNode($node)) {
+      $this->messenger()->addStatus($this->t('AI report started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full report).', ['@title' => $node->label()]));
+    }
+    else {
+      $this->messenger()->addError($this->t('Could not start the AI report for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
+    }
+    return $this->redirectToHub();
   }
 
   /**
@@ -514,7 +629,7 @@ final class AppverseHubController extends ControllerBase {
     $vids = $this->entityTypeManager()->getStorage('node')->revisionIds($repo);
     foreach ($vids as $vid) {
       $rev = $this->entityTypeManager()->getStorage('node')->loadRevision($vid);
-      if ($rev && $rev->hasField('moderation_state') && $rev->get('moderation_state')->value === 'published') {
+      if ($rev instanceof NodeInterface && $rev->hasField('moderation_state') && $rev->get('moderation_state')->value === 'published') {
         return FALSE;
       }
     }
@@ -560,6 +675,22 @@ final class AppverseHubController extends ControllerBase {
         ['@count' => $count, '@title' => $repo->label()]
       ));
     }
+  }
+
+  /**
+   * Access to the hub's repo Publish and Request changes routes.
+   *
+   * Admin only, and only for a repo without a review: one with a review is
+   * decided on its review page, where the decision moves the repo and the
+   * review together. The hub hides these actions then, and the routes refuse
+   * too, since they can be opened by URL (appverse-planning#50).
+   */
+  public function adminWithoutReviewAccess(AccountInterface $account, NodeInterface $node): AccessResult {
+    // A review can appear at any time, so the result is not cached.
+    if (_ood_software_repo_has_review($node)) {
+      return AccessResult::forbidden('This repo is decided on its review page.')->setCacheMaxAge(0);
+    }
+    return $this->adminOnlyAccess($account, $node)->setCacheMaxAge(0);
   }
 
   /**
@@ -612,7 +743,7 @@ final class AppverseHubController extends ControllerBase {
    * Mirrors AddRepoForm::rootDeclaresSingleApp() so resync and submit agree on
    * what a single-app declared repo looks like.
    *
-   * @param array $parsedRootYml
+   * @param array<string, mixed> $parsedRootYml
    *   The decoded root appverse.yml mapping.
    */
   private function rootDeclaresSingleApp(array $parsedRootYml): bool {
