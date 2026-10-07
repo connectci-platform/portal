@@ -417,6 +417,31 @@ final class ReviewPageData {
   }
 
   /**
+   * How a set of gate pills reads as one line.
+   *
+   * A row of pills gave a pass the same weight as a failure, and the passes
+   * are the common case: four of them say only "nothing to see here" while
+   * taking a full line to say it. So the passes collapse to a count, and
+   * anything that is not a pass stays out in full, which is what a reviewer
+   * is looking for (appverse-planning#54).
+   *
+   * @param array<int, array{key: string, label: string, value: string}> $pills
+   *
+   * @return array{total: int, passed: int, all_passed: bool, passes: array<int, array{key: string, label: string, value: string}>, others: array<int, array{key: string, label: string, value: string}>}
+   */
+  public static function gateSummary(array $pills): array {
+    $passes = array_values(array_filter($pills, static fn (array $p): bool => $p['value'] === 'pass'));
+    $others = array_values(array_filter($pills, static fn (array $p): bool => $p['value'] !== 'pass'));
+    return [
+      'total' => count($pills),
+      'passed' => count($passes),
+      'all_passed' => $pills !== [] && $others === [],
+      'passes' => $passes,
+      'others' => $others,
+    ];
+  }
+
+  /**
    * One block: title, level (or NULL), summary, note, count line, groups.
    *
    * @param array<mixed> $findings

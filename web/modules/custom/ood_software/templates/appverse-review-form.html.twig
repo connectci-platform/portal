@@ -230,10 +230,26 @@
               <span class="cat-name">{{ 'Gates and catalog checks'|t }}</span>
               <div class="cat-count">{{ 'Reviewer Process, step 1'|t }}</div>
             </div>
-            {% if page.repo_gates %}
+            {# A row of pills gave a pass the same weight as a failure, and the
+               passes are the common case. So the passes read as a count, with
+               the names behind a toggle, and anything that is not a pass stays
+               out in full (appverse-planning#54). #}
+            {% if page.repo_gate_summary.total %}
               <div class="gates">
-                {% for gate in page.repo_gates %}
-                  <span class="gate gate--{{ gate.value }}" title="{{ gate.label }}: {{ gate.value|replace({'_': ' '}) }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
+                {% if page.repo_gate_summary.passes %}
+                  <details class="gate-passes">
+                    <summary class="gate-passes__count">
+                      {{ '@n of @total gates passed'|t({'@n': page.repo_gate_summary.passed, '@total': page.repo_gate_summary.total}) }}
+                    </summary>
+                    <div class="gate-passes__list">
+                      {% for gate in page.repo_gate_summary.passes %}
+                        <span class="gate gate--pass">{{ gate.label }}</span>
+                      {% endfor %}
+                    </div>
+                  </details>
+                {% endif %}
+                {% for gate in page.repo_gate_summary.others %}
+                  <span class="gate gate--{{ gate.value }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
                 {% endfor %}
               </div>
             {% endif %}

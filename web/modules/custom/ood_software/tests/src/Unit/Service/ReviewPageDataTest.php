@@ -454,4 +454,62 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertNull(ReviewPageData::historyPosition([], 10));
   }
 
+  /**
+   * All four gates pass: a count, and nothing held out.
+   *
+   * @covers ::gateSummary
+   */
+  public function testGateSummaryWhenEverythingPasses(): void {
+    $summary = ReviewPageData::gateSummary(ReviewPageData::gatePills([
+      'license' => 'pass',
+      'readme_substantive' => 'pass',
+      'not_archived' => 'pass',
+      'public' => 'pass',
+    ]));
+
+    $this->assertSame(4, $summary['total']);
+    $this->assertSame(4, $summary['passed']);
+    $this->assertTrue($summary['all_passed']);
+    $this->assertSame([], $summary['others']);
+    $this->assertCount(4, $summary['passes']);
+  }
+
+  /**
+   * Anything that is not a pass stays out in full, whatever it is called.
+   *
+   * fail, warn and not_checked all mean the reviewer has something to look
+   * at, so none of them collapse into the count.
+   *
+   * @covers ::gateSummary
+   */
+  public function testGateSummaryHoldsOutEverythingThatIsNotAPass(): void {
+    $summary = ReviewPageData::gateSummary(ReviewPageData::gatePills([
+      'license' => 'pass',
+      'readme_substantive' => 'fail',
+      'not_archived' => 'warn',
+      'public' => 'not_checked',
+    ]));
+
+    $this->assertSame(4, $summary['total']);
+    $this->assertSame(1, $summary['passed']);
+    $this->assertFalse($summary['all_passed']);
+    $this->assertSame(
+      ['readme_substantive', 'not_archived', 'public'],
+      array_column($summary['others'], 'key'),
+      'The three non-passes are held out, in the tool\'s order.'
+    );
+  }
+
+  /**
+   * A review with no stored criteria has not passed anything.
+   *
+   * @covers ::gateSummary
+   */
+  public function testGateSummaryOfNoGatesIsNotAPass(): void {
+    $summary = ReviewPageData::gateSummary([]);
+
+    $this->assertSame(0, $summary['total']);
+    $this->assertFalse($summary['all_passed'], 'Nothing to pass is not the same as passing.');
+  }
+
 }

@@ -457,6 +457,39 @@
   color: var(--gray-500);
 }
 
+/* The passes, folded into a count (appverse-planning#54). Closed it is one
+   quiet line; open it lists the gates that passed. A failure never goes in
+   here: it renders as its own pill beside this. */
+.arv-page .gate-passes {
+  display: inline-block;
+}
+.arv-page .gate-passes__count {
+  font-size: .76rem;
+  color: var(--status-green-text);
+  cursor: pointer;
+  list-style: none;
+  padding: .1rem .5rem;
+  border-radius: 4px;
+  background: #e0f3f0;
+}
+/* Safari draws its own disclosure triangle through ::-webkit-details-marker
+   rather than list-style. */
+.arv-page .gate-passes__count::-webkit-details-marker {
+  display: none;
+}
+.arv-page .gate-passes__count::before {
+  content: '▸ ';
+}
+.arv-page .gate-passes[open] .gate-passes__count::before {
+  content: '▾ ';
+}
+.arv-page .gate-passes__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .3rem;
+}
+
 /* Gates and catalog checks (Reviewer Process step 1), top of the main column. */
 .arv-page .gate-rows {
   list-style: none;

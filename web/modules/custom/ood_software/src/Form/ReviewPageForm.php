@@ -567,6 +567,8 @@ final class ReviewPageForm extends FormBase {
     }
     $notes = array_reverse($notes);
 
+    $repoGates = ReviewPageData::gatePills(json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
+
     return [
       'nid' => $node->id(),
       'title' => $repo ? $repo->label() : $node->label(),
@@ -591,7 +593,10 @@ final class ReviewPageForm extends FormBase {
       // Step 1 of the Reviewer Process: the repo gates (pass/fail stored since
       // the first import; the report's evidence per row and the Catalog
       // checks only on reviews imported since they were parsed).
-      'repo_gates' => ReviewPageData::gatePills(json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []),
+      'repo_gates' => $repoGates,
+      // The same gates as one line: a count of the passes, with anything that
+      // is not a pass held out in full (appverse-planning#54).
+      'repo_gate_summary' => ReviewPageData::gateSummary($repoGates),
       'gate_rows' => $this->gateRows($node),
       'catalog_html' => $node->hasField('field_arv_catalog_checks') ? $this->renderMarkdown((string) ($node->get('field_arv_catalog_checks')->value ?? '')) : NULL,
       'history' => $history,
