@@ -1,13 +1,17 @@
 /**
  * The review progress line (appverse-planning#31): numbered steps on the
- * review page header, thin segments on the hub card. Colors follow the mock's
- * legend, in the site palette: done green, current blue ring, waiting on the contributor slate
- * violet, failed or declined red, not reached grey ring.
+ * review page header, thin segments on the hub card: done and waiting on the
+ * contributor both brand black, current a blue ring, failed or declined red,
+ * not reached a grey ring.
  */
 .arv-progress {
-  --arv-p-done: #00857a;
+  /* Done and waiting are both brand black: three filled colours across five
+     dots made the line read as a legend to decode rather than a position to
+     glance at. Red stays, because a failure is worth a colour
+     (appverse-planning#53). */
+  --arv-p-done: #232323;
   --arv-p-current: #0076af;
-  --arv-p-waiting: #6467a8;
+  --arv-p-waiting: #232323;
   --arv-p-failed: #c91235;
   --arv-p-none: #c9cdd0;
   --arv-p-muted: #545860;
@@ -50,9 +54,10 @@
   color: var(--arv-p-muted);
 }
 
-.arv-progress__step.is-done .arv-progress__label { color: var(--arv-p-done); }
+/* The caption under a step stays muted once done or waiting: those dots are
+   black now, and a black caption at .78rem competes with the step name over
+   it. Current and failed keep their colour, which is the point of them. */
 .arv-progress__step.is-current .arv-progress__label { color: var(--arv-p-current); }
-.arv-progress__step.is-waiting .arv-progress__label { color: var(--arv-p-waiting); }
 .arv-progress__step.is-failed .arv-progress__label { color: var(--arv-p-failed); }
 
 /* Steps: a numbered circle, a connector to the next step, name, label. */

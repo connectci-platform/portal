@@ -12,6 +12,11 @@
   --gray-300: #c9cdd0;
   --gray-150: #dddedf;
   --gray-100: #eceded;
+  /* The fill behind the facts bar, the rating badges and the internal notes.
+     Its own token, not one of the greys above: those also draw borders and
+     dividers, where a lighter value would weaken the structure
+     (appverse-planning#53). */
+  --surface: #f2f3f3;
   --white: #fff;
   --blue: #0076af;
   --blue-soft: #e2eff6;
@@ -181,7 +186,7 @@
    that acts, and a header of facts should sit back from it
    (appverse-planning#53). */
 .arv-page .overview-block {
-  background: var(--gray-100);
+  background: var(--surface);
   padding: 10px 18px;
   margin-bottom: 20px;
   border-radius: 3px;
@@ -424,7 +429,7 @@
 }
 
 .arv-page .internal-notes-block {
-  background: var(--gray-100);
+  background: var(--surface);
   padding: 16px 16px 18px;
   border-radius: 6px;
   margin-top: 26px;
@@ -552,13 +557,15 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--gray-150);
+  background: var(--surface);
   border-radius: .25rem;
   padding: 4px 10px;
   font-family: inherit;
 }
 .arv-page .rating-badge--none {
-  color: var(--gray-500);
+  /* gray-500 on the badge fill was 2.87:1, under AA, and was so on the old
+     grey too. gray-700 keeps it quiet at 6.42:1 (appverse-planning#53). */
+  color: var(--gray-700);
   font-size: .78rem;
 }
 .arv-page .rating-label {
