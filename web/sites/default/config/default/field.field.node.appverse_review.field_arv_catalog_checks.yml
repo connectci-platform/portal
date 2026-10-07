@@ -10,7 +10,7 @@ field_name: field_arv_catalog_checks
 entity_type: node
 bundle: appverse_review
 label: 'Catalog checks'
-description: 'The report''s Catalog checks section (duplicate check, software match, vocabularies), as markdown, parsed from the md report at import.'
+description: "The report's Catalog checks section (duplicate check, software match, vocabularies), as markdown, parsed from the md report at import."
 required: false
 translatable: false
 default_value: {  }
