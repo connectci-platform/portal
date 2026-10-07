@@ -78,13 +78,13 @@
 {# A group of gates: the passes as a count behind a toggle, and anything that
    is not a pass out in full. Both the repo's gates and a block's own use it,
    so one kind of thing reads one way (appverse-planning#53). #}
-{% macro gate_group(summary) %}
+{% macro gate_group(summary, label) %}
   {% if summary and summary.total %}
     <div class="gates">
       {% if summary.passes %}
         <details class="gate-passes">
           <summary class="gate-passes__count">
-            {{ '@n of @total passed'|t({'@n': summary.passed, '@total': summary.total}) }}
+            {{ '@label: @n of @total passed'|t({'@label': label, '@n': summary.passed, '@total': summary.total}) }}
           </summary>
           <div class="gate-passes__list">
             {% for gate in summary.passes %}
@@ -165,8 +165,8 @@
       {# The repo's own gates lead, because they decide whether the app belongs
          in the catalog at all; the block's gates are the per-app file checks
          that follow. Both render the same way (appverse-planning#53). #}
-      {{ m.gate_group(repo_gates) }}
-      {{ m.gate_group(block.gate_summary) }}
+      {{ m.gate_group(repo_gates, 'Repo'|t) }}
+      {{ m.gate_group(block.gate_summary, 'Files'|t) }}
     </div>
     {# The gate evidence and the catalog checks come with the gates. #}
     {% if repo_gates and repo_gates.rows %}
@@ -257,17 +257,31 @@
     <div class="overview-row">
       {# Two lines: what was reviewed, then who/when and the links. One long
          line wrapped unevenly. #}
+      {# Who and what, separated by slashes: the repo, who submitted it, who
+         maintains it, and what shape it is. The commit and the run details
+         follow on their own line, since they are about this review rather
+         than the app (appverse-planning#53). #}
       <div class="overview-meta">
-        <div class="overview-line">
-          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
-          {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
-          · {{ page.shape }}
+        <div class="overview-line overview-facts">
+          {% if page.repo_url %}
+            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
+          {% endif %}
+          {% if page.contributor %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            <a href="{{ page.contributor.url }}">{{ page.contributor.name }}</a>
+          {% endif %}
+          {% if page.maintainer %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ page.maintainer }}
+          {% endif %}
+          {% if page.shape %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ page.shape }}
+          {% endif %}
         </div>
         <div class="overview-line overview-line--sub">
-          {% set sub = [] %}
-          {% if page.maintainer %}{% set sub = sub|merge([('Maintainer'|t) ~ ': ' ~ page.maintainer]) %}{% endif %}
-          {% if page.reviewed_at %}{% set sub = sub|merge([('Reviewed'|t) ~ ' ' ~ page.reviewed_at]) %}{% endif %}
-          {{ sub|join(' · ') }}
+          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
+          {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
           {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
           {% if is_reviewer %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
         </div>

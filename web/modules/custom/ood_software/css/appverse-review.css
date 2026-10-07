@@ -173,9 +173,12 @@
 }
 
 /* Overview bar. */
+/* Light grey, not the brand black: the black now belongs to the one section
+   that acts, and a header of facts should sit back from it
+   (appverse-planning#53). */
 .arv-page .overview-block {
-  background: #232323;
-  padding: 8px 18px;
+  background: var(--gray-100);
+  padding: 10px 18px;
   margin-bottom: 20px;
   border-radius: 3px;
 }
@@ -188,7 +191,16 @@
 }
 .arv-page .overview-meta {
   font-size: .85rem;
-  color: #fff;
+  color: var(--ink);
+}
+/* The facts line: repo / contributor / maintainer / shape. */
+.arv-page .overview-facts {
+  font-weight: 600;
+}
+.arv-page .overview-sep {
+  color: var(--gray-700);
+  font-weight: 400;
+  margin: 0 .3rem;
 }
 .arv-page .overview-line + .overview-line {
   margin-top: 2px;
@@ -198,27 +210,28 @@
 }
 .arv-page .overview-line--sub {
   font-size: .78rem;
-  color: #c9cdd0;
+  color: var(--gray-700);
+  font-weight: 400;
 }
 .arv-page .overview-meta code {
   font-size: .85em;
-  background: rgba(255, 255, 255, .15);
-  color: #fff;
+  background: rgba(0, 0, 0, .06);
+  color: var(--ink);
 }
 .arv-page .overview-meta a,
 .arv-page .prev-reviews a {
-  color: #fff;
+  color: var(--blue-text);
   text-decoration: underline;
 }
 .arv-page .prev-reviews {
   font-size: .83rem;
-  color: #fff;
+  color: var(--gray-700);
 }
 .arv-page .prev-reviews a {
   margin-left: 8px;
 }
 .arv-page .overview-block .muted {
-  color: #c9cdd0;
+  color: var(--gray-700);
 }
 
 /* Two columns: findings, and the sticky reviewer sidebar.

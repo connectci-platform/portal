@@ -726,6 +726,9 @@ final class ReviewPageForm extends FormBase {
       'repo_label' => $repo ? $repo->label() : '',
       'repo_url' => $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty() ? $repo->get('field_repo_url')->first()->getValue()['uri'] : '',
       'maintainer' => $repo && $repo->hasField('field_repo_maintainer_name') ? (string) ($repo->get('field_repo_maintainer_name')->value ?? '') : '',
+      // Who submitted the repo, linked to their community persona as the hub
+      // card links it. NULL when the account has since been deleted.
+      'contributor' => $this->contributorLink($repo),
       'sha' => $sha,
       'sha7' => substr($sha, 0, 7),
       'ref' => (string) ($node->get('field_arv_ref')->value ?? ''),
@@ -826,6 +829,28 @@ final class ReviewPageForm extends FormBase {
       'evidence_parts' => ReviewPageData::evidenceParts((string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
+    ];
+  }
+
+  /**
+   * The repo's submitter, with a link to their community persona.
+   *
+   * @return array{name: string, url: string}|null
+   */
+  protected function contributorLink(?NodeInterface $repo): ?array {
+    if (!$repo instanceof NodeInterface) {
+      return NULL;
+    }
+    $owner = $repo->getOwner();
+    // getOwner() returns NULL when the account was deleted but the repo
+    // remains, whatever the stub says.
+    // @phpstan-ignore-next-line booleanNot.alwaysFalse
+    if (!$owner) {
+      return NULL;
+    }
+    return [
+      'name' => $owner->getDisplayName(),
+      'url' => '/community-persona/' . $owner->id(),
     ];
   }
 
