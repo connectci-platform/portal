@@ -256,7 +256,8 @@
          need much less than the review you are reading (appverse-planning#54). #}
       {% if page.history.others is not empty %}
         <details class="other-reviews">
-          <summary class="other-reviews__count">{{ '@n other review(s) of this repo'|t({'@n': page.history.others|length}) }}</summary>
+          {% set n = page.history.others|length %}
+          <summary class="other-reviews__count">{{ n == 1 ? '1 other review of this repo'|t : '@n other reviews of this repo'|t({'@n': n}) }}</summary>
           <ul class="other-reviews__list">
             {% for other in page.history.others %}
               <li>
