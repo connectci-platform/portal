@@ -371,6 +371,51 @@
   order: -1;
 }
 
+/* The black bar over the two fields the reviewer writes. Square, because a
+   solid dark fill is square on this page, and tight so it reads as a label
+   for the field under it rather than a block of its own
+   (appverse-planning#53). */
+.arv-page .sidebar-bar {
+  background: var(--ink);
+  padding: 8px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+}
+.arv-page .sidebar-bar h2.sec {
+  color: #fff;
+  margin: 0;
+}
+/* The helper sits under the bar, then the field; nothing below it. */
+.arv-page .sidebar-bar + .js-form-item .description,
+.arv-page .sidebar-bar + .js-form-item .form-text {
+  margin-top: 10px;
+}
+
+/* The corner rule: rounded only where the fill is soft grey. Anything with
+   a stroke or a solid dark fill is square — cards, inputs, selects,
+   textareas, buttons, the black bars (appverse-planning#53). */
+.arv-page .catblock,
+.arv-page .sidebar input[type="text"],
+.arv-page .sidebar select,
+.arv-page .sidebar textarea,
+.arv-page .btn,
+.arv-page input[type="submit"],
+.arv-page .sidebar-bar {
+  border-radius: 0;
+}
+/* …and the soft grey fields keep theirs. */
+/* The grey bar is a soft grey fill, so it rounds with the rest of them. */
+.arv-page .overview-block,
+.arv-page .internal-notes-block,
+.arv-page .rating-badge,
+.arv-page .cat-icon,
+.arv-page .gate,
+.arv-page .gate-passes__count {
+  border-radius: .25rem;
+}
+
 .arv-page .internal-notes-block {
   background: var(--gray-100);
   padding: 16px 16px 18px;

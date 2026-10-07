@@ -444,12 +444,14 @@
       {% if is_reviewer and page.recommendation and page.recommendation_differs %}
         <div class="concl-caption" title="{{ page.recommendation_note }}">{{ 'Changed from the automated suggestion: @s'|t({'@s': page.recommendation_label}) }}</div>
       {% endif %}
-      <hr class="sidebar-rule">
-
-      <div class="sec-head-row"><h2 class="sec">{{ 'Email to contributor'|t }}</h2></div>
+      {# The two things the reviewer writes, each under a black bar: one goes
+         to the contributor, the other goes public, and the bar is what tells
+         them apart at a glance. No rules between sections; the bars do that
+         work now (appverse-planning#53). #}
+      <div class="sidebar-bar"><h2 class="sec">{{ 'Email to Contributor'|t }}</h2></div>
       {% if can_decide %}{{ form.response }}{% else %}<div class="arv-text">{{ page.response }}</div>{% endif %}
 
-      <div class="sec-head-row"><h2 class="sec">{{ 'Public summary'|t }}</h2></div>
+      <div class="sidebar-bar"><h2 class="sec">{{ 'Public Summary'|t }}</h2></div>
       {% if can_edit %}{{ form.assessment }}{% else %}<div class="arv-text">{{ page.assessment }}</div>{% endif %}
 
       {% if is_reviewer %}
