@@ -108,17 +108,28 @@ function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type,
  * @param array<string, mixed> $form
  */
 function ood_software_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
-  // Exposed date filters render as plain textfields with no format hint.
-  // Upgrade their value/min/max inputs to HTML5 date pickers so the expected
-  // YYYY-MM-DD shape is obvious. Applies to any view's exposed 'date' filter,
-  // not just this module's.
+  // Two fixes to exposed filters, for any view rather than just this module's.
+  // Date filters render as plain textfields with no format hint, so their
+  // value/min/max inputs become HTML5 date pickers; and the user_name filter
+  // drops core's description (see below).
   if (str_starts_with($form_id, 'views_exposed_form')) {
     $view = $form_state->getStorage()['view'] ?? NULL;
     if ($view instanceof \Drupal\views\ViewExecutable) {
+      // The user_name filter carries core's own "Enter a comma separated list
+      // of user names", which describes a storage format rather than telling
+      // you what to do, and the extra line puts the field ~24px taller than
+      // the selects beside it, breaking the row's alignment. The field is an
+      // entity autocomplete that suggests names as you type, so it explains
+      // itself (appverse-planning#60). Removed rather than visually hidden:
+      // hidden text is still announced, and this text is not worth hearing.
       foreach ($view->filter as $filter) {
-        if (empty($filter->options['exposed'])
-          || $filter->getPluginId() !== 'date'
-          || empty($filter->options['expose']['identifier'])) {
+        if (empty($filter->options['exposed']) || empty($filter->options['expose']['identifier'])) {
+          continue;
+        }
+        if ($filter->getPluginId() === 'user_name' && isset($form[$filter->options['expose']['identifier']])) {
+          unset($form[$filter->options['expose']['identifier']]['#description']);
+        }
+        if ($filter->getPluginId() !== 'date') {
           continue;
         }
         $key = $filter->options['expose']['identifier'];
