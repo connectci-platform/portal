@@ -103,6 +103,44 @@ function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type,
 }
 
 /**
+ * The workflow ids that apply to the node bundles a view filters to.
+ *
+ * Reads the view's own "type" filter, so a view of appverse content gets the
+ * appverse workflows and nothing else. Empty when the view does not filter by
+ * bundle, in which case the caller leaves the options alone.
+ *
+ * @return array<string, true>
+ *   Workflow ids as keys.
+ */
+function _ood_software_view_workflows(\Drupal\views\ViewExecutable $view): array {
+  $bundles = [];
+  foreach ($view->filter as $filter) {
+    if ($filter->getPluginId() === 'bundle' || ($filter->realField ?? '') === 'type') {
+      foreach ((array) ($filter->value ?? []) as $bundle) {
+        $bundles[(string) $bundle] = TRUE;
+      }
+    }
+  }
+  if ($bundles === []) {
+    return [];
+  }
+  $workflows = [];
+  foreach (\Drupal::entityTypeManager()->getStorage('workflow')->loadMultiple() as $workflow) {
+    $plugin = $workflow->getTypePlugin();
+    if (!$plugin instanceof \Drupal\content_moderation\Plugin\WorkflowType\ContentModeration) {
+      continue;
+    }
+    foreach ($plugin->getBundlesForEntityType('node') as $bundle) {
+      if (isset($bundles[$bundle])) {
+        $workflows[$workflow->id()] = TRUE;
+        break;
+      }
+    }
+  }
+  return $workflows;
+}
+
+/**
  * Implements hook_form_alter().
  *
  * @param array<string, mixed> $form
@@ -128,6 +166,44 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
         }
         if ($filter->getPluginId() === 'user_name' && isset($form[$filter->options['expose']['identifier']])) {
           unset($form[$filter->options['expose']['identifier']]['#description']);
+        }
+        // The moderation-state widget lists every state of every workflow on
+        // the site, so an appverse view offered 20 options of which 14 could
+        // never match, with the same labels repeating ("Draft" four times).
+        // Keep only the states of the workflows the view's own bundles use.
+        // Done here rather than with the filter's "reduce" option, because
+        // that reduces to the filter's value, which is also the default
+        // selection: this display defaults to the review queue
+        // (ready_for_review + needs_adjustment) and must keep doing so
+        // (appverse-planning#60).
+        if ($filter->getPluginId() === 'moderation_state_filter'
+          && isset($form[$filter->options['expose']['identifier']]['#options'])) {
+          $key = $filter->options['expose']['identifier'];
+          $workflows = _ood_software_view_workflows($view);
+          if ($workflows !== []) {
+            // Options come grouped by workflow LABEL, which renaming a
+            // workflow would change, so match on each option's own key
+            // instead: it is "<workflow id>-<state id>". A group left with
+            // nothing in it goes too.
+            $kept = [];
+            foreach ($form[$key]['#options'] as $group => $states) {
+              if (!is_array($states)) {
+                $states = [$group => $states];
+              }
+              $states = array_filter(
+                $states,
+                static function (string $state) use ($workflows): bool {
+                  $workflow = strstr($state, '-', TRUE);
+                  return $workflow !== FALSE && isset($workflows[$workflow]);
+                },
+                ARRAY_FILTER_USE_KEY
+              );
+              if ($states !== []) {
+                $kept[$group] = $states;
+              }
+            }
+            $form[$key]['#options'] = $kept;
+          }
         }
         if ($filter->getPluginId() !== 'date') {
           continue;
