@@ -208,14 +208,17 @@ class DecisionEmailTest extends UnitTestCase {
   }
 
   /**
-   * Suggestions and a decline with nothing accepted: the reviewer publishes
-   * the accepted apps later.
+   * Suggestions and a decline with nothing accepted: the apps are not live
+   * yet, so the contributor is told there is time to act before they are.
    *
    * @covers ::decision
    */
   public function testMixedWaitingForPublish(): void {
     $email = self::email(['v1' => 'accept_with_suggestions', 'v2' => 'reject'], 'x');
-    $this->assertContains('Grace will publish the accepted apps in the catalog.', self::paragraphs($email));
+    $this->assertContains(
+      'The accepted apps are not in the catalog yet, so there is time to act on the suggestions before they go public. Tell Grace when you are ready, or say nothing and they will be listed as they are.',
+      self::paragraphs($email),
+    );
     $this->assertSame(['The full review'], self::links($email));
   }
 

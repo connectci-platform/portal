@@ -147,7 +147,7 @@ final class ReviewDecision {
     $any = static fn (string $d): bool => in_array($d, $apps, TRUE);
     return match (TRUE) {
       $any('request_changes') => sprintf('Waiting on %s to re-submit. They were asked to fix the repo on GitHub and re-submit from their AppVerse page.', $contributor),
-      $publishPending => sprintf('Waiting on a reviewer to publish. %s was told it is accepted with suggestions.', $contributor),
+      $publishPending => sprintf('Waiting on a reviewer to publish. %s was told it is accepted with suggestions, and that there is time to act on them before it goes public. Publish when they say they are ready, or when you have waited long enough.', $contributor),
       $any('accept') || $any('accept_with_suggestions') => 'Nothing to wait on: it is in the AppVerse catalog.',
       default => 'Nothing to wait on: it was declined.',
     };
