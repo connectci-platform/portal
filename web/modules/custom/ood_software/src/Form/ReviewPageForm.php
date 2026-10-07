@@ -54,7 +54,8 @@ final class ReviewPageForm extends FormBase {
    * The month-name date formats, unambiguous in any locale.
    */
   const DATE = 'M j, Y';
-  const DATE_TIME = 'M j, Y H:i';
+  // 12-hour: "Oct 2 2026 3:23 PM" rather than 15:23.
+  const DATE_TIME = 'M j, Y g:i A';
 
   const REVIEWER_PERMISSION = 'administer appverse content';
 
@@ -338,7 +339,7 @@ final class ReviewPageForm extends FormBase {
       // decision is sent (appverse-planning#53). The rest says what not to
       // write, because the email already greets them, lists each app's
       // decision and says how to re-submit (appverse-planning#48).
-      '#description' => $this->t('Write only what to change and why. The email already greets them and says how to re-submit.'),
+      '#description' => $this->t('Make the changes you want, you can send this on the next screen.'),
       // Above the field, not below it: it says what the field is for, which
       // is worth knowing before you start typing rather than after
       // (appverse-planning#53).
@@ -429,7 +430,7 @@ final class ReviewPageForm extends FormBase {
       '#attributes' => ['placeholder' => $this->t('The published assessment, in your words…')],
       // Where it ends up (appverse-planning#53): this one is public, which the
       // placeholder alone did not make clear.
-      '#description' => $this->t('Anyone can read this once the app is accepted.'),
+      '#description' => $this->t('Published on the public review when the app is published.'),
       '#description_display' => 'before',
     ];
   }

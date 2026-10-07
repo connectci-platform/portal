@@ -266,13 +266,13 @@
           {% if page.repo_url %}
             <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
           {% endif %}
-          {% if page.contributor %}
-            <span class="overview-sep" aria-hidden="true">/</span>
-            <a href="{{ page.contributor.url }}">{{ page.contributor.name }}</a>
-          {% endif %}
           {% if page.maintainer %}
             <span class="overview-sep" aria-hidden="true">/</span>
-            {{ page.maintainer }}
+            {{ 'Maintainer: @m'|t({'@m': page.maintainer}) }}
+          {% endif %}
+          {% if page.contributor %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ 'Contributor:'|t }} <a href="{{ page.contributor.url }}">{{ page.contributor.name }}</a>
           {% endif %}
           {% if page.shape %}
             <span class="overview-sep" aria-hidden="true">/</span>
@@ -436,15 +436,18 @@
               {{ page.state == 'published' ? 'Published.'|t : 'The contributor can read this; the public cannot.'|t }}
             </div>
           {% else %}
-            <h2 class="sec">{{ 'Finish the review'|t }}</h2>
-            <div class="publish-note">{{ 'Reviewers only until the decision is sent.'|t }}</div>
+            <h2 class="sec">{{ 'Finish Review'|t }}</h2>
+            <div class="publish-note">{{ 'Public Summary will be visible to public after the app is published.'|t }}</div>
           {% endif %}
           <div class="publish-row">{{ form.actions }}</div>
+          {% if can_decide %}
+            <div class="next-step">{{ 'Next Step: Option to send above email to the contributor.'|t }}</div>
+          {% endif %}
         </div>
 
         <div class="internal-notes-block">
           <h2 class="sec">{{ 'Internal notes'|t }}</h2>
-          <p class="notes-help">{{ 'Reviewers only. Context for whoever picks this up next.'|t }}</p>
+          <p class="notes-help">{{ 'Reviewers only. Leave context for whoever picks this up next.'|t }}</p>
           <div class="note-add">{{ form.new_note }}</div>
           <div class="notes-list">
             {% for note in page.notes %}

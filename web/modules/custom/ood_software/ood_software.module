@@ -387,7 +387,7 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
         $ts = (int) $node->get('field_appverse_lastupdated')->value;
         if ($ts > 0) {
           $form['field_appverse_lastupdated']['widget'][0]['value']['#field_suffix'] =
-            ' (' . \Drupal::service('date.formatter')->format($ts, 'custom', 'M j, Y H:i') . ')';
+            ' (' . \Drupal::service('date.formatter')->format($ts, 'custom', 'M j, Y g:i A') . ')';
         }
       }
     }
@@ -2572,7 +2572,7 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     // The card shows when the repo was submitted (node created time) rather
     // than the former last-sync timestamp, which is now surfaced only via
     // the exposed "Last synced" views filter.
-    'submitted' => \Drupal::service('date.formatter')->format($repo->getCreatedTime(), 'custom', 'M j, Y H:i'),
+    'submitted' => \Drupal::service('date.formatter')->format($repo->getCreatedTime(), 'custom', 'M j, Y g:i A'),
     'unpublished_after_publish' => !$repo->isPublished() && $moderationState === 'published',
     'moderation_comment' => $moderationComment,
     'edit_url' => $editUrl,
