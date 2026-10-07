@@ -29,6 +29,19 @@
   /* The brand blue sits at 4.25:1 on its own soft background, under the AA
      floor for small text, so tinted chips use this instead. */
   --blue-text: #00628f;
+
+  /* The sidebar's three text roles. It had six sizes and two different
+     muted greys; these are the only ones it should use
+     (appverse-planning#53).
+
+     heading   a section's name
+     control   anything you type in or pick from, and the buttons that act
+               on it, so a control and its button read as one size
+     helper    the muted line under a control saying what it does */
+  --sb-heading: .95rem;
+  --sb-control: .86rem;
+  --sb-helper: .78rem;
+  --sb-helper-color: var(--gray-700);
   color: var(--ink);
   line-height: 1.5;
 }
@@ -69,6 +82,31 @@
 .arv-page .btn:hover {
   text-decoration: none;
 }
+/* The sidebar's controls and the buttons that act on them share one size, so
+   a button does not read as a smaller thing than the field above it
+   (appverse-planning#53). */
+.arv-page .sidebar select,
+.arv-page .sidebar textarea,
+.arv-page .sidebar input[type="text"],
+.arv-page .sidebar .form-control,
+.arv-page .sidebar .btn,
+.arv-page .sidebar input[type="submit"] {
+  font-size: var(--sb-control);
+}
+
+/* The theme sets appearance: none on selects without putting an arrow back,
+   so Reviewer and Decision read as plain text boxes and nothing says they
+   open a list. An inline SVG chevron restores that, with room on the right so
+   a long option does not run under it (appverse-planning#53). */
+.arv-page .sidebar select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23545860' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
 /* The confirm forms' button row: a real gap rather than the whitespace
    between two inline elements, and both aligned on one line. On these forms
    .arv-page is the <form> and .form-actions its own child. */
@@ -113,7 +151,7 @@
 }
 
 .arv-page h2.sec {
-  font-size: .95rem;
+  font-size: var(--sb-heading);
   font-weight: 700;
   margin: 26px 0 10px;
 }
@@ -224,9 +262,15 @@
 .arv-page .decision-value {
   font-weight: 600;
 }
-.arv-page .concl-caption {
-  font-size: .76rem;
-  color: var(--gray-500);
+/* The sidebar's one muted helper style. Drupal's own .form-text came in at
+   12.8px/#6c757d and this at 12.16px/#8b9195, two greys a few tenths of a
+   pixel apart; both read as one thing now (appverse-planning#53). */
+.arv-page .concl-caption,
+.arv-page .sidebar .form-text,
+.arv-page .sidebar .form-text.text-muted,
+.arv-page .sidebar .description {
+  font-size: var(--sb-helper);
+  color: var(--sb-helper-color);
 }
 .arv-page .sidebar-rule {
   border: none;
@@ -239,8 +283,8 @@
   margin-bottom: 28px;
 }
 .arv-page .publish-note {
-  font-size: .76rem;
-  color: var(--gray-700);
+  font-size: var(--sb-helper);
+  color: var(--sb-helper-color);
   margin-bottom: 8px;
 }
 .arv-page .publish-row,
@@ -261,12 +305,10 @@
   border-radius: 6px;
   margin-top: 26px;
 }
-.arv-page .internal-notes-block h2.sec {
-  font-size: .83rem;
-}
+
 .arv-page .notes-help {
-  font-size: .68rem;
-  color: var(--gray-700);
+  font-size: var(--sb-helper);
+  color: var(--sb-helper-color);
   margin: 0 0 12px;
 }
 .arv-page .note-add {
@@ -819,8 +861,14 @@
 }
 .arv-page .add-finding > summary {
   font-size: .78rem;
-  color: var(--blue);
+  color: var(--blue-text);
   cursor: pointer;
+  /* No disclosure triangle: the "+" already says what this opens.
+     list-style covers most browsers, the pseudo-element covers Safari. */
+  list-style: none;
+}
+.arv-page .add-finding > summary::-webkit-details-marker {
+  display: none;
 }
 .arv-page .add-finding > summary:hover {
   text-decoration: underline;

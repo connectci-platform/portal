@@ -257,9 +257,12 @@
       {% if page.repo_gates or page.gate_rows or page.catalog_html %}
         <div class="catblock repo-checks" id="block-repo-checks">
           <div class="cat-top">
+            {# No "Reviewer Process, step 1" here: it was the only step on the
+               page that was numbered, which asked where the others were
+               (appverse-planning#53). Worth revisiting if the rest get
+               labelled. #}
             <div class="cat-title-row">
               <span class="cat-name">{{ 'Gates and catalog checks'|t }}</span>
-              <div class="cat-count">{{ 'Reviewer Process, step 1'|t }}</div>
             </div>
             {# A row of pills gave a pass the same weight as a failure, and the
                passes are the common case. So the passes read as a count, with

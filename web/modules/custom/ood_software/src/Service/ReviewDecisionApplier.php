@@ -599,7 +599,7 @@ final class ReviewDecisionApplier {
     $email['subject'] = $this->t('Updated: @subject', ['@subject' => $email['subject']]);
     // After the greeting, before the decision.
     array_splice($email['blocks'], 1, 0, [['p', $this->t('This updates the decision sent on @date (@decision) and replaces it.', [
-      '@date' => $this->dateFormatter->format($oldAt, 'custom', 'j F Y'),
+      '@date' => $this->dateFormatter->format($oldAt, 'custom', 'M j, Y'),
       '@decision' => ReviewProgress::DECISION_LABELS[ReviewProgress::strictestDecision(array_values($sent['apps'] ?? []))] ?? '',
     ])]]);
     return $email;

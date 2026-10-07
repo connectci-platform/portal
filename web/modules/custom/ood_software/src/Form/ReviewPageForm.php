@@ -50,6 +50,12 @@ use Drupal\Core\Entity\FieldableEntityInterface;
  */
 final class ReviewPageForm extends FormBase {
 
+  /**
+   * The month-name date formats, unambiguous in any locale.
+   */
+  const DATE = 'M j, Y';
+  const DATE_TIME = 'M j, Y H:i';
+
   const REVIEWER_PERMISSION = 'administer appverse content';
 
   // No security axis: security is findings only (schema 1.2), so there is no
@@ -701,7 +707,7 @@ final class ReviewPageForm extends FormBase {
       $author = $note->get('field_rvn_author')->entity;
       $notes[] = [
         'author' => $author ? $author->getDisplayName() : $this->t('Unknown'),
-        'at' => $this->formatDate((int) ($note->get('field_rvn_at')->value ?? 0), 'medium'),
+        'at' => $this->formatDate((int) ($note->get('field_rvn_at')->value ?? 0), 'datetime'),
         'text' => (string) ($note->get('field_rvn_text')->value ?? ''),
       ];
     }
@@ -725,7 +731,7 @@ final class ReviewPageForm extends FormBase {
         'declared_monorepo' => (string) $this->t('Monorepo'),
         default => str_replace('_', ' ', (string) ($node->get('field_arv_repo_shape')->value ?? '')),
       },
-      'reviewed_at' => $reviewedAt ? $this->formatDate($reviewedAt, 'short') : '',
+      'reviewed_at' => $reviewedAt ? $this->formatDate($reviewedAt, 'date') : '',
       'tool_version' => (string) ($node->get('field_arv_tool_version')->value ?? ''),
       'state' => $state,
       'state_label' => self::STATE_LABELS[$state] ?? ucfirst($state),
@@ -748,7 +754,7 @@ final class ReviewPageForm extends FormBase {
       'decision' => $this->decisionInfo($node),
       // The contributor withdrew this round (appverse-planning#34).
       'withdrawn' => $node->hasField('field_arv_withdrawn_at') && !$node->get('field_arv_withdrawn_at')->isEmpty()
-        ? $this->formatDate((int) $node->get('field_arv_withdrawn_at')->value, 'medium') : NULL,
+        ? $this->formatDate((int) $node->get('field_arv_withdrawn_at')->value, 'datetime') : NULL,
       'recommendation' => $node->get('field_arv_recommendation')->value,
       'recommendation_label' => $this->conclusionOptions()[$node->get('field_arv_recommendation')->value] ?? '',
       'recommendation_note' => (string) ($node->get('field_arv_recommendation_note')->value ?? ''),
@@ -788,7 +794,7 @@ final class ReviewPageForm extends FormBase {
       // ReviewPageData::BLOCK_FIELDS); NULL lets the rule code decide.
       'block' => $isReviewer ? ReviewPageData::blockFromFields($p->get('field_rvf_aspect')->value, $p->get('field_rvf_category')->value) : NULL,
       'author' => $author instanceof UserInterface ? $author->getDisplayName() : '',
-      'created' => $isReviewer ? $this->formatDate((int) ($p->get('field_rvf_created')->value ?? 0), 'medium') : '',
+      'created' => $isReviewer ? $this->formatDate((int) ($p->get('field_rvf_created')->value ?? 0), 'datetime') : '',
       'pid' => $p->id(),
       'rule' => (string) ($p->get('field_rvf_rule')->value ?? ''),
       'severity' => (string) ($p->get('field_rvf_severity')->value ?? ''),
@@ -856,7 +862,7 @@ final class ReviewPageForm extends FormBase {
       }
       $at = (int) ($other->get('field_arv_reviewed_at')->value ?? $other->getCreatedTime());
       $previous[] = [
-        'label' => $this->formatDate($at, 'short') . ' · ' . substr((string) $other->get('field_arv_sha')->value, 0, 7),
+        'label' => $this->formatDate($at, 'date') . ' · ' . substr((string) $other->get('field_arv_sha')->value, 0, 7),
         'url' => Url::fromRoute('ood_software.review_page', ['node' => $other->id()])->toString(),
         'stable_ids' => array_values(array_filter($ids)),
       ];
@@ -901,10 +907,10 @@ final class ReviewPageForm extends FormBase {
         : NULL;
       $history[] = [
         'nid' => (int) $review->id(),
-        'label' => $this->formatDate($at, 'short') . ' · ' . substr($sha, 0, 7),
+        'label' => $this->formatDate($at, 'date') . ' · ' . substr($sha, 0, 7),
         'url' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString(),
         'sha' => $sha,
-        'at' => $this->formatDate($at, 'short'),
+        'at' => $this->formatDate($at, 'date'),
         'sha7' => substr($sha, 0, 7),
         'decision' => ReviewProgress::decisionLabel($decision),
         'reviewer' => $by instanceof UserInterface ? $by->getDisplayName() : '',
@@ -941,7 +947,7 @@ final class ReviewPageForm extends FormBase {
       'sent' => TRUE,
       'label' => ReviewProgress::decisionLabel($overall),
       'by' => $by instanceof UserInterface ? $by->getDisplayName() : '',
-      'at' => $this->formatDate((int) $node->get('field_arv_decision_sent_at')->value, 'medium'),
+      'at' => $this->formatDate((int) $node->get('field_arv_decision_sent_at')->value, 'datetime'),
       // After an Accept with suggestions: "Publish app and review".
       'publish_url' => $publishPending
         ? Url::fromRoute('ood_software.review_publish', ['node' => $node->id()])->toString()
@@ -976,7 +982,7 @@ final class ReviewPageForm extends FormBase {
       return '';
     }
     $label = ReviewProgress::DECISION_LABELS[ReviewProgress::strictestDecision(array_values((array) ($last['apps'] ?? [])))] ?? '';
-    return (string) $this->t('Updated from @d on @at', ['@d' => $label, '@at' => $this->formatDate((int) ($last['at'] ?? 0), 'medium')]);
+    return (string) $this->t('Updated from @d on @at', ['@d' => $label, '@at' => $this->formatDate((int) ($last['at'] ?? 0), 'datetime')]);
   }
 
   /**
@@ -1335,8 +1341,22 @@ final class ReviewPageForm extends FormBase {
     ];
   }
 
+  /**
+   * A date in the one format this UI uses.
+   *
+   * Drupal's own short and medium render 10/07/2026, which reads as 10 July
+   * outside the US; the page also had 10-07-26 and "7 October 2026" in
+   * places. "Oct 7, 2026" cannot be misread whatever order a reader expects
+   * (appverse-planning#53).
+   *
+   * @param string $type
+   *   'date' for the date alone, 'datetime' for the date and time.
+   */
   protected function formatDate(int $ts, string $type): string {
-    return $ts ? $this->dateFormatter->format($ts, $type) : '';
+    if (!$ts) {
+      return '';
+    }
+    return $this->dateFormatter->format($ts, 'custom', $type === 'date' ? self::DATE : self::DATE_TIME);
   }
 
 }
