@@ -141,14 +141,24 @@ class ReviewDecisionTest extends UnitTestCase {
    */
   public function testConsequences(): void {
     $say = fn (array $d, bool $live): string => implode(' ', array_map('strval', ReviewDecision::consequences($d, $live, 'Ada')));
-    $this->assertStringContainsString('published in the Appverse catalog', $say(['a' => 'accept'], FALSE));
-    $this->assertStringContainsString('Nothing is published yet', $say(['a' => 'accept_with_suggestions'], FALSE));
-    $this->assertStringContainsString('leaves the catalog', $say(['a' => 'request_changes'], TRUE));
-    $this->assertStringNotContainsString('leaves the catalog', $say(['a' => 'request_changes'], FALSE));
+    // Every case answers the same two questions, so assert on what each
+    // decision does rather than on the sentence that says it.
+    $accept = $say(['a' => 'accept'], FALSE);
+    $this->assertStringContainsString('go live now', $accept, 'Accept publishes.');
+    $this->assertStringContainsString('Review: published', $accept);
+
+    $withSuggestions = $say(['a' => 'accept_with_suggestions'], FALSE);
+    $this->assertStringContainsString('nothing goes live yet', $withSuggestions, 'Accept with suggestions publishes nothing.');
+    $this->assertStringContainsString('not published yet', $withSuggestions);
+    $this->assertStringContainsString('use Publish on this review', $withSuggestions, 'and says what is left to do.');
+
+    $this->assertStringContainsString('come down', $say(['a' => 'request_changes'], TRUE), 'A live repo leaves the catalog.');
+    $this->assertStringNotContainsString('come down', $say(['a' => 'request_changes'], FALSE), 'One that was never live does not.');
     $this->assertStringContainsString('Ada can read the review and re-submit', $say(['a' => 'request_changes'], FALSE));
-    $this->assertStringContainsString('The review is never published', $say(['a' => 'reject'], FALSE));
+    $this->assertStringContainsString('Review: never published', $say(['a' => 'reject'], FALSE));
+
     $mixed = $say(['a' => 'accept', 'b' => 'reject'], FALSE);
-    $this->assertStringContainsString('with the accepted apps, and so is the review', $mixed);
+    $this->assertStringContainsString('goes live with the accepted apps', $mixed);
     $this->assertStringContainsString('The declined apps stay out of the catalog.', $mixed);
   }
 

@@ -272,25 +272,54 @@
 .arv-page .concl-caption,
 .arv-page .sidebar .form-text,
 .arv-page .sidebar .form-text.text-muted,
-.arv-page .sidebar .description {
+.arv-page .sidebar .description,
+.arv-page .publish-note,
+.arv-page .notes-help {
   font-size: var(--sb-helper);
   color: var(--sb-helper-color);
+  /* It belongs to the heading above it and introduces the control below, so
+     it sits close to the heading and leaves room before the control: a
+     paragraph's own symmetrical margins had it floating between the two
+     (appverse-planning#53). */
+  margin: 2px 0 8px;
+  line-height: 1.4;
 }
 .arv-page .sidebar-rule {
   border: none;
   border-top: 1px solid var(--gray-300);
   margin: 20px 0;
 }
+/* The sidebar's one acting section, on the brand black so it reads as the
+   place where something happens rather than another field to fill in
+   (appverse-planning#53). The dark ground carries its own heading, helper
+   text and ghost-button colours, since the page's are for white. */
 .arv-page .publish-block {
-  border-top: 1px solid var(--gray-150);
-  padding-top: 18px;
+  background: var(--ink);
+  color: #fff;
+  padding: 14px 16px;
+  border-radius: 3px;
   margin-bottom: 28px;
 }
-.arv-page .publish-note {
-  font-size: var(--sb-helper);
-  color: var(--sb-helper-color);
-  margin-bottom: 8px;
+.arv-page .publish-block h2.sec {
+  color: #fff;
+  margin-top: 0;
 }
+.arv-page .publish-block .publish-note {
+  color: var(--gray-300);
+}
+.arv-page .publish-block .btn.ghost {
+  border-color: var(--gray-500);
+  color: #fff;
+  background: transparent;
+}
+.arv-page .publish-block .btn.ghost:hover {
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+}
+.arv-page .publish-block .arv-send-reason {
+  color: var(--gray-300);
+}
+
 .arv-page .publish-row,
 .arv-page .publish-row .form-actions {
   display: flex;
@@ -310,11 +339,6 @@
   margin-top: 26px;
 }
 
-.arv-page .notes-help {
-  font-size: var(--sb-helper);
-  color: var(--sb-helper-color);
-  margin: 0 0 12px;
-}
 .arv-page .note-add {
   margin-bottom: 14px;
 }
