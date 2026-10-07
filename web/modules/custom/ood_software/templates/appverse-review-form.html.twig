@@ -257,7 +257,9 @@
       {% if page.history.others is not empty %}
         <details class="other-reviews">
           {% set n = page.history.others|length %}
-          <summary class="other-reviews__count">{{ n == 1 ? '1 other review of this repo'|t : '@n other reviews of this repo'|t({'@n': n}) }}</summary>
+          {# trans/plural rather than two separate strings, so translators get
+             one plural form and languages with other plural rules work. #}
+          <summary class="other-reviews__count">{% trans %}{{ n }} other review of this repo{% plural n %}{{ n }} other reviews of this repo{% endtrans %}</summary>
           <ul class="other-reviews__list">
             {% for other in page.history.others %}
               <li>
