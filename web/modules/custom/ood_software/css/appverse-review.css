@@ -419,22 +419,28 @@
   border-color: var(--gray-300);
 }
 
+/* Changing a rating is rare, so the icon sits back: smaller than the badge it
+   follows and grey rather than ink, coming forward only on hover and focus
+   (appverse-planning#54). */
 .arv-page .edit-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border: none;
   border-radius: 3px;
   background: none;
-  color: var(--ink);
+  color: var(--gray-500);
+  font-size: .8rem;
   cursor: pointer;
   flex: none;
   padding: 0;
 }
-.arv-page .edit-icon-btn:hover {
+.arv-page .edit-icon-btn:hover,
+.arv-page .edit-icon-btn:focus-visible {
   background: var(--gray-100);
+  color: var(--ink);
 }
 
 /* Shown unless JS collapses it (no JS: everything stays open). */

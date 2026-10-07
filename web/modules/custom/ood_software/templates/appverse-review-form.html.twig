@@ -115,10 +115,16 @@
           {{ 'Changed from automated rating: @l'|t({'@l': (page.level_labels[block.key] ?? {})[block.tool_level] ?? block.tool_level}) }}
         </div>
       {% endif %}
-      {% if block.summary %}<div class="cat-summary">{{ block.summary }}</div>{% endif %}
+      {# The note belongs with the rating it explains, so it sits under the
+         dropdown the edit icon reveals rather than below the section summary,
+         where clicking the icon opened a field two elements away
+         (appverse-planning#54). The read-only note keeps its old place: it is
+         prose about the rating, and reads as part of the summary. #}
       {% if can_edit and note_el %}
         <div class="override-box">{{ note_el }}</div>
-      {% elseif block.note %}
+      {% endif %}
+      {% if block.summary %}<div class="cat-summary">{{ block.summary }}</div>{% endif %}
+      {% if not (can_edit and note_el) and block.note %}
         <div class="override-note">{{ block.note }}</div>
       {% endif %}
       {% if block.gates is not empty %}
