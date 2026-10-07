@@ -1126,10 +1126,20 @@
   background: var(--gray-100);
   color: var(--gray-700);
 }
+/* The page's one footnote, under everything and quiet with it: which build
+   of the tool wrote the report (appverse-planning#53). */
+.arv-page .arv-footnote {
+  margin: 28px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-150);
+  font-family: ui-monospace, monospace;
+  font-size: .74rem;
+  color: var(--gray-700);
+}
 .arv-page .tool-version {
   font-family: ui-monospace, monospace;
   font-size: .78rem;
-  color: #c9cdd0;
+  color: var(--gray-700);
 }
 
 /* Decision: "Publish app and review" after Accept with suggestions, and the

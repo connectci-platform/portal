@@ -305,7 +305,6 @@
         <div class="overview-line overview-line--sub">
           {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
           {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
-          {% if page.tool_version %} · <span class="tool-version" title="{{ 'The review tool that produced this report'|t }}">{{ page.tool_version }}</span>{% endif %}
         </div>
       </div>
       {# The header keeps the position and the rerun note; the reviews
@@ -490,4 +489,12 @@
   </div>
 
   {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'assignee', 'actions', 'add_finding', 'edit_finding', 'delete_finding') }}
+
+  {# Which build of the tool wrote this report. It matters when a finding
+     looks wrong and someone is working out whether the tool has changed
+     since, which is not often enough to earn a place in the header
+     (appverse-planning#53). #}
+  {% if page.tool_version %}
+    <p class="arv-footnote">{{ 'Report produced by @tool'|t({'@tool': page.tool_version}) }}</p>
+  {% endif %}
 </div>
