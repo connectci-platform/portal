@@ -31,11 +31,15 @@
     <div class="frow">
       <div class="rule">{{ finding.rule }}</div>
       <div>
-        <div class="sum">{{ finding.summary }}</div>
+        <div class="sum">
+          {# What changed since the last round is what a reviewer is looking
+             for, so the new ones are marked rather than every carried-over
+             one being labelled (appverse-planning#54). #}
+          {% if finding.is_new %}<span class="finding-new">{{ 'New'|t }}</span> {% endif %}
+          {{ finding.summary }}
+        </div>
         <div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>
-        {% if finding.also_flagged_in is not empty %}
-          <div class="ev also-flagged">{{ 'Also flagged in'|t }} {{ finding.also_flagged_in|join(', ') }}</div>
-        {% endif %}
+
         {% if finding.source == 'reviewer' %}
           <div class="added-by"><span class="reviewer-tag">{{ 'Reviewer'|t }}</span> {{ 'Added by @name · @when'|t({'@name': finding.author ?: 'a reviewer'|t, '@when': finding.created}) }}</div>
         {% endif %}
@@ -241,7 +245,14 @@
                passes are the common case. So the passes read as a count, with
                the names behind a toggle, and anything that is not a pass stays
                out in full (appverse-planning#54). #}
-            {% if page.repo_gate_summary.total %}
+            {% if page.round_delta.has_previous and (page.round_delta.new or page.round_delta.resolved) %}
+        <div class="round-delta">
+          {% if page.round_delta.new %}<span class="round-delta__new">{{ '@n new since the last round'|t({'@n': page.round_delta.new}) }}</span>{% endif %}
+          {% if page.round_delta.new and page.round_delta.resolved %} · {% endif %}
+          {% if page.round_delta.resolved %}<span class="round-delta__resolved">{{ '@n resolved'|t({'@n': page.round_delta.resolved}) }}</span>{% endif %}
+        </div>
+      {% endif %}
+      {% if page.repo_gate_summary.total %}
               <div class="gates">
                 {% if page.repo_gate_summary.passes %}
                   <details class="gate-passes">

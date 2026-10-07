@@ -590,6 +590,10 @@ final class ReviewPageForm extends FormBase {
       'state' => $state,
       'state_label' => self::STATE_LABELS[$state] ?? ucfirst($state),
       'previous' => $previous,
+      // What moved since the round before (appverse-planning#54). Whole-review
+      // sets, because that is the level stable ids are stored at: a finding
+      // that moved between blocks has not been resolved.
+      'round_delta' => ReviewPageData::roundDelta($this->stableIds($node), $previous),
       // Step 1 of the Reviewer Process: the repo gates (pass/fail stored since
       // the first import; the report's evidence per row and the Catalog
       // checks only on reviews imported since they were parsed).
@@ -652,6 +656,23 @@ final class ReviewPageForm extends FormBase {
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
     ];
+  }
+
+  /**
+   * Every stable id in one review, repo-level findings and per-app alike.
+   *
+   * @return array<int, string>
+   */
+  protected function stableIds(NodeInterface $node): array {
+    $paragraphs = $node->get('field_arv_repo_findings')->referencedEntities();
+    foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $paragraphs = array_merge($paragraphs, $verdict->get('field_rvv_findings')->referencedEntities());
+    }
+    $ids = [];
+    foreach ($paragraphs as $p) {
+      $ids[] = (string) ($p->get('field_rvf_stable_id')->value ?? '');
+    }
+    return array_values(array_filter($ids));
   }
 
   /**

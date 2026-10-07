@@ -26,6 +26,9 @@
      (appverse-planning#53). */
   --status-green-text: #007066;
   --status-amber-text: #8a5d12;
+  /* The brand blue sits at 4.25:1 on its own soft background, under the AA
+     floor for small text, so tinted chips use this instead. */
+  --blue-text: #00628f;
   color: var(--ink);
   line-height: 1.5;
 }
@@ -502,6 +505,32 @@
 }
 .arv-page .catblock.level-collapsed .level-control {
   display: none;
+}
+
+/* What moved since the last round (appverse-planning#54). */
+.arv-page .finding-new {
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  padding: .05rem .35rem;
+  border-radius: 3px;
+  background: var(--blue-soft);
+  color: var(--blue-text);
+  vertical-align: .05rem;
+}
+.arv-page .round-delta {
+  font-size: .78rem;
+  margin-top: .35rem;
+  color: var(--gray-700);
+}
+.arv-page .round-delta__new {
+  color: var(--blue);
+  font-weight: 600;
+}
+.arv-page .round-delta__resolved {
+  color: var(--status-green-text);
+  font-weight: 600;
 }
 
 /* Gates and catalog checks (Reviewer Process step 1), top of the main column. */

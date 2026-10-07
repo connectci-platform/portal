@@ -501,6 +501,53 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * A first review has nothing to compare against.
+   *
+   * @covers ::roundDelta
+   */
+  public function testRoundDeltaOfAFirstReview(): void {
+    $delta = ReviewPageData::roundDelta(['STR-01', 'STR-02'], []);
+
+    $this->assertFalse($delta['has_previous']);
+    $this->assertSame(0, $delta['new'], 'Nothing is new when there is no round to be new since.');
+    $this->assertSame(0, $delta['resolved']);
+  }
+
+  /**
+   * What this round added, and what the last round raised that is gone.
+   *
+   * @covers ::roundDelta
+   */
+  public function testRoundDeltaCountsBothDirections(): void {
+    $delta = ReviewPageData::roundDelta(
+      ['STR-01', 'STR-09', 'STR-10'],
+      [['stable_ids' => ['STR-01', 'STR-02', 'STR-03']]]
+    );
+
+    $this->assertTrue($delta['has_previous']);
+    $this->assertSame(2, $delta['new'], 'STR-09 and STR-10 are new.');
+    $this->assertSame(2, $delta['resolved'], 'STR-02 and STR-03 are gone.');
+  }
+
+  /**
+   * Only the round immediately before counts, not every earlier one.
+   *
+   * @covers ::roundDelta
+   */
+  public function testRoundDeltaComparesWithTheRoundBefore(): void {
+    $delta = ReviewPageData::roundDelta(
+      ['STR-01'],
+      [
+        ['stable_ids' => ['STR-01', 'STR-02']],
+        ['stable_ids' => ['STR-07', 'STR-08']],
+      ]
+    );
+
+    $this->assertSame(0, $delta['new'], 'STR-01 was in the round before, so it is not new.');
+    $this->assertSame(1, $delta['resolved'], 'Only STR-02 went; the older round is not consulted.');
+  }
+
+  /**
    * A review with no stored criteria has not passed anything.
    *
    * @covers ::gateSummary

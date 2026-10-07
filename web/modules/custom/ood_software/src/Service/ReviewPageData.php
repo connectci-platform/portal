@@ -429,6 +429,35 @@ final class ReviewPageData {
    *
    * @return array{total: int, passed: int, all_passed: bool, passes: array<int, array{key: string, label: string, value: string}>, others: array<int, array{key: string, label: string, value: string}>}
    */
+  /**
+   * How this round compares with the one before it.
+   *
+   * Repeating "Also flagged in <date>" on every carried-over row is noise;
+   * what a reviewer wants is what moved (appverse-planning#54). Both sides are
+   * whole-review sets of stable ids, which is the level they are stored at: a
+   * finding that moved between blocks has not been resolved, and counting per
+   * block would say it had.
+   *
+   * @param array<int, string> $currentIds
+   *   Every stable id in this review.
+   * @param array<mixed> $previous
+   *   Previous reviews, newest first, as alsoFlaggedIn() expects them.
+   *
+   * @return array{has_previous: bool, new: int, resolved: int}
+   */
+  public static function roundDelta(array $currentIds, array $previous): array {
+    if ($previous === []) {
+      return ['has_previous' => FALSE, 'new' => 0, 'resolved' => 0];
+    }
+    $current = array_values(array_unique(array_filter($currentIds)));
+    $last = array_values(array_unique(array_filter($previous[0]['stable_ids'] ?? [])));
+    return [
+      'has_previous' => TRUE,
+      'new' => count(array_diff($current, $last)),
+      'resolved' => count(array_diff($last, $current)),
+    ];
+  }
+
   public static function gateSummary(array $pills): array {
     $passes = array_values(array_filter($pills, static fn (array $p): bool => $p['value'] === 'pass'));
     $others = array_values(array_filter($pills, static fn (array $p): bool => $p['value'] !== 'pass'));
@@ -451,10 +480,21 @@ final class ReviewPageData {
    * @return array<mixed>
    */
   public static function buildBlock(string $key, string $title, array $findings, ?array $level, array $previous, array $gates = []): array {
+    // What the last round said, for marking what has changed since. $previous
+    // is newest first, so [0] is the round before this one.
+    $lastRoundIds = $previous[0]['stable_ids'] ?? [];
     $groups = self::groupBySeverity($findings);
     foreach ($groups as &$group) {
       foreach ($group['findings'] as &$finding) {
         $finding['also_flagged_in'] = self::alsoFlaggedIn((string) ($finding['stable_id'] ?? ''), $previous);
+        // New since the last round. Repeating "Also flagged in <date>" on
+        // every row that carried over is noise; what a reviewer wants to know
+        // is what changed (appverse-planning#54). A finding with no stable id
+        // cannot be matched across rounds, so it is not called new.
+        $stableId = (string) ($finding['stable_id'] ?? '');
+        $finding['is_new'] = $previous !== []
+          && $stableId !== ''
+          && !in_array($stableId, $lastRoundIds, TRUE);
       }
       unset($finding);
     }
