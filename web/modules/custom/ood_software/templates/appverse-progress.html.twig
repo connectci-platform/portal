@@ -31,7 +31,9 @@
       {% else %}
         <span class="arv-progress__seg" aria-hidden="true"></span>
       {% endif %}
-      <span class="arv-progress__name">{{ s.step|t }}</span>
+      {# s.name is the translated step name; s.step stays the English key the
+         logic compares against (appverse-planning#49). #}
+      <span class="arv-progress__name">{{ s.name ?? s.step }}</span>
       <span class="visually-hidden">: {{ state_text[s.state] }}</span>
       {# Two labels say nothing the step has not already said: one that repeats
          its step's name ("Submitted" under Submitted, "Live" under Live), and
@@ -39,7 +41,7 @@
          dropped from the line; the state is still announced to screen readers
          above, and the labels stay in the data because the card's chip reads
          them (appverse-planning#53). #}
-      {% if s.label and s.label != s.step and not (s.state == 'done' and s.label == 'Done') and (variant == 'steps' or labels) %}
+      {% if s.show_label and (variant == 'steps' or labels) %}
         <span class="arv-progress__label">{{ s.label }}</span>
       {% endif %}
       {# A monorepo whose apps were decided differently: the label above is the

@@ -138,9 +138,9 @@ final class ReviewFloors {
       if (self::rank($decision) < self::rank($floors[$app]['decision'])) {
         $problems[] = sprintf('%s cannot be %s: %s needs at least %s.',
           $names[$app] ?? $app,
-          ReviewProgress::DECISION_LABELS[$decision],
+          ReviewProgress::decisionLabel($decision),
           $floors[$app]['reason'],
-          ReviewProgress::DECISION_LABELS[$floors[$app]['decision']]);
+          ReviewProgress::decisionLabel($floors[$app]['decision']));
       }
     }
     return $problems;

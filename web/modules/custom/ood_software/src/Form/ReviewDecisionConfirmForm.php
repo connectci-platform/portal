@@ -167,8 +167,8 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       return;
     }
     $this->messenger()->addStatus($this->mixed
-      ? $this->t('Decisions sent. Overall: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]])
-      : $this->t('Decision sent: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]]));
+      ? $this->t('Decisions sent. Overall: @d.', ['@d' => ReviewProgress::decisionLabel($this->decision)])
+      : $this->t('Decision sent: @d.', ['@d' => ReviewProgress::decisionLabel($this->decision)]));
   }
 
 }

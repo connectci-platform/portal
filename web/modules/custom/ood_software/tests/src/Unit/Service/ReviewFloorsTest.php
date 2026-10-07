@@ -15,6 +15,19 @@ use Drupal\ood_software\Service\ReviewFloors;
  */
 class ReviewFloorsTest extends UnitTestCase {
 
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
+    parent::setUp();
+    // The labels go through t(), which returns TranslatableMarkup, and
+    // casting that to a string needs the container's translation service
+    // (appverse-planning#49).
+    $container = new \Drupal\Core\DependencyInjection\ContainerBuilder();
+    $container->set('string_translation', $this->getStringTranslationStub());
+    \Drupal::setContainer($container);
+  }
+
   protected static function finding(string $rule, string $severity, string $result = 'fail', string $aspect = '', string $evidence = 'x.sh:1'): array {
     return ['rule' => $rule, 'aspect' => $aspect, 'severity' => $severity, 'result' => $result, 'evidence' => $evidence];
   }

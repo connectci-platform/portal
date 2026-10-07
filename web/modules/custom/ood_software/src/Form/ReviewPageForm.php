@@ -211,7 +211,7 @@ final class ReviewPageForm extends FormBase {
         '#default_value' => $app['conclusion'] ?? '',
         '#disabled' => $locked,
         '#description' => $floor ? $this->t('At least @d: @reason.', [
-          '@d' => ReviewProgress::DECISION_LABELS[$floor['decision']],
+          '@d' => ReviewProgress::decisionLabel($floor['decision']),
           '@reason' => $floor['reason'],
         ]) : NULL,
       ];
@@ -775,7 +775,7 @@ final class ReviewPageForm extends FormBase {
         'sha' => $sha,
         'at' => $this->formatDate($at, 'short'),
         'sha7' => substr($sha, 0, 7),
-        'decision' => $decision !== NULL ? (string) (ReviewProgress::DECISION_LABELS[$decision] ?? '') : '',
+        'decision' => ReviewProgress::decisionLabel($decision),
         'reviewer' => $by instanceof UserInterface ? $by->getDisplayName() : '',
         // Filled in below, once the entry before it is known.
         'is_rerun' => FALSE,
@@ -804,7 +804,7 @@ final class ReviewPageForm extends FormBase {
     $by = $node->get('field_arv_decision_sent_by')->entity;
     return [
       'sent' => TRUE,
-      'label' => (string) (ReviewProgress::DECISION_LABELS[$overall] ?? ''),
+      'label' => ReviewProgress::decisionLabel($overall),
       'by' => $by instanceof UserInterface ? $by->getDisplayName() : '',
       'at' => $this->formatDate((int) $node->get('field_arv_decision_sent_at')->value, 'medium'),
       // After an Accept with suggestions: "Publish app and review".

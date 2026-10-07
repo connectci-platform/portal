@@ -19,6 +19,19 @@ use Drupal\ood_software\Service\ReviewProgress as P;
 class ReviewProgressTest extends UnitTestCase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
+    parent::setUp();
+    // The labels go through t(), which returns TranslatableMarkup, and
+    // casting that to a string needs the container's translation service
+    // (appverse-planning#49).
+    $container = new \Drupal\Core\DependencyInjection\ContainerBuilder();
+    $container->set('string_translation', $this->getStringTranslationStub());
+    \Drupal::setContainer($container);
+  }
+
+  /**
    * @covers ::steps
    * @dataProvider situations
    */

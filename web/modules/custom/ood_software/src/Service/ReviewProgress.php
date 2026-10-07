@@ -42,12 +42,35 @@ final class ReviewProgress {
    */
   const DECISIONS = ['accept', 'accept_with_suggestions', 'request_changes', 'reject'];
 
+  /**
+   * The English source strings, which is what a constant can hold.
+   *
+   * Read these through decisionLabel() rather than directly: a constant
+   * cannot call t(), so using it as a label ships English whatever the site's
+   * language (appverse-planning#49). Kept because the keys are the stored
+   * decision values and several places need the set.
+   */
   const DECISION_LABELS = [
     'accept' => 'Accepted',
     'accept_with_suggestions' => 'Accepted with suggestions',
     'request_changes' => 'Changes requested',
     'reject' => 'Declined',
   ];
+
+  /**
+   * A decision's label, translated.
+   *
+   * The literal t() calls are what the extractor finds; the match picks one.
+   */
+  public static function decisionLabel(?string $decision): string {
+    return (string) match ($decision) {
+      'accept' => t('Accepted'),
+      'accept_with_suggestions' => t('Accepted with suggestions'),
+      'request_changes' => t('Changes requested'),
+      'reject' => t('Declined'),
+      default => '',
+    };
+  }
 
   const SUGGESTION_LABELS = [
     'accept' => 'Accept',
@@ -191,19 +214,19 @@ final class ReviewProgress {
    */
   public static function contributorSentence(array $steps): string {
     [$submitted, $inReview, $decision, $live] = $steps;
-    return match (TRUE) {
-      $submitted['state'] === self::WAITING => 'Not submitted yet.',
+    return (string) match (TRUE) {
+      $submitted['state'] === self::WAITING => t('Not submitted yet.'),
       // A live repo's update is in review while the repo itself stays up, so
       // say so rather than implying it has come down (appverse-planning#49).
       $inReview['state'] === self::CURRENT && !empty($inReview['live_update'])
-        => 'Live, and your update is in review. A reviewer will respond by email.',
-      $inReview['state'] === self::CURRENT => 'In review. A reviewer will respond by email.',
+        => t('Live, and your update is in review. A reviewer will respond by email.'),
+      $inReview['state'] === self::CURRENT => t('In review. A reviewer will respond by email.'),
       // Name the button and where to ask, so the contributor does not have to
       // work out what "re-submit" means here (appverse-planning#55).
-      $decision['state'] === self::WAITING => 'Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.',
-      $decision['state'] === self::FAILED => 'Declined. The review says why.',
-      $live['state'] === self::CURRENT => 'Accepted. A reviewer will publish it.',
-      $live['state'] === self::DONE => 'Live in the AppVerse catalog.',
+      $decision['state'] === self::WAITING => t('Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.'),
+      $decision['state'] === self::FAILED => t('Declined. The review says why.'),
+      $live['state'] === self::CURRENT => t('Accepted. A reviewer will publish it.'),
+      $live['state'] === self::DONE => t('Live in the AppVerse catalog.'),
       default => '',
     };
   }
@@ -259,9 +282,9 @@ final class ReviewProgress {
 
   protected static function decisionStep(?string $decision, int $round, array $appDecisions = []): array {
     $step = match ($decision) {
-      'accept', 'accept_with_suggestions' => self::step('Decision', self::DONE, self::DECISION_LABELS[$decision]),
-      'request_changes' => self::step('Decision', self::WAITING, self::DECISION_LABELS[$decision] . " · round $round"),
-      'reject' => self::step('Decision', self::FAILED, self::DECISION_LABELS[$decision]),
+      'accept', 'accept_with_suggestions' => self::step('Decision', self::DONE, self::decisionLabel($decision)),
+      'request_changes' => self::step('Decision', self::WAITING, self::decisionLabel($decision) . " · round $round"),
+      'reject' => self::step('Decision', self::FAILED, self::decisionLabel($decision)),
       default => self::step('Decision', self::NOT_REACHED, ''),
     };
     // A monorepo whose apps went different ways: the label above is the
@@ -270,7 +293,7 @@ final class ReviewProgress {
     // Only when they differ; all-the-same repeats the label per app.
     if ($appDecisions !== [] && count(array_unique($appDecisions)) > 1) {
       $step['apps'] = array_map(
-        static fn (string $d): string => self::DECISION_LABELS[$d] ?? $d,
+        static fn (string $d): string => self::decisionLabel($d) ?: $d,
         $appDecisions
       );
     }
@@ -278,10 +301,69 @@ final class ReviewProgress {
   }
 
   /**
-   * @return array{step: string, state: string, label: string}
+   * One step: its key, its state, and the label under it.
+   *
+   * 'step' stays the English key, because the chip and the template compare
+   * against it; 'name' is the same thing for reading. The template used to
+   * apply |t to the key, which the extractor cannot see, so the step names
+   * never reached a translation file (appverse-planning#49).
+   *
+   * @return array{step: string, name: string, state: string, label: string}
    */
   protected static function step(string $step, string $state, string $label): array {
-    return ['step' => $step, 'state' => $state, 'label' => $label];
+    // Whether the label is worth showing is decided here, where the English
+    // is, rather than in the template comparing rendered text: a label that
+    // repeats its step's name ("Submitted" under Submitted) or is a bare
+    // "Done" on a step already drawn as done says nothing, and once the
+    // strings are translated the template could not tell (appverse-planning#49).
+    $redundant = $label === '' || $label === $step || ($state === self::DONE && $label === 'Done');
+    return [
+      'step' => $step,
+      'name' => self::stepName($step),
+      'state' => $state,
+      'label' => self::stepLabel($label),
+      'show_label' => !$redundant,
+    ];
+  }
+
+  /**
+   * A step's label, translated. Literal t() calls for the extractor.
+   */
+  protected static function stepLabel(string $label): string {
+    return (string) match ($label) {
+      '' => '',
+      'Not submitted' => t('Not submitted'),
+      'Submitted' => t('Submitted'),
+      'Not started' => t('Not started'),
+      'Queued' => t('Queued'),
+      'Running' => t('Running'),
+      'Failed · rerun' => t('Failed · rerun'),
+      'Ready' => t('Ready'),
+      'In progress' => t('In progress'),
+      'In review' => t('In review'),
+      'Published, update in review' => t('Published, update in review'),
+      'Done' => t('Done'),
+      'Live' => t('Live'),
+      'Ready to publish' => t('Ready to publish'),
+      // Composed at the call site (a round number, a suggestion, a decision
+      // label): already built from translated parts.
+      default => $label,
+    };
+  }
+
+  /**
+   * A step's name, translated. Literal t() calls for the extractor.
+   */
+  protected static function stepName(string $step): string {
+    return (string) match ($step) {
+      'Submitted' => t('Submitted'),
+      'AI report' => t('AI report'),
+      'Review' => t('Review'),
+      'In review' => t('In review'),
+      'Decision' => t('Decision'),
+      'Live' => t('Live'),
+      default => $step,
+    };
   }
 
 }
