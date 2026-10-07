@@ -355,7 +355,7 @@ final class ReviewPageData {
    * @param array<int, array<string, mixed>> $reviews
    *   The repo's reviews, oldest first.
    *
-   * @return array{position: int, total: int, older: ?array<string, mixed>, newer: ?array<string, mixed>, newest: ?array<string, mixed>}|null
+   * @return array{position: int, total: int, is_rerun: bool, older: ?array<string, mixed>, newer: ?array<string, mixed>, newest: ?array<string, mixed>, others: array<int, array<string, mixed>>}|null
    */
   public static function historyPosition(array $reviews, int $currentNid): ?array {
     $reviews = array_values($reviews);
