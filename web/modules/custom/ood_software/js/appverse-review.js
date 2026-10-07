@@ -21,21 +21,30 @@
         const selects = form.querySelectorAll('select[name^="conclusion["]');
         const response = form.querySelector('textarea[name="response"]');
         const order = ['accept', 'accept_with_suggestions', 'request_changes', 'reject'];
+        // Drupal renders the submit as an input, whose label is its value.
+        const setLabel = (text) => {
+          if (button.tagName === 'INPUT') {
+            button.value = text;
+          }
+          else {
+            button.textContent = text;
+          }
+        };
         const update = () => {
           const chosen = Array.from(selects, (s) => s.value);
           const decided = chosen.filter((v) => order.includes(v));
           const distinct = [...new Set(decided)];
           if (distinct.length === 0) {
-            button.textContent = labels.none;
+            setLabel(labels.none);
           }
           else if (distinct.length === 1) {
-            button.textContent = labels.single[distinct[0]];
+            setLabel(labels.single[distinct[0]]);
           }
           else {
             const parts = order
               .filter((d) => distinct.includes(d))
               .map((d) => labels.count[d].replace('@count', decided.filter((v) => v === d).length));
-            button.textContent = labels.mixed.replace('@summary', parts.join(', '));
+            setLabel(labels.mixed.replace('@summary', parts.join(', ')));
           }
           let why = '';
           if (decided.length < chosen.length || chosen.length === 0) {

@@ -333,7 +333,7 @@ final class ReviewPageForm extends FormBase {
     // (a newer one of the same repo exists; deciding on stale findings is the
     // wrong review), and not once a decision is sent.
     if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by']) && !$page['withdrawn']) {
-      $form['actions']['send_decision'] = $this->sendButton($page);
+      $form['actions']['send_decision'] = $this->sendButton($page, $form_state);
     }
     return $form;
   }
@@ -342,17 +342,20 @@ final class ReviewPageForm extends FormBase {
    * The send button: it names the decision and stays disabled, with the
    * reason beside it, until the decision is complete (appverse-planning#52).
    *
-   * A plain button with a fixed name, not a Drupal submit: the page's script
-   * relabels it as the reviewer chooses, and Drupal matches a submit by its
-   * label. The form's own save runs, then submitForm() sees the name.
+   * The page's script relabels it as the reviewer chooses. Drupal knows which
+   * submit was pressed by its posted label, so on submit the label is the one
+   * posted. Disabled is a plain attribute, not #disabled, which would make
+   * Drupal ignore the press once the script had enabled the button.
    *
    * @param array<string, mixed> $page
    *   The page data.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state, for the label posted with a press.
    *
    * @return array<string, mixed>
    *   A render array.
    */
-  protected function sendButton(array $page): array {
+  protected function sendButton(array $page, FormStateInterface $form_state): array {
     $decisions = [];
     foreach ($page['apps'] as $app) {
       $decisions[(string) $app['pid']] = $app['conclusion'] ?? NULL;
@@ -363,9 +366,6 @@ final class ReviewPageForm extends FormBase {
       $single[$d] = (string) ReviewDecision::sendLabel(['x' => $d]);
     }
     $attributes = [
-      'type' => 'submit',
-      'name' => 'send_decision',
-      'value' => '1',
       'class' => ['btn', 'primary', 'arv-send'],
       // What the script needs to relabel the button as the reviewer chooses.
       'data-labels' => json_encode([
@@ -390,9 +390,11 @@ final class ReviewPageForm extends FormBase {
     }
     return [
       'button' => [
-        '#type' => 'html_tag',
-        '#tag' => 'button',
-        '#value' => ReviewDecision::sendLabel($decisions),
+        '#type' => 'submit',
+        '#name' => 'send_decision',
+        '#value' => is_string($posted = $form_state->getUserInput()['send_decision'] ?? NULL) && $posted !== ''
+          ? $posted
+          : ReviewDecision::sendLabel($decisions),
         '#attributes' => $attributes,
       ],
       'reason' => [
@@ -476,7 +478,7 @@ final class ReviewPageForm extends FormBase {
     $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName());
     $node->save();
     // The send button saves, then goes on to the email preview.
-    if (!empty($form_state->getUserInput()['send_decision'])) {
+    if (($form_state->getTriggeringElement()['#name'] ?? '') === 'send_decision') {
       $this->messenger()->addStatus($this->t('Your edits are saved. Nothing is sent until you confirm.'));
       $form_state->setRedirect('ood_software.review_decision', ['node' => $node->id()]);
       return;
