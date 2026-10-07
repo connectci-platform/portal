@@ -829,6 +829,8 @@ final class ReviewPageForm extends FormBase {
       'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
       'evidence_parts' => ReviewPageData::evidenceParts((string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
+      // unintentional / potentially_malicious on a security finding, else ''.
+      'tag' => $p->hasField('field_rvf_tag') ? (string) ($p->get('field_rvf_tag')->value ?? '') : '',
       'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
     ];
   }

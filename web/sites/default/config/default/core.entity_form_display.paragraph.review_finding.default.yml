@@ -19,6 +19,7 @@ dependencies:
     - field.field.paragraph.review_finding.field_rvf_source
     - field.field.paragraph.review_finding.field_rvf_stable_id
     - field.field.paragraph.review_finding.field_rvf_summary
+    - field.field.paragraph.review_finding.field_rvf_tag
     - paragraphs.paragraphs_type.review_finding
   module:
     - field_group
@@ -151,4 +152,5 @@ hidden:
   field_rvf_created: true
   field_rvf_result: true
   field_rvf_source: true
+  field_rvf_tag: true
   status: true

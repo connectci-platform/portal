@@ -680,6 +680,18 @@
   color: var(--blue-text);
   vertical-align: .05rem;
 }
+/* The rubric's Reject trigger, on the reviewer's view only. */
+.arv-page .finding-malicious {
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  padding: .05rem .35rem;
+  border-radius: 3px;
+  border: 1px solid var(--red);
+  color: var(--red);
+  vertical-align: .05rem;
+}
 .arv-page .round-delta {
   font-size: .78rem;
   margin-top: .35rem;

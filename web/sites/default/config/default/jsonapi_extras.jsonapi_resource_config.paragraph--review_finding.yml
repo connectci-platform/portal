@@ -194,4 +194,10 @@ resourceFields:
     publicName: field_rvf_summary
     enhancer:
       id: ''
+  field_rvf_tag:
+    disabled: false
+    fieldName: field_rvf_tag
+    publicName: field_rvf_tag
+    enhancer:
+      id: ''
 

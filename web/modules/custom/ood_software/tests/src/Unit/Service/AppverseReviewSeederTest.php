@@ -102,4 +102,18 @@ class AppverseReviewSeederTest extends UnitTestCase {
     $this->assertSame(1, AppverseReviewSeeder::authorFor(NULL));
   }
 
+  /**
+   * A security finding's tag, as the report spells it or as the record
+   * does; anything else, including the PASS row's dash, is no tag.
+   *
+   * @covers ::tagKey
+   */
+  public function testTagKey(): void {
+    $this->assertSame('potentially_malicious', AppverseReviewSeeder::tagKey('potentially-malicious'));
+    $this->assertSame('potentially_malicious', AppverseReviewSeeder::tagKey(' Potentially malicious '));
+    $this->assertSame('unintentional', AppverseReviewSeeder::tagKey('unintentional'));
+    $this->assertNull(AppverseReviewSeeder::tagKey('—'));
+    $this->assertNull(AppverseReviewSeeder::tagKey(NULL));
+  }
+
 }

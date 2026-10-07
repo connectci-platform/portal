@@ -43,6 +43,9 @@
              for, so the new ones are marked rather than every carried-over
              one being labelled (appverse-planning#54). #}
           {% if finding.is_new %}<span class="finding-new">{{ 'New'|t }}</span> {% endif %}
+          {# The rubric's Reject trigger. Reviewer-only: the contributor gets
+             the reviewer's own words, not the tool's suspicion. #}
+          {% if can_edit and finding.tag == 'potentially_malicious' %}<span class="finding-malicious">{{ 'Potentially malicious'|t }}</span> {% endif %}
           {{ finding.summary }}
         </div>
         <div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>

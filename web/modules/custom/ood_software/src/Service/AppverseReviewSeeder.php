@@ -176,7 +176,7 @@ class AppverseReviewSeeder {
     // the copy this review owns and outlives the run's temp directory.
     $markdown = '';
     if ($reportFile !== NULL) {
-      $attached = \Drupal::service('file_system')->realpath($reportFile->getFileUri());
+      $attached = $this->fileSystem->realpath($reportFile->getFileUri());
       if ($attached !== FALSE && is_readable($attached)) {
         $markdown = (string) file_get_contents($attached);
       }
@@ -282,6 +282,9 @@ class AppverseReviewSeeder {
       // PASS and NOT CHECKED rows are checks, not findings; the page keeps
       // them out of the counts and lists them apart.
       'field_rvf_result' => self::resultKey($finding['result'] ?? NULL),
+      // Security findings say whether the problem looks unintentional or
+      // potentially malicious, the rubric's Reject trigger.
+      'field_rvf_tag' => self::tagKey($finding['tag'] ?? NULL),
     ]);
     // The artifact's findings do not yet emit "category"; set it when present.
     if (isset($finding['category'])) {
@@ -329,6 +332,15 @@ class AppverseReviewSeeder {
   public static function resultKey(?string $result): ?string {
     $key = str_replace(' ', '_', strtolower(trim((string) $result)));
     return in_array($key, ['fail', 'warn', 'pass', 'not_checked'], TRUE) ? $key : NULL;
+  }
+
+  /**
+   * The field_rvf_tag key for a security finding's tag ("potentially-malicious"
+   * in the record, "potentially malicious" in the report); NULL for none.
+   */
+  public static function tagKey(?string $tag): ?string {
+    $key = str_replace([' ', '-'], '_', strtolower(trim((string) $tag)));
+    return in_array($key, ['unintentional', 'potentially_malicious'], TRUE) ? $key : NULL;
   }
 
   /**
