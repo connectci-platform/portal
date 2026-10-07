@@ -641,7 +641,7 @@ final class ReviewPageForm extends FormBase {
       'stable_id' => (string) ($p->get('field_rvf_stable_id')->value ?? ''),
       'summary' => (string) ($p->get('field_rvf_summary')->value ?? ''),
       'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
-      'evidence_link' => ReviewPageData::evidenceLink((string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
+      'evidence_parts' => ReviewPageData::evidenceParts((string) ($p->get('field_rvf_evidence')->value ?? ''), $this->linkRepoUrl, $this->linkSha),
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
     ];

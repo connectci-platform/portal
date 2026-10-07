@@ -20,6 +20,11 @@ use Drupal\ood_software\Service\ReviewPageData;
  */
 class ReviewPageDataTest extends UnitTestCase {
 
+  /**
+   * A finding record for the tests.
+   *
+   * @return array<string, mixed>
+   */
   private function finding(string $rule, string $severity = 'low', string $result = 'FAIL', string $id = ''): array {
     return [
       'rule' => $rule, 'severity' => $severity, 'result' => $result,
@@ -38,6 +43,9 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame($expected, ReviewPageData::blockFor($rule));
   }
 
+  /**
+   * @return array<string, array<int, mixed>>
+   */
   public static function blockProvider(): array {
     return [
       'security' => ['OODT-03', 'security'],
@@ -286,6 +294,9 @@ class ReviewPageDataTest extends UnitTestCase {
     }
   }
 
+  /**
+   * @return array<string, array<int, string|null>>
+   */
   public static function evidenceLinks(): array {
     $base = 'https://github.com/mkonda/appverse-example-monorepo/blob/a52c443deadbeef/';
     return [
@@ -298,6 +309,25 @@ class ReviewPageDataTest extends UnitTestCase {
       'no path is not linked' => ['No CHANGELOG, CHANGES, or HISTORY file found at repo root', NULL, NULL],
       'parent paths are not linked' => ['../etc/passwd:1', NULL, NULL],
     ];
+  }
+
+  /**
+   * Every path:line in the evidence links, not only the first.
+   *
+   * @covers ::evidenceParts
+   */
+  public function testEvidencePartsLinkEveryPlace(): void {
+    $evidence = 'app/views/layouts/application.html.erb:19,22,23; app/views/cluster_status/index.html.erb:2; _job_queue.erb:191 at 10:30';
+    $parts = ReviewPageData::evidenceParts($evidence, 'https://github.com/o/r', 'abc');
+    $this->assertSame($evidence, implode('', array_column($parts, 'text')), 'the parts are the whole evidence');
+    $this->assertSame([
+      'https://github.com/o/r/blob/abc/app/views/layouts/application.html.erb#L19',
+      'https://github.com/o/r/blob/abc/app/views/cluster_status/index.html.erb#L2',
+      'https://github.com/o/r/blob/abc/_job_queue.erb#L191',
+    ], array_values(array_filter(array_column($parts, 'url'))));
+    // Without GitHub links the evidence is one plain part.
+    $this->assertSame([['text' => 'f.yml:1; g.yml:2']], ReviewPageData::evidenceParts('f.yml:1; g.yml:2', 'https://gitlab.com/o/r', 'abc'));
+    $this->assertSame([], ReviewPageData::evidenceParts('', 'https://github.com/o/r', 'abc'));
   }
 
   /**
@@ -357,12 +387,16 @@ class ReviewPageDataTest extends UnitTestCase {
   /**
    * @covers ::reviewerFinding
    * @dataProvider invalidReviewerFindings
+   * @param array<string, mixed> $input
    */
   public function testReviewerFindingRejectsIncompleteInput(array $input, string $block): void {
     $this->expectException(\InvalidArgumentException::class);
     ReviewPageData::reviewerFinding($input, $block, 'root', 'm');
   }
 
+  /**
+   * @return array<string, array<int, mixed>>
+   */
   public static function invalidReviewerFindings(): array {
     $ok = ['rule' => 'QUA-03', 'severity' => 'low', 'summary' => 'Missing set -e'];
     return [

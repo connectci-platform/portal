@@ -168,6 +168,8 @@ final class ReviewPageData {
    * an empty summary or rule.
    *
    * @return array{rule: string, severity: string, summary: string, evidence: string, anchor: string, line: ?int, defect_key: string, aspect: string, category: ?string, app_id: string, stable_id: string}
+   *
+   * @param array<mixed> $input
    */
   public static function reviewerFinding(array $input, string $block, string $appId, string $stableId): array {
     if (!isset(self::BLOCK_FIELDS[$block])) {
@@ -241,11 +243,49 @@ final class ReviewPageData {
   }
 
   /**
+   * Evidence as text and links: every "path:line" in it links to GitHub.
+   *
+   * A finding often cites several places ("a.erb:19,22; b.erb:2"), and only
+   * the first used to link. A "path:line" counts at the start, as
+   * evidenceLink() reads it, or after a space, comma, semicolon or bracket
+   * when its path has a "/" or "." in it, so a time like "10:30" stays text.
+   *
+   * @return array<int, array{text: string, url?: string}>
+   *   The evidence in order; the parts' text joined is the evidence.
+   */
+  public static function evidenceParts(string $evidence, string $repoUrl, string $sha): array {
+    $parts = [];
+    $at = 0;
+    preg_match_all('#(?:^|(?<=[\s;,(]))[A-Za-z0-9._~/-]*[A-Za-z0-9_~-]\.?[A-Za-z0-9._~-]*:\d+(?:-\d+)?(?:,\d+)*#', $evidence, $matches, PREG_OFFSET_CAPTURE);
+    foreach ($matches[0] as [$ref, $offset]) {
+      $path = substr($ref, 0, (int) strpos($ref, ':'));
+      if ($offset > 0 && strpbrk($path, '/.') === FALSE) {
+        continue;
+      }
+      $link = self::evidenceLink($ref, $repoUrl, $sha);
+      if ($link === NULL) {
+        continue;
+      }
+      if ($offset > $at) {
+        $parts[] = ['text' => substr($evidence, $at, $offset - $at)];
+      }
+      $parts[] = ['text' => $link['text'], 'url' => $link['url']];
+      $at = $offset + strlen($link['text']);
+    }
+    if ($at < strlen($evidence)) {
+      $parts[] = ['text' => substr($evidence, $at)];
+    }
+    return $parts;
+  }
+
+  /**
    * Whether a finding record asserts a defect.
    *
    * FAIL and WARN do; PASS confirms a check and NOT CHECKED reports a skipped
    * one (row-per-check reporting since appverse-review#46). A record with no
    * result counts as a finding, as it always has.
+   *
+   * @param array<mixed> $finding
    */
   public static function isDefect(array $finding): bool {
     $result = strtoupper(trim((string) ($finding['result'] ?? '')));
@@ -255,7 +295,9 @@ final class ReviewPageData {
   /**
    * Findings grouped by severity, worst first, only severities present.
    *
-   * @return array<int, array{severity: string, count: int, findings: array}>
+   * @param array<mixed> $findings
+   *
+   * @return array<int, array{severity: string, count: int, findings: array<mixed>}>
    */
   public static function groupBySeverity(array $findings): array {
     $buckets = [];
@@ -283,6 +325,8 @@ final class ReviewPageData {
 
   /**
    * "3 findings · 2 High · 1 Medium", or $none when there are none.
+   *
+   * @param array<mixed> $findings
    */
   public static function countLine(array $findings, string $none = 'No findings'): string {
     $groups = self::groupBySeverity($findings);
@@ -305,7 +349,10 @@ final class ReviewPageData {
    * neighbours either side, and 'newest' when the current review is not the
    * newest one (it is superseded); NULL when $currentNid is not in the list.
    *
-   * @return array{position: int, total: int, older: ?array, newer: ?array, newest: ?array}|null
+   * @param array<int, array<string, mixed>> $reviews
+   *   The repo's reviews, oldest first.
+   *
+   * @return array{position: int, total: int, older: ?array<string, mixed>, newer: ?array<string, mixed>, newest: ?array<string, mixed>}|null
    */
   public static function historyPosition(array $reviews, int $currentNid): ?array {
     $reviews = array_values($reviews);
@@ -333,7 +380,9 @@ final class ReviewPageData {
    * Labels of the previous reviews that carried this stable id, in the
    * order given (newest first).
    *
-   * @param array<int, array{label: string, stable_ids: array}> $previous
+   * @param array<int, array{label: string, stable_ids: array<int, string>}> $previous
+   *
+   * @return array<mixed>
    */
   public static function alsoFlaggedIn(string $stableId, array $previous): array {
     if ($stableId === '') {
@@ -341,7 +390,7 @@ final class ReviewPageData {
     }
     $labels = [];
     foreach ($previous as $review) {
-      if (in_array($stableId, $review['stable_ids'] ?? [], TRUE)) {
+      if (in_array($stableId, $review['stable_ids'], TRUE)) {
         $labels[] = $review['label'];
       }
     }
@@ -352,6 +401,8 @@ final class ReviewPageData {
    * Gate criteria as pills, in the tool's order and vocabulary.
    *
    * @return array<int, array{key: string, label: string, value: string}>
+   *
+   * @param array<mixed> $criteria
    */
   public static function gatePills(array $criteria): array {
     $pills = [];
@@ -367,6 +418,12 @@ final class ReviewPageData {
 
   /**
    * One block: title, level (or NULL), summary, note, count line, groups.
+   *
+   * @param array<mixed> $findings
+   * @param array<mixed> $gates
+   * @param array<mixed>|null $level
+   * @param array<mixed> $previous
+   * @return array<mixed>
    */
   public static function buildBlock(string $key, string $title, array $findings, ?array $level, array $previous, array $gates = []): array {
     $groups = self::groupBySeverity($findings);
@@ -404,11 +461,13 @@ final class ReviewPageData {
   /**
    * The per-app section: five blocks in order, findings sorted into them.
    *
-   * @param array $app
+   * @param array<string, mixed> $app
    *   app_id, name, criteria (array), conclusion, levels (portability /
    *   documentation => level, summary, anchor, note), findings.
-   * @param array $previous
+   * @param array<mixed> $previous
    *   Previous reviews as alsoFlaggedIn() expects them.
+   *
+   * @return array<mixed>
    */
   public static function buildApp(array $app, array $previous = []): array {
     $byBlock = array_fill_keys(array_keys(self::APP_BLOCKS), []);
@@ -442,7 +501,11 @@ final class ReviewPageData {
    * under "root" and the assembler keeps them at repo level; they must not
    * fall between the per-app sections and Maintenance.
    *
-   * @return array{maintenance: array, blocks: array, total: int}
+   * @return array{maintenance: array<mixed>, blocks: array<mixed>, total: int}
+   *
+   * @param array<mixed> $findings
+   * @param array<mixed>|null $level
+   * @param array<mixed> $previous
    */
   public static function buildRepo(array $findings, ?array $level, array $previous = []): array {
     $mnt = [];
