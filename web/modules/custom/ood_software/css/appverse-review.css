@@ -726,6 +726,52 @@
   color: var(--ink);
 }
 
+/* The decision-sent view (appverse-planning#56): the decision, who the
+   repo waits on, and the email as it was sent. */
+.arv-page .decision-sent-panel {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: var(--blue-soft);
+  border-left: 3px solid var(--blue);
+  font-size: .86rem;
+}
+.arv-page .decision-sent-panel .sec {
+  margin-top: 0;
+}
+.arv-page .decision-sent-line,
+.arv-page .decision-waiting {
+  margin: 0 0 6px;
+}
+.arv-page .decision-email {
+  margin-top: 8px;
+  background: var(--white);
+  border: 1px solid var(--gray-150);
+  padding: 6px 10px;
+}
+.arv-page .decision-email summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.arv-page .decision-email .email-head {
+  margin: 6px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gray-150);
+}
+.arv-page .decision-email .email-body p,
+.arv-page .decision-email .email-body ul {
+  margin: 0 0 6px;
+}
+.arv-page .decision-email .email-body {
+  /* Links are full URLs; break them inside the narrow sidebar. */
+  overflow-wrap: anywhere;
+}
+.arv-page .decision-email blockquote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--gray-300);
+  color: var(--gray-700);
+}
+
 /* The repo's reviewer, at the top of the sidebar (appverse-planning#33). */
 .arv-page .assignee-block {
   margin-bottom: 14px;

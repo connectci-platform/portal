@@ -80,6 +80,73 @@ final class ReviewDecision {
     return ['repo' => $repo, 'apps' => $apps, 'review' => $any('accept') ? 'publish' : NULL];
   }
 
+  /**
+   * Where an updated decision leaves the repo, each app and the review
+   * (appverse-planning#56).
+   *
+   * Unlike plan(), which lists the moves a first decision makes from where a
+   * submission stands, this names the state each should end in, so an update
+   * can get there from wherever the first decision left it. Accepted apps are
+   * live; an app accepted with suggestions waits, ready to publish, unless it
+   * is already live; an app sent back or declined leaves the catalog. The repo
+   * is live when any app is accepted, waits for Publish when only suggestions
+   * remain (or stays live, when it was live before this round), goes back to
+   * the contributor when any app can be fixed, and is declined only when
+   * every app is. The review is public only after an Accept.
+   *
+   * @param array<string, string> $appDecisions
+   *   App key => its new decision.
+   * @param array<string, bool> $appLive
+   *   App key => whether that app is live now.
+   * @param bool $repoWasLive
+   *   Whether the repo was live before this round's first decision.
+   *
+   * @return array{repo: string, apps: array<string, ?string>, review: string}
+   *   Moderation states; an app's NULL means it stays as it is.
+   */
+  public static function updateTargets(array $appDecisions, array $appLive, bool $repoWasLive): array {
+    $decisions = array_values($appDecisions);
+    $any = static fn (string $d): bool => in_array($d, $decisions, TRUE);
+    $repo = match (TRUE) {
+      $any('accept') => 'published',
+      $any('accept_with_suggestions') => $repoWasLive ? 'published' : 'ready_for_review',
+      $any('request_changes') => 'needs_adjustment',
+      default => 'declined',
+    };
+    $apps = [];
+    foreach ($appDecisions as $app => $decision) {
+      $apps[$app] = match ($decision) {
+        'accept' => 'published',
+        'accept_with_suggestions' => ($appLive[$app] ?? FALSE) ? NULL : 'ready_for_review',
+        'request_changes' => 'needs_adjustment',
+        'reject' => 'declined',
+        default => NULL,
+      };
+    }
+    return ['repo' => $repo, 'apps' => $apps, 'review' => $any('accept') ? 'published' : 'in_review'];
+  }
+
+  /**
+   * Who the repo waits on once the decision is sent: the decision-sent view's
+   * sentence (appverse-planning#56).
+   *
+   * @param array<string, string> $apps
+   *   The sent decisions (ReviewDecisionApplier::sent()).
+   * @param bool $publishPending
+   *   Whether "Publish app and review" is still to do.
+   * @param string $contributor
+   *   The contributor's name.
+   */
+  public static function waitingOn(array $apps, bool $publishPending, string $contributor): string {
+    $any = static fn (string $d): bool => in_array($d, $apps, TRUE);
+    return match (TRUE) {
+      $any('request_changes') => sprintf('Waiting on %s to re-submit. They were asked to fix the repo on GitHub and re-submit from their AppVerse page.', $contributor),
+      $publishPending => sprintf('Waiting on a reviewer to publish. %s was told it is accepted with suggestions.', $contributor),
+      $any('accept') || $any('accept_with_suggestions') => 'Nothing to wait on: it is in the AppVerse catalog.',
+      default => 'Nothing to wait on: it was declined.',
+    };
+  }
+
   const APP_MOVES = ['accept' => 'publish', 'request_changes' => 'needs_adjustment', 'reject' => 'declined'];
 
   /**

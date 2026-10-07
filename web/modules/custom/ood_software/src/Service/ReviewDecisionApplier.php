@@ -6,6 +6,7 @@ use Drupal\Component\Datetime\TimeInterface;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -48,6 +49,7 @@ final class ReviewDecisionApplier {
     protected LoggerChannelFactoryInterface $loggerFactory,
     protected Connection $database,
     protected LockBackendInterface $lock,
+    protected DateFormatterInterface $dateFormatter,
   ) {}
 
   /**
@@ -58,8 +60,12 @@ final class ReviewDecisionApplier {
    * decision to be (appverse-planning#51). A review sent before the field
    * existed falls back to its current conclusions and response.
    *
-   * @return array{apps: array<string, string>, response: string}|null
-   *   apps: verdict paragraph id => decision.
+   * @return array{apps: array<string, string>, response: string, email: array<string, mixed>|null, was_live: bool|null, history: array<int, array<string, mixed>>}|null
+   *   apps: verdict paragraph id => decision; email: the decision email as
+   *   sent (subject and blocks, see DecisionEmail), NULL for a review sent
+   *   before it was stored; was_live: whether the repo was live before the
+   *   round's first decision; history: earlier decisions an update replaced,
+   *   oldest first, each with apps, response, at and by.
    */
   public static function sent(NodeInterface $review): ?array {
     if (!$review->hasField('field_arv_decision_sent_at') || $review->get('field_arv_decision_sent_at')->isEmpty()) {
@@ -68,14 +74,20 @@ final class ReviewDecisionApplier {
     $stored = $review->hasField('field_arv_sent_decisions')
       ? json_decode((string) ($review->get('field_arv_sent_decisions')->value ?? ''), TRUE) : NULL;
     if (is_array($stored) && is_array($stored['apps'] ?? NULL)) {
-      return ['apps' => array_map('strval', $stored['apps']), 'response' => (string) ($stored['response'] ?? '')];
+      return [
+        'apps' => array_map('strval', $stored['apps']),
+        'response' => (string) ($stored['response'] ?? ''),
+        'email' => is_array($stored['email'] ?? NULL) ? $stored['email'] : NULL,
+        'was_live' => isset($stored['was_live']) ? (bool) $stored['was_live'] : NULL,
+        'history' => is_array($stored['history'] ?? NULL) ? $stored['history'] : [],
+      ];
     }
     $apps = [];
     foreach ($review->hasField('field_arv_verdicts') ? $review->get('field_arv_verdicts')->referencedEntities() : [] as $verdict) {
       $apps[(string) $verdict->id()] = (string) $verdict->get('field_rvv_conclusion')->value;
     }
     $response = $review->hasField('field_arv_contributor_response') ? (string) ($review->get('field_arv_contributor_response')->value ?? '') : '';
-    return ['apps' => $apps, 'response' => $response];
+    return ['apps' => $apps, 'response' => $response, 'email' => NULL, 'was_live' => NULL, 'history' => []];
   }
 
   /**
@@ -199,19 +211,33 @@ final class ReviewDecisionApplier {
   protected function applyDecision(NodeInterface $review, string $response): ?array {
     $decisions = $this->appDecisions($review);
     $overall = ReviewProgress::strictestDecision(array_values($decisions));
+    $repo = $review->get('field_arv_repo')->entity;
+    $wasLive = $repo instanceof NodeInterface && $repo->isPublished();
+
+    // The email is composed before anything moves, so what is stored is
+    // exactly what is sent (appverse-planning#56).
+    $email = NULL;
+    if ($repo instanceof NodeInterface) {
+      $names = $this->appNames($review);
+      $byName = [];
+      foreach ($decisions as $pid => $decision) {
+        $byName[$names[$pid]] = $decision;
+      }
+      $email = DecisionEmail::decision($this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo));
+    }
+
     $review->set('field_arv_decision_sent_at', $this->time->getCurrentTime());
     $review->set('field_arv_decision_sent_by', $this->currentUser->id());
-    // What the email says, fixed: later edits to the page do not change it.
+    // What was sent, fixed: later edits to the page do not change it, and the
+    // decision-sent view shows the email from here (appverse-planning#51, #56).
     if ($review->hasField('field_arv_sent_decisions')) {
-      $review->set('field_arv_sent_decisions', json_encode(['apps' => $decisions, 'response' => $response]));
+      $review->set('field_arv_sent_decisions', json_encode(['apps' => $decisions, 'response' => $response, 'email' => $email, 'was_live' => $wasLive]));
     }
     if (($review->get('moderation_state')->value ?? '') === 'draft') {
       $review->set('moderation_state', 'in_review');
     }
     $this->saveRevision($review, sprintf('Decision sent (%s) by %s', $overall, $this->currentUser->getDisplayName()));
 
-    $repo = $review->get('field_arv_repo')->entity;
-    $wasLive = $repo instanceof NodeInterface && $repo->isPublished();
     $plan = ReviewDecision::plan($decisions);
     $apps = $this->appNodes($review);
     // Apps first, so a repo leaving the catalog takes only the apps still
@@ -241,17 +267,203 @@ final class ReviewDecisionApplier {
       $this->publishReview($review);
     }
 
+    return $repo instanceof NodeInterface && $email !== NULL ? [$repo, $email] : NULL;
+  }
+
+  /**
+   * Why the sent decision cannot be updated now, or NULL when it can
+   * (appverse-planning#56).
+   *
+   * An update replaces the decision of the round it was sent in, so only on
+   * the repo's newest review, not after a withdrawal, and only until the
+   * contributor re-submits: once a new run is dispatched, the decision
+   * belongs to the new round.
+   */
+  public function updateBlocker(NodeInterface $review): ?TranslatableMarkup {
+    if (self::sent($review) === NULL) {
+      return $this->t('No decision has been sent on this review yet.');
+    }
+    if ($review->hasField('field_arv_withdrawn_at') && !$review->get('field_arv_withdrawn_at')->isEmpty()) {
+      return $this->t('The contributor withdrew this submission.');
+    }
+    if ($this->isSuperseded($review)) {
+      return $this->t('A newer review of this repo exists, so this decision belongs to an earlier round.');
+    }
+    $ref = $review->get('field_arv_repo')->target_id;
+    $repo = $ref ? $this->entityTypeManager->getStorage('node')->loadUnchanged($ref) : NULL;
     if (!$repo instanceof NodeInterface) {
-      return NULL;
+      return $this->t('The review has no repo to update.');
     }
-    $names = $this->appNames($review);
-    $byName = [];
-    foreach ($decisions as $pid => $decision) {
-      $byName[$names[$pid]] = $decision;
+    $dispatched = $repo->hasField('field_review_dispatched_at') ? (int) ($repo->get('field_review_dispatched_at')->value ?? 0) : 0;
+    if ($dispatched > (int) $review->get('field_arv_decision_sent_at')->value) {
+      return $this->t('%repo has been re-submitted since the decision, so it belongs to the new round.', ['%repo' => $repo->label()]);
     }
-    return [$repo, DecisionEmail::decision(
-      $this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo),
-    )];
+    $state = (string) ($repo->get('moderation_state')->value ?? '');
+    if (!in_array($state, ['ready_for_review', 'needs_adjustment', 'declined', 'published'], TRUE)) {
+      return $this->t('%repo is @state, so the decision cannot be updated.', ['%repo' => $repo->label(), '@state' => str_replace('_', ' ', $state)]);
+    }
+    return NULL;
+  }
+
+  /**
+   * Updates the sent decision: the contributor is told it replaces the
+   * earlier one, and the repo, its apps and the review move to match
+   * (appverse-planning#56). Locked and transactional, as send() is.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup|null
+   *   Why nothing was updated, or NULL once the update is sent.
+   */
+  public function update(NodeInterface $review, string $response): ?TranslatableMarkup {
+    $lock = 'ood_software_review_decision:' . $review->id();
+    if (!$this->lock->acquire($lock)) {
+      return $this->t('A decision on this review is already being sent. Reload the review to see it.');
+    }
+    $email = NULL;
+    try {
+      $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($review->id());
+      if (!$fresh instanceof NodeInterface) {
+        return $this->t('The review no longer exists.');
+      }
+      if (($blocker = $this->updateBlocker($fresh)) !== NULL) {
+        return $blocker;
+      }
+      $transaction = $this->database->startTransaction();
+      try {
+        $email = $this->applyUpdate($fresh, $response);
+      }
+      catch (\Throwable $e) {
+        $transaction->rollBack();
+        throw $e;
+      }
+      // Commits.
+      unset($transaction);
+    }
+    finally {
+      $this->lock->release($lock);
+    }
+    if ($email !== NULL) {
+      [$repo, $message] = $email;
+      $this->email($fresh, $repo, 'review_decision', $message);
+    }
+    return NULL;
+  }
+
+  /**
+   * Records the updated decision, keeping the one it replaces, and moves the
+   * repo, its apps and the review to where the new decision leaves them.
+   *
+   * @return array{0: \Drupal\node\NodeInterface, 1: array<string, mixed>}|null
+   *   The repo and the email, or NULL without a repo.
+   */
+  protected function applyUpdate(NodeInterface $review, string $response): ?array {
+    $old = self::sent($review);
+    $decisions = $this->appDecisions($review);
+    $overall = ReviewProgress::strictestDecision(array_values($decisions));
+    $repo = $review->get('field_arv_repo')->entity;
+    $wasLive = $old['was_live'] ?? ($repo instanceof NodeInterface && $repo->isPublished());
+    $oldAt = (int) $review->get('field_arv_decision_sent_at')->value;
+    $oldLabel = (string) (ReviewProgress::DECISION_LABELS[ReviewProgress::strictestDecision(array_values($old['apps']))] ?? '');
+
+    $email = NULL;
+    if ($repo instanceof NodeInterface) {
+      $names = $this->appNames($review);
+      $byName = [];
+      foreach ($decisions as $pid => $decision) {
+        $byName[$names[$pid]] = $decision;
+      }
+      $email = DecisionEmail::decision($this->siteName(), $repo->label(), $byName, $response, $wasLive, $this->links($review, $repo));
+      // Said as an update, so the contributor is not left with two emails
+      // that seem to disagree.
+      $email['subject'] = 'Updated: ' . $email['subject'];
+      array_unshift($email['blocks'], ['p', sprintf('This updates the decision sent on %s (%s) and replaces it.', $this->dateFormatter->format($oldAt, 'custom', 'j F Y'), $oldLabel)]);
+    }
+
+    $history = $old['history'];
+    $history[] = [
+      'apps' => $old['apps'],
+      'response' => $old['response'],
+      'at' => $oldAt,
+      'by' => (int) $review->get('field_arv_decision_sent_by')->target_id,
+    ];
+    $review->set('field_arv_decision_sent_at', $this->time->getCurrentTime());
+    $review->set('field_arv_decision_sent_by', $this->currentUser->id());
+    $review->set('field_arv_sent_decisions', json_encode([
+      'apps' => $decisions,
+      'response' => $response,
+      'email' => $email,
+      'was_live' => $wasLive,
+      'history' => $history,
+    ]));
+    $this->saveRevision($review, sprintf('Decision updated from %s to %s by %s', $oldLabel, $overall, $this->currentUser->getDisplayName()));
+
+    $apps = $this->appNodes($review);
+    $live = array_map(static fn (NodeInterface $app): bool => $app->isPublished(), $apps);
+    $targets = ReviewDecision::updateTargets($decisions, $live, $wasLive);
+    // Apps first, as on send.
+    foreach ($targets['apps'] as $pid => $target) {
+      if ($target !== NULL && isset($apps[$pid])) {
+        $this->moveTo($apps[$pid], $target, 'Decision updated on the review.');
+      }
+    }
+    if ($repo instanceof NodeInterface) {
+      $this->moveTo($repo, $targets['repo'], $response !== '' ? $response : 'Decision updated on the review.');
+    }
+    $this->moveTo($review, $targets['review'], sprintf('Review page: decision updated by %s', $this->currentUser->getDisplayName()));
+
+    return $repo instanceof NodeInterface && $email !== NULL ? [$repo, $email] : NULL;
+  }
+
+  /**
+   * Moves a node to a moderation state along the workflow's transitions,
+   * through intermediate states where there is no direct one (needs
+   * adjustment to declined goes by ready for review). Every save is silent:
+   * the update email replaces the transitions' own, and a pass through
+   * ready_for_review must not start an AI run.
+   */
+  protected function moveTo(NodeInterface $node, string $target, string $log): void {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $fresh = $storage->loadUnchanged($node->id());
+    $workflow = $fresh instanceof NodeInterface ? $this->moderationInformation->getWorkflowForEntity($fresh)?->getTypePlugin() : NULL;
+    if (!$workflow || !$workflow->hasState($target)) {
+      return;
+    }
+    $from = (string) ($fresh->get('moderation_state')->value ?? '');
+    if ($from === $target || !$workflow->hasState($from)) {
+      return;
+    }
+    // Breadth-first over the transitions, for the shortest path.
+    $previous = [$from => NULL];
+    $queue = [$from];
+    while ($queue && !array_key_exists($target, $previous)) {
+      $state = array_shift($queue);
+      foreach ($workflow->getState($state)->getTransitions() as $transition) {
+        $next = $transition->to()->id();
+        if (!array_key_exists($next, $previous)) {
+          $previous[$next] = $state;
+          $queue[] = $next;
+        }
+      }
+    }
+    if (!array_key_exists($target, $previous)) {
+      $this->messenger->addWarning($this->t('@title could not be moved from @from to @to.', ['@title' => $fresh->label(), '@from' => $from, '@to' => $target]));
+      return;
+    }
+    $path = [];
+    for ($state = $target; $state !== $from; $state = $previous[$state]) {
+      array_unshift($path, $state);
+    }
+    foreach ($path as $state) {
+      $latest = $storage->getLatestRevisionId($node->id());
+      $step = $workflow->getState($state)->isPublishedState() && $latest
+        ? $storage->loadRevision($latest)
+        : $storage->loadUnchanged($node->id());
+      $step->set('moderation_state', $state);
+      // Read at runtime by hook_node_update(); it is not a field.
+      // @phpstan-ignore-next-line
+      $step->_ood_software_suppress_notifications = TRUE;
+      $this->saveRevision($step, $log);
+    }
+    $this->messenger->addStatus($this->t('Moved @title to @state.', ['@title' => $fresh->label(), '@state' => str_replace('_', ' ', $target)]));
   }
 
   /**

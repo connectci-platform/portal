@@ -4,6 +4,7 @@ namespace Drupal\ood_software\Form;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
+use Drupal\Core\DependencyInjection\ClassResolverInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\EnforcedResponseException;
@@ -12,8 +13,10 @@ use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Controller\AppverseHubController;
 use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
+use Drupal\ood_software\Service\ReviewDecision;
 use Drupal\ood_software\Service\ReviewDecisionApplier;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
@@ -96,6 +99,8 @@ final class ReviewPageForm extends FormBase {
     protected RepoProgress $repoProgress,
     protected ReviewAssignment $reviewAssignment,
     protected AppverseReviewService $reviews,
+    protected ClassResolverInterface $classResolver,
+    protected ReviewDecisionApplier $applier,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -107,6 +112,8 @@ final class ReviewPageForm extends FormBase {
       $container->get('ood_software.repo_progress'),
       $container->get('ood_software.review_assignment'),
       $container->get('ood_software.review_dispatcher'),
+      $container->get('class_resolver'),
+      $container->get('ood_software.review_decision_applier'),
     );
   }
 
@@ -147,13 +154,24 @@ final class ReviewPageForm extends FormBase {
       && $this->currentUser->isAuthenticated()
       && (int) $repo->getOwnerId() === (int) $this->currentUser->id();
     $mode = self::viewModeFor($isReviewer, $isContributor, $this->getRequest()->query->get('view'));
-    $canEdit = $mode === self::MODE_EDIT;
+    $reviewerView = $mode === self::MODE_EDIT;
 
     $page = $this->buildPage($node);
+    // Once the decision is sent the review is a record of it: the reviewer
+    // keeps the internal notes, the assignee and the actions, and the rest is
+    // read-only (the decision-sent view, appverse-planning#51, #56).
+    $canEdit = $reviewerView && !$page['decision']['sent'];
+    // ?update=1 reopens the decisions and the response of a sent decision,
+    // while it can still be updated (appverse-planning#56).
+    $updating = $reviewerView && $page['decision']['sent'] && $this->getRequest()->query->get('update')
+      && $page['decision']['update_blocker'] === NULL;
     $form['#theme'] = $mode === self::MODE_PUBLIC ? 'appverse_review_summary' : 'appverse_review_form';
     $form['#attached']['library'][] = 'ood_software/appverse_review';
     $form['#page'] = $page;
     $form['#can_edit'] = $canEdit;
+    $form['#is_reviewer'] = $reviewerView;
+    $form['#can_decide'] = $canEdit || $updating;
+    $form['#updating'] = $updating;
     // A reviewer looking at the public view (rather than a visitor) gets a
     // banner leading back to the full page.
     $form['#preview'] = $isReviewer && $mode === self::MODE_PUBLIC;
@@ -164,7 +182,7 @@ final class ReviewPageForm extends FormBase {
       $steps = $this->repoProgress->steps($repo);
       $form['#progress'] = [
         '#theme' => 'appverse_progress',
-        '#steps' => $canEdit ? $steps['reviewer'] : $steps['contributor'],
+        '#steps' => $reviewerView ? $steps['reviewer'] : $steps['contributor'],
         '#variant' => 'steps',
       ];
       // The mock's hint: saving is what starts the Review step.
@@ -179,21 +197,114 @@ final class ReviewPageForm extends FormBase {
     // repo's other reviews, so a newly seeded review must invalidate this one.
     $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : [], ['node_list']);
 
-    if (!$canEdit) {
+    if (!$reviewerView) {
       return $form;
     }
+    if ($canEdit) {
+      $this->addContentElements($form, $page, $node);
+    }
+    elseif ($updating) {
+      $this->addDecisionElements($form, $page, $node);
+    }
 
-    $levelOptions = $this->levelOptions();
-    // No choice milder than the findings allow (appverse-planning#30): a
-    // saved decision below its floor is not offered, so it shows as not
+    // The repo's reviewer, kept across rounds (appverse-planning#33).
+    if ($repo instanceof NodeInterface) {
+      $assignee = $this->reviewAssignment->assignee($repo);
+      $form['assignee'] = [
+        '#type' => 'select',
+        '#title' => $this->t('Reviewer'),
+        '#title_display' => 'invisible',
+        '#options' => $this->reviewAssignment->reviewers(),
+        '#empty_option' => $this->t('- Unassigned -'),
+        '#default_value' => $assignee ? $assignee->id() : '',
+      ];
+    }
+
+    $form['new_note'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Add a note'),
+      '#title_display' => 'invisible',
+      '#rows' => 2,
+      '#attributes' => ['placeholder' => $this->t('Add a note…')],
+    ];
+
+    $form['actions']['#type'] = 'actions';
+    if ($updating) {
+      $form['actions']['send_update'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Send updated decision…'),
+        '#attributes' => ['class' => ['btn', 'primary']],
+        '#submit' => ['::saveUpdate', '::goToUpdate'],
+      ];
+      $form['actions']['cancel_update'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Cancel'),
+        '#url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()]),
+        '#attributes' => ['class' => ['btn', 'ghost']],
+      ];
+    }
+    elseif ($page['decision']['sent'] && $page['decision']['update_blocker'] === NULL) {
+      $form['actions']['update_decision'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Update decision'),
+        '#url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()], ['query' => ['update' => 1]]),
+        '#attributes' => ['class' => ['btn', 'ghost'], 'title' => $this->t('Change the decision or the response; the contributor is told it replaces the one sent.')],
+      ];
+    }
+    // "Start the next round" (appverse-planning#56): when the contributor says
+    // by email that they have fixed things, the reviewer re-submits for them,
+    // exactly as the contributor's Re-submit does. Only on the repo's newest
+    // review while the repo is back with the contributor.
+    if ($page['decision']['sent'] && empty($page['superseded_by']) && $repo instanceof NodeInterface
+      && ($repo->get('moderation_state')->value ?? '') === 'needs_adjustment') {
+      $form['actions']['next_round'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Start the next round'),
+        '#attributes' => [
+          'class' => ['btn', 'primary'],
+          'title' => $this->t('Re-submit the repo for its contributor, as their Re-submit button does: a new AI report on the latest commit, and round @n.', ['@n' => $this->repoProgress->facts($repo)['round'] + 1]),
+        ],
+        '#submit' => ['::startNextRound'],
+        '#limit_validation_errors' => [],
+      ];
+    }
+    $form['actions']['save'] = [
+      '#type' => 'submit',
+      '#value' => $canEdit ? $this->t('Save draft') : $this->t('Save note'),
+      '#access' => !$updating,
+      '#attributes' => ['class' => ['btn', 'ghost']],
+    ];
+    // The decision is sent from here (appverse-planning#29): it saves the page,
+    // then confirms on a page listing what the decision will cause. Not on a
+    // superseded review (a newer one of the same repo exists; deciding on
+    // stale findings is the wrong review), and not once a decision is sent.
+    if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by']) && !$page['withdrawn']) {
+      $form['actions']['send_decision'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Send decision…'),
+        '#attributes' => ['class' => ['btn', 'primary']],
+        '#submit' => ['::submitForm', '::goToDecision'],
+      ];
+    }
+    return $form;
+  }
+
+  /**
+   * The decision controls: each app's decision, no milder than its floor
+   * allows (appverse-planning#30), and the response to the contributor. On
+   * an undecided review, and again while a sent decision is being updated
+   * (appverse-planning#56).
+   *
+   * @param array<string, mixed> $form
+   * @param array<string, mixed> $page
+   */
+  protected function addDecisionElements(array &$form, array $page, NodeInterface $node): void {
+    // A saved decision below its floor is not offered, so it shows as not
     // decided until the reviewer picks again.
     $floors = ReviewFloors::forReview($node);
-    // A sent decision is locked: the selects and the response show what was
-    // sent and are not saved again (appverse-planning#51).
-    $locked = $page['decision']['sent'];
     foreach ($page['apps'] as $app) {
       $pid = $app['pid'];
-      $floor = $locked ? NULL : ($floors[(string) $pid] ?? NULL);
+      $floor = $floors[(string) $pid] ?? NULL;
       $form['conclusion'][$pid] = [
         '#type' => 'select',
         '#title' => $this->t('Decision'),
@@ -201,12 +312,33 @@ final class ReviewPageForm extends FormBase {
         '#options' => array_intersect_key($this->conclusionOptions(), array_flip(ReviewFloors::choices($floor['decision'] ?? NULL))),
         '#empty_option' => $this->t('- Not decided -'),
         '#default_value' => $app['conclusion'] ?? '',
-        '#disabled' => $locked,
         '#description' => $floor ? $this->t('At least @d: @reason.', [
           '@d' => ReviewProgress::DECISION_LABELS[$floor['decision']],
           '@reason' => $floor['reason'],
         ]) : NULL,
       ];
+    }
+    $form['response'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Response to contributor'),
+      '#title_display' => 'invisible',
+      '#rows' => 8,
+      '#default_value' => $page['response'],
+    ];
+  }
+
+  /**
+   * The review's content controls: decisions, levels, findings, response and
+   * assessment. Only until the decision is sent (appverse-planning#56).
+   *
+   * @param array<string, mixed> $form
+   * @param array<string, mixed> $page
+   */
+  protected function addContentElements(array &$form, array $page, NodeInterface $node): void {
+    $this->addDecisionElements($form, $page, $node);
+    $levelOptions = $this->levelOptions();
+    foreach ($page['apps'] as $app) {
+      $pid = $app['pid'];
       foreach (self::AXES as $axis => $prefix) {
         $block = $app['blocks'][$axis];
         $form['level'][$pid][$axis] = [
@@ -269,27 +401,6 @@ final class ReviewPageForm extends FormBase {
       }
     }
 
-    // The repo's reviewer, kept across rounds (appverse-planning#33).
-    if ($repo instanceof NodeInterface) {
-      $assignee = $this->reviewAssignment->assignee($repo);
-      $form['assignee'] = [
-        '#type' => 'select',
-        '#title' => $this->t('Reviewer'),
-        '#title_display' => 'invisible',
-        '#options' => $this->reviewAssignment->reviewers(),
-        '#empty_option' => $this->t('- Unassigned -'),
-        '#default_value' => $assignee ? $assignee->id() : '',
-      ];
-    }
-
-    $form['response'] = [
-      '#type' => 'textarea',
-      '#title' => $this->t('Response to contributor'),
-      '#title_display' => 'invisible',
-      '#rows' => 8,
-      '#default_value' => $page['response'],
-      '#disabled' => $locked,
-    ];
     $form['assessment'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Reviewer assessment'),
@@ -298,33 +409,54 @@ final class ReviewPageForm extends FormBase {
       '#default_value' => $page['assessment'],
       '#attributes' => ['placeholder' => $this->t('The published assessment, in your words…')],
     ];
-    $form['new_note'] = [
-      '#type' => 'textarea',
-      '#title' => $this->t('Add a note'),
-      '#title_display' => 'invisible',
-      '#rows' => 2,
-      '#attributes' => ['placeholder' => $this->t('Add a note…')],
-    ];
+  }
 
-    $form['actions']['#type'] = 'actions';
-    $form['actions']['save'] = [
-      '#type' => 'submit',
-      '#value' => $this->t('Save draft'),
-      '#attributes' => ['class' => ['btn', 'ghost']],
-    ];
-    // The decision is sent from here (appverse-planning#29): it saves the page,
-    // then confirms on a page listing what the decision will cause. Not on a
-    // superseded review (a newer one of the same repo exists; deciding on
-    // stale findings is the wrong review), and not once a decision is sent.
-    if (!$page['decision']['sent'] && $page['state'] !== 'published' && empty($page['superseded_by']) && !$page['withdrawn']) {
-      $form['actions']['send_decision'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('Send decision…'),
-        '#attributes' => ['class' => ['btn', 'primary']],
-        '#submit' => ['::submitForm', '::goToDecision'],
-      ];
+  /**
+   * "Send updated decision…": saves the new decisions and response, which
+   * take effect only once confirmed (the sent record stays until then).
+   *
+   * @param array<string, mixed> $form
+   */
+  public function saveUpdate(array &$form, FormStateInterface $form_state): void {
+    $values = $form_state->getValues();
+    foreach ($this->node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      $pid = $verdict->id();
+      if (array_key_exists($pid, $values['conclusion'] ?? [])) {
+        $verdict->set('field_rvv_conclusion', $values['conclusion'][$pid] !== '' ? $values['conclusion'][$pid] : NULL);
+        $verdict->save();
+      }
     }
-    return $form;
+    $this->setText($this->node, 'field_arv_contributor_response', $values['response'] ?? '');
+    $this->node->setNewRevision(TRUE);
+    $this->stampRevision($this->node, 'Review page: decision update drafted by ' . $this->currentUser->getDisplayName());
+    $this->node->save();
+  }
+
+  /**
+   * Second submit handler for "Send updated decision…": confirm.
+   *
+   * @param array<string, mixed> $form
+   */
+  public function goToUpdate(array &$form, FormStateInterface $form_state): void {
+    $form_state->setRedirect('ood_software.review_decision', ['node' => $this->node->id()], ['query' => ['update' => 1]]);
+  }
+
+  /**
+   * "Start the next round": the contributor's Re-submit, done by a reviewer.
+   *
+   * @param array<string, mixed> $form
+   */
+  public function startNextRound(array &$form, FormStateInterface $form_state): void {
+    $form_state->setRedirect('ood_software.review_page', ['node' => $this->node->id()]);
+    $ref = $this->node->get('field_arv_repo')->target_id;
+    $repo = $ref ? $this->entityTypeManager->getStorage('node')->loadUnchanged($ref) : NULL;
+    if (!$repo instanceof NodeInterface || ($repo->get('moderation_state')->value ?? '') !== 'needs_adjustment') {
+      $this->messenger()->addError($this->t('The repo is no longer waiting on its contributor, so there is no next round to start.'));
+      return;
+    }
+    // The hub's send-for-review: the transition, its notification to
+    // reviewers and the AI run it dispatches.
+    $this->classResolver->getInstanceFromDefinition(AppverseHubController::class)->sendForReview($repo);
   }
 
   /**
@@ -342,48 +474,47 @@ final class ReviewPageForm extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $node = $this->node;
     $values = $form_state->getValues();
-    // A sent decision's conclusions and response are not written again.
-    $locked = ReviewDecisionApplier::sent($node) !== NULL;
-
-    foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      $pid = $verdict->id();
-      $changed = FALSE;
-      if (!$locked && array_key_exists($pid, $values['conclusion'] ?? [])) {
-        $verdict->set('field_rvv_conclusion', $values['conclusion'][$pid] !== '' ? $values['conclusion'][$pid] : NULL);
-        $changed = TRUE;
-      }
-      foreach (self::AXES as $axis => $prefix) {
-        if (isset($values['level'][$pid][$axis])) {
-          $verdict->set("field_rvv_{$prefix}_level", $values['level'][$pid][$axis] !== '' ? $values['level'][$pid][$axis] : NULL);
-          $this->setText($verdict, "field_rvv_{$prefix}_level_note", $values['level_note'][$pid][$axis] ?? '');
+    // Once the decision is sent only the notes and the assignee are saved:
+    // the rest is the record of what was sent (appverse-planning#51, #56).
+    if (ReviewDecisionApplier::sent($node) === NULL) {
+      foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+        $pid = $verdict->id();
+        $changed = FALSE;
+        if (array_key_exists($pid, $values['conclusion'] ?? [])) {
+          $verdict->set('field_rvv_conclusion', $values['conclusion'][$pid] !== '' ? $values['conclusion'][$pid] : NULL);
           $changed = TRUE;
         }
+        foreach (self::AXES as $axis => $prefix) {
+          if (isset($values['level'][$pid][$axis])) {
+            $verdict->set("field_rvv_{$prefix}_level", $values['level'][$pid][$axis] !== '' ? $values['level'][$pid][$axis] : NULL);
+            $this->setText($verdict, "field_rvv_{$prefix}_level_note", $values['level_note'][$pid][$axis] ?? '');
+            $changed = TRUE;
+          }
+        }
+        if ($changed) {
+          $verdict->save();
+        }
+        foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $finding) {
+          $this->saveProse($finding, $values);
+          $this->saveReviewerEdits($finding, $values);
+        }
       }
-      if ($changed) {
-        $verdict->save();
-      }
-      foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $finding) {
+      foreach ($node->get('field_arv_repo_findings')->referencedEntities() as $finding) {
         $this->saveProse($finding, $values);
         $this->saveReviewerEdits($finding, $values);
       }
-    }
-    foreach ($node->get('field_arv_repo_findings')->referencedEntities() as $finding) {
-      $this->saveProse($finding, $values);
-      $this->saveReviewerEdits($finding, $values);
-    }
 
-    if (isset($values['maint_level'])) {
-      $node->set('field_arv_maint_level', $values['maint_level'] !== '' ? $values['maint_level'] : NULL);
-      $this->setText($node, 'field_arv_maint_level_note', $values['maint_level_note'] ?? '');
-    }
-    if (!$locked) {
+      if (isset($values['maint_level'])) {
+        $node->set('field_arv_maint_level', $values['maint_level'] !== '' ? $values['maint_level'] : NULL);
+        $this->setText($node, 'field_arv_maint_level_note', $values['maint_level_note'] ?? '');
+      }
       $this->setText($node, 'field_arv_contributor_response', $values['response'] ?? '');
+      $this->setText($node, 'field_arv_assessment', $values['assessment'] ?? '');
     }
     $repo = $node->get('field_arv_repo')->entity;
     if (array_key_exists('assignee', $values) && $repo instanceof NodeInterface) {
       $this->reviewAssignment->assign($repo, $values['assignee'] !== '' ? (int) $values['assignee'] : NULL);
     }
-    $this->setText($node, 'field_arv_assessment', $values['assessment'] ?? '');
 
     $noteText = trim((string) ($values['new_note'] ?? ''));
     if ($noteText !== '') {
@@ -657,24 +788,53 @@ final class ReviewPageForm extends FormBase {
   /**
    * The sent decision, if any, for the sidebar and the header's Publish.
    *
-   * @return array{sent: bool, label: string, by: string, at: string, publish_url: ?string}
+   * @return array{sent: bool, label: string, by: string, at: string, publish_url: ?string, waiting_on: string, email: array<string, mixed>|null, to: string, update_blocker: mixed, updated_from: string}
    */
   protected function decisionInfo(NodeInterface $node): array {
-    if (!$node->hasField('field_arv_decision_sent_at') || $node->get('field_arv_decision_sent_at')->isEmpty()) {
-      return ['sent' => FALSE, 'label' => '', 'by' => '', 'at' => '', 'publish_url' => NULL];
+    $sent = ReviewDecisionApplier::sent($node);
+    if ($sent === NULL) {
+      return ['sent' => FALSE, 'label' => '', 'by' => '', 'at' => '', 'publish_url' => NULL, 'waiting_on' => '', 'email' => NULL, 'to' => '', 'update_blocker' => $this->t('No decision has been sent on this review yet.'), 'updated_from' => ''];
     }
-    $overall = ReviewProgress::strictestDecision(array_values(ReviewDecisionApplier::sent($node)['apps'] ?? []));
+    $overall = ReviewProgress::strictestDecision(array_values($sent['apps']));
     $by = $node->get('field_arv_decision_sent_by')->entity;
+    $repo = $node->get('field_arv_repo')->entity;
+    $owner = $repo instanceof NodeInterface && $repo->getOwnerId() ? $repo->getOwner()->getDisplayName() : (string) $this->t('the contributor');
+    $publishPending = ReviewPublishConfirmForm::canPublish($node);
     return [
       'sent' => TRUE,
       'label' => (string) (ReviewProgress::DECISION_LABELS[$overall] ?? ''),
       'by' => $by instanceof UserInterface ? $by->getDisplayName() : '',
       'at' => $this->formatDate((int) $node->get('field_arv_decision_sent_at')->value, 'medium'),
       // After an Accept with suggestions: "Publish app and review".
-      'publish_url' => ReviewPublishConfirmForm::canPublish($node)
+      'publish_url' => $publishPending
         ? Url::fromRoute('ood_software.review_publish', ['node' => $node->id()])->toString()
         : NULL,
+      // The decision-sent view (appverse-planning#56): who the repo waits on,
+      // and the email as it was sent (NULL for a review sent before emails
+      // were stored).
+      'waiting_on' => ReviewDecision::waitingOn($sent['apps'], $publishPending, $owner),
+      'email' => $sent['email'],
+      'to' => $owner,
+      // Why "Update decision" is not offered, or NULL when it is.
+      'update_blocker' => $this->applier->updateBlocker($node),
+      // "Updated from Request changes on 6 October 2026" after an update.
+      'updated_from' => $this->updatedFrom($sent['history']),
     ];
+  }
+
+  /**
+   * "Updated from Request changes on 6 October 2026", from the decision an
+   * update replaced; empty when the decision was never updated.
+   *
+   * @param array<int, array<string, mixed>> $history
+   */
+  protected function updatedFrom(array $history): string {
+    $last = end($history);
+    if (!is_array($last)) {
+      return '';
+    }
+    $label = ReviewProgress::DECISION_LABELS[ReviewProgress::strictestDecision(array_values((array) ($last['apps'] ?? [])))] ?? '';
+    return (string) $this->t('Updated from @d on @at', ['@d' => $label, '@at' => $this->formatDate((int) ($last['at'] ?? 0), 'medium')]);
   }
 
   /**
