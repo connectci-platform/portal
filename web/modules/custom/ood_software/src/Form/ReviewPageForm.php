@@ -19,6 +19,7 @@ use Drupal\ood_software\Service\ReviewDecisionApplier;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
+use Drupal\ood_software\Service\ReviewSignals;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
@@ -191,7 +192,6 @@ final class ReviewPageForm extends FormBase {
       return $form;
     }
 
-    $levelOptions = $this->levelOptions();
     // No choice milder than the findings allow (appverse-planning#30): a
     // saved decision below its floor is not offered, so it shows as not
     // decided until the reviewer picks again.
@@ -221,10 +221,11 @@ final class ReviewPageForm extends FormBase {
           '#type' => 'select',
           '#title' => $this->t('@axis level', ['@axis' => $block['title']]),
           '#title_display' => 'invisible',
-          '#options' => $levelOptions,
-          '#empty_option' => $this->t('- None -'),
-          // An empty level (an older or hand-seeded review) starts at the
-          // automated rating rather than "None".
+          '#options' => $this->levelOptions($axis),
+          // Starts at the automated rating. Only a review with no rating at
+          // all (an older or hand-seeded one) offers an empty choice, so a
+          // save never invents a level.
+          '#empty_option' => ($block['level'] ?? NULL) || ($block['tool_level'] ?? NULL) ? NULL : $this->t('- Not rated -'),
           '#default_value' => ($block['level'] ?? NULL) ?: ($block['tool_level'] ?? ''),
         ];
         $form['level_note'][$pid][$axis] = [
@@ -257,10 +258,10 @@ final class ReviewPageForm extends FormBase {
     $maint = $page['maintenance'];
     $form['maint_level'] = [
       '#type' => 'select',
-      '#title' => $this->t('Maintenance level'),
+      '#title' => $this->t('Upkeep level'),
       '#title_display' => 'invisible',
-      '#options' => $levelOptions,
-      '#empty_option' => $this->t('- None -'),
+      '#options' => $this->levelOptions('maintenance'),
+      '#empty_option' => ($maint['level'] ?? NULL) || ($maint['tool_level'] ?? NULL) ? NULL : $this->t('- Not rated -'),
       '#default_value' => ($maint['level'] ?? NULL) ?: ($maint['tool_level'] ?? ''),
     ];
     $form['maint_level_note'] = [
@@ -623,7 +624,13 @@ final class ReviewPageForm extends FormBase {
       'apps' => $apps,
       'maintenance' => $repoSection['maintenance'],
       'repo_blocks' => $repoSection['blocks'],
-      'level_labels' => $this->levelOptions(),
+      // Per axis, keyed like the blocks (portability, documentation,
+      // maintenance), for the badges and captions.
+      'level_labels' => [
+        'portability' => $this->levelOptions('portability'),
+        'documentation' => $this->levelOptions('documentation'),
+        'maintenance' => $this->levelOptions('maintenance'),
+      ],
       'conclusion_labels' => $this->conclusionOptions(),
       'response' => $sent !== NULL ? $sent['response'] : (string) ($node->get('field_arv_contributor_response')->value ?? ''),
       'assessment' => (string) ($node->get('field_arv_assessment')->value ?? ''),
@@ -1141,24 +1148,14 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
-   * @return array<mixed>
+   * An axis's levels in the words people see (appverse-planning#12).
+   *
+   * @return array<string, string>
+   *   Stored level => its label for this axis.
    */
-  protected function levelOptions(): array {
-    $definitions = $this->entityTypeManager->getStorage('field_storage_config');
-    $storage = $definitions->load('node.field_arv_maint_level');
-    $allowed = $storage ? ($storage->getSetting('allowed_values') ?? []) : [];
-    $options = [];
-    // Config YAML lists {value, label} pairs; the loaded setting is keyed
-    // value => label. Accept either shape.
-    foreach ($allowed as $key => $item) {
-      if (is_array($item)) {
-        $options[$item['value']] = $item['label'];
-      }
-      else {
-        $options[$key] = $item;
-      }
-    }
-    return $options ?: ['solid' => 'Solid', 'some_notes' => 'Some notes', 'needs_attention' => 'Needs attention'];
+  protected function levelOptions(string $axis): array {
+    // phpcs:ignore Drupal.Semantics.FunctionT.NotLiteralString
+    return array_map(fn (string $label): string => (string) $this->t($label), ReviewSignals::LEVEL_LABELS[$axis] ?? []);
   }
 
   /**

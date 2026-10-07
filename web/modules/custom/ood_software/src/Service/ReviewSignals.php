@@ -23,6 +23,18 @@ final class ReviewSignals {
   const AXES = ['portability', 'documentation'];
 
   /**
+   * The words each axis's levels read as, everywhere a person sees them: the
+   * catalog's chips, the review page and the public summary
+   * (appverse-planning#12). One scale per axis, each saying what it measures,
+   * rather than a shared Solid / Some notes / Needs attention.
+   */
+  const LEVEL_LABELS = [
+    'portability' => ['solid' => 'Portable', 'some_notes' => 'Needs site config', 'needs_attention' => 'Site-specific'],
+    'documentation' => ['solid' => 'Complete', 'some_notes' => 'Adequate', 'needs_attention' => 'Minimal'],
+    'maintenance' => ['solid' => 'Well maintained', 'some_notes' => 'Active', 'needs_attention' => 'Inactive'],
+  ];
+
+  /**
    * The verdict for an app: by app node first, then by the subpath the tool
    * used as app_id, where an empty subpath is the "root" app.
    *

@@ -466,6 +466,15 @@ final class ReviewPageData {
     ];
   }
 
+  /**
+   * The gate pills as one line: the passes counted, anything else listed.
+   *
+   * @param array<int, array{key: string, label: string, value: string}> $pills
+   *   As gatePills() builds them.
+   *
+   * @return array<string, mixed>
+   *   The summary the template reads.
+   */
   public static function gateSummary(array $pills): array {
     $passes = array_values(array_filter($pills, static fn (array $p): bool => $p['value'] === 'pass'));
     $others = array_values(array_filter($pills, static fn (array $p): bool => $p['value'] !== 'pass'));
@@ -600,7 +609,9 @@ final class ReviewPageData {
         $blocks[$key] = self::buildBlock($key, $title, $byBlock[$key], NULL, $previous);
       }
     }
-    $maintenance = self::buildBlock('maintenance', 'Maintenance', $mnt, $level, $previous);
+    // Shown as Upkeep, the word the catalog and the report use; the key and
+    // the page anchor stay "maintenance", which the catalog links to.
+    $maintenance = self::buildBlock('maintenance', 'Upkeep', $mnt, $level, $previous);
     $total = array_sum(array_column($maintenance['groups'], 'count'));
     foreach ($blocks as $block) {
       $total += array_sum(array_column($block['groups'], 'count'));

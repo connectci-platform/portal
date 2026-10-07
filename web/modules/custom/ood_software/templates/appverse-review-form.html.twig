@@ -86,10 +86,10 @@
                JS the dropdown is simply there. #}
             {% if can_edit and level_el %}
               {# Literal map: a macro cannot see the template's level_class. #}
-              <span class="level-readonly">{{ m.level_badge(block.level, page.level_labels, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}</span>
+              <span class="level-readonly">{{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}</span>
               <span class="level-control">{{ level_el }}</span>
             {% else %}
-              {{ m.level_badge(block.level, page.level_labels, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
+              {{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
             {% endif %}
             {% if can_edit and level_el %}
               <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
@@ -105,7 +105,7 @@
          (appverse-planning#54). #}
       {% if can_edit and level_el and block.tool_level and block.level and block.level != block.tool_level %}
         <div class="concl-caption level-caption">
-          {{ 'Changed from automated rating: @l'|t({'@l': page.level_labels[block.tool_level] ?? block.tool_level}) }}
+          {{ 'Changed from automated rating: @l'|t({'@l': (page.level_labels[block.key] ?? {})[block.tool_level] ?? block.tool_level}) }}
         </div>
       {% endif %}
       {% if block.summary %}<div class="cat-summary">{{ block.summary }}</div>{% endif %}

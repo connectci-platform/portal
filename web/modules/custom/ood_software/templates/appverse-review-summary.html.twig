@@ -25,7 +25,7 @@
     <dd>
       <div class="summary-row-head">
         {% if block.level %}
-          <span class="rating-badge"><span class="rating-dot level-{{ level_class[block.level] ?? 'none' }}"></span><span class="rating-label">{{ page.level_labels[block.level] ?? block.level }}</span></span>
+          <span class="rating-badge"><span class="rating-dot level-{{ level_class[block.level] ?? 'none' }}"></span><span class="rating-label">{{ (page.level_labels[block.key] ?? {})[block.level] ?? block.level }}</span></span>
         {% endif %}
         <span class="summary-line">{{ block.summary ?: block.count_line }}</span>
       </div>
