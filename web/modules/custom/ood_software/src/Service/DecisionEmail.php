@@ -79,7 +79,7 @@ final class DecisionEmail {
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it. It is now listed in the catalog.', $args),
       'accept_with_suggestions' => $wasLive
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it, with suggestions below. It stays listed in the Appverse catalog, and the suggestions are worth a look when you next update it.', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it, with suggestions below. None of them block it being listed, but it is not in the catalog yet, so there is time to act on any you want to fix before it goes public. Tell @reviewer when you are ready, or say nothing and it will be listed as it is.', $args),
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it, with suggestions below. None of them block it being listed, but it is not in the catalog yet, so there is time to act on any you want to fix before it goes public. Reply to this email when you are ready, or say nothing and it will be listed as it is.', $args),
       'request_changes' => $wasLive
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and is asking for changes. It is out of the Appverse catalog until they are made.', $args)
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and is asking for changes before it can be listed.', $args),
@@ -103,7 +103,7 @@ final class DecisionEmail {
         $blocks[] = ['p', new TranslatableMarkup('The accepted apps are now listed in the catalog.')];
       }
       elseif ($any('accept_with_suggestions') && !$any('accept')) {
-        $blocks[] = ['p', new TranslatableMarkup('The accepted apps are not in the catalog yet, so there is time to act on the suggestions before they go public. Tell @reviewer when you are ready, or say nothing and they will be listed as they are.', $args)];
+        $blocks[] = ['p', new TranslatableMarkup('The accepted apps are not in the catalog yet, so there is time to act on the suggestions before they go public. Reply to this email when you are ready, or say nothing and they will be listed as they are.')];
       }
     }
 

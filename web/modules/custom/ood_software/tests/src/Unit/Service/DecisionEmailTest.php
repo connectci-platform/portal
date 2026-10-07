@@ -160,6 +160,25 @@ class DecisionEmailTest extends UnitTestCase {
   }
 
   /**
+   * Accept with suggestions on a repo that is not live: it is NOT published on
+   * send, so the email offers the window to fix something before it is, and
+   * says how to close that window. A repo already live has no window: it stays
+   * listed and the suggestions wait for its next update.
+   *
+   * @covers ::decision
+   */
+  public function testAcceptWithSuggestionsOffersTheFixWindow(): void {
+    $new = self::paragraphs(self::email(['A' => 'accept_with_suggestions'], 'Pin the version.'))[1];
+    $this->assertStringContainsString('it is not in the catalog yet', $new);
+    $this->assertStringContainsString('Reply to this email when you are ready', $new);
+    $this->assertStringNotContainsString('shortly', $new, 'no promise that removes the window');
+
+    $live = self::paragraphs(self::email(['A' => 'accept_with_suggestions'], 'Pin the version.', TRUE))[1];
+    $this->assertStringContainsString('It stays listed in the Appverse catalog', $live);
+    $this->assertStringNotContainsString('not in the catalog yet', $live);
+  }
+
+  /**
    * A declined repo's review stays private, and the email says so.
    *
    * @covers ::decision
@@ -216,7 +235,7 @@ class DecisionEmailTest extends UnitTestCase {
   public function testMixedWaitingForPublish(): void {
     $email = self::email(['v1' => 'accept_with_suggestions', 'v2' => 'reject'], 'x');
     $this->assertContains(
-      'The accepted apps are not in the catalog yet, so there is time to act on the suggestions before they go public. Tell Grace when you are ready, or say nothing and they will be listed as they are.',
+      'The accepted apps are not in the catalog yet, so there is time to act on the suggestions before they go public. Reply to this email when you are ready, or say nothing and they will be listed as they are.',
       self::paragraphs($email),
     );
     $this->assertSame(['The full review'], self::links($email));
