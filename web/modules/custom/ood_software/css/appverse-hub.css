@@ -453,6 +453,16 @@ header:has(> .appverse-hub-add-repo) {
   font-size: 0.8125rem;
   min-width: 11rem;
 }
+/* The nect theme hides every Bootstrap dropdown (display none, no height, no
+   opacity) and opens it on hover only, so the menu Bootstrap opened on a
+   click, a tap or the keyboard (marked .show) stayed hidden: it worked only
+   for a mouse. Open it whenever Bootstrap says it is open. */
+.appverse-hub-card__menu .dropdown-menu.show {
+  display: block;
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+}
 /* The theme underlines links in content, which made the menu's link items
    (Edit, Request changes, Delete) read as underlined while the POST items
    beside them did not. A menu item is a control, not prose, so none of them
