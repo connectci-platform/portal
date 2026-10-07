@@ -134,6 +134,23 @@ class ReviewSignalsTest extends UnitTestCase {
   }
 
   /**
+   * A monorepo app's own upkeep, when the review scored it, replaces the
+   * repo's and links to the app's section (appverse-planning#58).
+   *
+   * @covers ::shape
+   */
+  public function testAppUpkeepReplacesTheReposWhenScored(): void {
+    $review = ['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/appverse/review/9', 'upkeep' => ['level' => 'solid', 'summary' => 'Active repo']];
+    $quiet = $this->verdict(5, 'apps/quiet') + ['upkeep' => ['level' => 'needs_attention', 'summary' => 'Last change 2023-02']];
+    $out = ReviewSignals::shape($review, $quiet, NULL);
+    $this->assertSame(['level' => 'needs_attention', 'summary' => 'Last change 2023-02', 'anchor' => '/appverse/review/9#app-apps/quiet'], $out['upkeep']);
+
+    // Without its own, the app shows the repo's.
+    $out = ReviewSignals::shape($review, $this->verdict(5, 'apps/busy') + ['upkeep' => NULL], NULL);
+    $this->assertSame(['level' => 'solid', 'summary' => 'Active repo', 'anchor' => '/appverse/review/9#maintenance'], $out['upkeep']);
+  }
+
+  /**
    * The security count is the app's findings plus the repo-level ones, which
    * apply to every app, and links to the app's section.
    *

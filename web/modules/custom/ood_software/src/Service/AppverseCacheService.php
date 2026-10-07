@@ -461,10 +461,20 @@ class AppverseCacheService {
           'anchor' => (string) ($verdict->get("field_rvv_{$prefix}_anchor")->value ?? ''),
         ];
       }
+      // A monorepo app's own upkeep, from the artifact's per-app indicator
+      // (appverse-review schema 1.3, appverse-planning#58). Stored only as the
+      // imported defaults; without it the app shows the repo's upkeep.
+      $defaults = $verdict->hasField('field_rvv_indicators_default')
+        ? json_decode((string) ($verdict->get('field_rvv_indicators_default')->value ?? ''), TRUE) : NULL;
+      $upkeep = is_array($defaults['maintenance'] ?? NULL) ? $defaults['maintenance'] : NULL;
       $verdicts[] = [
         'app_ref' => $verdict->get('field_rvv_app_ref')->target_id !== NULL ? (int) $verdict->get('field_rvv_app_ref')->target_id : NULL,
         'app_id' => (string) ($verdict->get('field_rvv_app_id')->value ?? ''),
         'axes' => $axes,
+        'upkeep' => $upkeep !== NULL ? [
+          'level' => isset($upkeep['level']) ? (string) $upkeep['level'] : NULL,
+          'summary' => (string) ($upkeep['summary'] ?? ''),
+        ] : NULL,
         'security' => ReviewSignals::securityCount($this->findingFacts($verdict, 'field_rvv_findings')),
       ];
     }

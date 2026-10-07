@@ -131,7 +131,11 @@ final class ReviewSignals {
     foreach (self::AXES as $name) {
       $out[$name] = $axis($verdict['axes'][$name] ?? [], $appSection);
     }
-    $out['upkeep'] = $axis($review['upkeep'] ?? [], 'maintenance');
+    // A monorepo app's own upkeep when the review scored it, linked to the
+    // app's section; otherwise the repo's (appverse-planning#58).
+    $out['upkeep'] = !empty($verdict['upkeep']['level'])
+      ? $axis($verdict['upkeep'], $appSection)
+      : $axis($review['upkeep'] ?? [], 'maintenance');
     return $out;
   }
 }
