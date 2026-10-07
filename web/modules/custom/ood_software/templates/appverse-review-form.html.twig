@@ -251,24 +251,7 @@
 
   <div class="layout">
     <div class="main-col">
-      {# Step 1 of the Reviewer Process: settle the repo gates and the
-         duplicate check. Reviewers and the contributor only; the public
-         summary does not render this. #}
-      {% if page.repo_gates or page.gate_rows or page.catalog_html %}
-        <div class="catblock repo-checks" id="block-repo-checks">
-          <div class="cat-top">
-            {# No "Reviewer Process, step 1" here: it was the only step on the
-               page that was numbered, which asked where the others were
-               (appverse-planning#53). Worth revisiting if the rest get
-               labelled. #}
-            <div class="cat-title-row">
-              <span class="cat-name">{{ 'Gates and catalog checks'|t }}</span>
-            </div>
-            {# A row of pills gave a pass the same weight as a failure, and the
-               passes are the common case. So the passes read as a count, with
-               the names behind a toggle, and anything that is not a pass stays
-               out in full (appverse-planning#54). #}
-            {# One line per earlier review: decision, date, reviewer, commit. They
+      {# One line per earlier review: decision, date, reviewer, commit. They
          need much less than the review you are reading (appverse-planning#54). #}
       {% if page.history.others is not empty %}
         <details class="other-reviews">
@@ -296,7 +279,24 @@
           {% if page.round_delta.resolved %}<span class="round-delta__resolved">{{ '@n resolved'|t({'@n': page.round_delta.resolved}) }}</span>{% endif %}
         </div>
       {% endif %}
-      {% if page.repo_gate_summary.total %}
+      {# Step 1 of the Reviewer Process: settle the repo gates and the
+         duplicate check. Reviewers and the contributor only; the public
+         summary does not render this. #}
+      {% if page.repo_gates or page.gate_rows or page.catalog_html %}
+        <div class="catblock repo-checks" id="block-repo-checks">
+          <div class="cat-top">
+            {# No "Reviewer Process, step 1" here: it was the only step on the
+               page that was numbered, which asked where the others were
+               (appverse-planning#53). Worth revisiting if the rest get
+               labelled. #}
+            <div class="cat-title-row">
+              <span class="cat-name">{{ 'Gates and catalog checks'|t }}</span>
+            </div>
+            {# A row of pills gave a pass the same weight as a failure, and the
+               passes are the common case. So the passes read as a count, with
+               the names behind a toggle, and anything that is not a pass stays
+               out in full (appverse-planning#54). #}
+            {% if page.repo_gate_summary.total %}
               <div class="gates">
                 {% if page.repo_gate_summary.passes %}
                   <details class="gate-passes">
