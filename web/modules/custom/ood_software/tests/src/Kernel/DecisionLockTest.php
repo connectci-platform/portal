@@ -104,7 +104,7 @@ class DecisionLockTest extends KernelTestBase {
    */
   public function testSentReadsTheStoredDecision(): void {
     $review = $this->sentReview($this->repo(), ['7' => 'reject']);
-    $this->assertSame(['apps' => ['7' => 'reject'], 'response' => 'Thanks.'], ReviewDecisionApplier::sent($review));
+    $this->assertSame(['apps' => ['7' => 'reject'], 'response' => 'Thanks.', 'email' => NULL, 'was_live' => NULL, 'history' => []], ReviewDecisionApplier::sent($review));
     $unsent = Node::create(['type' => 'appverse_review', 'title' => 'Unsent', 'moderation_state' => 'draft']);
     $unsent->save();
     $this->assertNull(ReviewDecisionApplier::sent($unsent));

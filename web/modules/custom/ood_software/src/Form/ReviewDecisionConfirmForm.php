@@ -34,6 +34,12 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
   protected bool $mixed = FALSE;
 
   /**
+   * Whether this confirms an update of a sent decision (?update=1,
+   * appverse-planning#56) rather than the first decision.
+   */
+  protected bool $updating = FALSE;
+
+  /**
    * Verdict id => its decision.
    *
    * @var array<string, string>
@@ -69,10 +75,13 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
       throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
     }
     $this->review = $node;
+    $this->updating = (bool) $this->getRequest()->query->get('update');
     // Already sent, withdrawn, published, superseded by a newer review, or a
     // repo no longer awaiting review: the page hides Send decision for these,
-    // and this route can be opened by URL (appverse-planning#50).
-    if (($blocker = $this->applier->decisionBlocker($node)) !== NULL) {
+    // and this route can be opened by URL (appverse-planning#50). An update
+    // has its own rule: a sent decision, until the contributor re-submits.
+    $blocker = $this->updating ? $this->applier->updateBlocker($node) : $this->applier->decisionBlocker($node);
+    if ($blocker !== NULL) {
       $this->messenger()->addWarning($blocker);
       throw new EnforcedResponseException(new RedirectResponse($this->getCancelUrl()->toString()));
     }
@@ -98,7 +107,7 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     $this->mixed = count(array_unique(array_values($appDecisions))) > 1;
 
     $this->appDecisions = $appDecisions;
-    $this->preview = $this->applier->previewDecision($node);
+    $this->preview = $this->applier->previewDecision($node, $this->updating);
 
     $form['#attributes']['class'][] = 'arv-page';
     $form['#attached']['library'][] = 'ood_software/appverse_review';
@@ -120,6 +129,14 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
         '#weight' => -10,
       ];
     }
+    // An update moves things from where they are now; say where each ends up.
+    if ($this->updating) {
+      $form['moves'] = [
+        '#theme' => 'item_list',
+        '#items' => $this->updateMoves($node),
+        '#weight' => -15,
+      ];
+    }
     $form = parent::buildForm($form, $form_state);
     // What sending causes reads before the email, not after it.
     $form['description']['#weight'] = -20;
@@ -128,12 +145,50 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
     return $form;
   }
 
+  /**
+   * Where an update leaves the repo, each app and the review, from where they
+   * are now (appverse-planning#56). The preview below shows the email.
+   *
+   * @return array<int, string>
+   */
+  protected function updateMoves(NodeInterface $review): array {
+    $state = static fn (NodeInterface $n): string => str_replace('_', ' ', (string) ($n->get('moderation_state')->value ?? ''));
+    $sent = ReviewDecisionApplier::sent($review);
+    $apps = $this->applier->appNodes($review);
+    $repo = $review->get('field_arv_repo')->entity;
+    $targets = ReviewDecision::updateTargets(
+      $this->applier->appDecisions($review),
+      array_map(static fn (NodeInterface $app): bool => $app->isPublished(), $apps),
+      $sent['was_live'] ?? ($repo instanceof NodeInterface && $repo->isPublished()),
+    );
+    $move = static fn (string $from, ?string $to): string => $to === NULL || str_replace('_', ' ', $to) === $from
+      ? $from . ' (no change)' : $from . ' → ' . str_replace('_', ' ', $to);
+    $rows = [];
+    if ($repo instanceof NodeInterface) {
+      $rows[] = ['Repo', $move($state($repo), $targets['repo'])];
+    }
+    $names = $this->applier->appNames($review);
+    foreach ($targets['apps'] as $pid => $target) {
+      if (isset($apps[$pid])) {
+        $rows[] = [$names[$pid] ?? 'App', $move($state($apps[$pid]), $target)];
+      }
+    }
+    $rows[] = ['Review', $targets['review'] === 'published' ? 'Public with its summary.' : 'Not public.'];
+    return array_map(static fn (array $row): string => $row[0] . ': ' . $row[1], $rows);
+  }
+
   public function getQuestion() {
     $repo = $this->review->get('field_arv_repo')->entity;
+    if ($this->updating) {
+      return $this->t('Update the decision on @repo', ['@repo' => $repo instanceof NodeInterface ? $repo->label() : $this->review->label()]);
+    }
     return ReviewDecision::headline($this->appDecisions, (string) ($repo instanceof NodeInterface ? $repo->label() : $this->review->label()));
   }
 
   public function getDescription() {
+    if ($this->updating) {
+      return $this->t('This replaces the decision sent earlier, which stays on record, and moves the repo and the review to match.');
+    }
     $repo = $this->review->get('field_arv_repo')->entity;
     $sentences = ReviewDecision::consequences($this->appDecisions, $repo instanceof NodeInterface && $repo->isPublished(), $this->preview['contributor'] ?? '');
     return $this->t('@consequences', ['@consequences' => implode(' ', array_map('strval', $sentences))]);
@@ -141,6 +196,9 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
 
   public function getConfirmText() {
     $name = $this->preview['contributor'] ?? '';
+    if ($this->updating) {
+      return $name !== '' ? $this->t('Send the update to @name', ['@name' => $name]) : $this->t('Send the update to the contributor');
+    }
     return $name !== '' ? $this->t('Send to @name', ['@name' => $name]) : $this->t('Send to the contributor');
   }
 
@@ -160,10 +218,15 @@ final class ReviewDecisionConfirmForm extends ConfirmFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $response = (string) ($this->review->get('field_arv_contributor_response')->value ?? '');
     $form_state->setRedirectUrl($this->getCancelUrl());
-    // send() checks again under a lock: the repo can move, or a second
-    // submit arrive, between building the form and submitting it.
-    if (($error = $this->applier->send($this->review, $response)) !== NULL) {
+    // send() and update() check again under a lock: the repo can move, or a
+    // second submit arrive, between building the form and submitting it.
+    $error = $this->updating ? $this->applier->update($this->review, $response) : $this->applier->send($this->review, $response);
+    if ($error !== NULL) {
       $this->messenger()->addError($error);
+      return;
+    }
+    if ($this->updating) {
+      $this->messenger()->addStatus($this->t('Decision updated: @d.', ['@d' => ReviewProgress::DECISION_LABELS[$this->decision]]));
       return;
     }
     $this->messenger()->addStatus($this->mixed

@@ -11,6 +11,13 @@
 #}
 {% set page = form['#page'] %}
 {% set can_edit = form['#can_edit'] %}
+{# Reviewer chrome (notes, assignee, Publish, the AI suggestion) shows to
+   reviewers even once the decision is sent and the content is read-only
+   (the decision-sent view, appverse-planning#56). #}
+{% set is_reviewer = form['#is_reviewer'] %}
+{# The decisions and the response: editable before sending, and again while a
+   sent decision is being updated (appverse-planning#56). #}
+{% set can_decide = form['#can_decide'] %}
 {# The wireframe's dot classes rate quality: level-high is the good end (solid
    green), level-low the poor end (red ring). #}
 {% set level_class = {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'} %}
@@ -177,7 +184,7 @@
   {% if page.withdrawn %}
     <div class="arv-superseded">
       {{ 'The contributor withdrew this submission on @at.'|t({'@at': page.withdrawn}) }}
-      {% if can_edit %}<span class="arv-superseded-note">{{ 'There is nothing to decide unless they re-submit, which starts a new review.'|t }}</span>{% endif %}
+      {% if is_reviewer %}<span class="arv-superseded-note">{{ 'There is nothing to decide unless they re-submit, which starts a new review.'|t }}</span>{% endif %}
     </div>
   {% endif %}
   {% if page.superseded_by %}
@@ -189,7 +196,7 @@
   {% endif %}
   {# After an Accept with suggestions: publish when the contributor has had a
      chance to act on the suggestions, or right away (appverse-planning#29). #}
-  {% if can_edit and page.decision.publish_url %}
+  {% if is_reviewer and page.decision.publish_url %}
     <div class="arv-publish-bar">
       <span>{{ 'Accepted with suggestions. Publish when the contributor has had a chance to act on them, or right away.'|t }}</span>
       <a class="btn primary" href="{{ page.decision.publish_url }}">{{ 'Publish app and review'|t }}</a>
@@ -217,7 +224,7 @@
           {% if page.reviewed_at %}{% set sub = sub|merge([('Reviewed'|t) ~ ' ' ~ page.reviewed_at]) %}{% endif %}
           {{ sub|join(' · ') }}
           {% if page.tool_version %} · <span class="tool-version">{{ page.tool_version }}</span>{% endif %}
-          {% if can_edit %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
+          {% if is_reviewer %} · <a href="{{ page.public_url }}">{{ 'Public view'|t }}</a>{% endif %}
         </div>
       </div>
       {# The header keeps the position and the rerun note; the reviews
@@ -346,8 +353,34 @@
     </div>
 
     <aside class="sidebar">
+      {# Once sent: the decision, who it waits on and the email as sent
+         (appverse-planning#56). #}
+      {% if is_reviewer and page.decision.sent %}
+        <div class="decision-sent-panel">
+          <h2 class="sec">{{ 'Decision sent'|t }}</h2>
+          <p class="decision-sent-line">
+            <span class="decision-sent">{{ page.decision.label }}</span>
+            {% if page.decision.by %} · {{ page.decision.by }}{% endif %} · {{ page.decision.at }}
+          </p>
+          {% if page.decision.updated_from %}<p class="decision-updated muted">{{ page.decision.updated_from }}</p>{% endif %}
+          <p class="decision-waiting">{{ page.decision.waiting_on }}</p>
+          {% if form['#updating'] %}
+            <p class="decision-updating"><strong>{{ 'Updating the decision.'|t }}</strong> {{ 'Change the decisions or the response below; nothing changes until you confirm, and the contributor is told it replaces the one sent.'|t }}</p>
+          {% endif %}
+          {% if page.decision.email %}
+            <details class="decision-email" open>
+              <summary>{{ 'The email as sent'|t }}</summary>
+              <div class="email-head">
+                <div><span class="muted">{{ 'To'|t }}:</span> {{ page.decision.to }}</div>
+                <div><span class="muted">{{ 'Subject'|t }}:</span> {{ page.decision.email.subject }}</div>
+              </div>
+              <div class="email-body">{{ page.decision.email.html }}</div>
+            </details>
+          {% endif %}
+        </div>
+      {% endif %}
       {# Who reviews the repo, across rounds (appverse-planning#33). #}
-      {% if can_edit %}
+      {% if is_reviewer %}
         <div class="assignee-block">
           <h2 class="sec">{{ 'Reviewer'|t }}</h2>
           {{ form.assignee }}
@@ -359,7 +392,7 @@
       {% for app in page.apps %}
         <div class="decision-app">
           {% if page.apps|length > 1 %}<div class="decision-app-name">{{ app.name }}</div>{% endif %}
-          {% if can_edit %}
+          {% if can_decide %}
             {{ attribute(form.conclusion, app.pid) }}
           {% else %}
             <div class="decision-value">{{ page.conclusion_labels[app.conclusion] ?? 'Not decided'|t }}</div>
@@ -368,29 +401,28 @@
       {% endfor %}
       {# The tool's suggestion is for reviewers; contributors never see AI
          state (appverse-planning#42). #}
-      {% if can_edit and page.recommendation %}
+      {% if is_reviewer and page.recommendation %}
         <div class="concl-caption" title="{{ page.recommendation_note }}">{{ 'Automated suggestion'|t }}: {{ page.recommendation_label }}</div>
       {% endif %}
       <hr class="sidebar-rule">
 
       <div class="sec-head-row"><h2 class="sec">{{ 'Response to contributor'|t }}</h2></div>
-      {% if can_edit %}{{ form.response }}{% else %}<div class="arv-text">{{ page.response }}</div>{% endif %}
+      {% if can_decide %}{{ form.response }}{% else %}<div class="arv-text">{{ page.response }}</div>{% endif %}
 
       <div class="sec-head-row"><h2 class="sec">{{ 'Reviewer assessment'|t }}</h2></div>
       {% if can_edit %}{{ form.assessment }}{% else %}<div class="arv-text">{{ page.assessment }}</div>{% endif %}
 
-      {% if can_edit %}
+      {% if is_reviewer %}
         <div class="publish-block">
-          <h2 class="sec">{{ page.decision.sent ? 'Decision'|t : 'Save or send the decision'|t }}</h2>
-          <div class="publish-note">
-            {% if page.decision.sent %}
-              <span class="decision-sent">{{ 'Decision sent: @d'|t({'@d': page.decision.label}) }}</span>
-              {% if page.decision.by %} · {{ page.decision.by }}{% endif %} · {{ page.decision.at }}
-              {% if page.state == 'published' %}<br>{{ 'The review is published.'|t }}{% else %}<br>{{ 'The contributor can read the review and your response; the public cannot.'|t }}{% endif %}
-            {% else %}
-              {{ 'Visible to reviewers only until a decision is sent. Sending it moves the repo and the review together.'|t }}
-            {% endif %}
-          </div>
+          {% if page.decision.sent %}
+            <div class="publish-note">
+              {{ page.state == 'published' ? 'The review is published.'|t : 'The contributor can read the review and your response; the public cannot.'|t }}
+              {{ 'The review is a record of what was sent; internal notes can still be added.'|t }}
+            </div>
+          {% else %}
+            <h2 class="sec">{{ 'Save or send the decision'|t }}</h2>
+            <div class="publish-note">{{ 'Visible to reviewers only until a decision is sent. Sending it moves the repo and the review together.'|t }}</div>
+          {% endif %}
           <div class="publish-row">{{ form.actions }}</div>
         </div>
 
