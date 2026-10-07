@@ -82,6 +82,13 @@ class ReviewProgressTest extends UnitTestCase {
         ['repo_state' => 'declined', 'review_state' => 'in_review', 'decision_sent' => TRUE, 'decision' => 'reject'] + $base,
         [$D, $D, $D, $F, $N], [$D, $D, $F, $N], ['Decision' => 'Declined'],
       ],
+      // A live repo re-submitted with its sent-back apps stays published
+      // while the new review runs (appverse-planning#48), so the contributor
+      // is told both things (appverse-planning#49).
+      '12 live, update in review' => [
+        ['repo_state' => 'published', 'review_state' => 'in_review'] + $base,
+        [$D, $D, $C, $N, $D], [$D, $C, $N, $D], ['Review' => 'In progress'],
+      ],
     ];
   }
 
@@ -123,6 +130,7 @@ class ReviewProgressTest extends UnitTestCase {
       '9 accepted, not yet published' => 'Accepted. A reviewer will publish it.',
       '10 published' => 'Live in the AppVerse catalog.',
       '11 declined' => 'Declined. The review says why.',
+      '12 live, update in review' => 'Live, and your update is in review. A reviewer will respond by email.',
     ];
     foreach (self::situations() as $name => [$facts]) {
       $this->assertSame($expected[$name], P::contributorSentence(P::steps($facts)['contributor']), $name);
@@ -153,6 +161,7 @@ class ReviewProgressTest extends UnitTestCase {
       '9 accepted, not yet published' => ['Ready to publish', 'Ready to publish', 'warning'],
       '10 published' => ['Live', 'Live', 'success'],
       '11 declined' => ['Declined', 'Declined', 'danger'],
+      '12 live, update in review' => ['In review', 'Published, update in review', 'warning'],
     ];
     foreach (self::situations() as $name => [$facts]) {
       $steps = P::steps($facts);

@@ -167,7 +167,12 @@ final class ReviewProgress {
       $inReview = self::step('In review', self::DONE, 'Done');
     }
     else {
-      $inReview = self::step('In review', self::CURRENT, 'In review');
+      // A live repo being reviewed again stays published while its sent-back
+      // apps are re-reviewed (appverse-planning#48), so "In review" alone read
+      // as though it had come down. Say both (appverse-planning#49).
+      $liveUpdate = $repoState === 'published';
+      $inReview = self::step('In review', self::CURRENT, $liveUpdate ? 'Published, update in review' : 'In review')
+        + ['live_update' => $liveUpdate];
     }
 
     return [
@@ -187,6 +192,10 @@ final class ReviewProgress {
     [$submitted, $inReview, $decision, $live] = $steps;
     return match (TRUE) {
       $submitted['state'] === self::WAITING => 'Not submitted yet.',
+      // A live repo's update is in review while the repo itself stays up, so
+      // say so rather than implying it has come down (appverse-planning#49).
+      $inReview['state'] === self::CURRENT && !empty($inReview['live_update'])
+        => 'Live, and your update is in review. A reviewer will respond by email.',
       $inReview['state'] === self::CURRENT => 'In review. A reviewer will respond by email.',
       // Name the button and where to ask, so the contributor does not have to
       // work out what "re-submit" means here (appverse-planning#55).
@@ -213,8 +222,20 @@ final class ReviewProgress {
    *   A label and a badge modifier matching the hub's other chips.
    */
   public static function chip(array $steps): array {
-    // Walk back from the end: the furthest step that has been reached is
-    // where the repo is now.
+    // Something in flight wins over a later step that is merely done. A live
+    // repo being reviewed again is past Live and current at Review, and the
+    // chip saying "Live" would hide the review the reviewer is looking for
+    // (appverse-planning#49).
+    foreach ($steps as $step) {
+      if (in_array($step['state'], [self::CURRENT, self::FAILED], TRUE) && $step['label'] !== '') {
+        return [
+          'label' => $step['step'] === 'Review' ? 'In review' : $step['label'],
+          'modifier' => self::CHIP_MODIFIERS[$step['state']] ?? 'secondary',
+        ];
+      }
+    }
+    // Otherwise walk back from the end: the furthest step that has been
+    // reached is where the repo is now.
     foreach (array_reverse($steps) as $step) {
       if ($step['state'] === self::NOT_REACHED || $step['label'] === '') {
         continue;
