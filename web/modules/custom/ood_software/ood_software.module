@@ -1884,12 +1884,11 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $runReviewAction = NULL;
   $runReviewActionMenu = NULL;
   if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
-    $label = match ($reviewStatus) {
-      NULL => t('Run AI report'),
-      // The progress line's "Failed · rerun" (appverse-planning#34).
-      'error' => t('Rerun AI report'),
-      default => t('Rerun AI report'),
-    };
+    // "Rerun report", not "Rerun AI report": the pair with the Actions toggle
+    // beside it has to fit a 12.5rem column, and the longer wording wrapped
+    // that card onto a second row. "Run AI report" (no prior run) is short
+    // enough to keep the AI, and a rerun is of the report just named.
+    $label = $reviewStatus === NULL ? t('Run AI report') : t('Rerun report');
     if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }

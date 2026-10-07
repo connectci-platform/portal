@@ -260,10 +260,12 @@ header:has(> .appverse-hub-add-repo) {
     4.5rem               /* github + re-sync */
     12rem                /* owner (blank on own hub) */
     9rem                 /* status (badges wrap onto more lines) */
-    13rem;               /* actions: one labelled button plus the Actions menu
-                            for a reviewer (the widest pair, "Rerun AI report"
-                            + "Actions", needs ~12.2rem), or a contributor's
-                            inline buttons */
+    12.5rem;             /* actions: one labelled button plus the Actions menu.
+                            The fixed tracks already total more than the card
+                            is wide, so widening this one pushes the actions
+                            past the viewport and gives the page a horizontal
+                            scrollbar. The button labels are kept short enough
+                            to fit instead. */
   align-items: center;
   column-gap: 1.25rem;
   row-gap: 0.5rem;
