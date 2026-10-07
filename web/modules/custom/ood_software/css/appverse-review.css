@@ -514,8 +514,16 @@
    follows and grey rather than ink, coming forward only on hover and focus
    (appverse-planning#54). */
 /* The shield on the Security heading, in the slot the rated blocks use for
-   their badge (appverse-planning#53). */
+   their badge, and on the same grey pill so it reads as one of them
+   (appverse-planning#53). */
 .arv-page .cat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-150);
+  border-radius: 999px;
+  width: 26px;
+  height: 26px;
   color: var(--gray-700);
   font-size: .9rem;
   line-height: 1;
