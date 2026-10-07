@@ -77,7 +77,7 @@ class LiveResubmitTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_review_status',
     ]);
     $this->config('system.mail')->set('interface.default', 'test_mail_collector')->save();
-    $this->config('system.site')->set('name', 'AppVerse')->set('mail', 'site@example.org')->save();
+    $this->config('system.site')->set('name', 'Appverse')->set('mail', 'site@example.org')->save();
     // User 1 bypasses access checks, so take that id first.
     $this->createUser([], 'admin');
     $this->createUser(['administer appverse content'], 'reviewer', FALSE, ['mail' => 'reviewer@example.com']);

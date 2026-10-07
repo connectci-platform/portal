@@ -410,7 +410,7 @@ class AppverseReviewService {
 
       $status = $response->getStatusCode();
       if ($status === 204) {
-        $this->logger->info('Dispatched AppVerse review for @repo.', [
+        $this->logger->info('Dispatched Appverse review for @repo.', [
           '@repo' => $targetRepo,
         ]);
         return TRUE;

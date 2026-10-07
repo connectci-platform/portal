@@ -105,7 +105,7 @@ final class ReviewPublishConfirmForm extends ConfirmFormBase {
   }
 
   public function getDescription() {
-    return $this->t('The accepted apps and their repo become visible in the public AppVerse catalog, and the public sees the review summary. Apps sent back or declined stay out.');
+    return $this->t('The accepted apps and their repo become visible in the public Appverse catalog, and the public sees the review summary. Apps sent back or declined stay out.');
   }
 
   public function getConfirmText() {

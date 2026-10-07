@@ -118,7 +118,7 @@ class DecisionEmailTest extends UnitTestCase {
    */
   public static function subjects(): array {
     return [
-      'accept' => [['A' => 'accept'], FALSE, '[Hub] Accepted: Repo is in the AppVerse'],
+      'accept' => [['A' => 'accept'], FALSE, '[Hub] Accepted: Repo is in the Appverse'],
       'accept, already live' => [['A' => 'accept'], TRUE, '[Hub] Review complete: Repo is accepted'],
       'suggestions' => [['A' => 'accept_with_suggestions'], FALSE, '[Hub] Accepted with suggestions: Repo'],
       'changes' => [['A' => 'request_changes'], FALSE, '[Hub] Changes requested on Repo'],
@@ -138,13 +138,13 @@ class DecisionEmailTest extends UnitTestCase {
     $email = self::email(['A' => 'request_changes'], "Add a LICENSE.\nPin the module.");
     $p = self::paragraphs($email);
     $this->assertSame('Hi Ada,', $p[0]);
-    $this->assertSame('Grace reviewed your repo "Repo" for the AppVerse catalog and is asking for changes before it can be listed.', $p[1]);
+    $this->assertSame('Grace reviewed your repo "Repo" for the Appverse catalog and is asking for changes before it can be listed.', $p[1]);
     $this->assertContains("Grace's response:", $p);
     $this->assertSame([['response', "Add a LICENSE.\nPin the module."]], self::of($email, 'response'));
-    $this->assertContains('When you have made the changes on GitHub, click Re-submit on your AppVerse page and a new review will start.', $p);
+    $this->assertContains('When you have made the changes on GitHub, click Re-submit on your Appverse page and a new review will start.', $p);
     $this->assertSame('Questions about the review? Reply to this email and it goes to Grace.', end($p));
     $this->assertSame([], self::of($email, 'apps'), 'a single app lists no apps');
-    $this->assertSame(['Your AppVerse page', 'The full review'], self::links($email));
+    $this->assertSame(['Your Appverse page', 'The full review'], self::links($email));
   }
 
   /**
@@ -165,8 +165,8 @@ class DecisionEmailTest extends UnitTestCase {
    * @covers ::decision
    */
   public function testRejectSaysTheReviewIsPrivate(): void {
-    $this->assertContains('The review is visible only to you and the AppVerse reviewers.', self::paragraphs(self::email(['A' => 'reject'], 'Out of scope.')));
-    $this->assertNotContains('The review is visible only to you and the AppVerse reviewers.', self::paragraphs(self::email(['A' => 'accept'])));
+    $this->assertContains('The review is visible only to you and the Appverse reviewers.', self::paragraphs(self::email(['A' => 'reject'], 'Out of scope.')));
+    $this->assertNotContains('The review is visible only to you and the Appverse reviewers.', self::paragraphs(self::email(['A' => 'accept'])));
   }
 
   /**
@@ -180,8 +180,8 @@ class DecisionEmailTest extends UnitTestCase {
     $this->assertSame([['apps', [['Jupyter', 'Accepted'], ['RStudio', 'Changes requested']]]], self::of($email, 'apps'));
     $p = self::paragraphs($email);
     $this->assertContains('The accepted apps are now listed in the catalog.', $p);
-    $this->assertContains('When you have made the changes on GitHub, click Re-submit on your AppVerse page. The whole repo is reviewed again, and the apps already accepted stay listed.', $p);
-    $this->assertSame(['Your AppVerse page', 'The repo in the catalog', 'The full review'], self::links($email));
+    $this->assertContains('When you have made the changes on GitHub, click Re-submit on your Appverse page. The whole repo is reviewed again, and the apps already accepted stay listed.', $p);
+    $this->assertSame(['Your Appverse page', 'The repo in the catalog', 'The full review'], self::links($email));
   }
 
   /**
@@ -214,7 +214,7 @@ class DecisionEmailTest extends UnitTestCase {
   public function testWithoutNames(): void {
     $p = self::paragraphs(self::email(['A' => 'accept'], '', FALSE, [], ['contributor' => '', 'reviewer' => '']));
     $this->assertSame('Hello,', $p[0]);
-    $this->assertStringStartsWith('The AppVerse team reviewed your repo', $p[1]);
+    $this->assertStringStartsWith('The Appverse team reviewed your repo', $p[1]);
   }
 
   /**
@@ -222,9 +222,9 @@ class DecisionEmailTest extends UnitTestCase {
    */
   public function testNowLive(): void {
     $email = self::render(DecisionEmail::nowLive('Hub', 'Repo', ['One'], TRUE, self::PEOPLE, self::LINKS));
-    $this->assertSame('[Hub] Repo is now in the AppVerse', $email['subject']);
+    $this->assertSame('[Hub] Repo is now in the Appverse', $email['subject']);
     $this->assertSame([['apps', [['One', 'Published']]]], self::of($email, 'apps'));
-    $this->assertSame('Grace published your repo "Repo". It is now listed in the AppVerse catalog.', self::paragraphs($email)[1]);
+    $this->assertSame('Grace published your repo "Repo". It is now listed in the Appverse catalog.', self::paragraphs($email)[1]);
     $single = self::render(DecisionEmail::nowLive('Hub', 'Repo', ['Only'], FALSE, self::PEOPLE, self::LINKS));
     $this->assertSame([], self::of($single, 'apps'));
   }

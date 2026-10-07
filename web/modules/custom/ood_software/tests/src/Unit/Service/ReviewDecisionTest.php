@@ -141,7 +141,7 @@ class ReviewDecisionTest extends UnitTestCase {
    */
   public function testConsequences(): void {
     $say = fn (array $d, bool $live): string => implode(' ', array_map('strval', ReviewDecision::consequences($d, $live, 'Ada')));
-    $this->assertStringContainsString('published in the AppVerse catalog', $say(['a' => 'accept'], FALSE));
+    $this->assertStringContainsString('published in the Appverse catalog', $say(['a' => 'accept'], FALSE));
     $this->assertStringContainsString('Nothing is published yet', $say(['a' => 'accept_with_suggestions'], FALSE));
     $this->assertStringContainsString('leaves the catalog', $say(['a' => 'request_changes'], TRUE));
     $this->assertStringNotContainsString('leaves the catalog', $say(['a' => 'request_changes'], FALSE));

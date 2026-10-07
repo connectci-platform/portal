@@ -116,7 +116,7 @@ class ReviewProgressTest extends UnitTestCase {
     $steps = P::steps(['repo_state' => 'published', 'run_status' => NULL, 'review_state' => NULL]);
     $this->assertSame([$D, $N, $N, $N, $D], array_column($steps['reviewer'], 'state'));
     $this->assertSame([$D, $N, $N, $D], array_column($steps['contributor'], 'state'));
-    $this->assertSame('Live in the AppVerse catalog.', P::contributorSentence($steps['contributor']));
+    $this->assertSame('Live in the Appverse catalog.', P::contributorSentence($steps['contributor']));
     // In the queue with no run: a reviewer has to start one.
     $steps = P::steps(['repo_state' => 'ready_for_review', 'run_status' => NULL, 'review_state' => NULL]);
     $this->assertSame([$D, $C, $N, $N, $N], array_column($steps['reviewer'], 'state'));
@@ -141,7 +141,7 @@ class ReviewProgressTest extends UnitTestCase {
       '7 changes requested' => 'Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.',
       '8 resubmitted, new AI report' => 'In review. A reviewer will respond by email.',
       '9 accepted, not yet published' => 'Accepted. A reviewer will publish it.',
-      '10 published' => 'Live in the AppVerse catalog.',
+      '10 published' => 'Live in the Appverse catalog.',
       '11 declined' => 'Declined. The review says why.',
       '12 live, update in review' => 'Live, and your update is in review. A reviewer will respond by email.',
     ];

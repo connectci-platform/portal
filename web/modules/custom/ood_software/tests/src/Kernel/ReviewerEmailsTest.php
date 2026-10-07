@@ -81,9 +81,9 @@ class ReviewerEmailsTest extends KernelTestBase {
       'field.field.node.appverse_review.field_arv_repo',
     ]);
     $this->config('system.mail')->set('interface.default', 'test_mail_collector')->save();
-    $this->config('system.site')->set('name', 'AppVerse')->set('mail', 'site@example.org')->save();
+    $this->config('system.site')->set('name', 'Appverse')->set('mail', 'site@example.org')->save();
 
-    Role::create(['id' => 'appverse_pm', 'label' => 'AppVerse PM'])
+    Role::create(['id' => 'appverse_pm', 'label' => 'Appverse PM'])
       ->grantPermission('administer appverse content')->save();
     // User 1 bypasses access checks, so take that id first.
     $this->createUser([], 'admin');

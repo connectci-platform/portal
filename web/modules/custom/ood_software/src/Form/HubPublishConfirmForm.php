@@ -55,12 +55,12 @@ final class HubPublishConfirmForm extends ConfirmFormBase {
   public function getDescription() {
     if ($this->node->bundle() === 'appverse_repo') {
       return $this->publishes()
-        ? $this->t('The repo and its apps become visible in the public AppVerse catalog.')
-        : $this->t('The repo and its apps are removed from the public AppVerse catalog.');
+        ? $this->t('The repo and its apps become visible in the public Appverse catalog.')
+        : $this->t('The repo and its apps are removed from the public Appverse catalog.');
     }
     return $this->publishes()
-      ? $this->t('The app becomes visible in the public AppVerse catalog.')
-      : $this->t('The app is removed from the public AppVerse catalog.');
+      ? $this->t('The app becomes visible in the public Appverse catalog.')
+      : $this->t('The app is removed from the public Appverse catalog.');
   }
 
   public function getConfirmText() {

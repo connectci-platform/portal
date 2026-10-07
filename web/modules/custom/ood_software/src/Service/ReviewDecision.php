@@ -190,7 +190,7 @@ final class ReviewDecision {
       $out[] = match ($distinct[0]) {
         'accept' => $repoPublished
           ? new TranslatableMarkup('The repo stays live, and the review is published.')
-          : new TranslatableMarkup('The repo, its apps and the review are published in the AppVerse catalog.'),
+          : new TranslatableMarkup('The repo, its apps and the review are published in the Appverse catalog.'),
         'accept_with_suggestions' => $repoPublished
           ? new TranslatableMarkup('The repo stays live. The review is published when you use Publish on this review.')
           : new TranslatableMarkup('Nothing is published yet. The repo waits as Ready to publish, and a Publish button stays on this review until you use it.'),
@@ -206,7 +206,7 @@ final class ReviewDecision {
       if ($any('accept')) {
         $out[] = $repoPublished
           ? new TranslatableMarkup('The repo stays live, the accepted apps are published, and so is the review.')
-          : new TranslatableMarkup('The repo is published in the AppVerse catalog with the accepted apps, and so is the review.');
+          : new TranslatableMarkup('The repo is published in the Appverse catalog with the accepted apps, and so is the review.');
       }
       elseif ($any('accept_with_suggestions')) {
         $out[] = $repoPublished

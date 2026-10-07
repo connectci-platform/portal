@@ -170,7 +170,7 @@ class AppverseReviewServiceTest extends UnitTestCase {
       'a later dispatch for the same node is a different id' => [$title('Review o/r · all · portal-12319-1790000600'), 'portal-12319-1790000000', FALSE],
       'a superstring id does not match (token boundary)' => [$title('Review o/r · all · portal-12319-17900000001'), 'portal-12319-1790000000', FALSE],
       'a hand dispatch has no id' => [$title('Review o/r · all · '), 'portal-12319-1790000000', FALSE],
-      'an old-style run has the default title' => [$title('AppVerse App Review'), 'portal-12319-1790000000', FALSE],
+      'an old-style run has the default title' => [$title('Appverse App Review'), 'portal-12319-1790000000', FALSE],
       'an empty id never matches anything' => [$title('Review o/r · all · '), '', FALSE],
       'a run without a title' => [['id' => 1], 'portal-12319-1790000000', FALSE],
     ];
@@ -192,7 +192,7 @@ class AppverseReviewServiceTest extends UnitTestCase {
       'dry-run' => [['display_title' => 'Review o/r · dry-run · portal-1-2'], 'dry-run'],
       'all' => [['display_title' => 'Review Sweet-and-Fizzy/appverse-example-monorepo · all · portal-12319-1790000000'], 'all'],
       'single aspect' => [['display_title' => 'Review o/r · security · '], 'security'],
-      'old-style title' => [['display_title' => 'AppVerse App Review'], NULL],
+      'old-style title' => [['display_title' => 'Appverse App Review'], NULL],
       'no title' => [[], NULL],
     ];
   }

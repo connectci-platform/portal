@@ -88,7 +88,7 @@ class ReviewDecisionSendTest extends KernelTestBase {
       'field.field.paragraph.review_verdict.field_rvv_conclusion',
     ]);
     $this->config('system.mail')->set('interface.default', 'test_mail_collector')->save();
-    $this->config('system.site')->set('name', 'AppVerse')->set('mail', 'site@example.org')->save();
+    $this->config('system.site')->set('name', 'Appverse')->set('mail', 'site@example.org')->save();
 
     // User 1 bypasses access checks, so take that id first.
     $this->createUser([], 'admin');
@@ -149,7 +149,7 @@ class ReviewDecisionSendTest extends KernelTestBase {
     $mail = $this->mails()[0];
     $this->assertSame('owner@example.com', $mail['to']);
     $this->assertSame('reviewer@example.com', $mail['reply-to']);
-    $this->assertSame('[AppVerse] Changes requested on example/repo', $mail['subject']);
+    $this->assertSame('[Appverse] Changes requested on example/repo', $mail['subject']);
     $this->assertStringContainsString('Hi owner,', $mail['body']);
     $this->assertStringContainsString('reviewer reviewed your repo "example/repo"', $mail['body']);
     $this->assertStringContainsString('Reply to this email and it goes to reviewer.', $mail['body']);

@@ -226,7 +226,7 @@ final class ReviewProgress {
       $decision['state'] === self::WAITING => t('Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.'),
       $decision['state'] === self::FAILED => t('Declined. The review says why.'),
       $live['state'] === self::CURRENT => t('Accepted. A reviewer will publish it.'),
-      $live['state'] === self::DONE => t('Live in the AppVerse catalog.'),
+      $live['state'] === self::DONE => t('Live in the Appverse catalog.'),
       default => '',
     };
   }

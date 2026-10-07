@@ -501,7 +501,7 @@ function ood_software_form_user_form_alter(array &$form, FormStateInterface $for
   $notifier = \Drupal::service('ood_software.repo_notifier');
   $form['ood_software_review_emails'] = [
     '#type' => 'details',
-    '#title' => t('AppVerse review emails'),
+    '#title' => t('Appverse review emails'),
     '#open' => TRUE,
     '#weight' => 5,
     'ood_software_submitted_emails' => [
@@ -2038,7 +2038,7 @@ function _ood_software_hub_badge(string $state): array {
   // description is the badge's tooltip: these are the editorial (human)
   // states, distinct from the automated review run's badge.
   $map = [
-    'published' => ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public AppVerse catalog.')],
+    'published' => ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public Appverse catalog.')],
     'ready_for_review' => ['label' => t('Awaiting review'), 'modifier' => 'warning', 'description' => t('Submitted by the contributor and waiting for a reviewer to look at it.')],
     'needs_adjustment' => ['label' => t('Needs changes'), 'modifier' => 'error', 'description' => t('A reviewer asked for changes. It returns to the queue when the contributor re-submits.')],
     'draft' => ['label' => t('Draft'), 'modifier' => 'muted', 'description' => t('Not submitted yet. The contributor can still edit it; it is not in the review queue.')],
@@ -2545,7 +2545,7 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
   }
   else {
     $status = $app->isPublished()
-      ? ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public AppVerse catalog.')]
+      ? ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public Appverse catalog.')]
       : ['label' => t('Unpublished'), 'modifier' => 'warning', 'description' => t('Not in the catalog; its repo is published, so publishing the app lists it.')];
   }
 

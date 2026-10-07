@@ -516,7 +516,7 @@ final class AppverseHubController extends ControllerBase {
         : $this->t('You are now assigned to @title.', ['@title' => $node->label()]));
     }
     else {
-      $this->messenger()->addError($this->t('You cannot be assigned: only AppVerse reviewers can.'));
+      $this->messenger()->addError($this->t('You cannot be assigned: only Appverse reviewers can.'));
     }
     return $this->redirectToHub();
   }

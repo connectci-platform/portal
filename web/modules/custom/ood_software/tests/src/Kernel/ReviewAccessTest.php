@@ -14,7 +14,7 @@ use Drupal\user\RoleInterface;
 use Drupal\user\UserInterface;
 
 /**
- * Who can read an AppVerse review (ood_software_node_access()).
+ * Who can read an Appverse review (ood_software_node_access()).
  *
  * The rules, from REVIEW-STATES.md "Who can read the review": reviewers
  * (appverse_pm) always; the repo's owner once a decision is sent; the public

@@ -47,9 +47,9 @@ final class DecisionEmail {
    * @param bool $wasLive
    *   Whether the repo was in the catalog before the decision.
    * @param array{contributor: string, reviewer: string} $people
-   *   Display names; an empty reviewer reads as the AppVerse team.
+   *   Display names; an empty reviewer reads as the Appverse team.
    * @param array{review: string, hub: string, catalog: string} $links
-   *   Absolute URLs of the review page, the contributor's AppVerse page and
+   *   Absolute URLs of the review page, the contributor's Appverse page and
    *   the repo in the catalog.
    *
    * @return array{subject: \Drupal\Core\StringTranslation\TranslatableMarkup, blocks: array<int, array<int, mixed>>}
@@ -65,7 +65,7 @@ final class DecisionEmail {
     $subject = match ($decision) {
       'accept' => $wasLive
         ? new TranslatableMarkup('[@site] Review complete: @repo is accepted', $args)
-        : new TranslatableMarkup('[@site] Accepted: @repo is in the AppVerse', $args),
+        : new TranslatableMarkup('[@site] Accepted: @repo is in the Appverse', $args),
       'accept_with_suggestions' => new TranslatableMarkup('[@site] Accepted with suggestions: @repo', $args),
       'request_changes' => new TranslatableMarkup('[@site] Changes requested on @repo', $args),
       'reject' => new TranslatableMarkup('[@site] @repo was not accepted', $args),
@@ -75,20 +75,20 @@ final class DecisionEmail {
     $blocks = [self::greeting($people)];
     $blocks[] = ['p', match ($decision) {
       'accept' => $wasLive
-        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it. It stays listed in the AppVerse catalog.', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the AppVerse catalog and accepted it. It is now listed in the catalog.', $args),
+        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it. It stays listed in the Appverse catalog.', $args)
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it. It is now listed in the catalog.', $args),
       'accept_with_suggestions' => $wasLive
-        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it, with suggestions below. It stays listed in the AppVerse catalog, and the suggestions are worth a look when you next update it.', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the AppVerse catalog and accepted it, with suggestions below. @reviewer will publish it in the catalog. You are welcome to act on the suggestions first, but you do not have to.', $args),
+        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it, with suggestions below. It stays listed in the Appverse catalog, and the suggestions are worth a look when you next update it.', $args)
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it, with suggestions below. @reviewer will publish it in the catalog. You are welcome to act on the suggestions first, but you do not have to.', $args),
       'request_changes' => $wasLive
-        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and is asking for changes. It is out of the AppVerse catalog until they are made.', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the AppVerse catalog and is asking for changes before it can be listed.', $args),
+        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and is asking for changes. It is out of the Appverse catalog until they are made.', $args)
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and is asking for changes before it can be listed.', $args),
       'reject' => $wasLive
-        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and did not accept it, so it has been removed from the AppVerse catalog.', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the AppVerse catalog and did not accept it.', $args),
+        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and did not accept it, so it has been removed from the Appverse catalog.', $args)
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and did not accept it.', $args),
       default => $wasLive
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and decided on each app:', $args)
-        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the AppVerse catalog and decided on each app:', $args),
+        : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and decided on each app:', $args),
     }];
 
     if (count($appDecisions) > 1) {
@@ -113,8 +113,8 @@ final class DecisionEmail {
       // One commit gives one AI report, so the contributor re-submits the
       // whole repo once, never app by app.
       $blocks[] = ['p', $mixed && $plan['repo'] !== 'needs_adjustment'
-        ? new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your AppVerse page. The whole repo is reviewed again, and the apps already accepted stay listed.')
-        : new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your AppVerse page and a new review will start.')];
+        ? new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page. The whole repo is reviewed again, and the apps already accepted stay listed.')
+        : new TranslatableMarkup('When you have made the changes on GitHub, click Re-submit on your Appverse page and a new review will start.')];
     }
 
     if (trim($response) !== '') {
@@ -122,12 +122,12 @@ final class DecisionEmail {
       $blocks[] = ['response', trim($response)];
     }
     if ($decision === 'reject') {
-      $blocks[] = ['p', new TranslatableMarkup('The review is visible only to you and the AppVerse reviewers.')];
+      $blocks[] = ['p', new TranslatableMarkup('The review is visible only to you and the Appverse reviewers.')];
     }
     $blocks[] = ['p', new TranslatableMarkup('Questions about the review? Reply to this email and it goes to @reviewer.', $args)];
 
     if ($any('request_changes')) {
-      $blocks[] = ['link', new TranslatableMarkup('Your AppVerse page'), $links['hub']];
+      $blocks[] = ['link', new TranslatableMarkup('Your Appverse page'), $links['hub']];
     }
     if ($plan['repo'] === 'publish') {
       $blocks[] = ['link', new TranslatableMarkup('The repo in the catalog'), $links['catalog']];
@@ -158,7 +158,7 @@ final class DecisionEmail {
   public static function nowLive(string $site, string $repo, array $apps, bool $monorepo, array $people, array $links): array {
     $args = ['@site' => $site, '@repo' => $repo, '@reviewer' => self::reviewer($people)];
     $blocks = [self::greeting($people)];
-    $blocks[] = ['p', new TranslatableMarkup('@reviewer published your repo "@repo". It is now listed in the AppVerse catalog.', $args)];
+    $blocks[] = ['p', new TranslatableMarkup('@reviewer published your repo "@repo". It is now listed in the Appverse catalog.', $args)];
     if ($monorepo && $apps !== []) {
       $blocks[] = ['p', new TranslatableMarkup('Published now:')];
       $blocks[] = ['apps', array_map(static fn ($app) => [$app, new TranslatableMarkup('Published')], $apps)];
@@ -166,7 +166,7 @@ final class DecisionEmail {
     $blocks[] = ['p', new TranslatableMarkup('Questions? Reply to this email and it goes to @reviewer.', $args)];
     $blocks[] = ['link', new TranslatableMarkup('The repo in the catalog'), $links['catalog']];
     $blocks[] = ['link', new TranslatableMarkup('The full review'), $links['review']];
-    return ['subject' => new TranslatableMarkup('[@site] @repo is now in the AppVerse', $args), 'blocks' => $blocks];
+    return ['subject' => new TranslatableMarkup('[@site] @repo is now in the Appverse', $args), 'blocks' => $blocks];
   }
 
   /**
@@ -258,7 +258,7 @@ final class DecisionEmail {
    *   Display names.
    */
   protected static function reviewer(array $people): string|TranslatableMarkup {
-    return $people['reviewer'] !== '' ? $people['reviewer'] : new TranslatableMarkup('The AppVerse team');
+    return $people['reviewer'] !== '' ? $people['reviewer'] : new TranslatableMarkup('The Appverse team');
   }
 
   /**
