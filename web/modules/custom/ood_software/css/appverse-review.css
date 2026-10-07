@@ -493,13 +493,16 @@
   margin-top: .25rem;
 }
 
+/* The same fill and corner as the grey bar, not a full pill: a rounded
+   rectangle reads as part of the page's one shape language
+   (appverse-planning#53). */
 .arv-page .rating-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background: var(--gray-150);
-  border-radius: 999px;
-  padding: 4px 12px 4px 8px;
+  border-radius: .25rem;
+  padding: 4px 10px;
   font-family: inherit;
 }
 .arv-page .rating-badge--none {
@@ -545,7 +548,7 @@
   align-items: center;
   justify-content: center;
   background: var(--gray-150);
-  border-radius: 999px;
+  border-radius: .25rem;
   width: 26px;
   height: 26px;
   color: var(--gray-700);
@@ -608,6 +611,32 @@
 .arv-page .gate b {
   font-weight: 600;
 }
+/* A gate's result as a 16px circle after its label: the words "pass" and
+   "fail" repeated down a row of chips read as noise, and a mark is quicker
+   to scan. Colour is never the only cue, so each carries a title and
+   visually-hidden text (appverse-planning#53). */
+.arv-page .gate-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  margin-left: .2rem;
+  font-size: .62rem;
+  line-height: 1;
+  color: #fff;
+  vertical-align: text-bottom;
+}
+.arv-page .gate-mark--pass {
+  background: var(--status-green);
+}
+.arv-page .gate-mark--fail {
+  background: var(--red);
+}
+.arv-page .gate-word {
+  font-weight: 600;
+}
 .arv-page .gate--pass b {
   color: var(--status-green);
 }
@@ -641,11 +670,19 @@
 .arv-page .gate-passes__count::-webkit-details-marker {
   display: none;
 }
+/* One chevron everywhere: down when closed, rotated up when open. It
+   replaced a solid right-pointing triangle here and another in the severity
+   heads (appverse-planning#53). */
 .arv-page .gate-passes__count::before {
-  content: '▸ ';
+  content: '⌄';
+  display: inline-block;
+  margin-right: .35rem;
+  line-height: 1;
+  transform: translateY(-.15em);
+  transition: transform .15s;
 }
 .arv-page .gate-passes[open] .gate-passes__count::before {
-  content: '▾ ';
+  transform: translateY(.1em) rotate(180deg);
 }
 .arv-page .gate-passes__list {
   display: flex;
@@ -809,11 +846,12 @@
 }
 .arv-page .sev-head .car {
   margin-left: auto;
-  color: var(--gray-500);
+  color: var(--gray-700);
+  line-height: 1;
   transition: transform .15s;
 }
 .arv-page .sev-head--open .car {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
 /* Findings. */

@@ -81,7 +81,24 @@
 {# A group of gates: the passes as a count behind a toggle, and anything that
    is not a pass out in full. Both the repo's gates and a block's own use it,
    so one kind of thing reads one way (appverse-planning#53). #}
+{# A gate's result as a mark rather than the word: a white check on teal for
+   a pass, a white cross on red for a fail, and the value spelled out for
+   anything else. The title and the visually-hidden text carry the meaning,
+   since colour alone must not (appverse-planning#53). #}
+{% macro gate_mark(value) %}
+  {% set label = value == 'pass' ? 'passed'|t : (value == 'fail' ? 'failed'|t : value|replace({'_': ' '})) %}
+  {% if value in ['pass', 'fail'] %}
+    <span class="gate-mark gate-mark--{{ value }}" title="{{ label }}">
+      <span class="visually-hidden">{{ label }}</span>
+      <span aria-hidden="true">{{ value == 'pass' ? '✓' : '✕' }}</span>
+    </span>
+  {% else %}
+    <b class="gate-word">{{ label }}</b>
+  {% endif %}
+{% endmacro %}
+
 {% macro gate_group(summary, label) %}
+  {% import _self as m %}
   {% if summary and summary.total %}
     <div class="gates">
       {% if summary.passes %}
@@ -91,13 +108,13 @@
           </summary>
           <div class="gate-passes__list">
             {% for gate in summary.passes %}
-              <span class="gate gate--pass">{{ gate.label }}</span>
+              <span class="gate gate--pass">{{ gate.label }} {{ m.gate_mark('pass') }}</span>
             {% endfor %}
           </div>
         </details>
       {% endif %}
       {% for gate in summary.others %}
-        <span class="gate gate--{{ gate.value }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
+        <span class="gate gate--{{ gate.value }}">{{ gate.label }} {{ m.gate_mark(gate.value) }}</span>
       {% endfor %}
     </div>
   {% endif %}
@@ -194,7 +211,10 @@
         {# The worst group opens, except info, which starts collapsed even when
            it is the only one: it is the group nobody is reading first
            (appverse-planning#54). #}
-        <div class="sev-head{% if loop.first and group.severity != 'info' %} sev-head--open{% endif %}">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span><span class="car">▸</span></div>
+        {# Open the worst group, and any group small enough that collapsing it
+           hides one or two rows behind a click. Info stays shut unless it is
+           that small (appverse-planning#53). #}
+        <div class="sev-head{% if (loop.first and group.severity != 'info') or group.count <= 2 %} sev-head--open{% endif %}">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span><span class="car" aria-hidden="true">⌄</span></div>
         <div class="sev-body">
           {% for finding in group.findings %}
             {{ m.finding_row(finding, form, can_edit) }}
