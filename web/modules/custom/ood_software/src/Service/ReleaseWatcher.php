@@ -37,6 +37,9 @@ final class ReleaseWatcher {
     protected AppverseReviewService $reviews,
     protected LoggerChannelFactoryInterface $loggerFactory,
     protected TimeInterface $time,
+    // Emails the reviewers that an update is in review (#47); optional so
+    // callers built without it (unit tests) still work.
+    protected ?RepoNotificationService $notifier = NULL,
   ) {}
 
   /**
@@ -162,6 +165,7 @@ final class ReleaseWatcher {
           continue;
         }
         $summary['reviewed'][] = $repo->label() . ' @ ' . $latest['tag'];
+        $this->notifier?->notifyUpdateSubmitted($repo, $latest['tag']);
         $logger->info('Release check: @repo has new code at @tag; review started.', ['@repo' => $repo->label(), '@tag' => $latest['tag']]);
       }
       if ($do['store'] !== NULL) {

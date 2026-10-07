@@ -5,8 +5,11 @@ namespace Drupal\ood_software\Service;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Mail\MailManagerInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\node\NodeInterface;
+use Drupal\user\UserDataInterface;
+use Drupal\user\UserInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -35,10 +38,21 @@ use Psr\Log\LoggerInterface;
  * The review page's decisions do not go through these transitions: the
  * decision applier suppresses them and sends one composed email per decision
  * instead (sendReviewEmail(); appverse-planning#32).
+ *
+ * The reviewers' emails from the canvas (appverse-planning#47): the AI report
+ * ready or failed, a reviewer assigned, an update submitted by a release, and
+ * a repo resubmitted. A reviewer can turn off the submitted, resubmitted and
+ * update emails on their profile (SUBMITTED_OPT_OUT); the others are about
+ * their own work and always go.
  */
 class RepoNotificationService {
 
   use StringTranslationTrait;
+
+  /**
+   * User data key: set to 1 when a reviewer stops the submitted emails.
+   */
+  const SUBMITTED_OPT_OUT = 'no_submitted_emails';
 
   protected LoggerInterface $logger;
 
@@ -46,6 +60,8 @@ class RepoNotificationService {
     protected MailManagerInterface $mailManager,
     protected EntityTypeManagerInterface $entityTypeManager,
     LoggerChannelFactoryInterface $loggerFactory,
+    // Optional so callers built without it (unit tests) still work.
+    protected ?UserDataInterface $userData = NULL,
   ) {
     // Match the rest of ood_software's services: take the logger factory
     // and resolve the channel by name. Avoids needing a dedicated
@@ -73,8 +89,11 @@ class RepoNotificationService {
       return;
     }
 
-    if ($newState === 'ready_for_review') {
-      $this->sendToAdmins($node, 'ready_for_review', $extras);
+    if ($newState === 'ready_for_review' && $previousState === 'needs_adjustment') {
+      $this->notifyResubmitted($node);
+    }
+    elseif ($newState === 'ready_for_review') {
+      $this->sendToAdmins($node, 'ready_for_review', $extras, TRUE);
     }
     elseif ($newState === 'needs_adjustment') {
       $this->sendToOwner($node, 'needs_adjustment', $extras);
@@ -91,7 +110,106 @@ class RepoNotificationService {
    * so no transition into ready_for_review sends the usual email.
    */
   public function notifyResubmitted(NodeInterface $repo): void {
-    $this->sendToAdmins($repo, 'ready_for_review', []);
+    // The assigned reviewer hears of it even with the submitted emails off:
+    // it is their review.
+    $this->sendToUsers(array_merge($this->admins(TRUE), array_filter([$this->assignee($repo)])), 'resubmitted', $repo, [
+      'assignee' => $this->assignee($repo)?->getDisplayName(),
+    ]);
+  }
+
+  /**
+   * The AI report was imported: whoever started the run, and the assigned
+   * reviewer.
+   */
+  public function notifyRunReady(NodeInterface $repo, NodeInterface $review): void {
+    $this->sendToUsers(array_filter([$this->starter($repo), $this->assignee($repo)]), 'review_run_ready', $repo, ['review' => $review]);
+  }
+
+  /**
+   * The AI report failed: the admins and whoever started the run, with the
+   * reason, since an import failure otherwise shows only in the cron log.
+   */
+  public function notifyRunFailed(NodeInterface $repo, string $reason, int $runId): void {
+    $this->sendToUsers(array_merge($this->admins(FALSE), array_filter([$this->starter($repo)])), 'review_run_failed', $repo, [
+      'reason' => $reason,
+      'run_id' => $runId,
+    ]);
+  }
+
+  /**
+   * A reviewer was assigned by someone else.
+   */
+  public function notifyAssigned(NodeInterface $repo, AccountInterface $assignee): void {
+    $user = $this->entityTypeManager->getStorage('user')->load($assignee->id());
+    if ($user instanceof UserInterface) {
+      $this->sendToUsers([$user], 'review_assigned', $repo, []);
+    }
+  }
+
+  /**
+   * A release started a re-review of a live repo: the admins and the
+   * assigned reviewer.
+   */
+  public function notifyUpdateSubmitted(NodeInterface $repo, string $tag): void {
+    $this->sendToUsers(array_merge($this->admins(TRUE), array_filter([$this->assignee($repo)])), 'review_update', $repo, ['tag' => $tag]);
+  }
+
+  /**
+   * Whether a reviewer has turned off the submitted-for-review emails.
+   */
+  public function optedOut(AccountInterface $account): bool {
+    return (bool) $this->userData?->get('ood_software', (int) $account->id(), self::SUBMITTED_OPT_OUT);
+  }
+
+  /**
+   * Sets a reviewer's choice about the submitted-for-review emails.
+   */
+  public function setOptedOut(AccountInterface $account, bool $optOut): void {
+    if ($optOut) {
+      $this->userData?->set('ood_software', (int) $account->id(), self::SUBMITTED_OPT_OUT, 1);
+    }
+    else {
+      $this->userData?->delete('ood_software', (int) $account->id(), self::SUBMITTED_OPT_OUT);
+    }
+  }
+
+  /**
+   * The repo's assigned reviewer, if any.
+   */
+  protected function assignee(NodeInterface $repo): ?UserInterface {
+    $user = $repo->hasField(ReviewAssignment::FIELD) ? $repo->get(ReviewAssignment::FIELD)->entity : NULL;
+    return $user instanceof UserInterface ? $user : NULL;
+  }
+
+  /**
+   * Who started the repo's last run; nobody for one started by cron.
+   */
+  protected function starter(NodeInterface $repo): ?UserInterface {
+    $user = $repo->hasField('field_review_dispatched_by') ? $repo->get('field_review_dispatched_by')->entity : NULL;
+    return $user instanceof UserInterface && !$user->isAnonymous() ? $user : NULL;
+  }
+
+  /**
+   * Emails each user once, in their own language.
+   *
+   * @param array<int, \Drupal\user\UserInterface> $users
+   *   The recipients; repeats are sent once.
+   * @param string $key
+   *   The ood_software_mail() key.
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo the email is about.
+   * @param array<string, mixed> $extras
+   *   Params for hook_mail.
+   */
+  protected function sendToUsers(array $users, string $key, NodeInterface $repo, array $extras): void {
+    $seen = [];
+    foreach ($users as $user) {
+      if (isset($seen[$user->id()]) || !$user->isActive() || !$user->getEmail()) {
+        continue;
+      }
+      $seen[$user->id()] = TRUE;
+      $this->dispatch($key, $user->getEmail(), $user->getPreferredLangcode(), $repo, $extras);
+    }
   }
 
   /**
@@ -123,7 +241,17 @@ class RepoNotificationService {
    *
    * @param array<string, mixed> $extras
    */
-  protected function sendToAdmins(NodeInterface $node, string $key, array $extras): void {
+  protected function sendToAdmins(NodeInterface $node, string $key, array $extras, bool $optional = FALSE): void {
+    $this->sendToUsers($this->admins($optional), $key, $node, $extras);
+  }
+
+  /**
+   * The active reviewers, without those who opted out when $optional.
+   *
+   * @return array<int, \Drupal\user\UserInterface>
+   *   The users.
+   */
+  protected function admins(bool $optional): array {
     $roleIds = $this->rolesGranting('administer appverse content');
     if (!$roleIds) {
       // No role grants the permission. The old load-all-and-filter code would
@@ -131,19 +259,20 @@ class RepoNotificationService {
       // permission with no role). We intentionally do NOT notify uid 1: it is
       // a break-glass account, not a reviewer, and reintroducing an all-users
       // scan to find it is the very cost this method exists to avoid.
-      return;
+      return [];
     }
     $uids = $this->entityTypeManager->getStorage('user')->getQuery()
       ->accessCheck(FALSE)
       ->condition('status', 1)
       ->condition('roles', $roleIds, 'IN')
       ->execute();
-    $users = $this->entityTypeManager->getStorage('user')->loadMultiple($uids);
-    foreach ($users as $user) {
-      if ($user->getEmail()) {
-        $this->dispatch($key, $user->getEmail(), $user->getPreferredLangcode(), $node, $extras);
+    $users = [];
+    foreach ($this->entityTypeManager->getStorage('user')->loadMultiple($uids) as $user) {
+      if ($user instanceof UserInterface && !($optional && $this->optedOut($user))) {
+        $users[] = $user;
       }
     }
+    return $users;
   }
 
   /**

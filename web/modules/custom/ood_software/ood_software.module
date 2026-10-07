@@ -398,6 +398,48 @@ function _ood_software_repo_has_review(NodeInterface $repo): bool {
 }
 
 /**
+ * Implements hook_form_FORM_ID_alter() for user_form.
+ *
+ * A reviewer can stop the submitted, resubmitted and update emails sent to
+ * every reviewer (appverse-planning#47). Emails about their own work, such
+ * as an assignment or their run's report, still go.
+ *
+ * @param array<string, mixed> $form
+ */
+function ood_software_form_user_form_alter(array &$form, FormStateInterface $form_state): void {
+  $account = $form_state->getFormObject() instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_state->getFormObject()->getEntity() : NULL;
+  if (!$account instanceof \Drupal\user\UserInterface || $account->isNew() || !$account->hasPermission('administer appverse content')) {
+    return;
+  }
+  $notifier = \Drupal::service('ood_software.repo_notifier');
+  $form['ood_software_review_emails'] = [
+    '#type' => 'details',
+    '#title' => t('AppVerse review emails'),
+    '#open' => TRUE,
+    '#weight' => 5,
+    'ood_software_submitted_emails' => [
+      '#type' => 'checkbox',
+      '#title' => t('Email me when a repo is submitted, resubmitted or updated for review'),
+      '#description' => t('Emails about your own reviews, such as being assigned one or your AI report being ready, are sent either way.'),
+      '#default_value' => !$notifier->optedOut($account),
+    ],
+  ];
+  $form['actions']['submit']['#submit'][] = '_ood_software_user_form_review_emails_submit';
+}
+
+/**
+ * Saves a reviewer's choice about the submitted-for-review emails.
+ *
+ * @param array<string, mixed> $form
+ */
+function _ood_software_user_form_review_emails_submit(array &$form, FormStateInterface $form_state): void {
+  $account = $form_state->getFormObject() instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_state->getFormObject()->getEntity() : NULL;
+  if ($account instanceof \Drupal\user\UserInterface && $form_state->hasValue('ood_software_submitted_emails')) {
+    \Drupal::service('ood_software.repo_notifier')->setOptedOut($account, !$form_state->getValue('ood_software_submitted_emails'));
+  }
+}
+
+/**
  * Build the preview block for a declared repo.
  *
  * Per-App form fields (Title/Body/AppType/etc.) are hidden client-side
@@ -1324,6 +1366,66 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [':url' => $admin_queue]);
       break;
 
+    // The reviewers' emails from the canvas (appverse-planning#47).
+    case 'resubmitted':
+      $message['subject'] = t('[@site] Repo resubmitted for review: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = !empty($params['assignee'])
+        ? t('<p>@owner resubmitted "@title" for review on @site. @assignee is the assigned reviewer.</p>', [
+          '@owner' => $node->getOwner()->getDisplayName(),
+          '@title' => $title,
+          '@site' => $site_name,
+          '@assignee' => $params['assignee'],
+        ])
+        : t('<p>@owner resubmitted "@title" for review on @site.</p>', [
+          '@owner' => $node->getOwner()->getDisplayName(),
+          '@title' => $title,
+          '@site' => $site_name,
+        ]);
+      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [':url' => _ood_software_review_url($node)]);
+      break;
+
+    case 'review_run_ready':
+      $message['subject'] = t('[@site] AI report ready: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The AI report for "@title" is ready to check.</p>', ['@title' => $title]);
+      $review = $params['review'] ?? NULL;
+      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [
+        ':url' => $review instanceof NodeInterface
+          ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $review->id()], ['absolute' => TRUE])->toString()
+          : _ood_software_review_url($node),
+      ]);
+      break;
+
+    case 'review_run_failed':
+      $message['subject'] = t('[@site] AI report failed: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The AI report for "@title" failed: @reason.</p>', ['@title' => $title, '@reason' => (string) ($params['reason'] ?? '')]);
+      $message['body'][] = t('<p>Fix the cause, then use Rerun AI report on the repo. There is no review by hand.</p>');
+      if (!empty($params['run_id'])) {
+        $message['body'][] = t('<p>The run log: <a href=":url">:url</a></p>', [
+          ':url' => sprintf('https://github.com/%s/actions/runs/%d', \Drupal\ood_software\Service\AppverseReviewService::REVIEW_REPO, (int) $params['run_id']),
+        ]);
+      }
+      $message['body'][] = t('<p>The repo in the review queue: <a href=":url">:url</a></p>', [
+        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString(),
+      ]);
+      break;
+
+    case 'review_assigned':
+      $message['subject'] = t('[@site] You are assigned to review: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>You are assigned to review "@title".</p>', ['@title' => $title]);
+      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [':url' => _ood_software_review_url($node)]);
+      break;
+
+    case 'review_update':
+      $message['subject'] = t('[@site] Update submitted for review: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>A new version of "@title" (@tag) is being reviewed. The current version stays live.</p>', [
+        '@title' => $title,
+        '@tag' => (string) ($params['tag'] ?? ''),
+      ]);
+      $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [
+        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString(),
+      ]);
+      break;
+
     case 'needs_adjustment':
       // Reviewer comment reaches us via two paths:
       //   1. $params['comment'] — primary, set by
@@ -1396,6 +1498,25 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       $message['body'] = array_merge($message['body'], $rendered['body']);
       break;
   }
+}
+
+/**
+ * The review page for a repo: its newest review, or the queue before one.
+ *
+ * /appverse/review/{repo id} goes to the repo's newest review, and is a 404
+ * while it has none.
+ */
+function _ood_software_review_url(NodeInterface $repo): string {
+  $hasReview = isset(\Drupal::service('entity_field.manager')->getFieldMap()['node']['field_arv_repo'])
+    && (bool) \Drupal::entityQuery('node')
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('field_arv_repo', $repo->id())
+    ->count()
+    ->execute();
+  return $hasReview
+    ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $repo->id()], ['absolute' => TRUE])->toString()
+    : \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString();
 }
 
 /**

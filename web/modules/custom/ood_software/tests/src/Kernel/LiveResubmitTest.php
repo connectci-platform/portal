@@ -60,6 +60,7 @@ class LiveResubmitTest extends KernelTestBase {
     $this->installEntitySchema('content_moderation_state');
     $this->installEntitySchema('path_alias');
     $this->installSchema('node', ['node_access']);
+    $this->installSchema('user', ['users_data']);
     $this->installConfig(['system', 'filter', 'user', 'node', 'content_moderation', 'workflows']);
     $this->importProdConfig([
       'node.type.appverse_repo',
@@ -96,7 +97,7 @@ class LiveResubmitTest extends KernelTestBase {
     $this->assertState('published', $repo);
     $this->assertState('published', $accepted);
     $this->assertState('ready_for_review', $sentBack);
-    $this->assertCount(1, array_filter($this->getMails(), fn ($m) => $m['key'] === 'ready_for_review' && $m['to'] === 'reviewer@example.com'), 'The reviewers are told.');
+    $this->assertCount(1, array_filter($this->getMails(), fn ($m) => $m['key'] === 'resubmitted' && $m['to'] === 'reviewer@example.com'), 'The reviewers are told.');
   }
 
   /**

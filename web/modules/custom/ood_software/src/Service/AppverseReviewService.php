@@ -93,6 +93,8 @@ class AppverseReviewService {
     // Who starts a review run; the imported review is authored by them.
     // Optional so callers built without it (unit tests) still work.
     protected ?AccountInterface $currentUser = NULL,
+    // Emails the reviewers when a run is ready or fails (#47).
+    protected ?RepoNotificationService $notifier = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -515,7 +517,7 @@ class AppverseReviewService {
       if ($dispatchedAt <= 0) {
         // Nothing to correlate on; the stale timeout below cannot fire either.
         $this->logger->warning('Review for node @nid is pending with no dispatch time; marking as error.', ['@nid' => $node->id()]);
-        $this->updateNodeReviewStatus($node, 'error', 0);
+        $this->updateNodeReviewStatus($node, 'error', 0, 'the run has no dispatch time to match it by');
         $outcomes['error'] = ($outcomes['error'] ?? 0) + 1;
         continue;
       }
@@ -560,7 +562,7 @@ class AppverseReviewService {
           '@nid' => $node->id(),
           '@hours' => round(($now - $dispatchedAt) / 3600, 1),
         ]);
-        $this->updateNodeReviewStatus($node, 'error', 0);
+        $this->updateNodeReviewStatus($node, 'error', 0, sprintf('no run was found for it after %d hours', (int) round(($now - $dispatchedAt) / 3600)));
         $outcomes['timed out'] = ($outcomes['timed out'] ?? 0) + 1;
         continue;
       }
@@ -690,7 +692,7 @@ class AppverseReviewService {
         '@nid' => $node->id(),
         '@conclusion' => $conclusion,
       ]);
-      $this->updateNodeReviewStatus($node, 'error', $runId);
+      $this->updateNodeReviewStatus($node, 'error', $runId, sprintf('the run concluded with %s', $conclusion));
       return;
     }
 
@@ -714,7 +716,7 @@ class AppverseReviewService {
         '@files' => implode(', ', array_keys($files ?? [])) ?: 'none',
       ]);
       $this->cleanupReviewFiles($files);
-      $this->updateNodeReviewStatus($node, 'error', $runId);
+      $this->updateNodeReviewStatus($node, 'error', $runId, 'the run left no usable review artifact');
       return;
     }
 
@@ -732,7 +734,7 @@ class AppverseReviewService {
         '@msg' => $e->getMessage(),
       ]);
       $this->cleanupReviewFiles($files);
-      $this->updateNodeReviewStatus($node, 'error', $runId);
+      $this->updateNodeReviewStatus($node, 'error', $runId, sprintf('importing the review failed: %s', $e->getMessage()));
       return;
     }
     $this->cleanupReviewFiles($files);
@@ -1155,6 +1157,7 @@ class AppverseReviewService {
         '@nid' => $node->id(),
         '@rec' => $decision ?? 'none',
       ]);
+      $this->notifier?->notifyRunReady($fresh, $review);
     }
     catch (\Throwable $e) {
       $this->logger->error('Review @review was seeded from run @id but the repo node @nid could not be updated: @msg', [
@@ -1169,13 +1172,14 @@ class AppverseReviewService {
   /**
    * Mark a node's review status (e.g. on run failure).
    */
-  protected function updateNodeReviewStatus(NodeInterface $node, string $status, int $runId): void {
+  protected function updateNodeReviewStatus(NodeInterface $node, string $status, int $runId, string $reason = ''): void {
     try {
       $storage = $this->entityTypeManager->getStorage('node');
       $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh) {
+      if (!$fresh instanceof NodeInterface) {
         return;
       }
+      $was = $fresh->hasField('field_review_status') ? (string) ($fresh->get('field_review_status')->value ?? '') : '';
 
       if ($fresh->hasField('field_review_status')) {
         $fresh->set('field_review_status', $status);
@@ -1192,6 +1196,11 @@ class AppverseReviewService {
         $fresh->setValidationRequired(FALSE);
       }
       $fresh->save();
+      // One email per failure: only the change into error sends it, so a
+      // later poll of the same run cannot send it again (appverse-planning#47).
+      if ($status === 'error' && $was !== 'error') {
+        $this->notifier?->notifyRunFailed($fresh, $reason !== '' ? $reason : 'the run ended without a report', $runId);
+      }
     }
     catch (\Throwable $e) {
       $this->logger->error('Failed to update review status for node @nid: @msg', [

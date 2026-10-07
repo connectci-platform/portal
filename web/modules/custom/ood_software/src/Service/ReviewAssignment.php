@@ -28,6 +28,9 @@ final class ReviewAssignment {
     protected EntityTypeManagerInterface $entityTypeManager,
     protected AccountInterface $currentUser,
     protected LoggerChannelFactoryInterface $loggerFactory,
+    // Emails a reviewer assigned by someone else (#47); optional so callers
+    // built without it (unit tests) still work.
+    protected ?RepoNotificationService $notifier = NULL,
   ) {}
 
   /**
@@ -44,6 +47,9 @@ final class ReviewAssignment {
   /**
    * The people who can be assigned: active users with a reviewer role,
    * uid => display name, by name.
+   *
+   * @return array<int, string>
+   *   Display names by user id.
    */
   public function reviewers(): array {
     $storage = $this->entityTypeManager->getStorage('user');
@@ -95,9 +101,14 @@ final class ReviewAssignment {
       $revisions[] = $storage->loadRevision($latest);
     }
     foreach (array_filter($revisions) as $revision) {
+      if (!$revision instanceof NodeInterface) {
+        continue;
+      }
       $revision->set(self::FIELD, $uid);
       $revision->setSyncing(TRUE);
       $revision->setNewRevision(FALSE);
+      // A runtime flag ood_software_node_update() reads, not a field.
+      // @phpstan-ignore-next-line
       $revision->_ood_software_suppress_notifications = TRUE;
       $revision->save();
     }
@@ -106,6 +117,11 @@ final class ReviewAssignment {
       '@change' => $uid === NULL ? 'unassigned' : 'assigned to user ' . $uid,
       '@by' => $this->currentUser->getAccountName(),
     ]);
+    // Not sent when you assign yourself.
+    $assignee = $this->assignee($storage->loadUnchanged($repo->id()) ?? $repo);
+    if ($uid !== NULL && $uid !== (int) $this->currentUser->id() && $assignee !== NULL) {
+      $this->notifier?->notifyAssigned($repo, $assignee);
+    }
     return TRUE;
   }
 

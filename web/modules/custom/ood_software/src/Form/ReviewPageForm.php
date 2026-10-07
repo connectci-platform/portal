@@ -450,8 +450,16 @@ final class ReviewPageForm extends FormBase {
       $this->setText($node, 'field_arv_contributor_response', $values['response'] ?? '');
     }
     $repo = $node->get('field_arv_repo')->entity;
-    if (array_key_exists('assignee', $values) && $repo instanceof NodeInterface) {
-      $this->reviewAssignment->assign($repo, $values['assignee'] !== '' ? (int) $values['assignee'] : NULL);
+    if ($repo instanceof NodeInterface) {
+      $uid = ($values['assignee'] ?? '') !== '' ? (int) $values['assignee'] : NULL;
+      // The first save of the review assigns the saver when nobody is
+      // assigned (appverse-planning#47); assign() refuses a non-reviewer.
+      if ($uid === NULL && ($node->get('moderation_state')->value ?? '') === 'draft' && $this->reviewAssignment->assignee($repo) === NULL) {
+        $uid = (int) $this->currentUser->id();
+      }
+      if (array_key_exists('assignee', $values) || $uid !== NULL) {
+        $this->reviewAssignment->assign($repo, $uid);
+      }
     }
     $this->setText($node, 'field_arv_assessment', $values['assessment'] ?? '');
 

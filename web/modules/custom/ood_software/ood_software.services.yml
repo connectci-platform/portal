@@ -43,7 +43,7 @@ services:
 
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService
-    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user']
+    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier']
 
   ood_software.review_seeder:
     class: Drupal\ood_software\Service\AppverseReviewSeeder
@@ -55,6 +55,7 @@ services:
       - '@plugin.manager.mail'
       - '@entity_type.manager'
       - '@logger.factory'
+      - '@user.data'
 
   ood_software.legacy_app_add_redirect:
     class: Drupal\ood_software\EventSubscriber\LegacyAppAddRedirectSubscriber
@@ -80,11 +81,11 @@ services:
   # Re-reviews a listed repo on a new GitHub release (appverse-planning#34).
   ood_software.release_watcher:
     class: Drupal\ood_software\Service\ReleaseWatcher
-    arguments: ['@entity_type.manager', '@ood_software.review_dispatcher', '@logger.factory', '@datetime.time']
+    arguments: ['@entity_type.manager', '@ood_software.review_dispatcher', '@logger.factory', '@datetime.time', '@ood_software.repo_notifier']
   # Who reviews a repo (appverse-planning#33).
   ood_software.review_assignment:
     class: Drupal\ood_software\Service\ReviewAssignment
-    arguments: ['@entity_type.manager', '@current_user', '@logger.factory']
+    arguments: ['@entity_type.manager', '@current_user', '@logger.factory', '@ood_software.repo_notifier']
   # A repo's progress line facts, for the hub card and the review page
   # (appverse-planning#31).
   ood_software.repo_progress:
