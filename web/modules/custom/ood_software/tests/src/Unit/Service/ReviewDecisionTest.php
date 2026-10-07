@@ -152,4 +152,62 @@ class ReviewDecisionTest extends UnitTestCase {
     $this->assertStringContainsString('The declined apps stay out of the catalog.', $mixed);
   }
 
+  /**
+   * The decision-sent view says who the repo waits on.
+   *
+   * @covers ::waitingOn
+   */
+  public function testWaitingOn(): void {
+    $this->assertStringStartsWith('Waiting on Matt to re-submit', ReviewDecision::waitingOn(['a' => 'request_changes'], FALSE, 'Matt'));
+    // A monorepo with one app live and one sent back still waits on them.
+    $this->assertStringStartsWith('Waiting on Matt to re-submit', ReviewDecision::waitingOn(['a' => 'accept', 'b' => 'request_changes'], FALSE, 'Matt'));
+    $this->assertStringStartsWith('Waiting on a reviewer to publish', ReviewDecision::waitingOn(['a' => 'accept_with_suggestions'], TRUE, 'Matt'));
+    $this->assertSame('Nothing to wait on: it is in the AppVerse catalog.', ReviewDecision::waitingOn(['a' => 'accept_with_suggestions'], FALSE, 'Matt'));
+    $this->assertSame('Nothing to wait on: it is in the AppVerse catalog.', ReviewDecision::waitingOn(['a' => 'accept'], FALSE, 'Matt'));
+    $this->assertSame('Nothing to wait on: it was declined.', ReviewDecision::waitingOn(['a' => 'reject'], FALSE, 'Matt'));
+  }
+
+  /**
+   * An updated decision names the state each part ends in.
+   *
+   * @covers ::updateTargets
+   * @dataProvider updateCases
+   *
+   * @param array<string, string> $apps
+   *   Verdict id => decision.
+   * @param array<string, bool> $live
+   *   Verdict id => whether the app is live.
+   * @param array<string, mixed> $expected
+   *   The targets.
+   */
+  public function testUpdateTargets(array $apps, array $live, bool $wasLive, array $expected): void {
+    $this->assertSame($expected, ReviewDecision::updateTargets($apps, $live, $wasLive));
+  }
+
+  /**
+   * Decisions, live apps and the targets an update moves them to.
+   *
+   * @return array<string, array<int, mixed>>
+   */
+  public static function updateCases(): array {
+    return [
+      'changes requested, now accepted' => [['a' => 'accept'], ['a' => FALSE], FALSE,
+        ['repo' => 'published', 'apps' => ['a' => 'published'], 'review' => 'published']],
+      'changes requested, now suggestions' => [['a' => 'accept_with_suggestions'], ['a' => FALSE], FALSE,
+        ['repo' => 'ready_for_review', 'apps' => ['a' => 'ready_for_review'], 'review' => 'in_review']],
+      // A live repo under re-review stays live; so does a live app.
+      'live repo, now suggestions' => [['a' => 'accept_with_suggestions'], ['a' => TRUE], TRUE,
+        ['repo' => 'published', 'apps' => ['a' => NULL], 'review' => 'in_review']],
+      'accepted, now changes requested' => [['a' => 'request_changes'], ['a' => TRUE], FALSE,
+        ['repo' => 'needs_adjustment', 'apps' => ['a' => 'needs_adjustment'], 'review' => 'in_review']],
+      'now declined' => [['a' => 'reject', 'b' => 'reject'], [], FALSE,
+        ['repo' => 'declined', 'apps' => ['a' => 'declined', 'b' => 'declined'], 'review' => 'in_review']],
+      // Declined only when every app is; one fixable app sends it back.
+      'mixed: one sent back, one declined' => [['a' => 'request_changes', 'b' => 'reject'], [], FALSE,
+        ['repo' => 'needs_adjustment', 'apps' => ['a' => 'needs_adjustment', 'b' => 'declined'], 'review' => 'in_review']],
+      'mixed: one accepted, one sent back' => [['a' => 'accept', 'b' => 'request_changes'], [], FALSE,
+        ['repo' => 'published', 'apps' => ['a' => 'published', 'b' => 'needs_adjustment'], 'review' => 'published']],
+    ];
+  }
+
 }
