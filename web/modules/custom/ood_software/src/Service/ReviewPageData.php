@@ -36,9 +36,11 @@ final class ReviewPageData {
   /**
    * The Security block's count line when it has no findings.
    *
-   * The honest claim, never "safe" (appverse-review's rubric wording).
+   * Never "safe". The block holds the reviewer's findings as well as the
+   * tool's, so the line describes the review rather than crediting the tool
+   * alone, in the catalog chip's words.
    */
-  const SECURITY_NONE = 'No tool-detectable issues in the checked tiers';
+  const SECURITY_NONE = 'No findings to review';
 
   const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
