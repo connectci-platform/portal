@@ -512,6 +512,8 @@ final class ReviewPageData {
     $unknown = array_values((array) ($tags['unknown'] ?? []));
     $rows[] = match (TRUE) {
       $shape === 'unparsed' => ['check' => 'Implementation tags', 'result' => 'WARN', 'text' => 'Not checked: appverse.yml did not parse'],
+      // The field was there but not a list: the tool says what it found.
+      $shape === 'declared' && !empty($tags['note']) => ['check' => 'Implementation tags', 'result' => 'WARN', 'text' => sprintf('Not read: %s', $tags['note'])],
       $shape !== 'declared' || $declared === [] => ['check' => 'Implementation tags', 'result' => 'N/A', 'text' => $shape === 'declared' ? 'None declared' : 'Not applicable: an inferred repo declares none'],
       $unknown !== [] => ['check' => 'Implementation tags', 'result' => 'WARN', 'text' => sprintf('Not in the vocabulary: %s (known: %s)', implode(', ', $unknown), implode(', ', (array) ($tags['known'] ?? [])) ?: 'none')],
       default => ['check' => 'Implementation tags', 'result' => 'PASS', 'text' => sprintf('All known: %s', implode(', ', $declared))],
@@ -524,6 +526,10 @@ final class ReviewPageData {
           continue;
         }
         $url = (string) ($app['github_url'] ?? '');
+        // The artifact is not trusted input: only a web link is a link.
+        if (!preg_match('#^https?://#i', $url)) {
+          $url = '';
+        }
         if ($url !== '' && !empty($app['subpath'])) {
           $url = rtrim($url, '/') . '/tree/HEAD/' . trim((string) $app['subpath'], '/');
         }

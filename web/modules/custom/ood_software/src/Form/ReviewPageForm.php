@@ -223,6 +223,7 @@ final class ReviewPageForm extends FormBase {
     }
     elseif ($updating) {
       $this->addDecisionElements($form, $page, $node);
+      $this->addDuplicateElements($form, $page);
     }
 
     // The repo's reviewer, kept across rounds (appverse-planning#33).
@@ -360,33 +361,9 @@ final class ReviewPageForm extends FormBase {
    */
   protected function addContentElements(array &$form, array $page, NodeInterface $node): void {
     $this->addDecisionElements($form, $page, $node);
+    $this->addDuplicateElements($form, $page);
     foreach ($page['apps'] as $app) {
       $pid = $app['pid'];
-      $form['duplicate'][$pid] = [
-        '#type' => 'container',
-        '#attributes' => ['class' => ['duplicate-check']],
-        'outcome' => [
-          '#type' => 'radios',
-          '#title' => $this->t('Duplicate check'),
-          '#options' => $this->duplicateOptions(),
-          '#default_value' => $app['duplicate']['outcome'],
-          '#description' => $app['catalog']['suggestion']
-            ? $this->t('Automated suggestion: @outcome. @reason Required to accept the app; it does not limit the decision.', [
-              '@outcome' => $this->duplicateOptions()[$app['catalog']['suggestion']['outcome']],
-              '@reason' => $app['catalog']['suggestion']['reason'],
-            ])
-            : $this->t('Compare the published apps for this software. Required to accept the app; it does not limit the decision.'),
-        ],
-        'note' => [
-          '#type' => 'textarea',
-          '#title' => $this->t('Rationale'),
-          '#rows' => 2,
-          '#default_value' => $app['duplicate']['note'],
-          '#description' => $app['catalog']['backed']
-            ? $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.')
-            : $this->t('Required: no Software entry matched, so say which apps you compared by name, and how this one differs or which one it duplicates.'),
-        ],
-      ];
       foreach (self::AXES as $axis => $prefix) {
         $block = $app['blocks'][$axis];
         $form['level'][$pid][$axis] = [
@@ -476,6 +453,44 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * Each app's duplicate check (A4): on the editable page, and while a sent
+   * decision is updated, since changing it to Accept needs one.
+   *
+   * @param array<string, mixed> $form
+   * @param array<string, mixed> $page
+   */
+  protected function addDuplicateElements(array &$form, array $page): void {
+    foreach ($page['apps'] as $app) {
+      $pid = $app['pid'];
+      $form['duplicate'][$pid] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['duplicate-check']],
+        'outcome' => [
+          '#type' => 'radios',
+          '#title' => $this->t('Duplicate check'),
+          '#options' => $this->duplicateOptions(),
+          '#default_value' => $app['duplicate']['outcome'],
+          '#description' => $app['catalog']['suggestion']
+            ? $this->t('Automated suggestion: @outcome. @reason Required to accept the app; it does not limit the decision.', [
+              '@outcome' => $this->duplicateOptions()[$app['catalog']['suggestion']['outcome']],
+              '@reason' => $app['catalog']['suggestion']['reason'],
+            ])
+            : $this->t('Compare the published apps for this software. Required to accept the app; it does not limit the decision.'),
+        ],
+        'note' => [
+          '#type' => 'textarea',
+          '#title' => $this->t('Rationale'),
+          '#rows' => 2,
+          '#default_value' => $app['duplicate']['note'],
+          '#description' => $app['catalog']['backed']
+            ? $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.')
+            : $this->t('Required: no Software entry matched, so say which apps you compared by name, and how this one differs or which one it duplicates.'),
+        ],
+      ];
+    }
+  }
+
+  /**
    * "Send updated decision…": saves the new decisions and response, which
    * take effect only once confirmed (the sent record stays until then).
    *
@@ -485,8 +500,19 @@ final class ReviewPageForm extends FormBase {
     $values = $form_state->getValues();
     foreach ($this->node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $pid = $verdict->id();
+      $changed = FALSE;
       if (array_key_exists($pid, $values['conclusion'] ?? [])) {
         $verdict->set('field_rvv_conclusion', $values['conclusion'][$pid] !== '' ? $values['conclusion'][$pid] : NULL);
+        $changed = TRUE;
+      }
+      // Updating to Accept needs the duplicate check (A4).
+      if (isset($values['duplicate'][$pid]) && $verdict->hasField('field_rvv_duplicate')) {
+        $outcome = (string) ($values['duplicate'][$pid]['outcome'] ?? '');
+        $verdict->set('field_rvv_duplicate', isset(DuplicateCheck::OUTCOMES[$outcome]) ? $outcome : NULL);
+        $this->setText($verdict, 'field_rvv_duplicate_note', (string) ($values['duplicate'][$pid]['note'] ?? ''));
+        $changed = TRUE;
+      }
+      if ($changed) {
         $verdict->save();
       }
     }
@@ -749,8 +775,9 @@ final class ReviewPageForm extends FormBase {
         'rows' => ReviewPageData::catalogRows($checks),
         'suggestion' => ReviewPageData::duplicateSuggestion($checks),
         // "No other app" stands on the catalog only when a Software entry
-        // matched; a review without checks keeps the old rule.
-        'backed' => $checks === [] || (($checks['software']['status'] ?? '') === 'match'),
+        // matched. An app without checks is settled below: backed only on a
+        // review from an older tool, which carries no catalog data at all.
+        'backed' => ($checks['software']['status'] ?? '') === 'match' || $checks === [],
       ];
       // The reviewer's duplicate check (A4, DuplicateCheck).
       $outcome = $verdict->hasField('field_rvv_duplicate') ? $verdict->get('field_rvv_duplicate')->value : NULL;
@@ -766,8 +793,21 @@ final class ReviewPageForm extends FormBase {
       $apps[] = $app;
     }
 
-    $catalogRows = array_filter($apps, static fn (array $a): bool => $a['catalog']['rows'] !== []) !== [];
     $catalogSource = $node->hasField('field_arv_catalog') ? (json_decode((string) ($node->get('field_arv_catalog')->value ?? ''), TRUE) ?: []) : [];
+    $withRows = count(array_filter($apps, static fn (array $a): bool => $a['catalog']['rows'] !== []));
+    // The report's text stands unless every app has rows: an app whose
+    // checks did not attach (an app id spelled differently) still needs it.
+    $catalogRows = $apps !== [] && $withRows === count($apps);
+    // On a review that carries catalog data, an app without checks is not
+    // backed by the catalog: its "No other app" needs a rationale.
+    if ($catalogSource !== [] || $withRows > 0) {
+      foreach ($apps as &$a) {
+        if ($a['catalog']['rows'] === []) {
+          $a['catalog']['backed'] = FALSE;
+        }
+      }
+      unset($a);
+    }
     $catalogRead = isset($catalogSource['counts']['apps']) ? (string) $this->t('Read from the catalog: @apps published apps, @software Software entries, @types app types, @tags implementation tags.', [
       '@apps' => (int) $catalogSource['counts']['apps'],
       '@software' => (int) ($catalogSource['counts']['software'] ?? 0),
@@ -1261,7 +1301,7 @@ final class ReviewPageForm extends FormBase {
     $form['edit_finding'][$pid] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['finding-fields']],
-      'rule' => ['#type' => 'textfield', '#title' => $this->t('Rule'), '#size' => 10, '#maxlength' => 32, '#default_value' => $finding['rule']],
+      'rule' => ['#type' => 'textfield', '#title' => $this->t('Rule'), '#size' => 10, '#maxlength' => 16, '#default_value' => $finding['rule']],
       'severity' => ['#type' => 'select', '#title' => $this->t('Severity'), '#options' => $this->severityOptions(), '#default_value' => $finding['severity']],
       'summary' => ['#type' => 'textarea', '#title' => $this->t('Summary'), '#rows' => 2, '#maxlength' => 512, '#default_value' => $finding['summary']],
       'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 512, '#default_value' => $finding['evidence'], '#attributes' => ['placeholder' => 'path/to/file:line — what is there']],
@@ -1299,7 +1339,7 @@ final class ReviewPageForm extends FormBase {
         '#type' => 'textfield',
         '#title' => $this->t('Rule code'),
         '#size' => 10,
-        '#maxlength' => 32,
+        '#maxlength' => 16,
         '#states' => ['visible' => [$selector => ['value' => '_other']]],
       ],
       'severity' => ['#type' => 'select', '#title' => $this->t('Severity'), '#options' => $this->severityOptions(), '#default_value' => 'medium'],

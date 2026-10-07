@@ -189,6 +189,10 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame('Higlas has no Software entry; the closest is HiGlass', $rows[0]['text']);
     $this->assertTrue($rows[0]['add_software']);
     $this->assertSame([], ReviewPageData::catalogRows([]), 'No checks, no rows: the report text stands.');
+    // A tags field that is not a list is a WARN, not "none declared".
+    $bad = $missing;
+    $bad['implementation_tags']['note'] = 'implementation_tags is a string, not a list';
+    $this->assertSame(['WARN', 'Not read: implementation_tags is a string, not a list'], [ReviewPageData::catalogRows($bad)[2]['result'], ReviewPageData::catalogRows($bad)[2]['text']]);
   }
 
   /**

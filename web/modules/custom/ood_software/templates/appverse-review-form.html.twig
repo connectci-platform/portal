@@ -448,7 +448,7 @@
               {# Repo gates ride on the first app's Structure block: they are
                  the repo's, so they are shown once however many apps there
                  are. #}
-              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': can_edit ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate, 'catalog': app.catalog} : null) }}
+              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': (can_edit or form['#updating']) ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate, 'catalog': app.catalog} : null) }}
             {% endfor %}
           </div>
         </div>
