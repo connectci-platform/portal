@@ -5,6 +5,7 @@ dependencies:
   config:
     - field.field.paragraph.review_verdict.field_rvv_app_id
     - field.field.paragraph.review_verdict.field_rvv_app_ref
+    - field.field.paragraph.review_verdict.field_rvv_catalog
     - field.field.paragraph.review_verdict.field_rvv_conclusion
     - field.field.paragraph.review_verdict.field_rvv_criteria
     - field.field.paragraph.review_verdict.field_rvv_docs_anchor
@@ -85,6 +86,7 @@ content:
     region: content
 hidden:
   field_rvv_app_id: true
+  field_rvv_catalog: true
   field_rvv_criteria: true
   field_rvv_docs_anchor: true
   field_rvv_docs_level_note: true

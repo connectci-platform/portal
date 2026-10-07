@@ -36,9 +36,14 @@ final class DuplicateCheck {
 
   /**
    * Whether an outcome needs a rationale it does not have.
+   *
+   * "No other app" stands on the catalog when the app's software matched a
+   * Software entry ($backed); otherwise the reviewer compared by name and
+   * says how. A review with no catalog checks counts as backed, as before.
    */
-  public static function needsNote(?string $outcome, string $note): bool {
-    return in_array($outcome, self::NEEDS_NOTE, TRUE) && trim($note) === '';
+  public static function needsNote(?string $outcome, string $note, bool $backed = TRUE): bool {
+    $needs = in_array($outcome, self::NEEDS_NOTE, TRUE) || ($outcome === 'none' && !$backed);
+    return $needs && trim($note) === '';
   }
 
   /**

@@ -895,6 +895,23 @@
 .arv-page .gate-result--warn {
   color: var(--status-amber);
 }
+.arv-page .gate-result--na {
+  color: var(--gray-500);
+}
+/* Catalog checks as rows (A4b): the gate rows' grid inside the block. */
+.arv-page .catalog-checks--rows .gate-rows {
+  padding: 4px 0 0;
+  border-bottom: 0;
+}
+.arv-page .catalog-check {
+  flex: none;
+  min-width: 9.5rem;
+  font-weight: 600;
+}
+.arv-page .catalog-read {
+  font-size: .78rem;
+  color: var(--gray-700);
+}
 .arv-page .catalog-checks {
   padding: 8px 14px 12px;
   font-size: .84rem;

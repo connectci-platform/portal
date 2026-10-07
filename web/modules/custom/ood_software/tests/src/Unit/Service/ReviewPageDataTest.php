@@ -123,6 +123,75 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * A matched app's catalog checks, as rows in the gates' style (A4b).
+   *
+   * @covers ::catalogRows
+   * @covers ::duplicateSuggestion
+   */
+  public function testCatalogRowsForAMatchedApp(): void {
+    $checks = [
+      'shape' => 'declared',
+      'software' => ['status' => 'match', 'value' => 'HiGlass', 'entry' => 'HiGlass'],
+      'app_type' => ['status' => 'known', 'value' => 'batch-connect-basic'],
+      'implementation_tags' => ['declared' => ['gpu', 'modules'], 'known' => ['modules'], 'unknown' => ['gpu'], 'note' => NULL],
+      'same_software_apps' => [],
+    ];
+    $rows = ReviewPageData::catalogRows($checks);
+    $this->assertSame(['Software', 'App type', 'Implementation tags', 'Same software'], array_column($rows, 'check'));
+    $this->assertSame(['PASS', 'PASS', 'WARN', 'PASS'], array_column($rows, 'result'));
+    $this->assertSame('Not in the vocabulary: gpu (known: modules)', $rows[2]['text']);
+    $this->assertSame(['outcome' => 'none', 'reason' => 'The catalog lists no other app for HiGlass.'], ReviewPageData::duplicateSuggestion($checks));
+  }
+
+  /**
+   * Other repos' apps for the same software are listed as links, and nothing
+   * is suggested: telling a different approach from a duplicate takes a
+   * reviewer. The reviewed repo's own published apps are not others.
+   *
+   * @covers ::catalogRows
+   * @covers ::duplicateSuggestion
+   */
+  public function testCatalogRowsListTheSameSoftwareApps(): void {
+    $checks = [
+      'shape' => 'declared',
+      'software' => ['status' => 'match', 'value' => 'Abaqus', 'entry' => 'Abaqus'],
+      'app_type' => ['status' => 'unknown', 'value' => 'desktop'],
+      'implementation_tags' => ['declared' => [], 'known' => [], 'unknown' => [], 'note' => NULL],
+      'same_software_apps' => [
+        ['title' => 'Abaqus', 'github_url' => 'https://github.com/a/abaqus', 'subpath' => NULL, 'this_repo' => FALSE],
+        ['title' => 'Abaqus CAE', 'github_url' => 'https://github.com/b/ood', 'subpath' => 'abaqus', 'this_repo' => FALSE],
+        ['title' => 'Abaqus (ours)', 'github_url' => 'https://github.com/osc/bc_osc_abaqus', 'subpath' => NULL, 'this_repo' => TRUE],
+      ],
+    ];
+    $rows = ReviewPageData::catalogRows($checks);
+    $this->assertSame(['PASS', 'WARN', 'N/A', 'WARN'], array_column($rows, 'result'));
+    $this->assertSame('2 published apps from other repos implement Abaqus', $rows[3]['text']);
+    $this->assertSame(['Abaqus', 'Abaqus CAE'], array_column($rows[3]['links'], 'title'));
+    $this->assertSame('https://github.com/b/ood/tree/HEAD/abaqus', $rows[3]['links'][1]['url']);
+    $this->assertNull(ReviewPageData::duplicateSuggestion($checks));
+  }
+
+  /**
+   * Without a Software entry there is nothing to compare by.
+   *
+   * @covers ::catalogRows
+   * @covers ::duplicateSuggestion
+   */
+  public function testCatalogRowsWithoutASoftwareEntry(): void {
+    $inferred = ['shape' => 'inferred', 'software' => ['status' => 'inferred'], 'app_type' => ['status' => 'inferred'],
+      'implementation_tags' => ['declared' => [], 'known' => [], 'unknown' => [], 'note' => NULL], 'same_software_apps' => []];
+    $this->assertSame(['N/A', 'N/A', 'N/A', 'N/A'], array_column(ReviewPageData::catalogRows($inferred), 'result'));
+    $this->assertNull(ReviewPageData::duplicateSuggestion($inferred));
+    $missing = ['software' => ['status' => 'no_match', 'value' => 'Higlas', 'closest' => 'HiGlass']] + $inferred;
+    $missing['shape'] = 'declared';
+    $rows = ReviewPageData::catalogRows($missing);
+    $this->assertSame('WARN', $rows[0]['result']);
+    $this->assertSame('Higlas has no Software entry; the closest is HiGlass', $rows[0]['text']);
+    $this->assertTrue($rows[0]['add_software']);
+    $this->assertSame([], ReviewPageData::catalogRows([]), 'No checks, no rows: the report text stands.');
+  }
+
+  /**
    * The report's rationale placeholder is left out; the rest is kept.
    *
    * @covers ::catalogChecks

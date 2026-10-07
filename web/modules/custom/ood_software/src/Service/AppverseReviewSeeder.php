@@ -2,6 +2,7 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
@@ -121,6 +122,7 @@ class AppverseReviewSeeder {
       'field_arv_recommendation_note' => $recommendation['note'] ?? '',
       'field_arv_run_meta' => json_encode($artifact['run_meta'] ?? new \stdClass()),
       'field_arv_repo_criteria' => json_encode($repo_level['criteria'] ?? new \stdClass()),
+      'field_arv_catalog' => isset($repo_level['catalog']) && is_array($repo_level['catalog']) ? json_encode($repo_level['catalog']) : NULL,
     ]);
 
     if (!empty($reviewed['at']) && ($ts = strtotime($reviewed['at'])) !== FALSE) {
@@ -131,7 +133,7 @@ class AppverseReviewSeeder {
     if (isset($repo_indicators['maintenance'])) {
       $maint = $repo_indicators['maintenance'];
       $review->set('field_arv_maint_level', $maint['level'] ?? NULL);
-      $review->set('field_arv_maint_summary', $maint['summary'] ?? '');
+      $review->set('field_arv_maint_summary', self::fit((string) ($maint['summary'] ?? ''), 255));
       $review->set('field_arv_maint_anchor', $maint['anchor'] ?? '');
       $review->set('field_arv_indicators_default', json_encode($repo_indicators));
     }
@@ -222,6 +224,9 @@ class AppverseReviewSeeder {
       'type' => 'review_verdict',
       'field_rvv_app_id' => $app_id,
       'field_rvv_criteria' => json_encode($app['criteria'] ?? new \stdClass()),
+      // The app's catalog comparison (schema 1.5); absent from older
+      // artifacts, whose Catalog checks stay the report's text.
+      'field_rvv_catalog' => isset($app['catalog']) && is_array($app['catalog']) ? json_encode($app['catalog']) : NULL,
     ]);
 
     $app_node = $this->resolveAppNode($repo, $app_id);
@@ -244,7 +249,7 @@ class AppverseReviewSeeder {
       }
       $ind = $indicators[$category];
       $verdict->set("field_rvv_{$prefix}_level", $ind['level'] ?? NULL);
-      $verdict->set("field_rvv_{$prefix}_summary", $ind['summary'] ?? '');
+      $verdict->set("field_rvv_{$prefix}_summary", self::fit((string) ($ind['summary'] ?? ''), 255));
       $verdict->set("field_rvv_{$prefix}_anchor", $ind['anchor'] ?? '');
     }
     if ($indicators !== []) {
@@ -274,8 +279,8 @@ class AppverseReviewSeeder {
       'field_rvf_defect_key' => $finding['defect_key'] ?? '',
       'field_rvf_aspect' => $finding['aspect'] ?? NULL,
       'field_rvf_severity' => $finding['severity'] ?? NULL,
-      'field_rvf_summary' => $finding['summary'] ?? '',
-      'field_rvf_evidence' => $finding['evidence'] ?? '',
+      'field_rvf_summary' => self::fit((string) ($finding['summary'] ?? ''), 512),
+      'field_rvf_evidence' => self::fit((string) ($finding['evidence'] ?? ''), 512),
       'field_rvf_anchor' => $finding['anchor'] ?? '',
       // Reviewers add findings on the review page with source "reviewer".
       'field_rvf_source' => 'ai',
@@ -332,6 +337,18 @@ class AppverseReviewSeeder {
   public static function resultKey(?string $result): ?string {
     $key = str_replace(' ', '_', strtolower(trim((string) $result)));
     return in_array($key, ['fail', 'warn', 'pass', 'not_checked'], TRUE) ? $key : NULL;
+  }
+
+  /**
+   * A string cut to a column's length at a word boundary, with an ellipsis.
+   *
+   * The tool's summary lines have no length limit and ran past the 255
+   * characters the summary columns hold (HiGlass's documentation summary is
+   * 261), which failed the whole import. A cut line still says what it
+   * says; the full text is in the report.
+   */
+  public static function fit(string $text, int $max): string {
+    return mb_strlen($text) <= $max ? $text : Unicode::truncate($text, $max, TRUE, TRUE);
   }
 
   /**

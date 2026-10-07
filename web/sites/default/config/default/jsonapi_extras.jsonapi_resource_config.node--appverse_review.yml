@@ -227,6 +227,12 @@ resourceFields:
     publicName: field_arv_gate_evidence
     enhancer:
       id: ''
+  field_arv_catalog:
+    disabled: true
+    fieldName: field_arv_catalog
+    publicName: field_arv_catalog
+    enhancer:
+      id: ''
   field_arv_catalog_checks:
     disabled: true
     fieldName: field_arv_catalog_checks

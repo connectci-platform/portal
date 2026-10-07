@@ -236,6 +236,27 @@
         {{ repo_gates.catalog_html }}
       </div>
     {% endif %}
+    {# The app's catalog checks as rows, when the review carries them (A4b);
+       the report's text above otherwise. #}
+    {% if duplicate and duplicate.catalog.rows %}
+      <div class="catalog-checks catalog-checks--rows">
+        <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
+        {% if repo_gates and repo_gates.catalog_read %}<div class="catalog-read">{{ repo_gates.catalog_read }}</div>{% endif %}
+        <ul class="gate-rows">
+          {% for row in duplicate.catalog.rows %}
+            <li>
+              <span class="gate-result gate-result--{{ row.result == 'N/A' ? 'na' : row.result|lower }}">{{ row.result }}</span>
+              <span class="catalog-check">{{ row.check|t }}</span>
+              <span class="gate-evidence">
+                {{- row.text -}}
+                {%- if row.links %}: {% for link in row.links %}{% if link.url %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% else %}{{ link.title }}{% endif %}{{ not loop.last ? ', ' }}{% endfor %}{% endif -%}
+                {%- if row.add_software and can_edit %} · <a href="{{ path('node.add', {'node_type': 'appverse_software'}) }}" target="_blank" rel="noopener">{{ 'Add the Software entry'|t }}</a>{% endif -%}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
     {# The reviewer's duplicate check for this app (A4): the decision the
        catalog checks above leave to them. Required to accept the app. #}
     {% if duplicate and (duplicate.el or duplicate.data.outcome) %}
@@ -427,7 +448,7 @@
               {# Repo gates ride on the first app's Structure block: they are
                  the repo's, so they are shown once however many apps there
                  are. #}
-              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': can_edit ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate} : null) }}
+              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': can_edit ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate, 'catalog': app.catalog} : null) }}
             {% endfor %}
           </div>
         </div>

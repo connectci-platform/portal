@@ -116,4 +116,19 @@ class AppverseReviewSeederTest extends UnitTestCase {
     $this->assertNull(AppverseReviewSeeder::tagKey(NULL));
   }
 
+  /**
+   * A summary longer than its column is cut at a word with an ellipsis; one
+   * that fits is untouched.
+   *
+   * @covers ::fit
+   */
+  public function testFit(): void {
+    $this->assertSame('short', AppverseReviewSeeder::fit('short', 255));
+    $long = str_repeat('word ', 60);
+    $cut = AppverseReviewSeeder::fit($long, 255);
+    $this->assertLessThanOrEqual(255, mb_strlen($cut));
+    $this->assertStringEndsWith('…', $cut);
+    $this->assertStringEndsNotWith(' …', $cut, 'Cut at a word, not mid-space.');
+  }
+
 }

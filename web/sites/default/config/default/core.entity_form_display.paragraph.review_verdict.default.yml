@@ -5,6 +5,7 @@ dependencies:
   config:
     - field.field.paragraph.review_verdict.field_rvv_app_id
     - field.field.paragraph.review_verdict.field_rvv_app_ref
+    - field.field.paragraph.review_verdict.field_rvv_catalog
     - field.field.paragraph.review_verdict.field_rvv_conclusion
     - field.field.paragraph.review_verdict.field_rvv_criteria
     - field.field.paragraph.review_verdict.field_rvv_docs_anchor
@@ -210,6 +211,7 @@ content:
     third_party_settings: {  }
 hidden:
   created: true
+  field_rvv_catalog: true
   field_rvv_duplicate: true
   field_rvv_duplicate_note: true
   field_rvv_moderator_notes: true

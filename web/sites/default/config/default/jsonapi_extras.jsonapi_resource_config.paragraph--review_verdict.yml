@@ -110,6 +110,12 @@ resourceFields:
     publicName: field_rvv_app_ref
     enhancer:
       id: ''
+  field_rvv_catalog:
+    disabled: false
+    fieldName: field_rvv_catalog
+    publicName: field_rvv_catalog
+    enhancer:
+      id: ''
   field_rvv_conclusion:
     disabled: false
     fieldName: field_rvv_conclusion

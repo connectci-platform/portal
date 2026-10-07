@@ -476,6 +476,94 @@ final class ReviewPageData {
   }
 
   /**
+   * An app's catalog checks as rows in the gates' style: check, result
+   * (PASS / WARN / N/A) and what was found (A4b; artifact schema 1.5,
+   * apps[].catalog). [] when the review carries no checks, so the report's
+   * Catalog checks text stands.
+   *
+   * @param array<string, mixed> $checks
+   *
+   * @return array<int, array{check: string, result: string, text: string, links?: array<int, array{title: string, url: string}>, add_software?: bool}>
+   */
+  public static function catalogRows(array $checks): array {
+    if ($checks === []) {
+      return [];
+    }
+    $shape = (string) ($checks['shape'] ?? '');
+    $sw = (array) ($checks['software'] ?? []);
+    $rows = [];
+    $rows[] = match ($sw['status'] ?? '') {
+      'match' => ['check' => 'Software', 'result' => 'PASS', 'text' => sprintf('Matches the Software entry %s', $sw['entry'] ?? $sw['value'] ?? '')],
+      'no_match' => ['check' => 'Software', 'result' => 'WARN', 'add_software' => TRUE, 'text' => sprintf('%s has no Software entry%s', $sw['value'] ?? '', !empty($sw['closest']) ? '; the closest is ' . $sw['closest'] : '')],
+      'not_declared' => ['check' => 'Software', 'result' => 'WARN', 'text' => 'Not declared; software is required in appverse.yml'],
+      'unparsed' => ['check' => 'Software', 'result' => 'WARN', 'text' => 'Not checked: appverse.yml did not parse'],
+      default => ['check' => 'Software', 'result' => 'N/A', 'text' => 'Not applicable: an inferred repo declares no software'],
+    };
+    $at = (array) ($checks['app_type'] ?? []);
+    $rows[] = match ($at['status'] ?? '') {
+      'known' => ['check' => 'App type', 'result' => 'PASS', 'text' => sprintf('%s is a known app type', $at['value'] ?? '')],
+      'unknown' => ['check' => 'App type', 'result' => 'WARN', 'text' => sprintf('%s is not a known app type', $at['value'] ?? '')],
+      'not_declared' => ['check' => 'App type', 'result' => 'WARN', 'text' => 'Not declared; app_type is required in appverse.yml'],
+      'unparsed' => ['check' => 'App type', 'result' => 'WARN', 'text' => 'Not checked: appverse.yml did not parse'],
+      default => ['check' => 'App type', 'result' => 'N/A', 'text' => 'Not applicable: the type comes from manifest.yml'],
+    };
+    $tags = (array) ($checks['implementation_tags'] ?? []);
+    $declared = array_values((array) ($tags['declared'] ?? []));
+    $unknown = array_values((array) ($tags['unknown'] ?? []));
+    $rows[] = match (TRUE) {
+      $shape === 'unparsed' => ['check' => 'Implementation tags', 'result' => 'WARN', 'text' => 'Not checked: appverse.yml did not parse'],
+      $shape !== 'declared' || $declared === [] => ['check' => 'Implementation tags', 'result' => 'N/A', 'text' => $shape === 'declared' ? 'None declared' : 'Not applicable: an inferred repo declares none'],
+      $unknown !== [] => ['check' => 'Implementation tags', 'result' => 'WARN', 'text' => sprintf('Not in the vocabulary: %s (known: %s)', implode(', ', $unknown), implode(', ', (array) ($tags['known'] ?? [])) ?: 'none')],
+      default => ['check' => 'Implementation tags', 'result' => 'PASS', 'text' => sprintf('All known: %s', implode(', ', $declared))],
+    };
+    if (($sw['status'] ?? '') === 'match') {
+      $entry = (string) ($sw['entry'] ?? $sw['value'] ?? '');
+      $links = [];
+      foreach ((array) ($checks['same_software_apps'] ?? []) as $app) {
+        if (!is_array($app) || !empty($app['this_repo'])) {
+          continue;
+        }
+        $url = (string) ($app['github_url'] ?? '');
+        if ($url !== '' && !empty($app['subpath'])) {
+          $url = rtrim($url, '/') . '/tree/HEAD/' . trim((string) $app['subpath'], '/');
+        }
+        $links[] = ['title' => (string) ($app['title'] ?? $url), 'url' => $url];
+      }
+      $n = count($links);
+      $rows[] = $n === 0
+        ? ['check' => 'Same software', 'result' => 'PASS', 'text' => sprintf('No other published app implements %s', $entry)]
+        : ['check' => 'Same software', 'result' => 'WARN', 'links' => $links, 'text' => sprintf('%d published %s from other repos %s %s', $n, $n === 1 ? 'app' : 'apps', $n === 1 ? 'implements' : 'implement', $entry)];
+    }
+    else {
+      $rows[] = ['check' => 'Same software', 'result' => 'N/A', 'text' => 'No Software entry to compare by; compare by name against the published apps'];
+    }
+    return $rows;
+  }
+
+  /**
+   * The duplicate-check outcome the catalog alone supports, with why, or
+   * NULL: only "no other app", and only when the app's software matched an
+   * entry that no other repo's app implements. Telling a different approach
+   * from a duplicate takes the reviewer.
+   *
+   * @param array<string, mixed> $checks
+   *
+   * @return array{outcome: string, reason: string}|null
+   */
+  public static function duplicateSuggestion(array $checks): ?array {
+    $sw = (array) ($checks['software'] ?? []);
+    if (($sw['status'] ?? '') !== 'match') {
+      return NULL;
+    }
+    foreach ((array) ($checks['same_software_apps'] ?? []) as $app) {
+      if (is_array($app) && empty($app['this_repo'])) {
+        return NULL;
+      }
+    }
+    return ['outcome' => 'none', 'reason' => sprintf('The catalog lists no other app for %s.', $sw['entry'] ?? $sw['value'] ?? '')];
+  }
+
+  /**
    * The report's Catalog checks without its "Duplicate-check rationale"
    * placeholder (A4): the page records the rationale in its own control, so
    * the report's "<reviewer fills in …>" line would only read as unfinished.

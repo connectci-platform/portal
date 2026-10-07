@@ -23,6 +23,10 @@ class DuplicateCheckTest extends UnitTestCase {
     $this->assertTrue(DuplicateCheck::needsNote('duplicate', ''));
     $this->assertFalse(DuplicateCheck::needsNote('duplicate', 'Same app as OSC/bc_osc_abaqus with site config.'));
     $this->assertFalse(DuplicateCheck::needsNote(NULL, ''));
+    // "No other app" stands on the catalog only when a Software entry
+    // matched; otherwise the reviewer compared by name and says how (A4b).
+    $this->assertTrue(DuplicateCheck::needsNote('none', '', FALSE));
+    $this->assertFalse(DuplicateCheck::needsNote('none', 'Compared by name: no other SAS app.', FALSE));
   }
 
   /**
