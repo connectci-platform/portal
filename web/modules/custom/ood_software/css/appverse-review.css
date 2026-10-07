@@ -490,6 +490,20 @@
   margin-top: .3rem;
 }
 
+/* The rating: a badge until the edit icon is clicked (appverse-planning#54).
+   Both controls are in the markup and the dropdown is what shows by default,
+   so without JS the page still edits; .level-collapsed, which the JS adds, is
+   what swaps them. */
+.arv-page .catblock .level-readonly {
+  display: none;
+}
+.arv-page .catblock.level-collapsed .level-readonly {
+  display: inline;
+}
+.arv-page .catblock.level-collapsed .level-control {
+  display: none;
+}
+
 /* Gates and catalog checks (Reviewer Process step 1), top of the main column. */
 .arv-page .gate-rows {
   list-style: none;

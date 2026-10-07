@@ -105,19 +105,41 @@
         });
       });
 
+      // The rating shows as a badge until the edit icon is clicked, which
+      // swaps in the dropdown and the note (appverse-planning#54). The markup
+      // carries both and starts with the dropdown shown, so without this the
+      // page still works; the class added here is what hides one of them.
       once('arv-override', '.arv-page .catblock', context).forEach((block) => {
         const btn = block.querySelector('.edit-icon-btn');
         const box = block.querySelector('.override-box');
-        if (!btn || !box) {
+        const readonly = block.querySelector('.level-readonly');
+        const control = block.querySelector('.level-control');
+        if (!btn) {
           return;
         }
-        const textarea = box.querySelector('textarea');
-        if (!textarea || textarea.value.trim() === '') {
-          box.classList.add('collapsed');
+        const textarea = box ? box.querySelector('textarea') : null;
+        // Already changed, or carrying a note: leave it open, because that is
+        // the reviewer's own work and hiding it would lose them.
+        const changed = block.classList.contains('level-changed')
+          || (textarea && textarea.value.trim() !== '');
+        if (!changed) {
+          if (box) {
+            box.classList.add('collapsed');
+          }
+          if (readonly && control) {
+            block.classList.add('level-collapsed');
+          }
         }
         btn.addEventListener('click', (e) => {
           e.preventDefault();
-          box.classList.toggle('collapsed');
+          if (box) {
+            box.classList.toggle('collapsed');
+          }
+          block.classList.toggle('level-collapsed');
+          const select = control ? control.querySelector('select') : null;
+          if (select && !block.classList.contains('level-collapsed')) {
+            select.focus();
+          }
         });
       });
     },

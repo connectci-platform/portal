@@ -66,20 +66,29 @@
 
 {% macro catblock(block, form, can_edit, page, level_el, note_el) %}
   {% import _self as m %}
-  <div class="catblock" id="block-{{ block.key }}">
+  {# level-changed: the reviewer has moved off the automated rating, so the
+     dropdown and the note stay open rather than collapsing behind the icon. #}
+  <div class="catblock{% if block.level and block.tool_level and block.level != block.tool_level %} level-changed{% endif %}" id="block-{{ block.key }}">
     <div class="cat-top">
       <div class="cat-title-row">
         <div class="cat-left">
           <span class="cat-name">{{ block.title }}</span>
           {% if block.level is not null or block.key in ['portability', 'documentation', 'maintenance'] %}
+            {# The rating reads as a badge and the dropdown stays hidden until
+               the edit icon is clicked. It was always an editable control with
+               the automated rating captioned under it, which is sidebar
+               clutter on the rows nobody is changing (appverse-planning#54).
+               Both are rendered: the JS swaps which one is shown, so with no
+               JS the dropdown is simply there. #}
             {% if can_edit and level_el %}
-              {{ level_el }}
-            {% else %}
               {# Literal map: a macro cannot see the template's level_class. #}
+              <span class="level-readonly">{{ m.level_badge(block.level, page.level_labels, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}</span>
+              <span class="level-control">{{ level_el }}</span>
+            {% else %}
               {{ m.level_badge(block.level, page.level_labels, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
             {% endif %}
-            {% if can_edit and note_el %}
-              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the automated rating'|t }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+            {% if can_edit and level_el %}
+              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
             {% endif %}
           {% endif %}
         </div>
@@ -87,14 +96,12 @@
       </div>
       {# Like Decision's "Automated suggestion": what the tool rated, and
          whether the reviewer has changed it. #}
-      {% if can_edit and level_el and block.tool_level %}
-        {% set tool_label = page.level_labels[block.tool_level] ?? block.tool_level %}
+      {# Only worth saying once the reviewer has moved off the automated
+         rating; otherwise the badge above already is the automated rating
+         (appverse-planning#54). #}
+      {% if can_edit and level_el and block.tool_level and block.level and block.level != block.tool_level %}
         <div class="concl-caption level-caption">
-          {% if block.level and block.level != block.tool_level %}
-            {{ 'Changed from automated rating: @l'|t({'@l': tool_label}) }}
-          {% else %}
-            {{ 'Automated rating: @l'|t({'@l': tool_label}) }}
-          {% endif %}
+          {{ 'Changed from automated rating: @l'|t({'@l': page.level_labels[block.tool_level] ?? block.tool_level}) }}
         </div>
       {% endif %}
       {% if block.summary %}<div class="cat-summary">{{ block.summary }}</div>{% endif %}
