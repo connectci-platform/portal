@@ -157,7 +157,7 @@
   {% if form['#progress'] %}
     <div class="arv-progress-block">
       {{ form['#progress'] }}
-      {% if form['#progress_hint'] %}<p class="arv-progress-hint">{{ form['#progress_hint'] }}</p>{% endif %}
+
     </div>
   {% endif %}
   {% if page.withdrawn %}
@@ -190,7 +190,12 @@
           {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
           {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
           · {{ page.shape }}
-          <span class="state-pill state-pill--{{ page.state }}">{{ page.state_label }}</span>
+          {# From the same steps the progress line draws, so the two agree.
+             This used to show the review node's own moderation state
+             (appverse-planning#53). #}
+          {% if page.chip %}
+            <span class="state-pill state-pill--{{ page.chip.modifier }}">{{ page.chip.label }}</span>
+          {% endif %}
         </div>
         <div class="overview-line overview-line--sub">
           {% set sub = [] %}

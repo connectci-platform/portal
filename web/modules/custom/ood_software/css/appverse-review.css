@@ -19,6 +19,13 @@
   --status-green: #00857a;
   --status-amber: #c98a2b;
   --status-red: #c91235;
+  /* The same three, deep enough to carry small text on their own soft
+     backgrounds. The brand shades above sit at 3.94:1 (green) and 2.60:1
+     (amber) there, under the 4.5:1 AA floor for body-size text; these reach
+     5.2 and 5.1. Borders, icons and large type keep the brand shades
+     (appverse-planning#53). */
+  --status-green-text: #007066;
+  --status-amber-text: #8a5d12;
   color: var(--ink);
   line-height: 1.5;
 }
@@ -633,7 +640,7 @@
 }
 .arv-page .result-pill--pass {
   background: #e0f3f0;
-  color: var(--status-green);
+  color: var(--status-green-text);
 }
 
 /* Reviewer-added findings: tag + who/when, inline edit fields, add form. */
@@ -708,13 +715,25 @@
   background: var(--gray-100);
   color: var(--gray-900);
 }
-.arv-page .state-pill--published {
+/* Modifiers follow ReviewProgress::chip(), which is what fills the pill, so
+   they are the step states rather than the review node's moderation states
+   (appverse-planning#53). Blue is the current step, green done, amber waiting
+   on the contributor, red failed or declined, per the brand palette. */
+.arv-page .state-pill--success {
   background: #e0f3f0;
-  color: var(--status-green);
+  color: var(--status-green-text);
 }
-.arv-page .state-pill--in_review {
-  background: var(--blue-soft);
-  color: var(--blue);
+.arv-page .state-pill--warning {
+  background: #fbf0dd;
+  color: var(--status-amber-text);
+}
+.arv-page .state-pill--danger {
+  background: #fae3e8;
+  color: var(--status-red);
+}
+.arv-page .state-pill--secondary {
+  background: var(--gray-100);
+  color: var(--gray-700);
 }
 .arv-page .tool-version {
   font-family: ui-monospace, monospace;
@@ -758,12 +777,6 @@
   border: 1px solid var(--gray-150);
   border-radius: 3px;
   font-size: .86rem;
-}
-.arv-page .arv-progress-hint {
-  margin: 10px 0 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--gray-150);
-  color: var(--gray-700);
 }
 
 /* Superseded banner and history bar (a repo with more than one review). */
@@ -836,7 +849,7 @@
 .arv-page .decision-pill--accept,
 .arv-page .decision-pill--accept_with_suggestions {
   background: #e0f3f0;
-  color: var(--status-green);
+  color: var(--status-green-text);
 }
 .arv-page .decision-pill--request_changes {
   background: #fff8ec;

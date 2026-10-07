@@ -167,9 +167,16 @@ final class ReviewPageForm extends FormBase {
         '#steps' => $canEdit ? $steps['reviewer'] : $steps['contributor'],
         '#variant' => 'steps',
       ];
-      // The mock's hint: saving is what starts the Review step.
-      $form['#progress_hint'] = $canEdit && ($steps['reviewer'][2]['label'] ?? '') === 'Not started'
-        ? $this->t('Your first save starts the Review step.') : NULL;
+      // The header pill, from the same steps the line draws, so the two cannot
+      // disagree. It used to show the review node's own moderation state,
+      // which said "In review" over a line reading "Changes requested ·
+      // round 1": a different thing, and the less useful one now that
+      // waiting_for_contributor is retired (appverse-planning#53).
+      $form['#page']['chip'] = ReviewProgress::chip($canEdit ? $steps['reviewer'] : $steps['contributor']);
+      // The old hint here described plumbing ("Your first save starts the
+      // Review step"), which is not something the reviewer has to do or can
+      // act on. What the page should say is where things end up, and that
+      // lives next to the assessment and the decision instead.
     }
     $form['#tree'] = TRUE;
     // The page differs by permission, by whether the viewer owns the repo,
@@ -289,9 +296,11 @@ final class ReviewPageForm extends FormBase {
       '#rows' => 8,
       '#default_value' => $page['response'],
       '#disabled' => $locked,
-      // The response sits inside the decision email (appverse-planning#48),
-      // which already says the rest; repeating it reads twice.
-      '#description' => $this->t('This goes into the decision email to the contributor. The email already greets them, lists each app\'s decision, says how to re-submit and tells them a reply reaches you, so write only the review itself: what to change and why.'),
+      // Where it ends up, first: the contributor is emailed this when the
+      // decision is sent (appverse-planning#53). The rest says what not to
+      // write, because the email already greets them, lists each app's
+      // decision and says how to re-submit (appverse-planning#48).
+      '#description' => $this->t('Emailed to the contributor when you send the decision. The email already greets them, lists each app\'s decision and says how to re-submit, so write only the review itself: what to change and why.'),
     ];
     $form['assessment'] = [
       '#type' => 'textarea',
@@ -300,6 +309,9 @@ final class ReviewPageForm extends FormBase {
       '#rows' => 5,
       '#default_value' => $page['assessment'],
       '#attributes' => ['placeholder' => $this->t('The published assessment, in your words…')],
+      // Where it ends up (appverse-planning#53): this one is public, which the
+      // placeholder alone did not make clear.
+      '#description' => $this->t('Published with the review when the app is accepted, so anyone can read it.'),
     ];
     $form['new_note'] = [
       '#type' => 'textarea',

@@ -154,11 +154,13 @@ class AppverseReviewSeeder {
     // (appverse-planning#42). The field's storage config decides where the
     // file lives; the Markdown is private, so a Draft review's report is not
     // readable at a guessable public URL.
+    $reportFile = NULL;
     foreach (['report_md' => 'field_arv_report_md'] as $key => $field) {
       $scheme = $review->getFieldDefinition($field)->getSetting('uri_scheme') ?: 'private';
       $file = $this->attachReport($artifact['artifacts'][$key] ?? '', $reports_dir, $sha, $scheme);
       if ($file !== NULL) {
         $review->set($field, $file);
+        $reportFile = $file;
       }
     }
 
@@ -168,9 +170,25 @@ class AppverseReviewSeeder {
     // From the md report too: the repo-level gate table's evidence and the
     // Catalog checks, which Step 1 of the Reviewer Process asks the reviewer
     // to settle and which the artifact JSON does not carry.
-    $mdName = basename((string) ($artifact['artifacts']['report_md'] ?? ''));
-    $mdPath = $mdName !== '' && $reports_dir !== NULL ? rtrim($reports_dir, '/') . '/' . $mdName : '';
-    $markdown = $mdPath !== '' && is_readable($mdPath) ? (string) file_get_contents($mdPath) : '';
+    // Read the report that was just attached, not the directory it was
+    // imported from. Reading the source meant the whole block below was
+    // skipped whenever $reports_dir was absent or its file had moved, which is
+    // every review on this site: the draft feedback, the gate evidence and the
+    // catalog checks were all silently left empty even though the attached
+    // report carried them (appverse-planning#53). The attached file is the
+    // copy the review actually owns, so it is always there to read.
+    $markdown = '';
+    if ($reportFile !== NULL) {
+      $attached = \Drupal::service('file_system')->realpath($reportFile->getFileUri());
+      if ($attached !== FALSE && is_readable($attached)) {
+        $markdown = (string) file_get_contents($attached);
+      }
+    }
+    if ($markdown === '') {
+      $mdName = basename((string) ($artifact['artifacts']['report_md'] ?? ''));
+      $mdPath = $mdName !== '' && $reports_dir !== NULL ? rtrim($reports_dir, '/') . '/' . $mdName : '';
+      $markdown = $mdPath !== '' && is_readable($mdPath) ? (string) file_get_contents($mdPath) : '';
+    }
     if ($markdown !== '') {
       $draft = self::extractDraftFeedback($markdown);
       if ($draft !== '' && $review->get('field_arv_contributor_response')->isEmpty()) {

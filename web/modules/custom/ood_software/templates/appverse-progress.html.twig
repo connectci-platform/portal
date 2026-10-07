@@ -33,8 +33,13 @@
       {% endif %}
       <span class="arv-progress__name">{{ s.step|t }}</span>
       <span class="visually-hidden">: {{ state_text[s.state] }}</span>
-      {# The bar is narrow: a label repeating its step's name ("Live") is dropped. #}
-      {% if s.label and (variant == 'steps' or (labels and s.label != s.step)) %}
+      {# Two labels say nothing the step has not already said: one that repeats
+         its step's name ("Submitted" under Submitted, "Live" under Live), and
+         a bare "Done" on a step the circle already shows as done. Both are
+         dropped from the line; the state is still announced to screen readers
+         above, and the labels stay in the data because the card's chip reads
+         them (appverse-planning#53). #}
+      {% if s.label and s.label != s.step and not (s.state == 'done' and s.label == 'Done') and (variant == 'steps' or labels) %}
         <span class="arv-progress__label">{{ s.label }}</span>
       {% endif %}
     </li>
