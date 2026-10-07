@@ -75,6 +75,31 @@
   </div>
 {% endmacro %}
 
+{# A group of gates: the passes as a count behind a toggle, and anything that
+   is not a pass out in full. Both the repo's gates and a block's own use it,
+   so one kind of thing reads one way (appverse-planning#53). #}
+{% macro gate_group(summary) %}
+  {% if summary and summary.total %}
+    <div class="gates">
+      {% if summary.passes %}
+        <details class="gate-passes">
+          <summary class="gate-passes__count">
+            {{ '@n of @total passed'|t({'@n': summary.passed, '@total': summary.total}) }}
+          </summary>
+          <div class="gate-passes__list">
+            {% for gate in summary.passes %}
+              <span class="gate gate--pass">{{ gate.label }}</span>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
+      {% for gate in summary.others %}
+        <span class="gate gate--{{ gate.value }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
 {% macro catblock(block, form, can_edit, page, level_el, note_el, scope, repo_gates) %}
   {% import _self as m %}
   {# level-changed: the reviewer has moved off the automated rating, so the
@@ -139,37 +164,9 @@
       {% endif %}
       {# The repo's own gates lead, because they decide whether the app belongs
          in the catalog at all; the block's gates are the per-app file checks
-         that follow. They used to be a separate "Gates and catalog checks"
-         box above, which split one question across two places: the Reviewer
-         Process has them as step 1 and says two of them are rubric Structure
-         criteria (appverse-planning#53). Passes collapse to a count here as
-         they did there; anything that is not a pass stays out in full. #}
-      {% if repo_gates and repo_gates.total %}
-        <div class="gates">
-          {% if repo_gates.passes %}
-            <details class="gate-passes">
-              <summary class="gate-passes__count">
-                {{ '@n of @total gates passed'|t({'@n': repo_gates.passed, '@total': repo_gates.total}) }}
-              </summary>
-              <div class="gate-passes__list">
-                {% for gate in repo_gates.passes %}
-                  <span class="gate gate--pass">{{ gate.label }}</span>
-                {% endfor %}
-              </div>
-            </details>
-          {% endif %}
-          {% for gate in repo_gates.others %}
-            <span class="gate gate--{{ gate.value }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
-          {% endfor %}
-        </div>
-      {% endif %}
-      {% if block.gates is not empty %}
-        <div class="gates">
-          {% for gate in block.gates %}
-            <span class="gate gate--{{ gate.value }}" title="{{ gate.label }}: {{ gate.value|replace({'_': ' '}) }}">{{ gate.label }} <b>{{ gate.value|replace({'_': ' '}) }}</b></span>
-          {% endfor %}
-        </div>
-      {% endif %}
+         that follow. Both render the same way (appverse-planning#53). #}
+      {{ m.gate_group(repo_gates) }}
+      {{ m.gate_group(block.gate_summary) }}
     </div>
     {# The gate evidence and the catalog checks come with the gates. #}
     {% if repo_gates and repo_gates.rows %}
@@ -235,12 +232,6 @@
 
 <div class="arv-page">
   {# No <h1> here: the page title block already renders "Review of …". #}
-  {% if form['#progress'] %}
-    <div class="arv-progress-block">
-      {{ form['#progress'] }}
-
-    </div>
-  {% endif %}
   {% if page.withdrawn %}
     <div class="arv-superseded">
       {{ 'The contributor withdrew this submission on @at.'|t({'@at': page.withdrawn}) }}
@@ -271,12 +262,6 @@
           {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
           {% if page.repo_url %} · <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': ''}) }}</a>{% endif %}
           · {{ page.shape }}
-          {# From the same steps the progress line draws, so the two agree.
-             This used to show the review node's own moderation state
-             (appverse-planning#53). #}
-          {% if page.chip %}
-            <span class="state-pill state-pill--{{ page.chip.modifier }}">{{ page.chip.label }}</span>
-          {% endif %}
         </div>
         <div class="overview-line overview-line--sub">
           {% set sub = [] %}
@@ -302,6 +287,12 @@
       </div>
     </div>
   </div>
+  {% if form['#progress'] %}
+    <div class="arv-progress-block">
+      {{ form['#progress'] }}
+
+    </div>
+  {% endif %}
 
   <div class="layout">
     <div class="main-col">

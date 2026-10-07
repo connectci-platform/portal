@@ -535,6 +535,10 @@ final class ReviewPageData {
       'anchor' => $level['anchor'] ?? '',
       'note' => $level['note'] ?? '',
       'gates' => $gates,
+      // The same count-and-hold-out treatment the repo gates use, so a block
+      // does not show two kinds of gate two different ways
+      // (appverse-planning#53).
+      'gate_summary' => self::gateSummary($gates),
       'count_line' => self::countLine($findings, $key === 'security' ? self::SECURITY_NONE : 'No findings'),
       'groups' => $groups,
     ];
