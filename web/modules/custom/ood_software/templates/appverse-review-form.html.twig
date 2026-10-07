@@ -170,7 +170,7 @@
               {{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
             {% endif %}
             {% if can_edit and level_el %}
-              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
             {% endif %}
           {% endif %}
         </div>
@@ -201,8 +201,10 @@
       {# The repo's own gates lead, because they decide whether the app belongs
          in the catalog at all; the block's gates are the per-app file checks
          that follow. Both render the same way (appverse-planning#53). #}
-      {{ m.gate_group(repo_gates, 'Repo'|t) }}
-      {{ m.gate_group(block.gate_summary, 'Files'|t) }}
+      <div class="gate-groups">
+        {{ m.gate_group(repo_gates, 'Repo'|t) }}
+        {{ m.gate_group(block.gate_summary, 'Files'|t) }}
+      </div>
     </div>
     {# The gate evidence and the catalog checks come with the gates. #}
     {% if repo_gates and repo_gates.rows %}

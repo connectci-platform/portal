@@ -300,7 +300,10 @@
      paragraph's own symmetrical margins had it floating between the two
      (appverse-planning#53). */
   margin: 2px 0 8px;
-  line-height: 1.4;
+  /* Tighter than body leading: at .78rem the page's 1.4 left the two-line
+     helpers looking double-spaced against the control they introduce
+     (appverse-planning#53). */
+  line-height: 1.25;
 }
 .arv-page .sidebar-rule {
   border: none;
@@ -314,7 +317,10 @@
 .arv-page .publish-block {
   background: var(--ink);
   color: #fff;
-  padding: 14px 16px;
+  /* More below than above: the heading carries its own bottom margin, so
+     symmetrical padding leaves the last button crowded against the edge
+     (appverse-planning#53). */
+  padding: 14px 16px 18px;
   border-radius: 3px;
   /* Room above as well as below: the dark block sat flush against the Public
      summary field over it (appverse-planning#53). */
@@ -699,6 +705,23 @@
 /* The passes, folded into a count (appverse-planning#54). Closed it is one
    quiet line; open it lists the gates that passed. A failure never goes in
    here: it renders as its own pill beside this. */
+/* Repo beside Files. Each group is its own block, so stacked they took two
+   full rows for two short lines and made the Structure card taller than its
+   content. Aligned to the top so an open group grows downward without
+   dragging the other with it (appverse-planning#53). */
+.arv-page .gate-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: .35rem .75rem;
+  margin-top: .5rem;
+}
+/* Inside the row each group is already laid out by .gates; its top margin
+   would double the row's own gap. */
+.arv-page .gate-groups > .gates {
+  margin-top: 0;
+}
+
 .arv-page .gate-passes {
   display: inline-block;
 }
@@ -1004,6 +1027,24 @@
   font-size: .78rem;
   color: var(--gray-700);
   cursor: pointer;
+  list-style: none;
+}
+.arv-page .checked-rows > summary::-webkit-details-marker {
+  display: none;
+}
+/* The same chevron as the gate groups and severity heads: this line sits in
+   the same card as them and was still showing the browser's native triangle
+   (appverse-planning#53). */
+.arv-page .checked-rows > summary::before {
+  content: '\2304';
+  display: inline-block;
+  margin-right: .35rem;
+  line-height: 1;
+  transform: translateY(-.15em);
+  transition: transform .15s;
+}
+.arv-page .checked-rows[open] > summary::before {
+  transform: translateY(.1em) rotate(180deg);
 }
 .arv-page .checked-rows .frow {
   padding: 6px 0;
