@@ -170,13 +170,10 @@ class AppverseReviewSeeder {
     // From the md report too: the repo-level gate table's evidence and the
     // Catalog checks, which Step 1 of the Reviewer Process asks the reviewer
     // to settle and which the artifact JSON does not carry.
-    // Read the report that was just attached, not the directory it was
-    // imported from. Reading the source meant the whole block below was
-    // skipped whenever $reports_dir was absent or its file had moved, which is
-    // every review on this site: the draft feedback, the gate evidence and the
-    // catalog checks were all silently left empty even though the attached
-    // report carried them (appverse-planning#53). The attached file is the
-    // copy the review actually owns, so it is always there to read.
+    // Read the copy just attached, falling back to the import directory. Both
+    // hold the same bytes on the normal path, where the report is downloaded
+    // beside the artifact JSON; the attached one is preferred because it is
+    // the copy this review owns and outlives the run's temp directory.
     $markdown = '';
     if ($reportFile !== NULL) {
       $attached = \Drupal::service('file_system')->realpath($reportFile->getFileUri());
