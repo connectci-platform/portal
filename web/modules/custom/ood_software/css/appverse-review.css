@@ -38,7 +38,7 @@
      control   anything you type in or pick from, and the buttons that act
                on it, so a control and its button read as one size
      helper    the muted line under a control saying what it does */
-  --sb-heading: .95rem;
+  --sb-heading: 1.1rem;
   --sb-control: .86rem;
   --sb-helper: .78rem;
   --sb-helper-color: var(--gray-700);
@@ -72,8 +72,12 @@
   vertical-align: middle;
   white-space: nowrap;
   font-family: inherit;
-  font-size: .76rem;
+  /* The theme tracks buttons at 1px, which nothing else on this page does,
+     so they read as a different typeface. Field text, like the controls they
+     act on (appverse-planning#53). */
+  font-size: var(--sb-control);
   font-weight: 700;
+  letter-spacing: normal;
   line-height: 1.2;
   border-radius: 3px;
   padding: 6px 12px;
@@ -156,7 +160,7 @@
 
 .arv-page h2.sec {
   font-size: var(--sb-heading);
-  font-weight: 700;
+  font-weight: 800;
   margin: 26px 0 10px;
 }
 .arv-page h2.sec:first-child {
@@ -453,8 +457,8 @@
   gap: 12px;
 }
 .arv-page .cat-name {
-  font-weight: 700;
-  font-size: 1.125rem;
+  font-weight: 800;
+  font-size: 1.15rem;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -759,13 +763,17 @@
   padding: 8px 14px;
   background: var(--white);
   cursor: pointer;
-  font-size: .79rem;
-  font-weight: 700;
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
   user-select: none;
 }
 .arv-page .sev-head .n {
-  color: var(--gray-500);
+  color: var(--gray-700);
   font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .arv-page .sev-head .car {
   margin-left: auto;
@@ -925,8 +933,10 @@
   padding: 8px 14px;
 }
 .arv-page .add-finding > summary {
-  font-size: .78rem;
-  color: var(--blue-text);
+  /* Six of these down a page, one per block: quieter than a link, since
+     adding a finding is the exception (appverse-planning#53). */
+  font-size: .74rem;
+  color: var(--gray-700);
   cursor: pointer;
   /* No disclosure triangle: the "+" already says what this opens.
      list-style covers most browsers, the pseudo-element covers Safari. */
@@ -935,7 +945,9 @@
 .arv-page .add-finding > summary::-webkit-details-marker {
   display: none;
 }
-.arv-page .add-finding > summary:hover {
+.arv-page .add-finding > summary:hover,
+.arv-page .add-finding > summary:focus-visible {
+  color: var(--blue-text);
   text-decoration: underline;
 }
 .arv-page .add-finding .finding-fields input[type=submit] {
