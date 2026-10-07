@@ -327,7 +327,7 @@
   color: var(--gray-300);
 }
 .arv-page .publish-block .btn.ghost {
-  border-color: var(--gray-500);
+  border-color: rgba(255, 255, 255, .6);
   color: #fff;
   background: transparent;
 }
@@ -335,20 +335,40 @@
   background: rgba(255, 255, 255, .12);
   color: #fff;
 }
+/* Square on a dark fill; the rounded corners are for the soft grey fields
+   (appverse-planning#53). */
+.arv-page .publish-block,
+.arv-page .publish-block .btn {
+  border-radius: 0;
+}
+.arv-page .next-step {
+  margin-top: 10px;
+  font-size: .8rem;
+  color: #dddedf;
+}
 .arv-page .publish-block .arv-send-reason {
   color: var(--gray-300);
 }
 
+/* Stacked, not side by side. The primary's label names the decision and runs
+   to two lines in a 320px sidebar, so beside Save draft the two buttons came
+   out different heights. Full width each, Save draft above the primary, and
+   the primary is free to be as tall as its label needs
+   (appverse-planning#53). */
 .arv-page .publish-row,
 .arv-page .publish-row .form-actions {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
 }
-.arv-page .publish-row .btn.primary {
-  flex: 3;
+.arv-page .publish-row .btn {
+  width: 100%;
+  white-space: normal;
+  text-align: center;
 }
+/* Save draft first, whatever order the form builds them in. */
 .arv-page .publish-row .btn.ghost {
-  flex: 1;
+  order: -1;
 }
 
 .arv-page .internal-notes-block {
