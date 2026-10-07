@@ -10,6 +10,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\AppverseReviewService;
+use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Service\RepoProgress;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -33,6 +34,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     protected RepoProgress $repoProgress,
     protected TimeInterface $time,
     protected AppverseReviewService $reviews,
+    protected RepoMemberApps $repoMemberApps,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -41,6 +43,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
       $container->get('ood_software.repo_progress'),
       $container->get('datetime.time'),
       $container->get('ood_software.review_dispatcher'),
+      $container->get('ood_software.repo_member_apps'),
     );
   }
 
@@ -131,6 +134,8 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     $repo->setValidationRequired(FALSE);
     $repo->_ood_software_suppress_notifications = TRUE;
     $repo->save();
+    // Its apps went into review with it, so they come back out with it.
+    $this->repoMemberApps->cascadeModeration($repo, 'draft', ['ready_for_review'], 'Withdrawn from review with the repo by ' . $who);
 
     $this->messenger()->addStatus($this->t('Withdrew @title from review. It is a draft again; re-submit it when you are ready.', ['@title' => $repo->label()]));
     $form_state->setRedirectUrl($this->getCancelUrl());

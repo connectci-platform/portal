@@ -156,6 +156,22 @@ class LiveResubmitTest extends KernelTestBase {
   }
 
   /**
+   * Withdrawing takes the repo's apps out of review with it.
+   */
+  public function testWithdrawTakesTheAppsBackToDraft(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $app = $this->makeApp($repo, 'ready_for_review');
+    $this->controller(TRUE);
+    $form = \Drupal\ood_software\Form\WithdrawConfirmForm::create($this->container);
+    (new \ReflectionProperty($form, 'repo'))->setValue($form, $repo);
+    $built = [];
+    $form->submitForm($built, new \Drupal\Core\Form\FormState());
+
+    $this->assertState('draft', $repo);
+    $this->assertState('draft', $app);
+  }
+
+  /**
    * A contributor can take their app down but not put one up: the review
    * sent this one back.
    */
