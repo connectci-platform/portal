@@ -89,6 +89,10 @@ class ReviewFloorsTest extends UnitTestCase {
       'a High other: note still does' => [[], $two([self::finding('STR-07', 'high', 'fail', 'structure', 'form.yml', 'form.yml:other:both-form-variants')]), [], ['one' => 'request_changes']],
       // A gate row the security aspect filed is still a gate, for its own app.
       'a Low gate FAIL filed as security' => [[], $two([], [self::finding('STR-04', 'low', 'fail', 'security', 'x.sh:4', 'x.sh:undefined-variable')]), [], ['other' => 'request_changes']],
+      // A reviewer's dismissal lifts the floor the finding set (A1); the
+      // reviewer's severity arrives already applied (forReview()).
+      'a dismissed High security finding' => [[], $two([['dismissed' => TRUE] + self::finding('OODT-02', 'high')]), [], []],
+      'a dismissed gate FAIL' => [[self::finding('STR-01', 'medium', 'FAIL') + ['dismissed' => TRUE]], $two(), [], []],
       // Security and upkeep keep their High floor.
       'a Low security FAIL sets no floor' => [[], $two([self::finding('OODT-05', 'low')]), [], []],
       'a Medium upkeep FAIL sets no floor' => [[self::finding('MNT-01', 'medium')], $two(), [], []],

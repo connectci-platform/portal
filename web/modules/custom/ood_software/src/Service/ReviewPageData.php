@@ -293,6 +293,10 @@ final class ReviewPageData {
    * @param array<mixed> $finding
    */
   public static function isDefect(array $finding): bool {
+    // A finding the reviewer dismissed is not one (A1, FindingOverride).
+    if (!empty($finding['dismissed'])) {
+      return FALSE;
+    }
     $result = strtoupper(trim((string) ($finding['result'] ?? '')));
     return $result === '' || $result === 'FAIL' || $result === 'WARN';
   }
@@ -523,7 +527,7 @@ final class ReviewPageData {
     unset($group);
     // PASS and NOT CHECKED rows: not findings, but a reviewer checks that a
     // cleared candidate really is clear. Counts by result, worst-first order.
-    $checkedRows = array_values(array_filter($findings, fn ($f) => !self::isDefect($f)));
+    $checkedRows = array_values(array_filter($findings, fn ($f) => !self::isDefect($f) && empty($f['dismissed'])));
     $checkedCounts = [];
     foreach ($checkedRows as $row) {
       $result = strtoupper(trim((string) $row['result']));
@@ -532,6 +536,9 @@ final class ReviewPageData {
     return [
       'key' => $key,
       'checked' => ['rows' => $checkedRows, 'counts' => $checkedCounts],
+      // The tool's findings the reviewer dismissed, listed on their own with
+      // the reason: shown to the reviewer and the contributor, not publicly.
+      'dismissed' => array_values(array_filter($findings, fn ($f) => !empty($f['dismissed']))),
       'title' => $title,
       'level' => $level['level'] ?? NULL,
       // The automated review's own rating, kept when a reviewer overrides it.

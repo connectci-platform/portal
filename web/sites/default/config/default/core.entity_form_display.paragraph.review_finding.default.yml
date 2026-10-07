@@ -10,8 +10,13 @@ dependencies:
     - field.field.paragraph.review_finding.field_rvf_category
     - field.field.paragraph.review_finding.field_rvf_created
     - field.field.paragraph.review_finding.field_rvf_defect_key
+    - field.field.paragraph.review_finding.field_rvf_dismissed
     - field.field.paragraph.review_finding.field_rvf_evidence
     - field.field.paragraph.review_finding.field_rvf_line
+    - field.field.paragraph.review_finding.field_rvf_override_at
+    - field.field.paragraph.review_finding.field_rvf_override_by
+    - field.field.paragraph.review_finding.field_rvf_override_reason
+    - field.field.paragraph.review_finding.field_rvf_override_severity
     - field.field.paragraph.review_finding.field_rvf_result
     - field.field.paragraph.review_finding.field_rvf_reviewer_prose
     - field.field.paragraph.review_finding.field_rvf_rule
@@ -57,57 +62,6 @@ targetEntityType: paragraph
 bundle: review_finding
 mode: default
 content:
-  field_rvf_anchor:
-    type: string_textfield
-    weight: 19
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_app_id:
-    type: string_textfield
-    weight: 17
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_aspect:
-    type: options_select
-    weight: 14
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_rvf_category:
-    type: options_select
-    weight: 15
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_rvf_defect_key:
-    type: string_textfield
-    weight: 18
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_evidence:
-    type: string_textfield
-    weight: 12
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_line:
-    type: number
-    weight: 13
-    region: content
-    settings:
-      placeholder: ''
-    third_party_settings: {  }
   field_rvf_reviewer_prose:
     type: text_textarea
     weight: 1
@@ -116,41 +70,27 @@ content:
       rows: 5
       placeholder: ''
     third_party_settings: {  }
-  field_rvf_rule:
-    type: string_textfield
-    weight: 11
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_severity:
-    type: options_select
-    weight: 10
-    region: content
-    settings: {  }
-    third_party_settings: {  }
-  field_rvf_stable_id:
-    type: string_textfield
-    weight: 16
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rvf_summary:
-    type: string_textfield
-    weight: 0
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
 hidden:
   created: true
+  field_rvf_anchor: true
+  field_rvf_app_id: true
+  field_rvf_aspect: true
   field_rvf_author: true
+  field_rvf_category: true
   field_rvf_created: true
+  field_rvf_defect_key: true
+  field_rvf_dismissed: true
+  field_rvf_evidence: true
+  field_rvf_line: true
+  field_rvf_override_at: true
+  field_rvf_override_by: true
+  field_rvf_override_reason: true
+  field_rvf_override_severity: true
   field_rvf_result: true
+  field_rvf_rule: true
+  field_rvf_severity: true
   field_rvf_source: true
+  field_rvf_stable_id: true
+  field_rvf_summary: true
   field_rvf_tag: true
   status: true

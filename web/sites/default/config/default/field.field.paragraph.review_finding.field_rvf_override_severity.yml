@@ -1,0 +1,20 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_override_severity
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_override_severity
+field_name: field_rvf_override_severity
+entity_type: paragraph
+bundle: review_finding
+label: 'Reviewer severity'
+description: 'The reviewer''s severity for an automated finding, when they changed it on the review page. Empty when unchanged; field_rvf_severity keeps the tool''s.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

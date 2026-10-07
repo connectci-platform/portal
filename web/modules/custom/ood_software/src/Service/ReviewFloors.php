@@ -66,7 +66,8 @@ final class ReviewFloors {
     foreach ($sources as [$app, $findings]) {
       foreach ($findings as $f) {
         $result = strtoupper(trim((string) ($f['result'] ?? '')));
-        if ($result !== '' && $result !== 'FAIL') {
+        // A finding the reviewer dismissed sets no floor (A1).
+        if (($result !== '' && $result !== 'FAIL') || !empty($f['dismissed'])) {
           continue;
         }
         $severity = strtolower(trim((string) ($f['severity'] ?? '')));
@@ -170,7 +171,9 @@ final class ReviewFloors {
     $read = static fn (array $paragraphs): array => array_map(static fn ($p) => [
       'rule' => (string) ($p->get('field_rvf_rule')->value ?? ''),
       'aspect' => (string) ($p->get('field_rvf_aspect')->value ?? ''),
-      'severity' => (string) ($p->get('field_rvf_severity')->value ?? ''),
+      // The reviewer's severity when they changed it (FindingOverride).
+      'severity' => FindingOverride::effectiveSeverity($p->get('field_rvf_severity')->value, $p->hasField('field_rvf_override_severity') ? $p->get('field_rvf_override_severity')->value : NULL),
+      'dismissed' => $p->hasField('field_rvf_dismissed') && (bool) $p->get('field_rvf_dismissed')->value,
       'result' => $p->hasField('field_rvf_result') ? (string) ($p->get('field_rvf_result')->value ?? '') : '',
       'evidence' => (string) ($p->get('field_rvf_evidence')->value ?? ''),
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),

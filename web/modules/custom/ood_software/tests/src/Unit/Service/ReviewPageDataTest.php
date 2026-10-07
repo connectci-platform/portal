@@ -181,6 +181,29 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * A finding the reviewer dismissed leaves the groups, the count line and
+   * the checked rows, and is listed on its own; a re-rated one is grouped
+   * by the severity the reviewer gave it (A1).
+   *
+   * @covers ::buildBlock
+   * @covers ::isDefect
+   */
+  public function testBuildBlockListsDismissedFindingsApart(): void {
+    $dismissed = ['dismissed' => TRUE] + $this->finding('OODT-05', 'high', 'FAIL');
+    $this->assertFalse(ReviewPageData::isDefect($dismissed));
+    $block = ReviewPageData::buildBlock('security', 'Security', [
+      $dismissed,
+      $this->finding('OODT-02', 'low', 'FAIL'),
+      $this->finding('OODT-01', 'info', 'PASS'),
+    ], NULL, []);
+
+    $this->assertSame('1 finding · 1 Low', $block['count_line']);
+    $this->assertSame(['OODT-05'], array_column($block['dismissed'], 'rule'));
+    $this->assertSame(['OODT-01'], array_column($block['checked']['rows'], 'rule'), 'a dismissal is not a passed check');
+    $this->assertSame([], ReviewPageData::buildBlock('security', 'Security', [], NULL, [])['dismissed']);
+  }
+
+  /**
    * A repo-level block with only checked rows still appears, so a cleared
    * repo-wide check can be confirmed; it adds nothing to the total.
    *

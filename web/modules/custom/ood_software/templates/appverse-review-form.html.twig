@@ -50,6 +50,19 @@
         </div>
         <div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>
 
+        {# A reviewer's change to the tool's finding (A1): what it was, who
+           changed it and why. The tool's own values stay on the record. #}
+        {% if finding.override %}
+          <div class="override-mark">
+            {% if finding.dismissed %}
+              {{ 'Dismissed by @name · @when'|t({'@name': finding.override.by ?: 'a reviewer'|t, '@when': finding.override.at}) }}
+            {% else %}
+              {{ 'Reviewer changed this from @severity'|t({'@severity': finding.tool_severity|capitalize}) }}
+            {% endif %}
+            {% if finding.override.reason %}<span class="override-reason">{{ finding.override.reason }}</span>{% endif %}
+          </div>
+        {% endif %}
+
         {% if finding.source == 'reviewer' %}
           <div class="added-by"><span class="reviewer-tag">{{ 'Reviewer'|t }}</span> {{ 'Added by @name · @when'|t({'@name': finding.author ?: 'a reviewer'|t, '@when': finding.created}) }}</div>
         {% endif %}
@@ -59,7 +72,7 @@
           {% if finding.source == 'reviewer' %}
             <button type="button" class="expand-hint">{{ 'Edit'|t }}</button>
           {% else %}
-            <button type="button" class="expand-hint" data-has-note="{{ 'has note'|t }}">{{ '+ add note'|t }}</button>
+            <button type="button" class="expand-hint" data-has-note="{{ 'has note'|t }}">{{ form.override[finding.pid] is defined ? '+ note or change'|t : '+ add note'|t }}</button>
           {% endif %}
         </div>
       {% endif %}
@@ -67,6 +80,9 @@
     {% if can_edit %}
       <div class="fnote">
         {{ attribute(form.prose, finding.pid) }}
+        {% if form.override[finding.pid] is defined %}
+          {{ attribute(form.override, finding.pid) }}
+        {% endif %}
         {% if finding.source == 'reviewer' %}
           {{ attribute(form.edit_finding, finding.pid) }}
           <div class="finding-delete">{{ attribute(form.delete_finding, finding.pid) }}</div>
@@ -222,6 +238,16 @@
         </div>
       </div>
     {% endfor %}
+    {# The tool's findings the reviewer dismissed (A1): out of the count,
+       listed here with the reason. The public summary leaves them out. #}
+    {% if block.dismissed is not empty %}
+      <details class="dismissed-rows">
+        <summary>{{ 'Dismissed by the reviewer (@n)'|t({'@n': block.dismissed|length}) }}</summary>
+        {% for finding in block.dismissed %}
+          {{ m.finding_row(finding, form, can_edit) }}
+        {% endfor %}
+      </details>
+    {% endif %}
     {# PASS and NOT CHECKED rows: not findings, but listed so a reviewer can
        confirm a cleared check. Full page only; the public summary omits them. #}
     {% if block.checked.rows is not empty %}

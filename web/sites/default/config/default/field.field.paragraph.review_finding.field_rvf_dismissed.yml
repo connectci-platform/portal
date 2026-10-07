@@ -1,0 +1,22 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_dismissed
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_dismissed
+field_name: field_rvf_dismissed
+entity_type: paragraph
+bundle: review_finding
+label: Dismissed
+description: 'The reviewer dismissed this automated finding as not a finding. It sets no decision floor, is left out of the counts, and is not shown publicly.'
+required: false
+translatable: false
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: 'Dismissed'
+  off_label: 'Open'
+field_type: boolean

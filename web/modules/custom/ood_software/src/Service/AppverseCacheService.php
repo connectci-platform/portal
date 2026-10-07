@@ -515,6 +515,7 @@ class AppverseCacheService {
         'aspect' => $value('field_rvf_aspect'),
         'category' => $value('field_rvf_category'),
         'result' => $value('field_rvf_result'),
+        'dismissed' => (bool) $value('field_rvf_dismissed'),
       ];
     }
     return $facts;

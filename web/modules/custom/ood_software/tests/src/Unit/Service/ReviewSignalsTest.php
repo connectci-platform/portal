@@ -186,6 +186,8 @@ class ReviewSignalsTest extends UnitTestCase {
       $f('QUA-02', 'fail'),
       $f('STR-01', 'fail'),
     ]));
+    // A finding the reviewer dismissed is not one to review (A1).
+    $this->assertSame(0, ReviewSignals::securityCount([['dismissed' => TRUE] + $f('OODT-02', 'fail')]));
     // A tool finding is placed by its rule, not its aspect field.
     $this->assertSame(0, ReviewSignals::securityCount([$f('QUA-03', 'fail', 'ai', 'security', 'security')]));
   }

@@ -15,6 +15,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Drupal\ood_software\Service\FindingOverride;
 use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Service\ReviewDecision;
@@ -387,6 +388,11 @@ final class ReviewPageForm extends FormBase {
             $this->addProseElement($form, $finding);
           }
         }
+        // A dismissed finding keeps its note and its change, so it can be
+        // undone.
+        foreach ($block['dismissed'] ?? [] as $finding) {
+          $this->addProseElement($form, $finding);
+        }
       }
     }
     foreach ($page['repo_blocks'] as $key => $block) {
@@ -395,6 +401,9 @@ final class ReviewPageForm extends FormBase {
         foreach ($group['findings'] as $finding) {
           $this->addProseElement($form, $finding);
         }
+      }
+      foreach ($block['dismissed'] ?? [] as $finding) {
+        $this->addProseElement($form, $finding);
       }
     }
     $this->addNewFindingElements($form, $page['maintenance']['target'], 'maintenance');
@@ -419,6 +428,9 @@ final class ReviewPageForm extends FormBase {
       foreach ($group['findings'] as $finding) {
         $this->addProseElement($form, $finding);
       }
+    }
+    foreach ($maint['dismissed'] ?? [] as $finding) {
+      $this->addProseElement($form, $finding);
     }
 
     $form['assessment'] = [
@@ -557,6 +569,8 @@ final class ReviewPageForm extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $node = $this->node;
     $values = $form_state->getValues();
+    // Changes to automated findings, for the revision log.
+    $changes = [];
     // Once the decision is sent only the notes and the assignee are saved:
     // the rest is the record of what was sent (appverse-planning#51, #56).
     if (ReviewDecisionApplier::sent($node) === NULL) {
@@ -580,11 +594,13 @@ final class ReviewPageForm extends FormBase {
         foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $finding) {
           $this->saveProse($finding, $values);
           $this->saveReviewerEdits($finding, $values);
+          $changes[] = $this->saveOverride($finding, $values);
         }
       }
       foreach ($node->get('field_arv_repo_findings')->referencedEntities() as $finding) {
         $this->saveProse($finding, $values);
         $this->saveReviewerEdits($finding, $values);
+        $changes[] = $this->saveOverride($finding, $values);
       }
 
       if (isset($values['maint_level'])) {
@@ -627,7 +643,8 @@ final class ReviewPageForm extends FormBase {
       $node->set('moderation_state', 'in_review');
     }
     $node->setNewRevision(TRUE);
-    $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName());
+    $changes = array_values(array_filter($changes));
+    $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName() . ($changes !== [] ? '; ' . implode('; ', $changes) : ''));
     $node->save();
     // The send button saves, then goes on to the email preview.
     if (($form_state->getTriggeringElement()['#name'] ?? '') === 'send_decision') {
@@ -810,6 +827,9 @@ final class ReviewPageForm extends FormBase {
     $source = $p->hasField('field_rvf_source') ? (string) ($p->get('field_rvf_source')->value ?? '') : '';
     $isReviewer = $source === 'reviewer';
     $author = $isReviewer ? $p->get('field_rvf_author')->entity : NULL;
+    $toolSeverity = (string) ($p->get('field_rvf_severity')->value ?? '');
+    $change = FindingOverride::stored($p);
+    $changedBy = $p->hasField('field_rvf_override_by') ? $p->get('field_rvf_override_by')->entity : NULL;
     return [
       // Findings seeded before field_rvf_source existed are automated.
       'source' => $isReviewer ? 'reviewer' : 'ai',
@@ -820,7 +840,17 @@ final class ReviewPageForm extends FormBase {
       'created' => $isReviewer ? $this->formatDate((int) ($p->get('field_rvf_created')->value ?? 0), 'datetime') : '',
       'pid' => $p->id(),
       'rule' => (string) ($p->get('field_rvf_rule')->value ?? ''),
-      'severity' => (string) ($p->get('field_rvf_severity')->value ?? ''),
+      // The reviewer's severity when they changed it; the tool's is kept for
+      // the "changed from" marker (A1, FindingOverride).
+      'severity' => FindingOverride::effectiveSeverity($toolSeverity, $change['severity']),
+      'tool_severity' => $toolSeverity,
+      'dismissed' => $change['dismissed'],
+      'override' => $change['dismissed'] || $change['severity'] !== NULL ? [
+        'severity' => $change['severity'],
+        'reason' => $change['reason'],
+        'by' => $changedBy instanceof UserInterface ? $changedBy->getDisplayName() : '',
+        'at' => $this->formatDate((int) ($p->get('field_rvf_override_at')->value ?? 0), 'medium'),
+      ] : NULL,
       // FAIL / WARN / PASS / NOT CHECKED. Rows seeded before the result was
       // stored have none and count as findings, as they always have.
       'result' => strtoupper(str_replace('_', ' ', (string) ($p->hasField('field_rvf_result') ? ($p->get('field_rvf_result')->value ?? '') : ''))) ?: 'FAIL',
@@ -1110,6 +1140,7 @@ final class ReviewPageForm extends FormBase {
       '#attributes' => ['placeholder' => $this->t('Reviewer note…')],
     ];
     if ($finding['source'] !== 'reviewer') {
+      $this->addOverrideElement($form, $finding);
       return;
     }
     // A reviewer's own finding is editable (saved with Save draft) and
@@ -1131,6 +1162,47 @@ final class ReviewPageForm extends FormBase {
       '#submit' => ['::deleteFinding'],
       '#limit_validation_errors' => [],
       '#attributes' => ['class' => ['btn', 'ghost', 'btn-delete-finding']],
+    ];
+  }
+
+  /**
+   * Change an automated finding: a new severity or a dismissal, with a
+   * reason, saved with Save draft (A1, FindingOverride). Choosing the
+   * tool's own severity and unticking the dismissal undoes a change.
+   *
+   * @param array<string, mixed> $form
+   * @param array<mixed> $finding
+   */
+  protected function addOverrideElement(array &$form, array $finding): void {
+    if (!FindingOverride::applies($finding)) {
+      return;
+    }
+    $override = $finding['override'] ?? NULL;
+    $tool = (string) $finding['tool_severity'];
+    $form['override'][$finding['pid']] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['finding-override']],
+      'severity' => [
+        '#type' => 'select',
+        '#title' => $this->t('Severity'),
+        '#options' => $this->severityOptions(),
+        '#empty_option' => $this->t('As the review rated it (@s)', ['@s' => ucfirst($tool)]),
+        '#empty_value' => '',
+        '#default_value' => $override['severity'] ?? '',
+      ],
+      'dismissed' => [
+        '#type' => 'checkbox',
+        '#title' => $this->t('Not a finding: dismiss it'),
+        '#default_value' => !empty($finding['dismissed']),
+      ],
+      'reason' => [
+        '#type' => 'textarea',
+        '#title' => $this->t('Reason for the change'),
+        '#rows' => 2,
+        '#default_value' => $override['reason'] ?? '',
+        '#attributes' => ['placeholder' => $this->t('Why the automated finding is wrong or rated wrong…')],
+        '#description' => $this->t('Required to change or dismiss it. The contributor sees it; a dismissed finding is not shown publicly.'),
+      ],
     ];
   }
 
@@ -1333,12 +1405,54 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * Stores a reviewer's change to an automated finding.
+   *
+   * @param array<mixed> $values
+   *
+   * @return string|null
+   *   The revision log line, or NULL when nothing changed.
+   */
+  protected function saveOverride(ParagraphInterface $finding, array $values): ?string {
+    $pid = $finding->id();
+    if (!isset($values['override'][$pid]) || ($finding->get('field_rvf_source')->value ?? '') === 'reviewer') {
+      return NULL;
+    }
+    $change = FindingOverride::normalize($values['override'][$pid], (string) ($finding->get('field_rvf_severity')->value ?? ''));
+    if (FindingOverride::error($change) !== NULL) {
+      return NULL;
+    }
+    $line = FindingOverride::apply($finding, $change, (int) $this->currentUser->id(), $this->time->getRequestTime());
+    if ($line !== NULL) {
+      $finding->save();
+    }
+    return $line;
+  }
+
+  /**
    * @param array<string, mixed> $form
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     foreach ($form_state->getValue('edit_finding') ?? [] as $pid => $input) {
       if (trim((string) ($input['summary'] ?? '')) === '' || trim((string) ($input['rule'] ?? '')) === '') {
         $form_state->setErrorByName('edit_finding][' . $pid . '][summary', $this->t('A finding needs a rule and a summary.'));
+      }
+    }
+    $overrides = $form_state->getValue('override') ?? [];
+    if ($overrides !== []) {
+      $severities = [];
+      foreach ($this->node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+        foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $finding) {
+          $severities[$finding->id()] = (string) ($finding->get('field_rvf_severity')->value ?? '');
+        }
+      }
+      foreach ($this->node->get('field_arv_repo_findings')->referencedEntities() as $finding) {
+        $severities[$finding->id()] = (string) ($finding->get('field_rvf_severity')->value ?? '');
+      }
+      foreach ($overrides as $pid => $input) {
+        $error = FindingOverride::error(FindingOverride::normalize((array) $input, $severities[$pid] ?? ''));
+        if ($error !== NULL) {
+          $form_state->setErrorByName('override][' . $pid . '][reason', $this->t('Give a reason for changing an automated finding.'));
+        }
       }
     }
   }

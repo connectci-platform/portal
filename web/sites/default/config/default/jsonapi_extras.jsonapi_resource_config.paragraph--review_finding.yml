@@ -140,6 +140,12 @@ resourceFields:
     publicName: field_rvf_defect_key
     enhancer:
       id: ''
+  field_rvf_dismissed:
+    disabled: false
+    fieldName: field_rvf_dismissed
+    publicName: field_rvf_dismissed
+    enhancer:
+      id: ''
   field_rvf_evidence:
     disabled: false
     fieldName: field_rvf_evidence
@@ -150,6 +156,30 @@ resourceFields:
     disabled: false
     fieldName: field_rvf_line
     publicName: field_rvf_line
+    enhancer:
+      id: ''
+  field_rvf_override_at:
+    disabled: false
+    fieldName: field_rvf_override_at
+    publicName: field_rvf_override_at
+    enhancer:
+      id: ''
+  field_rvf_override_by:
+    disabled: false
+    fieldName: field_rvf_override_by
+    publicName: field_rvf_override_by
+    enhancer:
+      id: ''
+  field_rvf_override_reason:
+    disabled: false
+    fieldName: field_rvf_override_reason
+    publicName: field_rvf_override_reason
+    enhancer:
+      id: ''
+  field_rvf_override_severity:
+    disabled: false
+    fieldName: field_rvf_override_severity
+    publicName: field_rvf_override_severity
     enhancer:
       id: ''
   field_rvf_result:

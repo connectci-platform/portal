@@ -1009,6 +1009,33 @@
   padding: 6px 0;
   border-top: 1px solid var(--gray-150);
 }
+/* A reviewer's change to an automated finding (A1). */
+.arv-page .override-mark {
+  font-size: .8rem;
+  color: var(--gray-900);
+  margin-top: .3rem;
+  padding: .3rem .55rem;
+  background: #fff8ec;
+  border-left: 3px solid var(--status-amber);
+}
+.arv-page .override-reason {
+  display: block;
+  color: var(--gray-700);
+}
+.arv-page .dismissed-rows {
+  border-top: 1px solid var(--gray-150);
+  padding: 8px 14px;
+}
+.arv-page .dismissed-rows > summary {
+  font-size: .78rem;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.arv-page .finding-override {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--gray-150);
+}
 .arv-page .result-pill {
   display: inline-block;
   font-size: .64rem;
