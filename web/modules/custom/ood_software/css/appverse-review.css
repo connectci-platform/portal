@@ -138,16 +138,34 @@
   color: #c9cdd0;
 }
 
-/* Two columns: findings, and the sticky reviewer sidebar. */
+/* Two columns: findings, and the sticky reviewer sidebar.
+
+   minmax(0, …) rather than a bare 1fr: a flexible track's default floor is its
+   content's min-content width, and the findings column's content (long paths,
+   code spans, finding text) floors well above the space left once the sidebar
+   takes its 320px. The track then refused to shrink, so the sidebar was laid
+   out past the container and off the right of the page, taking the decision
+   and the response with it and giving the page a horizontal scrollbar
+   (appverse-planning#53). Zero as the floor lets the column give way instead,
+   and its own content wraps. */
 .arv-page .layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 24px;
   align-items: start;
 }
 .arv-page .sidebar {
   position: sticky;
   top: 20px;
+  /* Sticky alone was not enough: the sidebar is taller than the viewport on a
+     review with notes, so its lower half, the decision and the response, sat
+     permanently off screen and scrolled away while you read findings. Cap it
+     to the viewport and let it scroll on its own instead
+     (appverse-planning#53). */
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  /* Room for the scrollbar so it does not sit on top of the controls. */
+  padding-right: 4px;
 }
 @media (max-width: 900px) {
   .arv-page .layout {
