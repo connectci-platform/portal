@@ -20,6 +20,13 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * domain_config ships no schema for its domain.config.* keys, and the domain
+   * modules are not installed here — the D8-2891 test writes one of those keys
+   * directly to stand in for the overlay.
+   */
+  protected $strictConfigSchema = FALSE;
+
+  /**
    * {@inheritdoc}
    */
   protected static $modules = [
@@ -268,6 +275,69 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertCount(1, $oodMails, 'Exactly one ood_software mail fires on ready_for_review.');
     $this->assertSame('admin@example.com', $oodMails[0]['to']);
     $this->assertStringContainsString('submitted for review', $oodMails[0]['subject']);
+  }
+
+  /**
+   * The sender is the OOD Hub, not whatever domain happens to be active.
+   *
+   * Under cron and drush there is no request to negotiate a domain from, so
+   * domain_config leaves system.site on the default domain and every Appverse
+   * mail went out branded with it (D8-2891). No active domain is set here,
+   * which is the cron case.
+   */
+  public function testMailIsSentAsTheOodHubWhateverDomainIsActive(): void {
+    // What domain_config would overlay on the OOD domain, and the unrelated
+    // ambient values a cron run actually resolves.
+    $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
+      ->set('name', 'Open OnDemand Community Hub')
+      ->set('mail', 'info@mg.openondemand.org')
+      ->save();
+    $this->config('system.site')
+      ->set('name', 'ACCESS Support')
+      ->set('mail', 'noreply@mg.support.access-ci.org')
+      ->save();
+
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $this->assertSame(
+      'Open OnDemand Community Hub <info@mg.openondemand.org>',
+      $mails[0]['from'],
+      'The From is the OOD Hub, not the ambient default domain.',
+    );
+    $this->assertStringContainsString('[Open OnDemand Community Hub]', $mails[0]['subject']);
+    $this->assertStringNotContainsString('ACCESS Support', $mails[0]['subject']);
+    $this->assertStringNotContainsString('access-ci.org', (string) $mails[0]['from']);
+  }
+
+  /**
+   * Without the OOD override, the From is left to core rather than guessed.
+   */
+  public function testMailFallsBackToCoreWhenTheOodOverrideIsAbsent(): void {
+    $this->config('system.site')->set('name', 'Fallback Site')->save();
+
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $this->assertStringContainsString('[Fallback Site]', $mails[0]['subject']);
   }
 
   /**
