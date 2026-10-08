@@ -64,8 +64,12 @@ class ReviewFloorsTest extends UnitTestCase {
       // Structure and upkeep stay with their own app, or every app at repo level.
       'a High structure finding in one app' => [[], $two([self::finding('STR-04', 'high')]), [], ['one' => 'request_changes']],
       'a High structure finding at repo level' => [[self::finding('STR-01', 'high')], $two(), [], ['one' => 'request_changes', 'other' => 'request_changes']],
-      'the upkeep gate' => [[self::finding('MNT-01', 'high')], $two(), [], ['one' => 'request_changes', 'other' => 'request_changes']],
-      'the stricter of every-app and own' => [[self::finding('SEC-03', 'high', 'fail', 'security')], $two([self::finding('STR-04', 'critical')]), [], ['one' => 'reject', 'other' => 'request_changes']],
+      // Inactivity is the Inactive upkeep level; abandoned is the reviewer's
+      // call, so MNT-01 sets no floor at any severity.
+      'inactivity sets no floor' => [[self::finding('MNT-01', 'high')], $two(), [], []],
+      // An app's own Reject floor comes from a Critical structure note, since a
+      // gate failure is never more than Request changes.
+      'the stricter of every-app and own' => [[self::finding('SEC-03', 'high', 'fail', 'security')], $two([self::finding('STR-04', 'critical', 'fail', 'structure', 'x.sh:1', 'x.sh:other:unrenderable')]), [], ['one' => 'reject', 'other' => 'request_changes']],
       // Only FAILs; a stored-before-results finding counts as one.
       'a WARN sets no floor' => [[], $two([self::finding('SEC-03', 'high', 'warn', 'security')]), [], []],
       'no stored result counts as FAIL' => [[], $two([self::finding('STR-04', 'high', '')]), [], ['one' => 'request_changes']],
@@ -79,7 +83,8 @@ class ReviewFloorsTest extends UnitTestCase {
       'a Medium gate FAIL in one app' => [[], $two([self::finding('STR-01', 'medium')]), [], ['one' => 'request_changes']],
       'a Low gate FAIL at repo level' => [[self::finding('STR-06', 'low', 'FAIL')], $two(), [], ['one' => 'request_changes', 'other' => 'request_changes']],
       'an Info gate FAIL' => [[], $two([], [self::finding('STR-02', 'info')]), [], ['other' => 'request_changes']],
-      'a Critical gate FAIL' => [[], $two([self::finding('STR-07', 'critical')]), [], ['one' => 'reject']],
+      // A gate failure can always be fixed: never more than Request changes.
+      'a Critical gate FAIL' => [[], $two([self::finding('STR-07', 'critical')]), [], ['one' => 'request_changes']],
       'a Medium gate WARN sets no floor' => [[], $two([self::finding('STR-01', 'medium', 'warn')]), [], []],
       // A row seeded before results were stored is mostly a PASS at Info; only
       // an explicit FAIL sets the gate floor below High.
