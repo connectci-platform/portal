@@ -5,6 +5,7 @@ namespace Drupal\ood_software\Service;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
@@ -441,6 +442,10 @@ class RepoSyncService {
     else {
       $appNode = $this->entityTypeManager->getStorage('node')->create([
         'type' => 'appverse_app',
+        // Appverse lives on the Open OnDemand site. Domain 3.x only defaults
+        // this field on entity forms, and a sync run from drush or cron would
+        // otherwise get whichever domain happens to be active there.
+        'field_domain_access' => [SiteTools::DOMAIN_OPENONDEMAND],
         'field_appverse_github_url' => ['uri' => $repoUrl],
         'field_appverse_app_subpath' => '',
         // New apps land in 'draft' (mirrors resolveAppNode + createBlankRepo).
@@ -541,7 +546,11 @@ class RepoSyncService {
       'field_appverse_repo' => $repo->id(),
     ]);
     $isNew = !$existing;
-    $app = $existing ? reset($existing) : Node::create(['type' => 'appverse_app']);
+    // Pinned to Open OnDemand for the same reason as applyDeclaredSingleApp().
+    $app = $existing ? reset($existing) : Node::create([
+      'type' => 'appverse_app',
+      'field_domain_access' => [SiteTools::DOMAIN_OPENONDEMAND],
+    ]);
 
     $title = $rootManifest['name']
       ?? ($repoMetadata['name'] ?? NULL)
@@ -625,6 +634,8 @@ class RepoSyncService {
     }
     return $nodeStorage->create([
       'type' => 'appverse_app',
+      // Pinned to Open OnDemand for the same reason as applyDeclaredSingleApp().
+      'field_domain_access' => [SiteTools::DOMAIN_OPENONDEMAND],
       'title' => $subpath,
       'field_appverse_github_url' => ['uri' => $repoUrl],
       'field_appverse_app_subpath' => $subpath,

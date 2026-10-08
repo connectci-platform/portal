@@ -27,7 +27,7 @@ describe("Test Structure admin page", () => {
     cy.contains('Projects - Northeast');
 
     // Campus Champions block check - truncated for memory
-    cy.get(':nth-child(3) > .tabs__link').click();
+    cy.visit('/admin/structure/block/list/champions');
     cy.contains('CC - Promotional message');
     cy.contains('Main navigation');
     cy.contains('CC Main menu');
@@ -49,7 +49,7 @@ describe("Test Structure admin page", () => {
     cy.contains('CC - Front - Community');
 
     // Access support blocks
-    cy.get(':nth-child(4) > .tabs__link').click();
+    cy.visit('/admin/structure/block/list/aspTheme');
     cy.contains('Breadcrumbs');
     cy.contains('Status messages');
     cy.contains('Masquerade');

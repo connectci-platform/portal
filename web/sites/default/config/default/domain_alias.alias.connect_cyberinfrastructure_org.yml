@@ -7,3 +7,4 @@ domain_id: connectcidev_wpi_edu
 pattern: connect.cyberinfrastructure.org
 redirect: 301
 environment: default
+weight: 0
