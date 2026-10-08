@@ -12,7 +12,7 @@ field_name: field_rvv_duplicate
 entity_type: paragraph
 bundle: review_verdict
 label: 'Duplicate check'
-description: 'The reviewer''s duplicate check for this app (Reviewer Process, Step 1). Required to accept it; it does not restrict the decision.'
+description: "The reviewer's duplicate check for this app (Reviewer Process, Step 1). Required to accept it; it does not restrict the decision."
 required: false
 translatable: false
 default_value: {  }

@@ -10,7 +10,7 @@ field_name: field_arv_sent_decisions
 entity_type: node
 bundle: appverse_review
 label: 'Sent decisions'
-description: 'What was sent to the contributor, fixed when the decision is sent: each app''s decision by verdict id and the response. Stored as JSON (appverse-planning#51).'
+description: "What was sent to the contributor, fixed when the decision is sent: each app's decision by verdict id and the response. Stored as JSON (appverse-planning#51)."
 required: false
 translatable: false
 default_value: {  }

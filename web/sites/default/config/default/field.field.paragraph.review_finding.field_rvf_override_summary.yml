@@ -10,7 +10,7 @@ field_name: field_rvf_override_summary
 entity_type: paragraph
 bundle: review_finding
 label: 'Reviewer summary'
-description: 'The reviewer''s wording of an automated finding''s summary, when they edited it on the review page. Empty when unchanged; field_rvf_summary keeps the tool''s.'
+description: "The reviewer's wording of an automated finding's summary, when they edited it on the review page. Empty when unchanged; field_rvf_summary keeps the tool's."
 required: false
 translatable: false
 default_value: {  }

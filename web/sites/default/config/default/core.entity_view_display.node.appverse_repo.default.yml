@@ -151,6 +151,11 @@ hidden:
   field_repo_unresolved_tags: true
   field_repo_validation_er: true
   field_repo_validation_st: true
+  field_review_dispatched_at: true
   field_review_dispatched_by: true
+  field_review_recommendation: true
+  field_review_report: true
+  field_review_run_id: true
+  field_review_status: true
   langcode: true
   search_api_excerpt: true
