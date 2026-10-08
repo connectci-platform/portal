@@ -12,7 +12,7 @@ field_name: field_rvf_result
 entity_type: paragraph
 bundle: review_finding
 label: Result
-description: 'The row''s result in the report: FAIL and WARN are findings; PASS confirms a check and NOT CHECKED reports a skipped one. Empty on rows seeded before this field existed (shown as findings).'
+description: "The row's result in the report: FAIL and WARN are findings; PASS confirms a check and NOT CHECKED reports a skipped one. Empty on rows seeded before this field existed (shown as findings)."
 required: false
 translatable: false
 default_value: {  }

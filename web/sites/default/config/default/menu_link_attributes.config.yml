@@ -1,14 +1,4 @@
 attributes:
-  container_domain:
-    label: Domain
-    description: 'Enter the domain you would like to restrict the menu item to.'
-    options:
-      all: All
-      careers-cyberteam: CAREERS
-      great-plains-cyberteam: 'Great Plains'
-      kentucky-cyberteam: Kentucky
-      mines-cyberteam: MINES
-      northeast-cyberteam: Northeast
   class:
     label: 'Link class(es)'
     description: 'CSS class for the link (&lt;a href&gt;). Separate multiple classes by space.'
@@ -17,6 +7,3 @@ attributes:
     options:
       follow: Follow
       nofollow: 'No Follow'
-  container_class:
-    label: 'Container class(es)'
-    description: 'CSS class for the menu list item (&lt;li&gt;). Separate multiple classes by space.'
