@@ -1,0 +1,19 @@
+uuid: d93fc3a6-b5da-430c-b836-817e0589d165
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_gate_evidence
+field_name: field_arv_gate_evidence
+entity_type: node
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

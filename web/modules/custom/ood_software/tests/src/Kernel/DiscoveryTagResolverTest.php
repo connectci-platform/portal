@@ -11,6 +11,7 @@ use Drupal\node\NodeInterface;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Symfony\Component\Yaml\Yaml;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Discovery tags (repo-level `tags:`) must use the exact resolver, not LIKE.
@@ -50,7 +51,7 @@ class DiscoveryTagResolverTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -170,6 +171,7 @@ class DiscoveryTagResolverTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -195,7 +197,7 @@ class DiscoveryTagResolverTest extends KernelTestBase {
   /**
    * Build an appverse.yml string from a data array and sync the repo.
    *
-   * @param array $rootData
+   * @param array<string, mixed> $rootData
    *   Scalar-value pairs to serialise as the root appverse.yml.
    *
    * @return \Drupal\node\NodeInterface

@@ -12,6 +12,7 @@ use Drupal\ood_software\Form\AppverseHubCreateTagForm;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers AppverseHubCreateTagForm: create-or-resolve logic.
@@ -52,7 +53,7 @@ class CreateImplementationTagTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -143,6 +144,7 @@ class CreateImplementationTagTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $storage->createFromStorageRecord($data)->save();
     }
 

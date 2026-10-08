@@ -1,0 +1,30 @@
+uuid: 2cbe0f0e-0708-4eb1-b4d8-fd148f64f058
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_internal_notes
+    - node.type.appverse_review
+    - paragraphs.paragraphs_type.review_note
+  module:
+    - entity_reference_revisions
+id: node.appverse_review.field_arv_internal_notes
+field_name: field_arv_internal_notes
+entity_type: node
+bundle: appverse_review
+label: 'Internal notes'
+description: 'Reviewer-to-reviewer log. Not visible to the contributor or the public. Supersedes the single moderator-notes textarea.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      review_note: review_note
+    target_bundles_drag_drop:
+      review_note:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

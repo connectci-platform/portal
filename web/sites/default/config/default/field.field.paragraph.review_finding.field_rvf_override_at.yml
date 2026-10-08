@@ -1,0 +1,19 @@
+uuid: a835773f-09e9-4084-beb0-8a8df41d333f
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_override_at
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_override_at
+field_name: field_rvf_override_at
+entity_type: paragraph
+bundle: review_finding
+label: 'Changed at'
+description: 'When the reviewer changed or dismissed the automated finding.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

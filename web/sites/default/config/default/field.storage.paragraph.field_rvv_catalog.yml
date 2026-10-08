@@ -1,0 +1,19 @@
+uuid: c9eb5f4c-40a6-4e36-a22c-b5365a492da6
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_catalog
+field_name: field_rvv_catalog
+entity_type: paragraph
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

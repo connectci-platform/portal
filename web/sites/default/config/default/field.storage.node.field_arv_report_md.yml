@@ -1,0 +1,23 @@
+uuid: e3f5fc83-b56e-41fd-b69b-310e4a11fd28
+langcode: en
+status: true
+dependencies:
+  module:
+    - file
+    - node
+id: node.field_arv_report_md
+field_name: field_arv_report_md
+entity_type: node
+type: file
+settings:
+  target_type: file
+  display_field: false
+  display_default: false
+  uri_scheme: private
+module: file
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -1,0 +1,27 @@
+uuid: c585b04a-a2ca-4e49-b863-d0dff85b0601
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvf_tag
+field_name: field_rvf_tag
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: unintentional
+      label: Unintentional
+    -
+      value: potentially_malicious
+      label: 'Potentially malicious'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

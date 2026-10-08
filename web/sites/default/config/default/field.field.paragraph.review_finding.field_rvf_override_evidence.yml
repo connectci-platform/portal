@@ -1,0 +1,19 @@
+uuid: 6732fed0-0fe0-4d63-87fc-23a64719891f
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_override_evidence
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_override_evidence
+field_name: field_rvf_override_evidence
+entity_type: paragraph
+bundle: review_finding
+label: 'Reviewer evidence'
+description: 'The reviewer''s wording of an automated finding''s evidence, when they edited it. Empty when unchanged; field_rvf_evidence keeps the tool''s.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

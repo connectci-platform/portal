@@ -1,0 +1,19 @@
+uuid: 94ab203d-c075-46c1-909b-8607d3442023
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_port_anchor
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_port_anchor
+field_name: field_rvv_port_anchor
+entity_type: paragraph
+bundle: review_verdict
+label: 'Portability anchor'
+description: 'Fragment into report_html for the portability indicator deep-link (e.g. #quality). Seeded from the artifact.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

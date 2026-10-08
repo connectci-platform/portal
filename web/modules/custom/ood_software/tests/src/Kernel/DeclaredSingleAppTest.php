@@ -10,6 +10,7 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers the SHAPE 1 single-app declared repo path.
@@ -49,7 +50,7 @@ class DeclaredSingleAppTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -164,6 +165,7 @@ class DeclaredSingleAppTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -362,6 +364,7 @@ YAML;
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

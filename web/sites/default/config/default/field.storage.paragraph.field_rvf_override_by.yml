@@ -1,0 +1,19 @@
+uuid: 9a5939c8-c94c-4a1d-bbba-6bc86770f168
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvf_override_by
+field_name: field_rvf_override_by
+entity_type: paragraph
+type: entity_reference
+settings:
+  target_type: user
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

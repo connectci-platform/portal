@@ -353,6 +353,8 @@ describe('Appverse Maintenance Hub', () => {
         // github is the header link; resync sits with the lifecycle actions;
         // the submitted date is shown as text, not an icon.)
         cy.get('.appverse-hub-card').first().within(() => {
+          // In the Actions menu, so present in the DOM but not visible until
+          // the menu opens (appverse-planning#55).
           cy.get('.appverse-hub-card__cell--actions .bi-arrow-clockwise').should('exist');
           cy.get('.bi-github').should('exist');
           cy.get('.appverse-hub-card__submitted').should('exist')
@@ -399,12 +401,16 @@ describe('Appverse Maintenance Hub', () => {
       resolveContributorUid().then((uid) => { contributorUid = uid; });
     });
 
-    it('exposes an inline Re-sync action', () => {
+    it('offers Re-sync in the card\'s Actions menu', () => {
       cy.visit(`/user/${contributorUid}/my-appverse`, { failOnStatusCode: false });
       cy.get('.appverse-hub-card', { timeout: 10000 }).first().within(() => {
-        cy.get('.appverse-hub-card__cell--actions form[action*="/resync"]').should('exist');
-        cy.get('form[action*="/resync"] button[type="submit"]')
-          .should('have.attr', 'aria-label', 'Re-sync from GitHub');
+        // Re-sync is a named item in the menu rather than an icon button, so
+        // its label is the visible text, not an aria-label
+        // (appverse-planning#55).
+        cy.get('.appverse-hub-card__menu .dropdown-toggle').click();
+        cy.get('.appverse-hub-card__cell--actions form[action*="/resync"] button[type="submit"]')
+          .should('be.visible')
+          .and('contain.text', 'Re-sync from GitHub');
         cy.get('form[action*="/resync"] .bi-arrow-clockwise').should('exist');
       });
     });
@@ -559,8 +565,10 @@ describe('Appverse Maintenance Hub', () => {
         cy.visit('/appverse/manage-repos?status=All&moderation_state=All', { failOnStatusCode: false });
         cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
           .within(() => {
-            // Request changes is now a direct inline icon link (no kebab).
-            cy.get('a[href*="/request-changes"]').click();
+            // A reviewer's lifecycle actions live in the card's Actions menu
+            // (appverse-planning#55), so open it before clicking an item.
+            cy.get('.appverse-hub-card__menu .dropdown-toggle').click();
+            cy.get('a[href*="/request-changes"]').should('be.visible').click();
           });
 
         // Fill out the Request changes form. {enter} types an actual newline
@@ -634,8 +642,10 @@ describe('Appverse Maintenance Hub', () => {
         cy.visit(`/appverse/manage-repos?status=All&moderation_state=All&title=${encodeURIComponent(COLLECTION_TITLE)}`, { failOnStatusCode: false });
         cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
           .within(() => {
-            // Request changes is now a direct inline icon link (no kebab).
-            cy.get('a[href*="/request-changes"]').click();
+            // A reviewer's lifecycle actions live in the card's Actions menu
+            // (appverse-planning#55), so open it before clicking an item.
+            cy.get('.appverse-hub-card__menu .dropdown-toggle').click();
+            cy.get('a[href*="/request-changes"]').should('be.visible').click();
           });
 
         cy.url().should('include', '/request-changes');
@@ -699,10 +709,14 @@ describe('Appverse Maintenance Hub', () => {
       cy.visit('/appverse/manage-repos?status=All&moderation_state=All', { failOnStatusCode: false });
       cy.contains('.appverse-hub-card', COLLECTION_TITLE, { timeout: 10000 })
         .within(() => {
-          // Publish is an icon button; its label lives in aria-label, not text.
-          cy.get('form[action*="/publish"] button[type="submit"][aria-label="Publish"]')
-            .click();
+          // Publish asks for confirmation, so it is a link to that form rather
+          // than a one-click POST, and it sits in the card's Actions menu
+          // (appverse-planning#55).
+          cy.get('.appverse-hub-card__menu .dropdown-toggle').click();
+          cy.get('a[href*="/publish/confirm"]').should('be.visible').click();
         });
+      cy.url().should('include', '/publish/confirm');
+      cy.get('form input[type="submit"][value="Publish"]').click();
 
       // Contributor email landed.
       cy.waitForEmail({
