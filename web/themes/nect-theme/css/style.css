@@ -1027,6 +1027,20 @@ form summary,
 form .fieldset-legend {
   font-weight: 600;
 }
+
+/* Fieldset titles are a real <legend> for their accessible name; undo the
+   browser/Bootstrap legend styling so they look like the paragraph they replaced. */
+legend.fieldset-legend:not(.visually-hidden) {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-size: inherit;
+  line-height: inherit;
+}
+legend.fieldset-legend + * {
+  clear: both;
+}
 .form-check label {
   margin: 0 0 0 5px;
 }

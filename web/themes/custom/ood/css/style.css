@@ -938,7 +938,8 @@ body.page-node-type-affinity-group {
   }
 
   [data-drupal-selector="edit-field-license-wrapper"] {
-    p {
+    p,
+    legend {
       margin: 0;
     }
   }
