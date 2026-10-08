@@ -824,6 +824,7 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - 'user.node_grants:view'
       tags:
         - 'config:field.storage.node.body'
@@ -852,6 +853,7 @@ display:
         - 'languages:language_interface'
         - url
         - url.query_args
+        - user
         - 'user.node_grants:view'
       tags:
         - 'config:facets.facet.affinity_group_category'
