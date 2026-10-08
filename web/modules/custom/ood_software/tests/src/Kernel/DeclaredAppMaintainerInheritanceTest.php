@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers repo-level maintainer inheritance for monorepo (apps[]) apps.
@@ -47,7 +48,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -131,6 +132,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -387,6 +389,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

@@ -1,0 +1,30 @@
+uuid: f2d3585a-8d09-4c2a-8993-64a7478ebc82
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - options
+id: node.field_arv_repo_shape
+field_name: field_arv_repo_shape
+entity_type: node
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: inferred_single
+      label: 'Inferred Single'
+    -
+      value: declared_single
+      label: 'Declared Single'
+    -
+      value: declared_monorepo
+      label: 'Declared Monorepo'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

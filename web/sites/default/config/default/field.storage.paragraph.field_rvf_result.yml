@@ -1,0 +1,33 @@
+uuid: da14a34c-3822-43ac-8938-24d36d55a888
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvf_result
+field_name: field_rvf_result
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: fail
+      label: FAIL
+    -
+      value: warn
+      label: WARN
+    -
+      value: pass
+      label: PASS
+    -
+      value: not_checked
+      label: 'NOT CHECKED'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

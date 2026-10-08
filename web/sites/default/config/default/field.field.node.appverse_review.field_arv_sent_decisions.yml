@@ -1,0 +1,19 @@
+uuid: 43a62d68-d72e-40d6-8a86-c492040c9240
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_sent_decisions
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_sent_decisions
+field_name: field_arv_sent_decisions
+entity_type: node
+bundle: appverse_review
+label: 'Sent decisions'
+description: 'What was sent to the contributor, fixed when the decision is sent: each app''s decision by verdict id and the response. Stored as JSON (appverse-planning#51).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long
