@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers the RepoMemberApps shared service.
@@ -32,7 +33,7 @@ class RepoMemberAppsTest extends KernelTestBase {
   protected static $modules = [
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias',
-    'content_moderation', 'workflows', 'key', 'flag', 'ood_software',
+    'content_moderation', 'workflows', 'key', 'flag', 'file', 'ood_software',
   ];
 
   /**
@@ -72,6 +73,7 @@ class RepoMemberAppsTest extends KernelTestBase {
       );
       $idKey = $storage->getEntityType()->getKey('id');
       if (!($data[$idKey] ?? NULL) || !$storage->load($data[$idKey])) {
+        assert($storage instanceof ConfigEntityStorageInterface);
         $storage->createFromStorageRecord($data)->save();
       }
     }

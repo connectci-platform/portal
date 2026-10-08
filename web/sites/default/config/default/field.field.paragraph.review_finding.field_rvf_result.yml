@@ -1,0 +1,21 @@
+uuid: 3c4f2913-4625-425f-b3f9-3094e05172f9
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_result
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_result
+field_name: field_rvf_result
+entity_type: paragraph
+bundle: review_finding
+label: Result
+description: 'The row''s result in the report: FAIL and WARN are findings; PASS confirms a check and NOT CHECKED reports a skipped one. Empty on rows seeded before this field existed (shown as findings).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

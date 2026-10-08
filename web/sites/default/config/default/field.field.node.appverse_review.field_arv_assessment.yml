@@ -1,0 +1,20 @@
+uuid: f0c1319a-3e44-4734-8159-42c42932a09d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_assessment
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_assessment
+field_name: field_arv_assessment
+entity_type: node
+bundle: appverse_review
+label: 'Reviewer assessment'
+description: "The reviewer's published narrative. Seeded from the report markdown, then edited by the reviewer."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long
