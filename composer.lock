@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "ec9ebff0d5cd6d3744f85b6c754a387f768bfc9b"
+                "reference": "0433214f43ccb4cbebce52895c3a67b737223b0c"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -702,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-05T20:15:12+00:00"
+            "time": "2026-10-08T15:42:35+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -799,7 +799,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/webform_submission_search_api.git",
-                "reference": "a646925bf3c798ba92c3bcfe9624a6654305be1f"
+                "reference": "54ff3b7275d1ebf89ef317c73c2dc28d8ddf4169"
             },
             "require": {
                 "drupal/search_api": "^1.3",
@@ -824,7 +824,7 @@
                 "issues": "https://github.com/connectci-platform/webform_submission_search_api/issues",
                 "source": "https://github.com/connectci-platform/webform_submission_search_api"
             },
-            "time": "2026-07-13T01:29:17+00:00"
+            "time": "2026-10-08T15:42:59+00:00"
         },
         {
             "name": "consolidation/annotated-command",
@@ -24635,5 +24635,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
