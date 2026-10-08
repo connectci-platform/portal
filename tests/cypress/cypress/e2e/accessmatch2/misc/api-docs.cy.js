@@ -7,23 +7,25 @@
  *   /api-docs            — landing page listing all API cards (public)
  *   /api-docs/content    — ACCESS Content API swagger UI (public)
  *   /api-docs/sds        — ACCESS SDS API swagger UI (public)
+ *   /api-docs/events-write — ACCESS Events Write API swagger UI (public)
  *   /openapi/access_sds?_format=json — raw SDS OpenAPI spec (requires
  *                          'access openapi api docs' permission; admin only)
  *
- * The first three tests use cy.request() anonymously (anonymous role has
- * 'access content').  The fourth test logs in as administrator via a
+ * The first five tests use cy.request() anonymously (anonymous role has
+ * 'access content').  The sixth test logs in as administrator via a
  * programmatic form POST so that we can assert the spec content without
  * triggering cy.visit() / cy.loginAs(), which crashes the renderer process
  * when the prior tests have used only cy.request().
  */
 
 describe("API Docs landing + new cards", () => {
-  it("landing page lists the Content, Resource Documentation, and SDS cards", () => {
+  it("landing page lists the Content, Resource Documentation, SDS, and Events Write cards", () => {
     cy.request("/api-docs").then((r) => {
       expect(r.status).to.eq(200);
       expect(r.body).to.contain("ACCESS Content API");
       expect(r.body).to.contain("ACCESS Resource Documentation API");
       expect(r.body).to.contain("ACCESS SDS");
+      expect(r.body).to.contain("ACCESS Events Write API");
     });
   });
 
@@ -37,6 +39,10 @@ describe("API Docs landing + new cards", () => {
 
   it("SDS swagger sub-page loads", () => {
     cy.request("/api-docs/sds").then((r) => expect(r.status).to.eq(200));
+  });
+
+  it("Events Write API swagger sub-page loads", () => {
+    cy.request("/api-docs/events-write").then((r) => expect(r.status).to.eq(200));
   });
 
   it("served SDS spec is key-gated and points to the help ticket for access", () => {
