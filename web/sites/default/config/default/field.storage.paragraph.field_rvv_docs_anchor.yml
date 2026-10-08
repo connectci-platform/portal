@@ -1,0 +1,21 @@
+uuid: a4ba4df2-7f1d-4294-89f6-5037e3117c03
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvv_docs_anchor
+field_name: field_rvv_docs_anchor
+entity_type: paragraph
+type: string
+settings:
+  max_length: 255
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

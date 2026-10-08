@@ -1,0 +1,152 @@
+{#
+/**
+ * @file
+ * The public summary of a review: what a visitor sees.
+ *
+ * Same data as appverse-review-form (form['#page']), fewer details: the
+ * decision, one line per category, and the reviewer's published assessment.
+ * No evidence, no response to the contributor, no internal notes, no links to
+ * the private report files. form['#preview'] is set when a reviewer is
+ * looking at this view rather than a visitor.
+ */
+#}
+{% set page = form['#page'] %}
+{# The wireframe's dot classes rate quality: level-high is the good end (solid
+   green), level-low the poor end (red ring). #}
+{% set level_class = {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'} %}
+
+{# One category row: its rating and one-line summary, then its findings,
+   read-only (rule, severity, summary, evidence; no reviewer notes). #}
+{% macro summary_row(block, page, level_class) %}
+  {% set n = 0 %}
+  {% for group in block.groups %}{% set n = n + group.count %}{% endfor %}
+  <div class="summary-row">
+    <dt>{{ block.title }}</dt>
+    <dd>
+      <div class="summary-row-head">
+        {% if block.level %}
+          <span class="rating-badge"><span class="rating-dot level-{{ level_class[block.level] ?? 'none' }}"></span><span class="rating-label">{{ (page.level_labels[block.key] ?? {})[block.level] ?? block.level }}</span></span>
+        {% endif %}
+        <span class="summary-line">{{ block.summary ?: block.count_line }}</span>
+      </div>
+      {% if n > 0 %}
+        <details class="summary-findings">
+          <summary>{{ n == 1 ? 'Show 1 finding'|t : 'Show @n findings'|t({'@n': n}) }}</summary>
+          {% for group in block.groups %}
+            <div class="summary-sev">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span></div>
+            {% for finding in group.findings %}
+              <div class="frow">
+                <div class="rule">{{ finding.rule }}</div>
+                <div>
+                  <div class="sum">{{ finding.summary }}{% if finding.source == 'reviewer' %} <span class="reviewer-tag">{{ 'Reviewer'|t }}</span>{% endif %}{% if finding.override and finding.override.edited %} <span class="finding-edited">{{ 'Edited by the reviewer'|t }}</span>{% endif %}</div>
+                  {# A re-rated finding says so (A1); the reason is a note, which stays off the public page. Dismissed
+                     findings are not in the groups, so never shown here. #}
+                  {% if finding.override and finding.override.severity %}<div class="override-mark">{{ 'Reviewer changed the severity from @severity'|t({'@severity': finding.tool_severity|capitalize}) }}</div>{% endif %}
+                  {% if finding.evidence %}<div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          {% endfor %}
+        </details>
+      {% endif %}
+    </dd>
+  </div>
+{% endmacro %}
+{% import _self as m %}
+
+<div class="arv-page arv-summary">
+  {% if form['#preview'] %}
+    <div class="arv-preview-banner">
+      {{ 'Preview: this is what visitors see.'|t }}
+      <a href="{{ page.full_url }}">{{ 'Back to the full review'|t }}</a>
+    </div>
+  {% endif %}
+
+  {% if page.superseded_by %}
+    <div class="arv-superseded">
+      {{ 'A newer review of this repo exists'|t }} ({{ page.superseded_by.label }}).
+      <a href="{{ page.superseded_by.url }}">{{ 'Go to the newer review'|t }} ›</a>
+    </div>
+  {% endif %}
+
+  <div class="overview-block">
+    <div class="overview-row">
+      {# The same two lines as the full page: what was reviewed, then the
+         commit and when (appverse-planning#53). #}
+      <div class="overview-meta">
+        <div class="overview-line overview-facts">
+          {% if page.repo_url %}
+            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
+          {% endif %}
+          {% if page.maintainer %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ 'Maintainer: @m'|t({'@m': page.maintainer}) }}
+          {% endif %}
+          {% if page.shape %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ page.shape }}
+          {% endif %}
+        </div>
+        <div class="overview-line overview-line--sub">
+          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
+        </div>
+      </div>
+      {% if page.history and page.history.total > 1 %}
+        <div class="prev-reviews review-history">
+          <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
+          {% if page.history.older %}· <a href="{{ page.history.older.url }}">‹ {{ 'Older'|t }}</a>{% endif %}
+          {% if page.history.newer %}· <a href="{{ page.history.newer.url }}">{{ 'Newer'|t }} ›</a>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if page.assessment %}
+    <section class="summary-assessment">
+      <h2 class="sec">{{ 'Summary'|t }}</h2>
+      <div class="arv-text">{{ page.assessment }}</div>
+    </section>
+  {% endif %}
+
+  {% for app in page.apps %}
+    <section class="summary-app" id="app-{{ app.app_id }}">
+      <div class="summary-app-head">
+        <h2 class="sec app-name">{{ app.name }}</h2>
+        {% if app.conclusion %}
+          <span class="decision-pill decision-pill--{{ app.conclusion }}">{{ page.conclusion_labels[app.conclusion] ?? app.conclusion }}</span>
+        {% else %}
+          <span class="decision-pill">{{ 'Not decided'|t }}</span>
+        {% endif %}
+      </div>
+      <dl class="summary-rows">
+        {% for key, block in app.blocks %}
+          {{ m.summary_row(block, page, level_class) }}
+        {% endfor %}
+      </dl>
+    </section>
+  {% endfor %}
+
+  {# Repo-wide findings (a monorepo files these under the repo, not an app)
+     and the Maintenance block. #}
+  <section class="summary-app" id="maintenance">
+    <div class="summary-app-head"><h2 class="sec app-name">{{ 'Repository'|t }}</h2></div>
+    <dl class="summary-rows">
+      {% for key, block in page.repo_blocks %}
+        {# A repo block of only PASS / NOT CHECKED rows has nothing for a
+           visitor; reviewers see those rows on the full page. #}
+        {% if block.groups is not empty %}
+          {{ m.summary_row(block, page, level_class) }}
+        {% endif %}
+      {% endfor %}
+      {{ m.summary_row(page.maintenance, page, level_class) }}
+    </dl>
+  </section>
+
+  {% if page.tool_version %}
+    <p class="arv-footnote">{{ 'Report produced by @tool'|t({'@tool': page.tool_version}) }}</p>
+  {% endif %}
+
+  <p class="summary-disclaimer">{{ 'This is an automated review with human curation. It is provided without warranty of any kind and does not certify the app as secure or fit for any purpose. A listing is not an endorsement.'|t }}</p>
+
+  {{ form|without('page', 'can_edit', 'preview') }}
+</div>

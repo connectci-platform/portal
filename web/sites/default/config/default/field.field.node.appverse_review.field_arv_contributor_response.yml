@@ -1,0 +1,20 @@
+uuid: 471bd7c4-405e-47cd-9050-ad8a9e3e37e8
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_contributor_response
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_contributor_response
+field_name: field_arv_contributor_response
+entity_type: node
+bundle: appverse_review
+label: 'Response to contributor'
+description: "The feedback message sent to the contributor - seeded from the tool's draft feedback, edited by the reviewer before sending. Not part of the published review page."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

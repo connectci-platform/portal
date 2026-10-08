@@ -1,0 +1,19 @@
+uuid: 470ea074-0c46-47a0-bd20-6153365ff9b1
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_gate_evidence
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_gate_evidence
+field_name: field_arv_gate_evidence
+entity_type: node
+bundle: appverse_review
+label: 'Repo-level gate evidence'
+description: 'The report''s repo-level gate table (rule, result, evidence per row), parsed from the md report at import. Stored as JSON.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

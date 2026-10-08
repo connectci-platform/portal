@@ -1,0 +1,24 @@
+uuid: a2494ce7-9e07-4a54-aa9c-9164ac7b808c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_prior_review
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_prior_review
+field_name: field_arv_prior_review
+entity_type: node
+bundle: appverse_review
+label: 'Prior review'
+description: 'The previous published review for this repo. Links the review chain for re-review lineage.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:node'
+  handler_settings:
+    target_bundles:
+      appverse_review: appverse_review
+    auto_create: false
+field_type: entity_reference

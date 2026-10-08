@@ -1,0 +1,18 @@
+uuid: 9e9809ad-1f0a-4000-a4b9-e42bdb3dd281
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_withdrawn_at
+field_name: field_arv_withdrawn_at
+entity_type: node
+type: timestamp
+settings: {  }
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

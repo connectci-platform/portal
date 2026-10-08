@@ -9,6 +9,7 @@ use Drupal\node\Entity\Node;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers _ood_software_resync_repo_batch helper and its batch op wiring.
@@ -46,7 +47,7 @@ class BatchResyncHelperTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -56,6 +57,8 @@ class BatchResyncHelperTest extends KernelTestBase {
 
   /**
    * Repo-level metadata (no GitHub calls needed).
+   *
+   * @var array<string, mixed>
    */
   protected array $repoMetadata = [];
 
@@ -142,6 +145,7 @@ class BatchResyncHelperTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $storage->createFromStorageRecord($data)->save();
     }
 
@@ -178,6 +182,9 @@ class BatchResyncHelperTest extends KernelTestBase {
 
   /**
    * Build a parsedRootYml for a 2-app declared repo.
+   *
+   * @param array<int, string> $subpaths
+   * @return array<string, mixed>
    */
   protected function parsedRootYmlFor(array $subpaths): array {
     $apps = [];

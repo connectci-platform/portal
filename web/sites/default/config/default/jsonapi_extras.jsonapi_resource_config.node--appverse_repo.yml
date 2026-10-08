@@ -12,6 +12,18 @@ disabled: false
 path: node/appverse_repo
 resourceType: node--appverse_repo
 resourceFields:
+  field_repo_assigned_reviewer:
+    disabled: true
+    fieldName: field_repo_assigned_reviewer
+    publicName: field_repo_assigned_reviewer
+    enhancer:
+      id: ''
+  field_repo_last_release:
+    disabled: true
+    fieldName: field_repo_last_release
+    publicName: field_repo_last_release
+    enhancer:
+      id: ''
   field_repo_description:
     disabled: false
     fieldName: field_repo_description
@@ -118,5 +130,41 @@ resourceFields:
     disabled: false
     fieldName: field_repo_unresolved_tags
     publicName: field_repo_unresolved_tags
+    enhancer:
+      id: ''
+  field_review_dispatched_at:
+    disabled: true
+    fieldName: field_review_dispatched_at
+    publicName: field_review_dispatched_at
+    enhancer:
+      id: ''
+  field_review_dispatched_by:
+    disabled: true
+    fieldName: field_review_dispatched_by
+    publicName: field_review_dispatched_by
+    enhancer:
+      id: ''
+  field_review_recommendation:
+    disabled: true
+    fieldName: field_review_recommendation
+    publicName: field_review_recommendation
+    enhancer:
+      id: ''
+  field_review_report:
+    disabled: true
+    fieldName: field_review_report
+    publicName: field_review_report
+    enhancer:
+      id: ''
+  field_review_run_id:
+    disabled: true
+    fieldName: field_review_run_id
+    publicName: field_review_run_id
+    enhancer:
+      id: ''
+  field_review_status:
+    disabled: true
+    fieldName: field_review_status
+    publicName: field_review_status
     enhancer:
       id: ''

@@ -11,6 +11,7 @@ use Drupal\node\NodeInterface;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Symfony\Component\Yaml\Yaml;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers persistence of unresolved repo-level discovery tags.
@@ -47,7 +48,7 @@ class DiscoveryTagFlagTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -167,6 +168,7 @@ class DiscoveryTagFlagTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -192,7 +194,7 @@ class DiscoveryTagFlagTest extends KernelTestBase {
   /**
    * Sync a repo from a root appverse.yml data array.
    *
-   * @param array $rootData
+   * @param array<string, mixed> $rootData
    *   Scalar-value pairs to serialise as the root appverse.yml.
    *
    * @return \Drupal\node\NodeInterface
