@@ -1196,8 +1196,9 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
  * A repo awaiting review keeps its moderation state until a reviewer moves
  * it: a contributor cannot change it while it is ready_for_review, from the
  * edit form or a JSON:API PATCH (appverse-planning#41). The edit form's own
- * alter drops Draft from the widget, but JSON:API is writable on this site
- * and checks field access, not the form. The hub's Withdraw sets the state in
+ * alter drops Draft from the widget, but API writes check field access, not
+ * the form. JSON:API is read-only (D8-2832); this guard stays as defense in
+ * depth for any other write path. The hub's Withdraw sets the state in
  * code, so this does not stop it.
  *
  * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface>|null $items
