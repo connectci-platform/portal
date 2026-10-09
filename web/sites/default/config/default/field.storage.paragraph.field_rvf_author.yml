@@ -1,0 +1,19 @@
+uuid: 4695e10f-6fdb-4014-9b0b-850b2c7689a8
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvf_author
+field_name: field_rvf_author
+entity_type: paragraph
+type: entity_reference
+settings:
+  target_type: user
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -1,0 +1,19 @@
+uuid: 9c5a9a39-48fd-4c98-8481-db7b80a0c024
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+id: node.field_arv_sent_decisions
+field_name: field_arv_sent_decisions
+entity_type: node
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Covers persistence of structured unresolved implementation tags.
@@ -43,7 +44,7 @@ class UnresolvedTagsFieldTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -131,6 +132,7 @@ class UnresolvedTagsFieldTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -281,6 +283,7 @@ class UnresolvedTagsFieldTest extends KernelTestBase {
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

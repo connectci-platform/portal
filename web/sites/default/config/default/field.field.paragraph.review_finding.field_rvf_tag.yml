@@ -1,0 +1,21 @@
+uuid: 24d76f32-f478-4282-91ed-7c98de674581
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_tag
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+id: paragraph.review_finding.field_rvf_tag
+field_name: field_rvf_tag
+entity_type: paragraph
+bundle: review_finding
+label: Tag
+description: "A security finding's tag from the report: unintentional, or potentially malicious (the rubric's Reject trigger). Empty for other findings and for rows seeded before this field existed."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

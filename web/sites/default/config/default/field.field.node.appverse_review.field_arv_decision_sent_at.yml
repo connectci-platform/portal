@@ -1,0 +1,19 @@
+uuid: 6bfebdfc-a6fb-4922-8f07-1b38b4a6fefa
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_decision_sent_at
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_decision_sent_at
+field_name: field_arv_decision_sent_at
+entity_type: node
+bundle: appverse_review
+label: 'Decision sent at'
+description: 'When the reviewer sent the decision to the contributor (once per repo). Set, the review is decided and the repo owner may read it; see appverse-planning REVIEW-STATES.md.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

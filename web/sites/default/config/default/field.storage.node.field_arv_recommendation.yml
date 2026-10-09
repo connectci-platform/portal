@@ -1,0 +1,33 @@
+uuid: 35ce4bc7-e9e9-4601-98ad-e6b647cec915
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - options
+id: node.field_arv_recommendation
+field_name: field_arv_recommendation
+entity_type: node
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: accept
+      label: Accept
+    -
+      value: accept_with_suggestions
+      label: 'Accept with Suggestions'
+    -
+      value: request_changes
+      label: 'Request Changes'
+    -
+      value: reject
+      label: Reject
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

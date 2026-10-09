@@ -1,0 +1,21 @@
+uuid: dfcfe9c5-01e7-4813-a769-558aacc4bdb5
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_duplicate
+    - paragraphs.paragraphs_type.review_verdict
+  module:
+    - options
+id: paragraph.review_verdict.field_rvv_duplicate
+field_name: field_rvv_duplicate
+entity_type: paragraph
+bundle: review_verdict
+label: 'Duplicate check'
+description: "The reviewer's duplicate check for this app (Reviewer Process, Step 1). Required to accept it; it does not restrict the decision."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string
