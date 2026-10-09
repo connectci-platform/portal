@@ -106,7 +106,9 @@ hidden:
   domain_access: true
   event_affiliation: true
   event_ical_link: true
+  event_in_person: true
   event_summary: true
+  event_timezone: true
   event_type: true
   field_event_speakers: true
   field_event_virtual_meeting_link: true
