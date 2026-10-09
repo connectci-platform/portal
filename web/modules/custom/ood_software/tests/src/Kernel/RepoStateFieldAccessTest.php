@@ -14,9 +14,10 @@ use Drupal\user\UserInterface;
 /**
  * A contributor cannot move their repo out of review (appverse-planning#41).
  *
- * The repo edit form drops Draft from its widget, but JSON:API is writable on
- * this site and checks field access, not the form, so the moderation state
- * itself is not editable by the contributor while the repo awaits review.
+ * The repo edit form drops Draft from its widget, but API writes check field
+ * access, not the form, so the moderation state itself is not editable by the
+ * contributor while the repo awaits review. JSON:API is read-only (D8-2832);
+ * this guard stays as defense in depth for any other write path.
  *
  * @group ood_software
  */
