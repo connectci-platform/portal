@@ -148,4 +148,36 @@ describe("Authenticated user tests the Events Form without Affinity Group", () =
       });
     });
   });
+
+  it("Should flag a missing Event Type on the field", () => {
+    cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
+    cy.visit("/events/add");
+
+    // Skip the browser's own required-field checks so the server-side
+    // validation is what gets exercised. (events.js preselects a Recur Type,
+    // so only Event Type is left empty here.)
+    cy.get("#eventseries-default-add-form").invoke("attr", "novalidate", "novalidate");
+    cy.get("#edit-title-0-value").type("cypress missing event type", { delay: 0 });
+    cy.get("#edit-submit").click();
+
+    // Summary at the top names the field.
+    cy.get(".messages--error").should("contain", "Event Type field is required.");
+
+    // The group is marked on the field and points at its inline error.
+    const fieldset = "#edit-field-event-type--wrapper";
+    cy.get(fieldset)
+      .should("have.attr", "role", "radiogroup")
+      .and("have.attr", "aria-required", "true")
+      .and("have.attr", "aria-invalid", "true")
+      .and("not.have.attr", "required");
+    cy.get(fieldset).find('input[type="radio"]').each(($radio) => {
+      cy.wrap($radio).should("have.attr", "aria-invalid", "true");
+    });
+    cy.get(fieldset)
+      .invoke("attr", "aria-describedby")
+      .then((describedBy) => {
+        const errorId = describedBy.split(" ").find((id) => id.endsWith("--error"));
+        cy.get(`${fieldset} [id="${errorId}"]`).should("have.text", "Event Type field is required.");
+      });
+  });
 });
