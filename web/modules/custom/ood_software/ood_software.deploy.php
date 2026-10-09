@@ -6,11 +6,14 @@
  */
 
 use Drupal\menu_link_content\Entity\MenuLinkContent;
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\media\Entity\Media;
 use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\taxonomy\Entity\Term;
 
 /**
@@ -1381,5 +1384,81 @@ function ood_software_deploy_10015_unstrand_repos_awaiting_review(): \Drupal\Cor
   return t('Sent @count stranded repos for review: @titles', [
     '@count' => count($moved),
     '@titles' => implode(', ', $moved),
+  ]);
+}
+
+/**
+ * Give every appverse_app without a domain the OOD domain.
+ *
+ * D8-2888: RepoSyncService creates apps programmatically, and the field's
+ * add_current_domain setting only applies through the form widget, so most
+ * apps were saved with no field_domain_access. ood_software_node_presave() now
+ * fills it for new saves; this repairs the rows already stored.
+ *
+ * A deploy hook rather than an update hook because field_domain_access on
+ * appverse_app comes from config import, and deploy hooks run after
+ * config:import.
+ *
+ * Content moderation can leave a forward revision (latest differs from the
+ * default), and publishing that draft later would drop the domain, so the
+ * latest revision is filled too. setSyncing() keeps both saves from creating a
+ * revision, moving moderation state or touching the changed time.
+ *
+ * Idempotent: only apps with no domain are selected, and a revision that
+ * already has one is left alone.
+ *
+ * @param array<string, mixed> $sandbox
+ *   Batch sandbox.
+ *
+ * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+ *   Progress message.
+ */
+function ood_software_deploy_10016_backfill_app_domain(array &$sandbox): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+
+  if (!isset($sandbox['progress'])) {
+    $sandbox['progress'] = 0;
+    $sandbox['ids'] = array_values($storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_app')
+      ->notExists('field_domain_access')
+      ->execute());
+    $sandbox['total'] = count($sandbox['ids']);
+  }
+
+  if ($sandbox['total'] === 0) {
+    $sandbox['#finished'] = 1;
+    return t('No Apps needed a domain.');
+  }
+
+  $chunk = array_slice($sandbox['ids'], $sandbox['progress'], 25);
+  foreach ($storage->loadMultiple($chunk) as $node) {
+    if (!$node->hasField('field_domain_access')) {
+      continue;
+    }
+    $default_vid = (int) $node->getRevisionId();
+    if ($node->get('field_domain_access')->isEmpty()) {
+      $node->set('field_domain_access', [SiteTools::DOMAIN_OPENONDEMAND]);
+      $node->setSyncing(TRUE);
+      $node->save();
+    }
+
+    $latest_vid = (int) $storage->getLatestRevisionId($node->id());
+    if ($latest_vid && $latest_vid !== $default_vid) {
+      $latest = $storage->loadRevision($latest_vid);
+      if ($latest instanceof NodeInterface && $latest->hasField('field_domain_access') && $latest->get('field_domain_access')->isEmpty()) {
+        $latest->set('field_domain_access', [SiteTools::DOMAIN_OPENONDEMAND]);
+        $latest->setSyncing(TRUE);
+        $latest->save();
+      }
+    }
+  }
+
+  $sandbox['progress'] += count($chunk);
+  $sandbox['#finished'] = $sandbox['progress'] / max(1, $sandbox['total']);
+
+  return t('Set the domain on @progress of @total Apps.', [
+    '@progress' => $sandbox['progress'],
+    '@total' => $sandbox['total'],
   ]);
 }

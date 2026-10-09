@@ -15,6 +15,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\Component\Serialization\Yaml;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
@@ -1291,6 +1292,22 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
   }
 
   return $access;
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+function ood_software_node_presave(NodeInterface $node): void {
+  // The field's add_current_domain setting only runs through the form widget.
+  // RepoSyncService creates apps programmatically, often from cron or a queue
+  // where there is no current domain, so they were saved with no domain at all
+  // and never showed on the OOD site (D8-2888). Fill an empty value only; an
+  // app an editor assigned elsewhere keeps exactly what they chose.
+  if ($node->bundle() === 'appverse_app'
+    && $node->hasField('field_domain_access')
+    && $node->get('field_domain_access')->isEmpty()) {
+    $node->set('field_domain_access', [SiteTools::DOMAIN_OPENONDEMAND]);
+  }
 }
 
 /**
