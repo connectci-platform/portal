@@ -19,20 +19,6 @@ describe("Unauthenticated user tests the KB Resources Page", () => {
       .should(value => {
         expect(Number.isInteger(+value), 'Likes should be an integer').to.eq(true)
       })
-    // cy.contains("Description");
-    // cy.contains("Category");
-    // cy.contains("Tags");
-    // cy.contains("Skill Level");
-    // cy.contains("Affinity Group");
-    // cy.contains("Category");
-    //Skill Level Filter Option
-    // cy.get(".js-form-item-skill-level-306").contains("Advanced").click();
-    // cy.get(".alert").contains(
-    //   "There are no CI Links at this time. Please check back often as CI Links are added regularly."
-    // );
-
-    // cy.visit("/knowledge-base/ci-links");
-
     //Searching for Cypress Created CI Link
     cy.searchAndWait(EVENTS_SEARCH, "dummy link for testing knowledge base");
     cy.get(".view-search-ci-links details summary")
