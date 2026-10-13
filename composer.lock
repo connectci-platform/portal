@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "0d3c2ce85d073a85a48d83143c364d6ab9d70eff"
+                "reference": "de6709f615d75af296b69680a836d9c8ce2327b8"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -702,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-05T19:28:44+00:00"
+            "time": "2026-10-12T00:58:12+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -762,7 +762,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "fb2c1c5d0a063fada1657160d0bdf844f1c1d5ac"
+                "reference": "3cf8b2b7b28620634d0a97feb2b35daaf01a74ec"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -791,7 +791,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-10-05T15:12:57+00:00"
+            "time": "2026-10-11T21:39:20+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
