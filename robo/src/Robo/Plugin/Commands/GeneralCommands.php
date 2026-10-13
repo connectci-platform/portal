@@ -92,7 +92,13 @@ class GeneralCommands extends Tasks {
       }
     }
     else {
-      $this->_exec("ddev composer robo uli");
+      $result = $this->_exec("ddev composer robo uli");
+
+      // Copy the login path to the clipboard (macOS only).
+      if (PHP_OS_FAMILY === 'Darwin' && preg_match('#/user/reset/\S+#', $result->getMessage(), $matches)) {
+        shell_exec('printf %s ' . escapeshellarg($matches[0]) . ' | pbcopy');
+        $this->say("Login path copied to clipboard!");
+      }
     }
   }
 

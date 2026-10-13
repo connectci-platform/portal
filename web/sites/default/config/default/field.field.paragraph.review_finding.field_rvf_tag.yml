@@ -12,7 +12,7 @@ field_name: field_rvf_tag
 entity_type: paragraph
 bundle: review_finding
 label: Tag
-description: 'A security finding''s tag from the report: unintentional, or potentially malicious (the rubric''s Reject trigger). Empty for other findings and for rows seeded before this field existed.'
+description: "A security finding's tag from the report: unintentional, or potentially malicious (the rubric's Reject trigger). Empty for other findings and for rows seeded before this field existed."
 required: false
 translatable: false
 default_value: {  }

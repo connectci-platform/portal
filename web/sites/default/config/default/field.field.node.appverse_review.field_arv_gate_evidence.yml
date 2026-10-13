@@ -10,7 +10,7 @@ field_name: field_arv_gate_evidence
 entity_type: node
 bundle: appverse_review
 label: 'Repo-level gate evidence'
-description: 'The report''s repo-level gate table (rule, result, evidence per row), parsed from the md report at import. Stored as JSON.'
+description: "The report's repo-level gate table (rule, result, evidence per row), parsed from the md report at import. Stored as JSON."
 required: false
 translatable: false
 default_value: {  }
