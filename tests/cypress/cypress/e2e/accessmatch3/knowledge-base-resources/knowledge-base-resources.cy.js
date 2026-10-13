@@ -15,10 +15,12 @@ describe("Unauthenticated user tests the KB Resources Page", () => {
     cy.visit("/knowledge-base/resources");
     //Likes should be an integer value
     cy.get(".view-search-ci-links details summary .linkcount")
-      .invoke('val')
-      .should(value => {
-        expect(Number.isInteger(+value), 'Likes should be an integer').to.eq(true)
+      .first()
+      .invoke('text')
+      .should(text => {
+        expect(text.trim(), 'Likes should be an integer').to.match(/^\d+$/)
       })
+    cy.contains("Login to like")
     //Searching for Cypress Created CI Link
     cy.searchAndWait(EVENTS_SEARCH, "dummy link for testing knowledge base");
     cy.get(".view-search-ci-links details summary")

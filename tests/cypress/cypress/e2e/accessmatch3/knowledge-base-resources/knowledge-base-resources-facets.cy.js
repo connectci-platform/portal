@@ -10,8 +10,9 @@
       beta         approved, ACCESS, tag dmtcp, Code,     advanced
       unapproved   NOT approved, ACCESS, tag xalt
       otherdomain  approved, Great Plains only, tag xalt
-      sort one/two approved, ACCESS, created inside the like sort test (own
-                   token)
+      sort one/two approved, ACCESS, own token, for the like sort test
+      per-user     approved, ACCESS, own token, owned by the admin, for the
+                   per-user cache tests
       many 1-3     approved, ACCESS, six tags each: 18 distinct tags that put
                    the Tags facet past its soft limit of 10 (the form takes at
                    most six tags per resource)
@@ -42,6 +43,7 @@ const PREFIX = `kbfacet-${RUN}`;
 // prefix, which RUN would still match.
 const SORT_ID = RUN.split("").reverse().join("");
 const MANY_ID = RUN.slice(5) + RUN.slice(0, 5);
+const USER_ID = RUN.slice(3) + RUN.slice(0, 3);
 const TITLE = {
   alpha: `${PREFIX}-alpha`,
   beta: `${PREFIX}-beta`,
@@ -49,6 +51,7 @@ const TITLE = {
   otherDomain: `${PREFIX}-otherdomain`,
   sortOne: `kbsort-${SORT_ID}-one`,
   sortTwo: `kbsort-${SORT_ID}-two`,
+  perUser: `kbuser-${USER_ID}-item`,
 };
 // Slugs of the clickable tag buttons (`#tag-<slug>`) used by the resources.
 // Both tags are also the term names, which is what the facet filters on.
@@ -68,6 +71,12 @@ const ITEMS = ".view-search-ci-links .details-wrap";
 const FACET_ITEMS = "li.facet-item:not(.honey)";
 
 const sid = {};
+
+/** The deep link to a single item of the listing. */
+const deepLink = (id) => `${RESOURCES}?f%5B0%5D=submission_id%3A${id}`;
+
+/** The Edit button of a resource: a link to its webform submission edit form. */
+const EDIT_LINK = (id) => `a[href$="/admin/structure/webform/manage/resource/submission/${id}/edit"]`;
 
 /** Title of every listed item, in page order. */
 function listedTitles() {
@@ -93,6 +102,8 @@ describe("KB Resources page facets, copy link and sorting", () => {
     createKbResource({ title: TITLE.beta, category: "Code", skillLevels: [SKILL.advanced], tags: [TAG_B] }).then((id) => { sid.beta = id; });
     createKbResource({ title: TITLE.unapproved, approved: false, tags: [TAG_A] }).then((id) => { sid.unapproved = id; });
     createKbResource({ title: TITLE.otherDomain, domain: "Great Plains", tags: [TAG_A] }).then((id) => { sid.otherDomain = id; });
+    createKbResource({ title: TITLE.sortOne, tags: [TAG_A] });
+    createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] });
     MANY_TAGS.forEach((tags, i) => {
       createKbResource({ title: `kbmany-${MANY_ID}-${i + 1}`, tags });
     });
@@ -269,17 +280,6 @@ describe("KB Resources page facets, copy link and sorting", () => {
     });
 
     it("lists a liked resource above one with fewer likes, and unliking restores the count", () => {
-      // These resources are created here, and listed for the first time by the
-      // user who likes them, on purpose. The listing caches each item's flag
-      // link, CSRF token and destination included, and serves it to every
-      // session (see the report that came with this spec): a link first
-      // rendered in another session fails with "Access denied". Listing the
-      // resources in an earlier test would make this one depend on test order.
-      cy.loginAs(...ADMIN);
-      createKbResource({ title: TITLE.sortOne, tags: [TAG_A] });
-      createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] });
-      cy.loginAs(...AUTHENTICATED);
-
       const sortUrl = `${RESOURCES}?search_api_fulltext=${SORT_ID}`;
       const likeCount = (title) =>
         item(title).find("details.search-ci-links > summary .linkcount").then(($count) => Number($count.text().trim()));
@@ -288,31 +288,164 @@ describe("KB Resources page facets, copy link and sorting", () => {
 
       cy.visit(sortUrl);
       listedTitles().should("include.members", [TITLE.sortOne, TITLE.sortTwo]);
+      likeCount(TITLE.sortOne).should("eq", 0);
       likeCount(TITLE.sortTwo).should("eq", 0);
 
-      // Like the second one, then reload the narrowed listing: the destination
-      // the link carries is whatever the item was cached with.
-      item(TITLE.sortTwo).find("details.search-ci-links > summary").click();
-      item(TITLE.sortTwo).find(".flag-upvote a").click();
-      cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+      // With equal counts the order is the index's tie order. Like whichever
+      // is listed second, so that moving to first proves the like sorted it.
+      listedTitles().then((titles) => {
+        const [first, second] = titles.filter((t) => t === TITLE.sortOne || t === TITLE.sortTwo);
 
-      cy.visit(sortUrl);
-      likeCount(TITLE.sortTwo).should("eq", 1);
-      likeCount(TITLE.sortOne).should("eq", 0);
-      item(TITLE.sortTwo).find(".flag-upvote.action-unflag a").should("exist");
-      listedTitles().should((titles) => {
-        expect(titles.indexOf(TITLE.sortTwo), "liked resource first").to.eq(0);
-        expect(titles.indexOf(TITLE.sortTwo)).to.be.lessThan(titles.indexOf(TITLE.sortOne));
+        item(second).find("details.search-ci-links > summary").click();
+        item(second).find(".flag-upvote a").click();
+        cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+
+        cy.visit(sortUrl);
+        likeCount(second).should("eq", 1);
+        likeCount(first).should("eq", 0);
+        item(second).find(".flag-upvote.action-unflag a").should("exist");
+        listedTitles().should((after) => {
+          expect(after.indexOf(second), "liked resource first").to.eq(0);
+          expect(after.indexOf(second)).to.be.lessThan(after.indexOf(first));
+        });
+
+        // Unlike to leave the user as found.
+        item(second).find("details.search-ci-links > summary").click();
+        item(second).find(".flag-upvote.action-unflag a").click();
+        cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+
+        cy.visit(sortUrl);
+        likeCount(second).should("eq", 0);
+        item(second).find(".flag-upvote.action-flag a").should("exist");
       });
+    });
+  });
+
+  // Each row's per-user bits (flag link with its CSRF token and destination,
+  // Like/Unlike state, Edit button, report menu) must be built per request.
+  // Rows are cached per permission set, so each test warms the cache both as
+  // the admin (the owner) and in an earlier session of the visitor under test:
+  // any per-user bit left in a cached row then reaches the next visitor.
+  describe("per-user content is not shared through the cache", () => {
+    const itemUrl = () => deepLink(sid.perUser);
+    const likeCount = () =>
+      item(TITLE.perUser).find("details.search-ci-links > summary .linkcount").then(($count) => Number($count.text().trim()));
+    const notDenied = () => {
+      cy.contains("Access denied").should("not.exist");
+      cy.contains("You are not authorized").should("not.exist");
+    };
+
+    before(() => {
+      cy.loginAs(...ADMIN);
+      createKbResource({ title: TITLE.perUser, tags: [TAG_A] }).then((id) => { sid.perUser = id; });
+      cy.drupalLogout();
+    });
+
+    beforeEach(() => {
+      cy.intercept("GET", "**/flag/*/upvote/**").as("upvote");
+    });
+
+    it("gives another user their own Like link, state and no Edit button", () => {
+      // Warm the cache as the owner.
+      cy.loginAs(...ADMIN);
+      cy.visit(itemUrl());
+      item(TITLE.perUser).find(EDIT_LINK(sid.perUser)).should("contain.text", "Edit");
+
+      // Rows are cached per permission set, so the admin's visit alone never
+      // reaches this user. Also warm the cache in an earlier session of this
+      // user: the CSRF token is tied to the session, so a token cached then
+      // fails with "Access denied" in the next one (each loginAs submits the
+      // login form, which starts a new session).
+      cy.loginAs(...AUTHENTICATED);
+      cy.visit(itemUrl());
+      item(TITLE.perUser).find(".flag-upvote.action-flag a").should("exist");
+
+      cy.loginAs(...AUTHENTICATED);
+      cy.visit(itemUrl());
+      cy.get(ITEMS).should("have.length", 1);
+      item(TITLE.perUser).find(EDIT_LINK(sid.perUser)).should("not.exist");
+      item(TITLE.perUser).find(".flag-upvote.action-flag a").should("exist");
+      item(TITLE.perUser).find(".flag-upvote.action-unflag a").should("not.exist");
+      notDenied();
+
+      likeCount().then((before) => {
+        item(TITLE.perUser).find("details.search-ci-links > summary").click();
+        item(TITLE.perUser).find(".flag-upvote.action-flag a").click();
+        cy.wait("@upvote").then(({ response }) => {
+          // A token or destination from the admin's session would give 403, or
+          // send this user back to the admin's page.
+          expect(response.statusCode).to.eq(302);
+          const location = decodeURIComponent(response.headers.location);
+          expect(location, "redirect back to this item").to.include(`/knowledge-base/resources?f[0]=submission_id:${sid.perUser}`);
+        });
+
+        cy.visit(itemUrl());
+        notDenied();
+        item(TITLE.perUser).find(".flag-upvote.action-unflag a").should("exist");
+        likeCount().should("eq", before + 1);
+
+        // Unlike to leave the user as found.
+        item(TITLE.perUser).find("details.search-ci-links > summary").click();
+        item(TITLE.perUser).find(".flag-upvote.action-unflag a").click();
+        cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+
+        cy.visit(itemUrl());
+        notDenied();
+        item(TITLE.perUser).find(".flag-upvote.action-flag a").should("exist");
+        likeCount().should("eq", before);
+      });
+    });
+
+    it("shows an anonymous visitor a login prompt, not the admin's Edit button or report menu", () => {
+      cy.loginAs(...ADMIN);
+      cy.visit(itemUrl());
+      item(TITLE.perUser).find(EDIT_LINK(sid.perUser)).should("exist");
+
+      cy.drupalLogout();
+      cy.visit(itemUrl());
+      cy.get(ITEMS).should("have.length", 1);
+      item(TITLE.perUser).should("contain.text", "Login to like");
+      item(TITLE.perUser).find(EDIT_LINK(sid.perUser)).should("not.exist");
+      item(TITLE.perUser).should("not.contain.text", "Flag as");
+      item(TITLE.perUser).find(".flag-upvote a").should("not.exist");
+      item(TITLE.perUser)
+        .contains("a", "Login to like")
+        .should("have.attr", "href")
+        .and("include", "destination=")
+        .then((href) => {
+          const destination = decodeURIComponent(new URL(href, "http://x").searchParams.get("destination"));
+          expect(destination).to.include(`/knowledge-base/resources?f[0]=submission_id:${sid.perUser}`);
+        });
+    });
+
+    it("does the same on the single resource page", () => {
+      const page = `${RESOURCES}/${sid.perUser}`;
+
+      cy.loginAs(...ADMIN);
+      cy.visit(page);
+      cy.get(EDIT_LINK(sid.perUser)).should("contain.text", "Edit");
+
+      // Warm the page in an earlier session of this user (see above).
+      cy.loginAs(...AUTHENTICATED);
+      cy.visit(page);
+      cy.get(".flag-upvote.action-flag a").should("exist");
+
+      cy.loginAs(...AUTHENTICATED);
+      cy.visit(page);
+      cy.get(EDIT_LINK(sid.perUser)).should("not.exist");
+      cy.get(".flag-upvote.action-flag a").should("exist");
+      notDenied();
+
+      cy.get(".flag-upvote.action-flag a").click();
+      cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+      notDenied();
+      cy.get(".flag-upvote.action-unflag a").should("exist");
 
       // Unlike to leave the user as found.
-      item(TITLE.sortTwo).find("details.search-ci-links > summary").click();
-      item(TITLE.sortTwo).find(".flag-upvote.action-unflag a").click();
+      cy.get(".flag-upvote.action-unflag a").click();
       cy.wait("@upvote").its("response.statusCode").should("eq", 302);
-
-      cy.visit(sortUrl);
-      likeCount(TITLE.sortTwo).should("eq", 0);
-      item(TITLE.sortTwo).find(".flag-upvote.action-flag a").should("exist");
+      notDenied();
+      cy.get(".flag-upvote.action-flag a").should("exist");
     });
   });
 });
