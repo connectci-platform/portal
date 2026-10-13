@@ -32,6 +32,22 @@ $settings['entity_update_batch_size'] = 50;
 global $content_directories;
 $content_directories['sync'] = '/datastorage/content/sync';
 
+// Non-live environments allowed to dispatch full (paid) AppVerse AI reviews;
+// live always may, every other environment dispatches dry-runs. Read by
+// AppverseReviewService::fullReviewsEnabled(). Each also needs the GitHub key
+// file in its private files: see appverse-planning review-system/GITHUB-TOKENS.md.
+// A default: the per-environment files required below may replace the list
+// (local.settings.php does, to run real reviews from ddev).
+$settings['ood_software.review_full_environments'] = ['md-2788'];
+
+// The model AppVerse AI reviews run on: "qwen" (the on-prem gateway) or
+// "sonnet" / "opus" (the Anthropic API). Read by
+// AppverseReviewService::reviewModel(). A plain string applies everywhere,
+// live included; ['env' => 'model'] sets it per environment, with unlisted
+// environments on sonnet. Qwen everywhere for now, while most reviews are
+// test runs of test repos (appverse-planning#27).
+$settings['ood_software.review_model'] = 'qwen';
+
 $additionalSettingsFiles = [
   (DRUPAL_ROOT . "/../vendor/acquia/blt/settings/blt.settings.php"),
   (__DIR__ . "/settings.pantheon.php"),

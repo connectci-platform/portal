@@ -41,15 +41,62 @@ services:
     class: Drupal\ood_software\Service\RepoSyncService
     arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh']
 
+  ood_software.review_dispatcher:
+    class: Drupal\ood_software\Service\AppverseReviewService
+    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier']
+
+  ood_software.review_seeder:
+    class: Drupal\ood_software\Service\AppverseReviewSeeder
+    arguments: ['@entity_type.manager', '@file.repository', '@file_system', '@logger.factory']
+
   ood_software.repo_notifier:
     class: Drupal\ood_software\Service\RepoNotificationService
     arguments:
       - '@plugin.manager.mail'
       - '@entity_type.manager'
       - '@logger.factory'
+      - '@user.data'
 
   ood_software.legacy_app_add_redirect:
     class: Drupal\ood_software\EventSubscriber\LegacyAppAddRedirectSubscriber
     arguments: ['@messenger', '@current_user']
+    tags:
+      - { name: event_subscriber }
+
+  # Appverse reviewers may view the latest version of a repo, app or review
+  # (appverse-planning#36). The route subscriber swaps the node latest-version
+  # route's requirement onto this check, which runs the site's own check
+  # (access_check.latest_revision, as access_events decorates it) and adds
+  # the reviewer allowance.
+  ood_software.latest_version_access:
+    class: Drupal\ood_software\Access\AppverseLatestVersionAccessCheck
+    arguments: ['@access_check.latest_revision', '@content_moderation.moderation_information']
+    tags:
+      - { name: access_check, applies_to: _ood_software_latest_version }
+  ood_software.latest_version_route_subscriber:
+    class: Drupal\ood_software\Routing\AppverseLatestVersionRouteSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  # Re-reviews a listed repo on a new GitHub release (appverse-planning#34).
+  ood_software.release_watcher:
+    class: Drupal\ood_software\Service\ReleaseWatcher
+    arguments: ['@entity_type.manager', '@ood_software.review_dispatcher', '@logger.factory', '@datetime.time', '@ood_software.repo_notifier']
+  # Who reviews a repo (appverse-planning#33).
+  ood_software.review_assignment:
+    class: Drupal\ood_software\Service\ReviewAssignment
+    arguments: ['@entity_type.manager', '@current_user', '@logger.factory', '@ood_software.repo_notifier']
+  # A repo's progress line facts, for the hub card and the review page
+  # (appverse-planning#31).
+  ood_software.repo_progress:
+    class: Drupal\ood_software\Service\RepoProgress
+    arguments: ['@entity_type.manager']
+  # Carries out a review's decision on the review, its repo and its apps
+  # (appverse-planning#29, #30, #32).
+  ood_software.review_decision_applier:
+    class: Drupal\ood_software\Service\ReviewDecisionApplier
+    arguments: ['@entity_type.manager', '@current_user', '@datetime.time', '@messenger', '@ood_software.repo_member_apps', '@content_moderation.moderation_information', '@ood_software.repo_notifier', '@config.factory', '@logger.factory', '@database', '@lock', '@date.formatter']
+  ood_software.review_node_page_redirect:
+    class: Drupal\ood_software\EventSubscriber\ReviewNodePageRedirectSubscriber
     tags:
       - { name: event_subscriber }

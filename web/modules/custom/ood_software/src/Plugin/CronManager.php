@@ -31,6 +31,27 @@ class CronManager {
   }
 
   /**
+   * Poll GitHub Actions for completed AI review runs.
+   */
+  public static function reviewPoll() {
+    \Drupal::service('ood_software.review_dispatcher')->pollForResults();
+  }
+
+  /**
+   * Re-review listed repos that cut a new release (appverse-planning#34).
+   *
+   * Live only, as appUpdates() is: elsewhere run drush appverse:release-check.
+   */
+  public static function releaseCheck() {
+    if (getenv('PANTHEON_ENVIRONMENT') === 'live') {
+      \Drupal::service('ood_software.release_watcher')->check();
+    }
+    else {
+      \Drupal::logger('ood_software')->notice('Skipping the release check on non-live environment.');
+    }
+  }
+
+  /**
    * Update app info from github.
    */
   public static function appUpdates() {

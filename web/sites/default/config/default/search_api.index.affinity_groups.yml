@@ -15,7 +15,6 @@ dependencies:
   module:
     - access_misc
     - ccmnet
-    - cssn
     - node
     - webform_submission_search_api
 id: affinity_groups
@@ -175,11 +174,11 @@ processor_settings:
     title: true
     alt: true
     tags:
-      b: 2
-      h1: 5
-      h2: 3
-      h3: 2
-      strong: 2
+      b: 2.0
+      h1: 5.0
+      h2: 3.0
+      h3: 2.0
+      strong: 2.0
   language_with_fallback: {  }
   mentee_name: {  }
   rendered_item: {  }
@@ -250,11 +249,6 @@ processor_settings:
     ignored: ._-
     overlap_cjk: 1
     minimum_word_size: '3'
-  user_affinity_groups: {  }
-  user_badges: {  }
-  user_interests: {  }
-  user_skills: {  }
-  user_skills_id: {  }
   webform_submission_category: {  }
   webform_submission_description: {  }
   webform_submission_domain: {  }

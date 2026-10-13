@@ -1,0 +1,19 @@
+uuid: 630181a1-7c2f-4317-94a3-0467ab1693be
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_tool_version
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_tool_version
+field_name: field_arv_tool_version
+entity_type: node
+bundle: appverse_review
+label: 'Tool version'
+description: 'appverse-review plugin version that produced this review.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

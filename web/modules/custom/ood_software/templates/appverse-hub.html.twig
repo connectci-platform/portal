@@ -8,10 +8,12 @@
  * Header cluster, left→right:
  *   [status badge] | [pencil — inferred+can_edit] | Submitted <ts>
  *   | [github] | [catalog] | [owner name][email — admin]
- *   | [resync + lifecycle icons]
+ *   | [labelled actions + Actions menu]
  */
 #}
-<article class="appverse-hub-card state-{{ hub.moderation_state }}">
+{# The id is the anchor a card action returns to (see
+   _ood_software_hub_action_form()), so the reviewer lands on this card. #}
+<article id="appverse-repo-{{ hub.repo_id }}" class="appverse-hub-card state-{{ hub.moderation_state }}">
   {# Header is a CSS grid with shared column tracks so fields line up across
      cards: title | submitted | github | owner | status | actions.
      Status sits in its own column next to the actions so it always lines up.
@@ -61,41 +63,101 @@
     </div>
 
     <div class="appverse-hub-card__cell appverse-hub-card__cell--status">
+      {# Where the repo is in review is the progress line below the header
+         (appverse-planning#31); these badges are what it does not show. #}
       {% if hub.unpublished_after_publish %}
-        <span class="badge badge-warning">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
-      {% else %}
-        <span class="badge badge-{{ hub.status.modifier }}">{{ hub.status.label }}</span>
+        <span class="badge badge-warning badge--hint" title="{{ 'Was published, then unpublished. Only an admin can republish it.'|t }}">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
+      {% elseif hub.moderation_state == 'archived' %}
+        <span class="badge badge-{{ hub.status.modifier }} badge--hint" title="{{ hub.status.description }}">{{ hub.status.label }}</span>
       {% endif %}
       {% if hub.has_validation_issues %}
-        <span class="badge badge-error">{{ 'Validation errors'|t }}</span>
+        <span class="badge badge-error badge--hint" title="{{ 'The last sync found problems in appverse.yml or the app files; see the edit page.'|t }}">{{ 'Validation errors'|t }}</span>
       {% endif %}
     </div>
 
+    {# Actions. A reviewer can have six of these at once, which never fit the
+       column and wrapped onto a second row over the line below. Icons alone
+       also did not say what they do: a tooltip can confirm a guess but cannot
+       advertise a capability, so the play icon stayed unreadable however many
+       titles it carried (appverse-planning#55).
+
+       So: the one or two a reviewer uses on most rows stay out as labelled
+       buttons, and the rest go in a menu where every item is named in words.
+       A contributor has at most three and keeps them all inline, which is why
+       the menu is built only when there is something to put in it. Delete sits
+       last behind a separator, away from the benign actions it used to sit
+       beside. Bootstrap 4 is global in the ood theme (data-toggle, not
+       data-bs-toggle) so this needs no JS of its own. #}
     <div class="appverse-hub-card__cell appverse-hub-card__cell--actions">
-      {% if hub.edit_url %}
-        <a href="{{ hub.edit_url }}" class="appverse-hub-card__icon-btn"
-           title="{{ 'Edit'|t }}" aria-label="{{ 'Edit @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-pencil-square" aria-hidden="true"></i>
-        </a>
-      {% endif %}
-      {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
-      {% if hub.actions.send_for_review %}{{ hub.actions.send_for_review }}{% endif %}
-      {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
-      {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}
-      {% if hub.actions.request_changes %}
-        <a href="{{ hub.actions.request_changes.url }}" class="appverse-hub-card__icon-btn"
-           title="{{ 'Request changes'|t }}" aria-label="{{ 'Request changes'|t }}">
-          <i class="bi bi-chat-left-text" aria-hidden="true"></i>
-        </a>
-      {% endif %}
-      {% if hub.actions.delete %}
-        <a href="{{ hub.actions.delete.url }}" class="appverse-hub-card__icon-btn appverse-hub-card__icon-btn--danger"
-           title="{{ 'Delete'|t }}" aria-label="{{ 'Delete @t'|t({'@t': hub.title}) }}">
-          <i class="bi bi-trash" aria-hidden="true"></i>
-        </a>
+      {# Exactly one action stays inline, and everything else is in the menu.
+         Named actions are much wider than the icons they replace, and the
+         column is 13rem: two of them plus the menu button overflow it and wrap
+         onto the progress line below, which is the problem this replaced.
+
+         Which one is inline is the one thing the card most expects you to do
+         next: open the review if there is one, otherwise run the report (a
+         reviewer), or send for review (a contributor). The row builder decides
+         that; see hub.primary_action. #}
+      {% if hub.primary_action %}{{ hub.primary_action }}{% endif %}
+
+      {% if hub.has_menu %}
+        <div class="dropdown appverse-hub-card__menu">
+          <button class="appverse-hub-card__action-btn dropdown-toggle" type="button"
+                  id="appverse-actions-{{ hub.repo_id }}" data-toggle="dropdown"
+                  aria-haspopup="true" aria-expanded="false"
+                  aria-label="{{ 'More actions for @t'|t({'@t': hub.title}) }}">
+            {{ 'Actions'|t }}
+          </button>
+          <div class="dropdown-menu dropdown-menu-right" aria-labelledby="appverse-actions-{{ hub.repo_id }}">
+            {% if hub.review.review_url and hub.review.run_review_action %}
+              {{ hub.review.run_review_action_menu }}
+            {% endif %}
+            {# In the menu only when it is not the inline action, i.e. when a
+               review already exists and took that slot. #}
+            {% if hub.actions.send_for_review and hub.review.review_url %}{{ hub.actions.send_for_review }}{% endif %}
+            {% if hub.edit_url %}
+              <a class="dropdown-item" href="{{ hub.edit_url }}">
+                <i class="bi bi-pencil-square" aria-hidden="true"></i> {{ 'Edit'|t }}
+              </a>
+            {% endif %}
+            {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
+            {% if hub.actions.withdraw %}{{ hub.actions.withdraw }}{% endif %}
+            {% if hub.actions.assign %}{{ hub.actions.assign }}{% endif %}
+            {% if hub.actions.request_changes %}
+              <a class="dropdown-item" href="{{ hub.actions.request_changes.url }}">
+                <i class="bi bi-chat-left-text" aria-hidden="true"></i> {{ 'Request changes'|t }}
+              </a>
+            {% endif %}
+            {% if hub.actions.publish %}{{ hub.actions.publish }}{% endif %}
+            {% if hub.actions.unpublish %}{{ hub.actions.unpublish }}{% endif %}
+            {% if hub.actions.delete %}
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item appverse-hub-card__menu-item--danger" href="{{ hub.actions.delete.url }}">
+                <i class="bi bi-trash" aria-hidden="true"></i> {{ 'Delete'|t }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
       {% endif %}
     </div>
   </header>
+
+  {# Where the repo is, in one chip. The full five-step line is a lot to scan
+     down a list, so it lives on the review page and the card carries this
+     (appverse-planning#55). Contributors keep their sentence, which says what
+     to do next when it is their turn. #}
+  <div class="appverse-hub-card__progress">
+    <span class="badge badge-{{ hub.progress_chip.modifier }} appverse-hub-card__progress-chip">{{ hub.progress_chip.label }}</span>
+    {% if hub.progress_sentence %}
+      <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
+    {% endif %}
+    {% if hub.assignee is not null %}
+      <p class="appverse-hub-card__assignee">
+        <i class="bi bi-person" aria-hidden="true"></i>
+        {{ 'Reviewer:'|t }} {{ hub.assignee ?: 'Unassigned'|t }}
+      </p>
+    {% endif %}
+  </div>
 
   {# Repo-level discovery tags (shared `tags` vocab), on their own full-width
      row below the header so they wrap freely and don't compete with the
@@ -206,7 +268,7 @@
                 {% endfor %}
               </td>
               <td>
-                <span class="badge badge-{{ app.status.modifier }}">{{ app.status.label }}</span>
+                <span class="badge badge-{{ app.status.modifier }}{{ app.status.description ? ' badge--hint' }}" {% if app.status.description %}title="{{ app.status.description }}"{% endif %}>{{ app.status.label }}</span>
                 {% if app.edit_url %}
                   <a href="{{ app.edit_url }}" class="appverse-hub-card__icon-btn"
                      title="{{ 'Edit'|t }}" aria-label="{{ 'Edit @t'|t({'@t': app.title}) }}">

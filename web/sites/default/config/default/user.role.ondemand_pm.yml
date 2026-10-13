@@ -1,0 +1,43 @@
+uuid: 505b25e4-2f4d-4e4e-a296-1b7ed37bd0f8
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.access_news
+    - workflows.workflow.editorial
+    - workflows.workflow.editorial_eventinstance
+  module:
+    - content_moderation
+    - file
+    - node
+    - recurring_events
+id: ondemand_pm
+label: 'OnDemand PM'
+weight: 33
+is_admin: null
+permissions:
+  - 'clone eventseries entity'
+  - 'delete any access_news content'
+  - 'delete eventinstance entity'
+  - 'delete eventseries entity'
+  - 'delete own files'
+  - 'edit any access_news content'
+  - 'edit eventinstance entity'
+  - 'edit eventseries entity'
+  - 'revert access_news revisions'
+  - 'use editorial transition archive'
+  - 'use editorial transition archived_draft'
+  - 'use editorial transition archived_published'
+  - 'use editorial transition create_new_draft'
+  - 'use editorial transition publish'
+  - 'use editorial transition request_adjustment'
+  - 'use editorial_eventinstance transition archive'
+  - 'use editorial_eventinstance transition archived_archived'
+  - 'use editorial_eventinstance transition archived_draft'
+  - 'use editorial_eventinstance transition archived_published'
+  - 'use editorial_eventinstance transition create_new_draft'
+  - 'use editorial_eventinstance transition publish'
+  - 'use editorial_eventinstance transition request_adjustment'
+  - 'view access_news revisions'
+  - 'view unpublished eventinstance entity'
+  - 'view unpublished eventseries entity'

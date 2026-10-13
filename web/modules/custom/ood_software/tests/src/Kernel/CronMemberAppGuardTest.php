@@ -11,6 +11,7 @@ use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
 use Drupal\ood_software\Plugin\QueueWorker\AppverseAppUpdater;
 use Drupal\ood_software\Service\RepoSyncService;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Guards that the cron app-updater does NOT clobber monorepo member apps.
@@ -46,7 +47,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   use Traits\ProdConfigTrait;
@@ -112,6 +113,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
       );
       $idKey = $storage->getEntityType()->getKey('id');
       if (!($data[$idKey] ?? NULL) || !$storage->load($data[$idKey])) {
+        assert($storage instanceof ConfigEntityStorageInterface);
         $storage->createFromStorageRecord($data)->save();
       }
     }
@@ -191,6 +193,9 @@ class CronMemberAppGuardTest extends KernelTestBase {
         $this->repo = $repo;
       }
 
+      /**
+       * @param array<string, mixed> $repoMetadata
+       */
       public function resolveRepo(string $repoUrl, ?string $appverseYmlText, array $repoMetadata): NodeInterface {
         $this->resolveRepoCalled = TRUE;
         return $this->repo;
@@ -336,6 +341,9 @@ class CronMemberAppGuardTest extends KernelTestBase {
       private NodeInterface $repo;
       public bool $resolveRepoCalled = FALSE;
       public function __construct(NodeInterface $repo) { $this->repo = $repo; }
+      /**
+       * @param array<string, mixed> $m
+       */
       public function resolveRepo(string $u, ?string $y, array $m): NodeInterface {
         $this->resolveRepoCalled = TRUE;
         return $this->repo;
@@ -414,6 +422,9 @@ class CronMemberAppGuardTest extends KernelTestBase {
       private NodeInterface $repo;
       public bool $resolveRepoCalled = FALSE;
       public function __construct(NodeInterface $repo) { $this->repo = $repo; }
+      /**
+       * @param array<string, mixed> $m
+       */
       public function resolveRepo(string $u, ?string $y, array $m): NodeInterface {
         $this->resolveRepoCalled = TRUE;
         return $this->repo;

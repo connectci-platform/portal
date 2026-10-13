@@ -1,0 +1,19 @@
+uuid: 6a1156db-2b19-4799-a122-fe495812711a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvv_catalog
+    - paragraphs.paragraphs_type.review_verdict
+id: paragraph.review_verdict.field_rvv_catalog
+field_name: field_rvv_catalog
+entity_type: paragraph
+bundle: review_verdict
+label: 'Catalog checks'
+description: "This app's catalog comparison (artifact apps[].catalog, schema 1.5), as JSON: software, app_type, implementation_tags and the published apps with the same Software entry. Empty on reviews from an older tool."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

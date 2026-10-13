@@ -1,0 +1,20 @@
+uuid: 2d7f3de5-0dea-4f37-a6fb-5a87bbe15573
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+    - paragraphs
+id: paragraph.field_rvv_app_ref
+field_name: field_rvv_app_ref
+entity_type: paragraph
+type: entity_reference
+settings:
+  target_type: node
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

@@ -33,6 +33,8 @@ describe("Authenticated user creates a Mentorship Engagement", () => {
     cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
     cy.visit("/admin/content");
     cy.get(':nth-child(1) > .views-field-operations > .dropbutton-wrapper > .dropbutton-widget > .dropbutton > .edit > a').click();
+    // Guards D8-2825: a non-admin add must save with domain source ccmnet_org.
+    cy.get('#edit-field-domain-source').should('have.value', 'ccmnet_org');
     cy.get('#edit-field-ccmnet-approved-value').scrollIntoView().check({force: true});
     cy.get('.node-mentorship-engagement-edit-form #edit-submit').click();
   });

@@ -1,0 +1,30 @@
+uuid: 6fc35aa2-c557-489b-b8b0-e2047b66f9f5
+langcode: en
+status: true
+dependencies:
+  module:
+    - ood_software
+title: 'OOD Software Release Check'
+id: ood_software_release_check
+weight: 13
+module: ood_software
+callback: '\Drupal\ood_software\Plugin\CronManager::releaseCheck'
+scheduler:
+  id: crontab
+  configuration:
+    rules:
+      - '30 6 * * *'
+    catch_up: 86400
+launcher:
+  id: serial
+  configuration:
+    timeouts:
+      lock_timeout: 3600
+    launcher:
+      thread: 0
+logger:
+  id: database
+  configuration:
+    method: '3'
+    expire: 1209600
+    retain: 1000

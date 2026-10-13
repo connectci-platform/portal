@@ -1,0 +1,19 @@
+uuid: 3d23471e-3bc6-4781-afb8-71685f8e5854
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_rule
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_rule
+field_name: field_rvf_rule
+entity_type: paragraph
+bundle: review_finding
+label: 'Rule code'
+description: 'Rule that produced this finding (OODT-01, STR-03, QUA-05, MNT-02, etc.).'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

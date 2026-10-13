@@ -41,6 +41,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
+    // ood_software.review_seeder depends on file.repository.
+    'file',
     'ood_software',
   ];
 
@@ -54,6 +56,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->installEntitySchema('content_moderation_state');
     $this->installEntitySchema('path_alias');
     $this->installSchema('node', ['node_access']);
+    $this->installSchema('user', ['users_data']);
 
     // Install core base configs first.
     $this->installConfig([
@@ -577,7 +580,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
-   * Resubmit (needs_adjustment → ready_for_review) fires another admin email.
+   * Resubmit (needs_adjustment → ready_for_review) fires another admin email,
+   * as a resubmission (appverse-planning#47).
    */
   public function testResubmitFiresAnotherAdminEmail(): void {
     $this->createAdminUser('admin@example.com');
@@ -589,10 +593,10 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $node->save();
 
     $mails = $this->drupalGetMails();
-    $oodMails = array_values(array_filter($mails, fn($m) => $m['module'] === 'ood_software' && $m['key'] === 'ready_for_review'));
+    $oodMails = array_values(array_filter($mails, fn($m) => $m['module'] === 'ood_software' && $m['key'] === 'resubmitted'));
     $this->assertCount(1, $oodMails);
     $this->assertSame('admin@example.com', $oodMails[0]['to']);
-    $this->assertStringContainsString('submitted for review', $oodMails[0]['subject']);
+    $this->assertStringContainsString('resubmitted for review', $oodMails[0]['subject']);
   }
 
   /**

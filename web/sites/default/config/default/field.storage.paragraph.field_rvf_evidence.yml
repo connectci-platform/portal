@@ -1,0 +1,21 @@
+uuid: 048c5ca2-5eee-4bc4-a7e6-fb852f162b8b
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvf_evidence
+field_name: field_rvf_evidence
+entity_type: paragraph
+type: string
+settings:
+  max_length: 512
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

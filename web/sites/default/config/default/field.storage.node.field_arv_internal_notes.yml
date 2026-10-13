@@ -1,0 +1,20 @@
+uuid: 4be36c38-3c25-4453-ab65-f69b8ceb7c41
+langcode: en
+status: true
+dependencies:
+  module:
+    - entity_reference_revisions
+    - node
+id: node.field_arv_internal_notes
+field_name: field_arv_internal_notes
+entity_type: node
+type: entity_reference_revisions
+settings:
+  target_type: paragraph
+module: entity_reference_revisions
+locked: false
+cardinality: -1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

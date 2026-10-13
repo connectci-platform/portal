@@ -1,0 +1,19 @@
+uuid: c8aa4276-a5a2-412d-8ff0-7eb6b376e93f
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_override_summary
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_override_summary
+field_name: field_rvf_override_summary
+entity_type: paragraph
+bundle: review_finding
+label: 'Reviewer summary'
+description: "The reviewer's wording of an automated finding's summary, when they edited it on the review page. Empty when unchanged; field_rvf_summary keeps the tool's."
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

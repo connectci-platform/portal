@@ -1,0 +1,19 @@
+uuid: c9718c13-df4c-44db-87e2-0289387ef1f8
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_review_dispatched_at
+    - node.type.appverse_repo
+id: node.appverse_repo.field_review_dispatched_at
+field_name: field_review_dispatched_at
+entity_type: node
+bundle: appverse_repo
+label: 'Review dispatched at'
+description: 'Unix timestamp of when the last AI review was triggered via GitHub Actions.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

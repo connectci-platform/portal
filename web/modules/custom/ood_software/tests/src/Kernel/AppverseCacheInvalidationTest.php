@@ -4,6 +4,7 @@ namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\ood_software\Service\AppverseCacheService;
+use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * @group ood_software
@@ -20,7 +21,7 @@ class AppverseCacheInvalidationTest extends KernelTestBase {
    * need the fuller module set used by SyncInferredMemberAppTest (field, text,
    * taxonomy, file, media, content_moderation, workflows, etc.).
    */
-  protected static $modules = ['ood_software', 'node', 'user', 'system', 'key'];
+  protected static $modules = ['workflows', 'content_moderation', 'file', 'ood_software', 'node', 'user', 'system', 'key'];
 
   /**
    * The cache service under test.
@@ -51,13 +52,14 @@ class AppverseCacheInvalidationTest extends KernelTestBase {
    * appverse field/bundle config that real generation needs. The real
    * markDirty()/flushIfDirty() bodies run against the stubbed generate().
    */
-  protected function cacheWithGenerateResult(bool $result): AppverseCacheService {
+  protected function cacheWithGenerateResult(bool $result): AppverseCacheService&MockObject {
     $mock = $this->getMockBuilder(AppverseCacheService::class)
       ->setConstructorArgs([
         $this->container->get('entity_type.manager'),
         $this->container->get('file_url_generator'),
         $this->container->get('file_system'),
         $this->container->get('logger.factory'),
+        $this->container->get('ood_software.appverse_logo_url'),
       ])
       ->onlyMethods(['generate'])
       ->getMock();

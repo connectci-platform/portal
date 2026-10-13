@@ -5,6 +5,11 @@ dependencies:
   config:
     - field.storage.node.field_domain_access
     - node.type.mentorship_engagement
+  module:
+    - domain_access
+third_party_settings:
+  domain_access:
+    add_current_domain: true
 _core:
   default_config_hash: GFMoly-a4FU0m4Ow4MRi_JZQTcqQzAg-aUEwrEqUA0E
 id: node.mentorship_engagement.field_domain_access
@@ -24,4 +29,5 @@ settings:
     sort:
       field: weight
       direction: ASC
+    auto_create: false
 field_type: entity_reference

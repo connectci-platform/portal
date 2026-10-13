@@ -10,6 +10,7 @@ use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Symfony\Component\Yaml\Yaml;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Regression test: resync of a declared multi-app repo refreshes repo fields.
@@ -56,7 +57,7 @@ class ResyncMultiAppRepoLevelFieldsTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -181,6 +182,7 @@ class ResyncMultiAppRepoLevelFieldsTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $storage->createFromStorageRecord($data)->save();
     }
 

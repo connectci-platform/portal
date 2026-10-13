@@ -19,6 +19,11 @@ type_settings:
       weight: 5
       published: false
       default_revision: true
+    declined:
+      label: Declined
+      weight: 8
+      published: false
+      default_revision: true
     draft:
       label: Draft
       weight: -5
@@ -68,6 +73,13 @@ type_settings:
         - ready_for_review
       to: draft
       weight: 0
+    decline:
+      label: Decline
+      from:
+        - ready_for_review
+        - published
+      to: declined
+      weight: 8
     publish:
       label: Publish
       from:
@@ -84,6 +96,12 @@ type_settings:
         - ready_for_review
       to: needs_adjustment
       weight: 6
+    restore_declined:
+      label: 'Restore Declined to Draft'
+      from:
+        - declined
+      to: draft
+      weight: 9
     review_to_review:
       label: 'Review to Review'
       from:

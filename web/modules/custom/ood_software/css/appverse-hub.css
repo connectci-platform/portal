@@ -54,6 +54,24 @@ header:has(> .appverse-hub-add-repo) {
 .appverse-hub-card {
   background: #fff;
   padding: 1rem 0;
+  /* A card action returns to #appverse-repo-N: keep the card clear of the
+     fixed admin toolbar when the browser scrolls to it. */
+  scroll-margin-top: 8rem;
+}
+/* ...and highlight it briefly, so the result of the action (a "Review
+   pending" badge, a new state) is easy to find. */
+.appverse-hub-card:target {
+  animation: appverse-hub-card-flash 2.5s ease-out;
+}
+@keyframes appverse-hub-card-flash {
+  0%, 40% { background: #fff8c5; }
+  100% { background: #fff; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .appverse-hub-card:target {
+    animation: none;
+    background: #fff8c5;
+  }
 }
 /* Separate cards with a horizontal rule rather than boxing each one. The rule
    lives on the Views row that wraps a hub card (the actual repeating boundary,
@@ -142,6 +160,8 @@ header:has(> .appverse-hub-add-repo) {
   background: #f6f8fa;
   color: #57606a;
 }
+/* A badge with an explanatory title: the help cursor says hovering tells more. */
+.badge--hint { cursor: help; }
 .badge-success { background: #dafbe1; color: #1a7f37; }
 .badge-warning { background: #fff8c5; color: #9a6700; }
 .badge-error { background: #ffebe9; color: #cf222e; }
@@ -237,10 +257,15 @@ header:has(> .appverse-hub-add-repo) {
   grid-template-columns:
     minmax(12rem, 1fr)   /* title (the only flexible track) */
     9rem                 /* submitted date */
-    2.5rem               /* github */
+    4.5rem               /* github + re-sync */
     12rem                /* owner (blank on own hub) */
-    9rem                 /* status */
-    11rem;               /* edit pencil + resync + lifecycle actions */
+    9rem                 /* status (badges wrap onto more lines) */
+    12.5rem;             /* actions: one labelled button plus the Actions menu.
+                            The fixed tracks already total more than the card
+                            is wide, so widening this one pushes the actions
+                            past the viewport and gives the page a horizontal
+                            scrollbar. The button labels are kept short enough
+                            to fit instead. */
   align-items: center;
   column-gap: 1.25rem;
   row-gap: 0.5rem;
@@ -257,6 +282,18 @@ header:has(> .appverse-hub-add-repo) {
    single-app cards. */
 .appverse-hub-card__cell--submitted { justify-content: flex-start; }
 .appverse-hub-card__cell--actions { justify-content: flex-end; }
+/* The status and actions tracks are fixed, but their contents are not: up to
+   four badges, and two or three labelled action buttons. Unwrapped, the badges
+   ran right and the right-aligned actions ran left, on top of each other. Let
+   both wrap inside their own track instead. */
+.appverse-hub-card__cell--status,
+.appverse-hub-card__cell--actions {
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+.appverse-hub-card__cell--status .badge {
+  white-space: nowrap;
+}
 .appverse-hub-card__submitted {
   font-size: 0.875rem;
   color: #555;
@@ -306,17 +343,27 @@ header:has(> .appverse-hub-add-repo) {
      otherwise render a stray label with no value. Hide any data cell that has
      no rendered content. :has() is supported on all current mobile engines;
      the desktop grid keeps empty cells for alignment above this breakpoint. */
-  .appverse-hub-card__cell--github:not(:has(a)),
+  .appverse-hub-card__cell--github:not(:has(a, button)),
   .appverse-hub-card__cell--owner:not(:has(a)),
   .appverse-hub-card__cell--actions:not(:has(a, button)) {
     display: none;
   }
 
+  /* The menu's items are the full-width list Bootstrap draws; let it use the
+     stacked card's width rather than hang off the right edge. */
+  .appverse-hub-card__menu { width: 100%; }
+  .appverse-hub-card__menu .dropdown-menu { width: 100%; }
+
   /* Bigger tap targets on touch-sized screens: the 2rem icon buttons are below
-     the ~44px comfortable-touch minimum. */
+     the ~44px comfortable-touch minimum. The labelled buttons are already wide
+     enough, so they only need the height. */
   .appverse-hub-card__icon-btn {
     width: 2.75rem;
     height: 2.75rem;
+  }
+  .appverse-hub-card__action-btn,
+  .appverse-hub-card__menu .dropdown-item {
+    min-height: 2.75rem;
   }
 }
 .appverse-hub-card__owner {
@@ -363,7 +410,88 @@ header:has(> .appverse-hub-add-repo) {
 }
 .appverse-hub-card__icon-btn--primary { color: #0076af; }
 .appverse-hub-card__icon-btn--danger { color: #c91235; }
+/* Same green as .badge-success, so Run AI report matches "Review complete". */
+.appverse-hub-card__icon-btn--success { color: #1a7f37; }
 .appverse-hub-card__action-form { display: inline; margin: 0; }
+
+/* Labelled action buttons. The icons alone did not say what they do, and a
+   tooltip cannot advertise a capability nobody hovers (appverse-planning#55),
+   so the actions a reviewer uses on most rows carry their names. The icon
+   stays as a second cue, not the only one. */
+.appverse-hub-card__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d0d0d0;
+  background: #fff;
+  color: #232323;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+}
+.appverse-hub-card__action-btn:hover {
+  background: #f0f0f0;
+  color: #232323;
+  text-decoration: none;
+}
+.appverse-hub-card__action-btn:focus-visible {
+  outline: 2px solid #0076af;
+  outline-offset: 2px;
+}
+.appverse-hub-card__action-btn--primary { border-color: #0076af; color: #0076af; }
+.appverse-hub-card__action-btn--success { border-color: #1a7f37; color: #1a7f37; }
+
+/* The Actions menu. Bootstrap 4 draws the panel and runs the toggle; these
+   rules only make its items match the buttons beside it and give the one
+   destructive item a colour that sets it apart from the benign ones it used
+   to sit among. */
+.appverse-hub-card__menu .dropdown-menu {
+  font-size: 0.8125rem;
+  min-width: 11rem;
+}
+/* The nect theme hides every Bootstrap dropdown (display none, no height, no
+   opacity) and opens it on hover only, so the menu Bootstrap opened on a
+   click, a tap or the keyboard (marked .show) stayed hidden: it worked only
+   for a mouse. Open it whenever Bootstrap says it is open. */
+.appverse-hub-card__menu .dropdown-menu.show {
+  display: block;
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+}
+/* The theme underlines links in content, which made the menu's link items
+   (Edit, Request changes, Delete) read as underlined while the POST items
+   beside them did not. A menu item is a control, not prose, so none of them
+   underline, in any state. */
+.appverse-hub-card__menu .dropdown-item,
+.appverse-hub-card__menu .dropdown-item:hover,
+.appverse-hub-card__menu .dropdown-item:focus {
+  text-decoration: none;
+}
+.appverse-hub-card__menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+/* The POST actions are each a <form> wrapping their item; without this the
+   form box breaks the menu's list rhythm. */
+.appverse-hub-card__menu-form { margin: 0; }
+.appverse-hub-card__menu-item--danger { color: #c91235; }
+.appverse-hub-card__menu-item--danger:hover,
+.appverse-hub-card__menu-item--danger:focus {
+  background: #c91235;
+  color: #fff;
+}
 
 /* Draft/archived badge. */
 .badge-muted { background: #e9e9e9; color: #555; }
@@ -394,6 +522,22 @@ header:has(> .appverse-hub-add-repo) {
    ----------------------------------------------------------------------------- */
 
 /* Discovery-tag row: full-width, wraps freely below the header grid. */
+/* The review progress line (appverse-planning#31); its own styles are in
+   appverse-progress.css. */
+.appverse-hub-card__progress {
+  margin: 0.5rem 0 0.25rem;
+  max-width: 44rem;
+}
+.appverse-hub-card__assignee {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #545860;
+}
+.appverse-hub-card__progress-sentence {
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+}
+
 .appverse-hub-card__tags {
   display: flex;
   flex-wrap: wrap;
