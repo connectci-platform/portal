@@ -12,6 +12,20 @@ logos:
   openondemand_cyberinfrastructure_org: /themes/nect-theme/img/ood-logo.png
   pasciencedmz_connectci_org: /themes/nect-theme/img/pascience-logo.png
   usrse_cyberinfrastructure_org: /themes/nect-theme/img/usrse-logo.png
+share_images:
+  amp_cyberinfrastructure_org: /themes/contrib/asp-theme/images/logos/access_support-logo-share.png
+  campuschampions_cyberinfrastructure_org: /themes/contrib/campus-champions-theme/img/logos/campus-champions-full-logo-share.png
+  careersct_cyberinfrastucture_org: ''
+  ccmnet_org: ''
+  coco_cyberinfrastructure_org: ''
+  connectcidev_wpi_edu: ''
+  greatplains_wpi_edu: ''
+  kycyberteam_cyberinfrastructure_org: ''
+  mines_cyberinfrastructure_org: ''
+  nectd8_wpi_edu: ''
+  openondemand_cyberinfrastructure_org: ''
+  pasciencedmz_connectci_org: ''
+  usrse_cyberinfrastructure_org: ''
 descriptions:
   amp_cyberinfrastructure_org: 'ACCESS Support helps researchers and educators get started with and use advanced computing resources funded by the NSF.'
   campuschampions_cyberinfrastructure_org: 'Campus Champions connects research computing facilitators across the nation to share knowledge and best practices.'
