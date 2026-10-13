@@ -188,7 +188,7 @@ class RepoSyncService {
     // via the same exact-match + suggestion resolver used for implementation
     // tags (retires the old LIKE matcher, which treated %/_ in a declared tag
     // as SQL wildcards and could match the wrong term). No auto-create — the
-    // `tags` vocab is portal-wide and not AppVerse's to grow.
+    // `tags` vocab is portal-wide and not Appverse's to grow.
     $declaredDiscoveryTags = $parsed['tags'] ?? NULL;
     $discoveryInfo = $this->githubService->resolveTaxonomyTermsFromAppverseYml(
       'tags',

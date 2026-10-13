@@ -1,0 +1,19 @@
+uuid: c96acc91-3320-4737-a0d9-e7ad011234bb
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_catalog
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_catalog
+field_name: field_arv_catalog
+entity_type: node
+bundle: appverse_review
+label: 'Catalog read'
+description: 'Where the review read the catalog and how much (artifact repo_level.catalog, schema 1.5), as JSON. Empty on reviews from an older tool.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

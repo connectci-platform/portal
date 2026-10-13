@@ -1,0 +1,23 @@
+uuid: ae3be7b3-30f7-4f18-bd09-36a72137d75c
+langcode: en
+status: true
+dependencies:
+  module:
+    - file
+    - node
+id: node.field_arv_report_pdf
+field_name: field_arv_report_pdf
+entity_type: node
+type: file
+settings:
+  target_type: file
+  display_field: false
+  display_default: false
+  uri_scheme: private
+module: file
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

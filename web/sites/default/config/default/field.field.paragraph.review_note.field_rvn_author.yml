@@ -1,0 +1,27 @@
+uuid: e2feadc7-b10f-42c5-af1a-997e6b23d081
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvn_author
+    - paragraphs.paragraphs_type.review_note
+id: paragraph.review_note.field_rvn_author
+field_name: field_rvn_author
+entity_type: paragraph
+bundle: review_note
+label: Author
+description: 'Who wrote this note. Auto-stamping on save is planned (code); until then set it when adding a note.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:user'
+  handler_settings:
+    auto_create: false
+    filter:
+      type: role
+      role:
+        appverse_pm: appverse_pm
+        administrator: administrator
+field_type: entity_reference

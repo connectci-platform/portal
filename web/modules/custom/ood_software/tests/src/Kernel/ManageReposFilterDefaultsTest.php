@@ -41,7 +41,7 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
   protected static $modules = [
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias',
-    'content_moderation', 'workflows', 'key', 'flag', 'views', 'ood_software',
+    'content_moderation', 'workflows', 'key', 'flag', 'views', 'file', 'ood_software',
   ];
 
   /**

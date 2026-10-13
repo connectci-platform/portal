@@ -1,0 +1,30 @@
+uuid: a86ea98e-6a45-495e-af5a-c489b30f28fa
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_repo_findings
+    - node.type.appverse_review
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - entity_reference_revisions
+id: node.appverse_review.field_arv_repo_findings
+field_name: field_arv_repo_findings
+entity_type: node
+bundle: appverse_review
+label: 'Repo-level findings'
+description: 'Maintenance findings that apply to the repo as a whole, not to a specific app.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      review_finding: review_finding
+    target_bundles_drag_drop:
+      review_finding:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

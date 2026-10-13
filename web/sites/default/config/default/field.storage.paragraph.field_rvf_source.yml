@@ -1,0 +1,27 @@
+uuid: 9719bb33-e528-4849-a2e2-cc5281c09875
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvf_source
+field_name: field_rvf_source
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: ai
+      label: 'Automated review'
+    -
+      value: reviewer
+      label: Reviewer
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

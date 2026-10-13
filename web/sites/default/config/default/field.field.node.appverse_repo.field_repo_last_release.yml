@@ -1,0 +1,19 @@
+uuid: fd2cfad1-8d4f-442b-8a11-f8b087d7abc8
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_repo_last_release
+    - node.type.appverse_repo
+id: node.appverse_repo.field_repo_last_release
+field_name: field_repo_last_release
+entity_type: node
+bundle: appverse_repo
+label: 'Last release seen'
+description: 'The tag of the latest GitHub release the daily release check saw; a newer one starts a review. "-" means checked, no release.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

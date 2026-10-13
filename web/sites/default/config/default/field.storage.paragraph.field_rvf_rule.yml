@@ -1,0 +1,21 @@
+uuid: 30055fe4-142c-4ac3-8ab3-38131f2f29e6
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvf_rule
+field_name: field_rvf_rule
+entity_type: paragraph
+type: string
+settings:
+  max_length: 16
+  case_sensitive: true
+  is_ascii: true
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

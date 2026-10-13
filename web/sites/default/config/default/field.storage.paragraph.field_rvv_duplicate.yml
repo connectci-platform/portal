@@ -1,0 +1,30 @@
+uuid: 46c81d32-218c-44a3-9968-bcafb2e5e5c1
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rvv_duplicate
+field_name: field_rvv_duplicate
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: none
+      label: 'No other app for this software'
+    -
+      value: distinct
+      label: 'Same software, a meaningfully different approach'
+    -
+      value: duplicate
+      label: 'Duplicate of an existing app'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

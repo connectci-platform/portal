@@ -10,6 +10,7 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * @coversDefaultClass \Drupal\ood_software\Service\RepoSyncService
@@ -39,7 +40,7 @@ class SyncInferredMemberAppTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -123,6 +124,7 @@ class SyncInferredMemberAppTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -179,7 +181,7 @@ class SyncInferredMemberAppTest extends KernelTestBase {
 
     self::assertSame(7, (int) $app->get('field_appverse_stars')->value);
     // Body uses markdown format (matches AppverseAppUpdater + declared sync).
-    self::assertSame('markdown', $app->get('body')->format);
+    self::assertSame('markdown', $app->get('body')->first()?->get('format')->getValue());
     // New inferred member apps start in draft.
     self::assertSame('draft', $app->get('moderation_state')->value);
   }
@@ -249,6 +251,7 @@ class SyncInferredMemberAppTest extends KernelTestBase {
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

@@ -1,0 +1,20 @@
+uuid: 9609674f-10ab-4f0c-aee1-adeee24bc47d
+langcode: en
+status: true
+dependencies:
+  module:
+    - entity_reference_revisions
+    - node
+id: node.field_arv_verdicts
+field_name: field_arv_verdicts
+entity_type: node
+type: entity_reference_revisions
+settings:
+  target_type: paragraph
+module: entity_reference_revisions
+locked: false
+cardinality: -1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

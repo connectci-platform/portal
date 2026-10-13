@@ -92,6 +92,75 @@ ood_software.app_send_for_review:
 
 # --- Admin-only transitions ---
 
+ood_software.review_page:
+  path: '/appverse/review/{node}'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewPageForm'
+    _title_callback: '\Drupal\ood_software\Form\ReviewPageForm::title'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _entity_access: 'node.view'
+    node: \d+
+
+ood_software.repo_withdraw:
+  path: '/appverse/repo/{node}/withdraw'
+  defaults:
+    _form: '\Drupal\ood_software\Form\WithdrawConfirmForm'
+    _title: 'Withdraw from review'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+
+ood_software.repo_assign_me:
+  path: '/appverse/repo/{node}/assign-me'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::assignMe'
+    _title: 'Assign to me'
+  methods: [POST]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.repo_run_review:
+  path: '/appverse/repo/{node}/run-review'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::runReview'
+    _title: 'Run AI report'
+  methods: [POST]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.repo_re_review:
+  path: '/appverse/repo/{node}/re-review'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::reReview'
+    _title: 'Re-review Repo'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
 ood_software.repo_request_changes:
   path: '/appverse/repo/{node}/request-changes'
   defaults:
@@ -102,7 +171,7 @@ ood_software.repo_request_changes:
       node:
         type: entity:node
   requirements:
-    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminWithoutReviewAccess'
 
 ood_software.create_implementation_tag:
   path: '/appverse/app/{node}/create-implementation-tag'
@@ -125,7 +194,7 @@ ood_software.repo_publish:
       node:
         type: entity:node
   requirements:
-    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminWithoutReviewAccess'
     _csrf_token: 'TRUE'
     _method: POST
 
@@ -161,3 +230,71 @@ ood_software.add_repo:
     _title: 'Add an Appverse repo'
   requirements:
     _permission: 'submit appverse repo'
+
+# Confirmation pages for the hub's Publish / Unpublish icons (the icons link
+# here instead of POSTing). Each carries the access check of the action it
+# confirms; confirming runs that action's controller method.
+ood_software.repo_publish_confirm:
+  path: '/appverse/repo/{node}/publish/confirm'
+  defaults:
+    _form: '\Drupal\ood_software\Form\HubPublishConfirmForm'
+    _title: 'Publish'
+    op: publish
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminWithoutReviewAccess'
+ood_software.repo_unpublish_confirm:
+  path: '/appverse/repo/{node}/unpublish/confirm'
+  defaults:
+    _form: '\Drupal\ood_software\Form\HubPublishConfirmForm'
+    _title: 'Unpublish'
+    op: unpublish
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+ood_software.app_toggle_publish_confirm:
+  path: '/appverse/app/{node}/unpublish/confirm'
+  defaults:
+    _form: '\Drupal\ood_software\Form\HubPublishConfirmForm'
+    _title: 'Publish or unpublish app'
+    op: toggle_app
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::ownerOrAdminAccess'
+
+# The decision on the review page (appverse-planning#29): send it (it moves
+# the repo and the review together), and, after an Accept with suggestions,
+# publish the repo and the review. Reviewers only.
+ood_software.review_decision:
+  path: '/appverse/review/{node}/decision'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewDecisionConfirmForm'
+    _title: 'Send decision'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _permission: 'administer appverse content'
+    node: \d+
+ood_software.review_publish:
+  path: '/appverse/review/{node}/publish'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewPublishConfirmForm'
+    _title: 'Publish app and review'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _permission: 'administer appverse content'
+    node: \d+

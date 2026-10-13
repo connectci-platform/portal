@@ -12,12 +12,15 @@ use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Serialization\Yaml;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\DecisionEmail;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
@@ -51,6 +54,23 @@ function ood_software_theme(): array {
       'variables' => ['hub' => []],
       'template' => 'appverse-hub',
     ],
+    // The review page (planning #14): a form whose render array is the whole
+    // page, so the template gets the form elements and the shaped data.
+    'appverse_review_form' => [
+      'render element' => 'form',
+      'template' => 'appverse-review-form',
+    ],
+    // The same form rendered for visitors: the public summary of a review.
+    'appverse_review_summary' => [
+      'render element' => 'form',
+      'template' => 'appverse-review-summary',
+    ],
+    // A repo's review progress line (appverse-planning#31), on the hub card
+    // and the review page header.
+    'appverse_progress' => [
+      'variables' => ['steps' => [], 'variant' => 'steps', 'labels' => FALSE],
+      'template' => 'appverse-progress',
+    ],
     // Module-registered suggestion for the my_appverse fields row. Modules do
     // not get views-view-fields--<id> filename autodiscovery the way themes do,
     // so the suggestion must be declared with its base hook to be picked up.
@@ -83,22 +103,109 @@ function ood_software_entity_bundle_field_info(EntityTypeInterface $entity_type,
 }
 
 /**
+ * The workflow ids that apply to the node bundles a view filters to.
+ *
+ * Reads the view's own "type" filter, so a view of appverse content gets the
+ * appverse workflows and nothing else. Empty when the view does not filter by
+ * bundle, in which case the caller leaves the options alone.
+ *
+ * @return array<string, true>
+ *   Workflow ids as keys.
+ */
+function _ood_software_view_workflows(\Drupal\views\ViewExecutable $view): array {
+  $bundles = [];
+  foreach ($view->filter as $filter) {
+    if ($filter->getPluginId() === 'bundle' || $filter->realField === 'type') {
+      foreach ((array) ($filter->value ?? []) as $bundle) {
+        $bundles[(string) $bundle] = TRUE;
+      }
+    }
+  }
+  if ($bundles === []) {
+    return [];
+  }
+  $workflows = [];
+  foreach (\Drupal::entityTypeManager()->getStorage('workflow')->loadMultiple() as $workflow) {
+    $plugin = $workflow->getTypePlugin();
+    if (!$plugin instanceof \Drupal\content_moderation\Plugin\WorkflowType\ContentModeration) {
+      continue;
+    }
+    foreach ($plugin->getBundlesForEntityType('node') as $bundle) {
+      if (isset($bundles[$bundle])) {
+        $workflows[$workflow->id()] = TRUE;
+        break;
+      }
+    }
+  }
+  return $workflows;
+}
+
+/**
  * Implements hook_form_alter().
  *
  * @param array<string, mixed> $form
  */
 function ood_software_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
-  // Exposed date filters render as plain textfields with no format hint.
-  // Upgrade their value/min/max inputs to HTML5 date pickers so the expected
-  // YYYY-MM-DD shape is obvious. Applies to any view's exposed 'date' filter,
-  // not just this module's.
+  // Two fixes to exposed filters, for any view rather than just this module's.
+  // Date filters render as plain textfields with no format hint, so their
+  // value/min/max inputs become HTML5 date pickers; and the user_name filter
+  // drops core's description (see below).
   if (str_starts_with($form_id, 'views_exposed_form')) {
     $view = $form_state->getStorage()['view'] ?? NULL;
     if ($view instanceof \Drupal\views\ViewExecutable) {
+      // The user_name filter carries core's own "Enter a comma separated list
+      // of user names", which describes a storage format rather than telling
+      // you what to do, and the extra line puts the field ~24px taller than
+      // the selects beside it, breaking the row's alignment. The field is an
+      // entity autocomplete that suggests names as you type, so it explains
+      // itself (appverse-planning#60). Removed rather than visually hidden:
+      // hidden text is still announced, and this text is not worth hearing.
       foreach ($view->filter as $filter) {
-        if (empty($filter->options['exposed'])
-          || $filter->getPluginId() !== 'date'
-          || empty($filter->options['expose']['identifier'])) {
+        if (empty($filter->options['exposed']) || empty($filter->options['expose']['identifier'])) {
+          continue;
+        }
+        if ($filter->getPluginId() === 'user_name' && isset($form[$filter->options['expose']['identifier']])) {
+          unset($form[$filter->options['expose']['identifier']]['#description']);
+        }
+        // The moderation-state widget lists every state of every workflow on
+        // the site, so an appverse view offered 20 options of which 14 could
+        // never match, with the same labels repeating ("Draft" four times).
+        // Keep only the states of the workflows the view's own bundles use.
+        // Done here rather than with the filter's "reduce" option, because
+        // that reduces to the filter's value, which is also the default
+        // selection: this display defaults to the review queue
+        // (ready_for_review + needs_adjustment) and must keep doing so
+        // (appverse-planning#60).
+        if ($filter->getPluginId() === 'moderation_state_filter'
+          && isset($form[$filter->options['expose']['identifier']]['#options'])) {
+          $key = $filter->options['expose']['identifier'];
+          $workflows = _ood_software_view_workflows($view);
+          if ($workflows !== []) {
+            // Options come grouped by workflow LABEL, which renaming a
+            // workflow would change, so match on each option's own key
+            // instead: it is "<workflow id>-<state id>". A group left with
+            // nothing in it goes too.
+            $kept = [];
+            foreach ($form[$key]['#options'] as $group => $states) {
+              if (!is_array($states)) {
+                $states = [$group => $states];
+              }
+              $states = array_filter(
+                $states,
+                static function (string $state) use ($workflows): bool {
+                  $workflow = strstr($state, '-', TRUE);
+                  return $workflow !== FALSE && isset($workflows[$workflow]);
+                },
+                ARRAY_FILTER_USE_KEY
+              );
+              if ($states !== []) {
+                $kept[$group] = $states;
+              }
+            }
+            $form[$key]['#options'] = $kept;
+          }
+        }
+        if ($filter->getPluginId() !== 'date') {
           continue;
         }
         $key = $filter->options['expose']['identifier'];
@@ -280,7 +387,7 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
         $ts = (int) $node->get('field_appverse_lastupdated')->value;
         if ($ts > 0) {
           $form['field_appverse_lastupdated']['widget'][0]['value']['#field_suffix'] =
-            ' (' . \Drupal::service('date.formatter')->format($ts, 'medium') . ')';
+            ' (' . \Drupal::service('date.formatter')->format($ts, 'custom', 'M j, Y g:i A') . ')';
         }
       }
     }
@@ -341,7 +448,84 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
     }
   }
 
+  if ($form_id === 'node_appverse_repo_edit_form') {
+    // A submitted repo goes back to draft through the hub's Withdraw, which
+    // refuses once a decision is sent. The edit form's state widget would
+    // skip that check (appverse-planning#41), so contributors lose the option
+    // while their repo awaits review. Reviewers keep it.
+    $form_object = $form_state->getFormObject();
+    $node = $form_object instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_object->getEntity() : NULL;
+    $user_roles = \Drupal::currentUser()->getRoles();
+    if ($node instanceof NodeInterface
+      && ($node->get('moderation_state')->value ?? '') === 'ready_for_review'
+      && !in_array('administrator', $user_roles, TRUE) && !in_array('appverse_pm', $user_roles, TRUE)) {
+      unset($form['moderation_state']['widget'][0]['state']['#options']['draft']);
+    }
+  }
+
 }
+/**
+ * Whether a repo is decided on its review page rather than from the hub.
+ *
+ * True once it has a review, or has had an AI run even when the run failed
+ * and seeded no review: a failed AI report is rerun, never decided by hand
+ * (appverse-planning#34). The hub's Publish and Request changes would be a
+ * second, unrecorded place to act, so the hub hides them and their routes
+ * refuse (#50). Repos without a review (legacy, or before a run) keep them.
+ */
+function _ood_software_repo_has_review(NodeInterface $repo): bool {
+  return (bool) \Drupal::entityQuery('node')
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('field_arv_repo', $repo->id())
+    ->range(0, 1)
+    ->count()
+    ->execute()
+    || ($repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty());
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_form.
+ *
+ * A reviewer can stop the submitted, resubmitted and update emails sent to
+ * every reviewer (appverse-planning#47). Emails about their own work, such
+ * as an assignment or their run's report, still go.
+ *
+ * @param array<string, mixed> $form
+ */
+function ood_software_form_user_form_alter(array &$form, FormStateInterface $form_state): void {
+  $account = $form_state->getFormObject() instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_state->getFormObject()->getEntity() : NULL;
+  if (!$account instanceof \Drupal\user\UserInterface || $account->isNew() || !$account->hasPermission('administer appverse content')) {
+    return;
+  }
+  $notifier = \Drupal::service('ood_software.repo_notifier');
+  $form['ood_software_review_emails'] = [
+    '#type' => 'details',
+    '#title' => t('Appverse review emails'),
+    '#open' => TRUE,
+    '#weight' => 5,
+    'ood_software_submitted_emails' => [
+      '#type' => 'checkbox',
+      '#title' => t('Email me when a repo is submitted, resubmitted or updated for review'),
+      '#description' => t('Emails about your own reviews, such as being assigned one or your AI report being ready, are sent either way.'),
+      '#default_value' => !$notifier->optedOut($account),
+    ],
+  ];
+  $form['actions']['submit']['#submit'][] = '_ood_software_user_form_review_emails_submit';
+}
+
+/**
+ * Saves a reviewer's choice about the submitted-for-review emails.
+ *
+ * @param array<string, mixed> $form
+ */
+function _ood_software_user_form_review_emails_submit(array &$form, FormStateInterface $form_state): void {
+  $account = $form_state->getFormObject() instanceof \Drupal\Core\Entity\EntityFormInterface ? $form_state->getFormObject()->getEntity() : NULL;
+  if ($account instanceof \Drupal\user\UserInterface && $form_state->hasValue('ood_software_submitted_emails')) {
+    \Drupal::service('ood_software.repo_notifier')->setOptedOut($account, !$form_state->getValue('ood_software_submitted_emails'));
+  }
+}
+
 /**
  * Build the preview block for a declared repo.
  *
@@ -1007,6 +1191,33 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
 }
 
 /**
+ * Implements hook_entity_field_access().
+ *
+ * A repo awaiting review keeps its moderation state until a reviewer moves
+ * it: a contributor cannot change it while it is ready_for_review, from the
+ * edit form or a JSON:API PATCH (appverse-planning#41). The edit form's own
+ * alter drops Draft from the widget, but JSON:API is writable on this site
+ * and checks field access, not the form. The hub's Withdraw sets the state in
+ * code, so this does not stop it.
+ *
+ * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface>|null $items
+ *   The field values, when access is checked on an entity.
+ */
+function ood_software_entity_field_access(string $operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL): AccessResultInterface {
+  if ($operation !== 'edit' || $field_definition->getName() !== 'moderation_state' || $items === NULL) {
+    return AccessResult::neutral();
+  }
+  $entity = $items->getEntity();
+  if (!$entity instanceof NodeInterface || $entity->bundle() !== 'appverse_repo') {
+    return AccessResult::neutral();
+  }
+  $awaitingReview = ($entity->get('moderation_state')->value ?? '') === 'ready_for_review';
+  return AccessResult::forbiddenIf($awaitingReview && !$account->hasPermission('administer appverse content'))
+    ->addCacheableDependency($entity)
+    ->cachePerPermissions();
+}
+
+/**
  * Implements hook_node_access().
  *
  * Lets the Appverse PM role view unpublished appverse_app nodes (Ready for
@@ -1022,16 +1233,61 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
  * of this hook on that branch keys off that permission and supersedes this one.
  */
 function ood_software_node_access(NodeInterface $node, string $operation, AccountInterface $account): AccessResultInterface {
-  if ($operation !== 'view' || $node->bundle() !== 'appverse_app') {
+  // Reviewers (appverse_pm) see unpublished Appverse content only: apps,
+  // repos and reviews. This replaces the site-wide "view any unpublished
+  // content" the role used to carry (appverse-planning#36).
+  if ($operation !== 'view' || !in_array($node->bundle(), ['appverse_app', 'appverse_repo', 'appverse_review'], TRUE)) {
     return AccessResult::neutral();
   }
 
   $access = AccessResult::neutral()
     ->addCacheableDependency($node)
+    ->addCacheContexts(['user.roles'])
     ->cachePerPermissions();
 
-  if (!$node->isPublished() && in_array('appverse_pm', $account->getRoles(), TRUE)) {
+  if ($node->isPublished()) {
+    // A published review is public only while its repo is published too
+    // (appverse-planning#43, REVIEW-STATES.md "Who can read the review").
+    // A live repo sent back for changes, unpublished or archived would
+    // otherwise keep its old review on show. Reviewers and the repo's owner
+    // still read it, and it is public again once the repo is.
+    if ($node->bundle() === 'appverse_review') {
+      $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
+      if ($repo instanceof NodeInterface) {
+        $access->addCacheableDependency($repo);
+      }
+      // A review whose repo was deleted, or never set, has no listing to be
+      // public with, so it is treated like one whose repo is unpublished.
+      if (!$repo instanceof NodeInterface || !$repo->isPublished()) {
+        if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
+          return $access->orIf(AccessResult::allowed());
+        }
+        $access->addCacheContexts(['user']);
+        if ($repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+          return $access->orIf(AccessResult::allowed());
+        }
+        return $access->orIf(AccessResult::forbidden('A review is public only while its repo is published.'));
+      }
+    }
+    return $access;
+  }
+  if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
     return $access->orIf(AccessResult::allowed());
+  }
+  // An unpublished review: reviewers (above), and the repo's owner once a
+  // decision has been sent (decision_sent_at; appverse-planning#28,
+  // REVIEW-STATES.md "Who can read the review"). Everyone else is forbidden,
+  // not neutral: the review's author may be the contributor (a review is
+  // authored by whoever started the run, send-for-review included) and every
+  // user holds "view own unpublished content", which would otherwise let them
+  // read it before any decision is sent.
+  if ($node->bundle() === 'appverse_review') {
+    $sent = $node->hasField('field_arv_decision_sent_at') && !$node->get('field_arv_decision_sent_at')->isEmpty();
+    $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
+    if ($sent && $repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+      return $access->addCacheContexts(['user'])->addCacheableDependency($repo)->orIf(AccessResult::allowed());
+    }
+    return $access->addCacheContexts(['user'])->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers, and to the contributor once a decision is sent.'));
   }
 
   return $access;
@@ -1083,6 +1339,13 @@ function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
     return;
   }
   if ($node->bundle() !== 'appverse_app' || !$node->hasField('moderation_state')) {
+    return;
+  }
+  // A save the review's decision code makes (moving an app through
+  // ready_for_review on its way to its new state) is not a contributor
+  // submitting: re-submitting the repo would email every reviewer and start
+  // an AI run (appverse-planning#56).
+  if (!empty($node->_ood_software_suppress_notifications)) {
     return;
   }
   if ($node->get('moderation_state')->value !== 'ready_for_review') {
@@ -1153,6 +1416,10 @@ function ood_software_node_update(NodeInterface $node): void {
     }
     \Drupal::service('ood_software.repo_notifier')
       ->notifyTransition($node, $previousState, $extras);
+
+    // Dispatch AI review when entering ready_for_review.
+    \Drupal::service('ood_software.review_dispatcher')
+      ->onTransition($node, $previousState);
   }
 }
 
@@ -1177,7 +1444,9 @@ function ood_software_node_delete(NodeInterface $node): void {
  * published status, so per-app edits and publish/unpublish change its output.
  */
 function _ood_software_mark_appverse_cache_dirty(NodeInterface $node): void {
-  if (in_array($node->bundle(), ['appverse_software', 'appverse_app', 'appverse_repo'], TRUE)) {
+  // appverse_review: a publish or unpublish changes the per-app review data
+  // the cache carries (only Published reviews are read).
+  if (in_array($node->bundle(), ['appverse_software', 'appverse_app', 'appverse_repo', 'appverse_review'], TRUE)) {
     \Drupal::service('ood_software.appverse_cache')->markDirty();
   }
 }
@@ -1267,6 +1536,66 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [':url' => $admin_queue]);
       break;
 
+    // The reviewers' emails from the canvas (appverse-planning#47).
+    case 'resubmitted':
+      $message['subject'] = t('[@site] Repo resubmitted for review: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = !empty($params['assignee'])
+        ? t('<p>@owner resubmitted "@title" for review on @site. @assignee is the assigned reviewer.</p>', [
+          '@owner' => $node->getOwner()->getDisplayName(),
+          '@title' => $title,
+          '@site' => $site_name,
+          '@assignee' => $params['assignee'],
+        ])
+        : t('<p>@owner resubmitted "@title" for review on @site.</p>', [
+          '@owner' => $node->getOwner()->getDisplayName(),
+          '@title' => $title,
+          '@site' => $site_name,
+        ]);
+      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [':url' => _ood_software_review_url($node)]);
+      break;
+
+    case 'review_run_ready':
+      $message['subject'] = t('[@site] AI report ready: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The AI report for "@title" is ready to check.</p>', ['@title' => $title]);
+      $review = $params['review'] ?? NULL;
+      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [
+        ':url' => $review instanceof NodeInterface
+          ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $review->id()], ['absolute' => TRUE])->toString()
+          : _ood_software_review_url($node),
+      ]);
+      break;
+
+    case 'review_run_failed':
+      $message['subject'] = t('[@site] AI report failed: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The AI report for "@title" failed: @reason.</p>', ['@title' => $title, '@reason' => (string) ($params['reason'] ?? '')]);
+      $message['body'][] = t('<p>Fix the cause, then use Rerun AI report on the repo. There is no review by hand.</p>');
+      if (!empty($params['run_id'])) {
+        $message['body'][] = t('<p>The run log: <a href=":url">:url</a></p>', [
+          ':url' => sprintf('https://github.com/%s/actions/runs/%d', \Drupal\ood_software\Service\AppverseReviewService::REVIEW_REPO, (int) $params['run_id']),
+        ]);
+      }
+      $message['body'][] = t('<p>The repo in the review queue: <a href=":url">:url</a></p>', [
+        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString(),
+      ]);
+      break;
+
+    case 'review_assigned':
+      $message['subject'] = t('[@site] You are assigned to review: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>You are assigned to review "@title".</p>', ['@title' => $title]);
+      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [':url' => _ood_software_review_url($node)]);
+      break;
+
+    case 'review_update':
+      $message['subject'] = t('[@site] Update submitted for review: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>A new version of "@title" (@tag) is being reviewed. The current version stays live.</p>', [
+        '@title' => $title,
+        '@tag' => (string) ($params['tag'] ?? ''),
+      ]);
+      $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [
+        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString(),
+      ]);
+      break;
+
     case 'needs_adjustment':
       // Reviewer comment reaches us via two paths:
       //   1. $params['comment'] — primary, set by
@@ -1329,7 +1658,35 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       ]);
       $message['body'][] = t('<p>View it in the catalog: <a href=":url">:url</a></p>', [':url' => $catalog_link]);
       break;
+
+    // The review page's decision email and the "now live" email after its
+    // Publish (appverse-planning#32), composed by DecisionEmail.
+    case 'review_decision':
+    case 'review_published':
+      $rendered = DecisionEmail::render($params['email'] ?? [], $message['langcode']);
+      $message['subject'] = $rendered['subject'];
+      $message['body'] = array_merge($message['body'], $rendered['body']);
+      break;
   }
+}
+
+/**
+ * The review page for a repo: its newest review, or the queue before one.
+ *
+ * /appverse/review/{repo id} goes to the repo's newest review, and is a 404
+ * while it has none.
+ */
+function _ood_software_review_url(NodeInterface $repo): string {
+  $hasReview = isset(\Drupal::service('entity_field.manager')->getFieldMap()['node']['field_arv_repo'])
+    && (bool) \Drupal::entityQuery('node')
+    ->accessCheck(FALSE)
+    ->condition('type', 'appverse_review')
+    ->condition('field_arv_repo', $repo->id())
+    ->count()
+    ->execute();
+  return $hasReview
+    ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $repo->id()], ['absolute' => TRUE])->toString()
+    : \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString();
 }
 
 /**
@@ -1738,6 +2095,17 @@ function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
   if ($ownerAccount) {
     $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $ownerAccount->getCacheTags());
   }
+  // The card prints the assigned reviewer's name (appverse-planning#33), so
+  // renaming that account has to invalidate the card; without this tag the
+  // old name stayed on it (appverse-planning#49).
+  $assignee = \Drupal::service('ood_software.review_assignment')->assignee($repo);
+  // AccountInterface alone does not carry cache tags; the loaded user entity
+  // does, and that is what the field returns.
+  if ($assignee instanceof \Drupal\Core\Entity\EntityInterface) {
+    $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, $assignee->getCacheTags());
+  }
+  // The progress line reads the repo's reviews (a new one, a sent decision).
+  $tags = \Drupal\Core\Cache\Cache::mergeTags($tags, ['node_list:appverse_review']);
   return ['tags' => $tags, 'contexts' => ['user.permissions', 'user']];
 }
 
@@ -1749,16 +2117,81 @@ function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
  * @return array<string, mixed>
  */
 function _ood_software_hub_badge(string $state): array {
-  // Literal t() calls so the labels are extractable for translation.
+  // Literal t() calls so the labels are extractable for translation. The
+  // description is the badge's tooltip: these are the editorial (human)
+  // states, distinct from the automated review run's badge.
   $map = [
-    'published' => ['label' => t('Published'), 'modifier' => 'success'],
-    'ready_for_review' => ['label' => t('Awaiting review'), 'modifier' => 'warning'],
-    'needs_adjustment' => ['label' => t('Needs changes'), 'modifier' => 'error'],
-    'draft' => ['label' => t('Draft'), 'modifier' => 'muted'],
-    'archived' => ['label' => t('Archived'), 'modifier' => 'muted'],
+    'published' => ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public Appverse catalog.')],
+    'ready_for_review' => ['label' => t('Awaiting review'), 'modifier' => 'warning', 'description' => t('Submitted by the contributor and waiting for a reviewer to look at it.')],
+    'needs_adjustment' => ['label' => t('Needs changes'), 'modifier' => 'error', 'description' => t('A reviewer asked for changes. It returns to the queue when the contributor re-submits.')],
+    'draft' => ['label' => t('Draft'), 'modifier' => 'muted', 'description' => t('Not submitted yet. The contributor can still edit it; it is not in the review queue.')],
+    'archived' => ['label' => t('Archived'), 'modifier' => 'muted', 'description' => t('Withdrawn; not shown in the catalog.')],
   ];
   // Unknown state: pass the raw id through dynamically (genuinely variable).
-  return $map[$state] ?? ['label' => t('@l', ['@l' => ucfirst($state)]), 'modifier' => 'muted'];
+  return $map[$state] ?? ['label' => t('@l', ['@l' => ucfirst($state)]), 'modifier' => 'muted', 'description' => ''];
+}
+
+/**
+ * Builds the review info block for a hub card.
+ *
+ * @return array<string, mixed>
+ *   The hub card's review info.
+ */
+function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array {
+  $reviewStatus = $repo->hasField('field_review_status') && !$repo->get('field_review_status')->isEmpty()
+    ? $repo->get('field_review_status')->value
+    : NULL;
+
+  $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
+  // Run AI report: on every repo an admin can see, whatever its moderation
+  // state, except while a run is already pending or in progress (the
+  // progress line's AI report step says so). The action does not move the
+  // app's editorial state.
+  //
+  // "Start review" read as starting the human review, which is the next step
+  // along and a different thing. The model produces a report; the reviewer
+  // reviews (appverse-planning#49).
+  $runReviewAction = NULL;
+  $runReviewActionMenu = NULL;
+  if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
+    // "Rerun report", not "Rerun AI report": the pair with the Actions toggle
+    // beside it has to fit a 12.5rem column, and the longer wording wrapped
+    // that card onto a second row. "Run AI report" (no prior run) is short
+    // enough to keep the AI, and a rerun is of the report just named.
+    $label = $reviewStatus === NULL ? t('Run AI report') : t('Rerun report');
+    if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
+      $label = t('@label (dry-run on this environment)', ['@label' => $label]);
+    }
+    $runReviewAction = _ood_software_hub_action_form(
+      'appverse/repo/' . $repo->id() . '/run-review',
+      (string) $label,
+      'bi-play-circle-fill',
+      'success'
+    );
+    // The same action as a menu item. Which of the two the card renders
+    // depends on whether a review already exists to open, and the template
+    // cannot rebuild a render array, so both are offered here.
+    $runReviewActionMenu = _ood_software_hub_action_form(
+      'appverse/repo/' . $repo->id() . '/run-review',
+      (string) $label,
+      'bi-play-circle-fill',
+      'success',
+      TRUE
+    );
+  }
+
+  // The newest review node for this repo, if the viewer may see it.
+  $reviewUrl = NULL;
+  $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($repo);
+  if ($latest !== NULL) {
+    $reviewUrl = \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $latest->id()])->toString();
+  }
+
+  return [
+    'review_url' => $reviewUrl,
+    'run_review_action' => $runReviewAction,
+    'run_review_action_menu' => $runReviewActionMenu,
+  ];
 }
 
 /**
@@ -1803,18 +2236,70 @@ function _ood_software_hub_member_apps(\Drupal\node\NodeInterface $repo): array 
  *   Bootstrap-icon class, e.g. 'bi-arrow-clockwise'.
  * @param string $variant
  *   Optional modifier class suffix for styling (e.g. 'primary', 'danger').
+ * @param bool $inMenu
+ *   TRUE to render as a named item inside the card's Actions dropdown instead
+ *   of an inline button. The caller decides, because the same action is inline
+ *   on one card and in the menu on another.
  *
  * @return array<string, mixed>
  */
-function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = ''): array {
-  $token = \Drupal::service('csrf_token')->get($internalPath);
+function _ood_software_hub_confirm_link(string $internalPath, string $label, string $icon, string $variant = '', bool $inMenu = FALSE): array {
+  // Same look as an action form's button, but a link to a confirmation
+  // page (HubPublishConfirmForm): used for actions too consequential for one
+  // click, such as Publish and Unpublish. ?destination brings the reviewer
+  // back to the same list, filters intact.
   $dest = \Drupal::service('path.current')->getPath();
+  $query = \Drupal::request()->getQueryString();
+  return [
+    '#type' => 'inline_template',
+    '#template' => $inMenu
+      ? '<a href="{{ href }}" class="dropdown-item">'
+        . '<i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</a>'
+      : '<a href="{{ href }}" class="appverse-hub-card__action-btn {{ variant ? "appverse-hub-card__action-btn--" ~ variant : "" }}" '
+        . 'aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</a>',
+    '#context' => [
+      'href' => '/' . $internalPath . '?destination=' . urlencode($dest . ($query ? '?' . $query : '')),
+      'label' => $label,
+      'icon' => $icon,
+      'variant' => $variant,
+    ],
+    '#cache' => ['contexts' => ['url.query_args']],
+  ];
+}
+
+/**
+ * Builds a hub card action that submits by POST with a CSRF token.
+ *
+ * @return array<string, mixed>
+ *   A render array for the action.
+ */
+function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = '', bool $inMenu = FALSE): array {
+  $token = \Drupal::service('csrf_token')->get($internalPath);
+  // Back to the same list after the action: its filters (the query string)
+  // and, for a repo action, that repo's card (#appverse-repo-N), where the
+  // result (e.g. "Review pending") shows. Without these the list reset and
+  // the status message sat above an unfiltered list, far from the card.
+  $dest = \Drupal::service('path.current')->getPath();
+  $query = \Drupal::request()->getQueryString();
+  if ($query) {
+    $dest .= '?' . $query;
+  }
+  if (preg_match('#^appverse/repo/(\d+)/#', $internalPath, $m)) {
+    $dest .= '#appverse-repo-' . $m[1];
+  }
   $action = '/' . $internalPath . '?token=' . $token . '&destination=' . urlencode($dest);
   return [
     '#type' => 'inline_template',
-    '#template' => '<form method="post" action="{{ action }}" class="appverse-hub-card__action-form">'
-      . '<button type="submit" class="appverse-hub-card__icon-btn {{ variant ? "appverse-hub-card__icon-btn--" ~ variant : "" }}" '
-      . 'title="{{ label }}" aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i></button></form>',
+    // In the menu the form is the item: a bare <button class="dropdown-item">
+    // sits in the list like the links around it, so a POST action needs no
+    // JS to live beside a GET one.
+    '#template' => $inMenu
+      ? '<form method="post" action="{{ action }}" class="appverse-hub-card__menu-form">'
+        . '<button type="submit" class="dropdown-item">'
+        . '<i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</button></form>'
+      : '<form method="post" action="{{ action }}" class="appverse-hub-card__action-form">'
+        . '<button type="submit" class="appverse-hub-card__action-btn {{ variant ? "appverse-hub-card__action-btn--" ~ variant : "" }}" '
+        . 'aria-label="{{ label }}"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ label }}</button></form>',
     '#context' => [
       'action' => $action,
       'label' => $label,
@@ -1841,8 +2326,17 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
 function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $isAdmin, string $state, bool $published): array {
   $id = $repo->id();
   $dest = urlencode(\Drupal::service('path.current')->getPath());
+  // Every card collapses into a menu. Named actions are much wider than the
+  // icons they replace: a contributor's three come to ~430px of buttons and a
+  // reviewer's six to far more, against an actions column of 13rem, so either
+  // role overflows and wraps onto the progress line below (appverse-planning#55).
+  // One inline action plus the menu fits both. This flag is also what the
+  // template reads as hub.has_menu, so the two stay in step by construction.
+  $inMenu = TRUE;
   $actions = [
-    'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise'),
+    'in_menu' => $inMenu,
+    'send_for_review_inline' => NULL,
+    'resync' => _ood_software_hub_action_form('appverse/repo/' . $id . '/resync', t('Re-sync from GitHub'), 'bi-arrow-clockwise', '', $inMenu),
     'send_for_review' => NULL,
     'publish' => NULL,
     'unpublish' => NULL,
@@ -1852,30 +2346,65 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
 
   $notPublishedActive = in_array($state, ['draft', 'ready_for_review', 'needs_adjustment'], TRUE)
     || (!$published && $state === 'published');
+  // A repo with a review is decided on the review page, where the decision
+  // moves the repo and the review together (appverse-planning#29).
+  $hasReview = _ood_software_repo_has_review($repo);
 
-  if (!$isAdmin && in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
+  // A repo with apps sent back is re-submitted whole (appverse-planning#48):
+  // a live one stays live, and a new one whose other apps were accepted with
+  // suggestions waits in ready_for_review for the reviewer's Publish, which
+  // used to leave the contributor no Re-submit at all.
+  $liveWithSentBack = (($published && $state === 'published') || $state === 'ready_for_review')
+    && \Drupal::service('ood_software.repo_member_apps')->sentBackCount($repo) > 0;
+  if (!$isAdmin && (in_array($state, ['draft', 'needs_adjustment'], TRUE) || $liveWithSentBack)) {
+    $label = $state === 'draft' ? t('Send for review') : t('Re-submit');
     $actions['send_for_review'] = _ood_software_hub_action_form(
-      'appverse/repo/' . $id . '/send-for-review',
-      $state === 'draft' ? t('Send for review') : t('Re-submit'),
-      'bi-send', 'primary'
+      'appverse/repo/' . $id . '/send-for-review', $label, 'bi-send', 'primary', $inMenu
+    );
+    // The same action as an inline button, for the card that promotes it to
+    // the primary slot. A render array cannot be re-rendered in another shape,
+    // so both are built here and the row builder picks one.
+    $actions['send_for_review_inline'] = _ood_software_hub_action_form(
+      'appverse/repo/' . $id . '/send-for-review', $label, 'bi-send', 'primary'
     );
   }
-  if ($isAdmin && $notPublishedActive) {
-    $actions['publish'] = _ood_software_hub_action_form('appverse/repo/' . $id . '/publish', t('Publish'), 'bi-check-circle', 'primary');
+  // The contributor withdraws a submission in review, before a decision
+  // (appverse-planning#34).
+  if (!$isAdmin && (int) $repo->getOwnerId() === (int) \Drupal::currentUser()->id()
+    && \Drupal\ood_software\Form\WithdrawConfirmForm::canWithdraw($repo, \Drupal::service('ood_software.repo_progress'))) {
+    $actions['withdraw'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/withdraw', t('Withdraw from review…'), 'bi-arrow-counterclockwise', '', $inMenu);
+  }
+  if ($isAdmin && $notPublishedActive && !$hasReview) {
+    $actions['publish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/publish/confirm', t('Publish…'), 'bi-check-circle', 'primary', $inMenu);
   }
   if ($published) {
-    $actions['unpublish'] = _ood_software_hub_action_form('appverse/repo/' . $id . '/unpublish', t('Unpublish'), 'bi-slash-circle');
+    $actions['unpublish'] = _ood_software_hub_confirm_link('appverse/repo/' . $id . '/unpublish/confirm', t('Unpublish…'), 'bi-slash-circle', '', $inMenu);
   }
   // Request changes maps to the request_adjustment transition, which the
   // appverse_editorial workflow permits from published, ready_for_review, and
   // needs_adjustment. Include published so an admin can pull a live Collection
   // back for fixes (AppverseHubRequestChangesForm cascade-unpublishes its
   // member apps in that case).
-  if ($isAdmin && in_array($state, ['published', 'ready_for_review', 'needs_adjustment'], TRUE)) {
+  if ($isAdmin && !$hasReview && in_array($state, ['published', 'ready_for_review', 'needs_adjustment'], TRUE)) {
     $actions['request_changes'] = ['url' => '/appverse/repo/' . $id . '/request-changes?destination=' . $dest];
   }
   if ($isAdmin) {
     $actions['delete'] = ['url' => '/appverse/repo/' . $id . '/delete?destination=' . $dest];
+    // Assign to me / Unassign me (appverse-planning#33); the review page
+    // assigns anyone.
+    $assignee = \Drupal::service('ood_software.review_assignment')->assignee($repo);
+    $mine = $assignee && (int) $assignee->id() === (int) \Drupal::currentUser()->id();
+    $actions['assign'] = _ood_software_hub_action_form(
+      'appverse/repo/' . $id . '/assign-me',
+      (string) match (TRUE) {
+        $mine => t('Unassign me'),
+        $assignee !== NULL => t('Assign to me (now @name)', ['@name' => $assignee->getDisplayName()]),
+        default => t('Assign to me'),
+      },
+      $mine ? 'bi-person-dash' : 'bi-person-plus',
+      '',
+      $inMenu
+    );
   }
   return $actions;
 }
@@ -1979,6 +2508,51 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'unresolved' => $discoveryUnresolved,
   ];
 
+  $review = _ood_software_hub_review_info($repo);
+
+  // The progress line (appverse-planning#31) replaces the editorial, run and
+  // recommendation badges: reviewers get five steps with their labels;
+  // contributors four, with no AI state, and a sentence.
+  $steps = \Drupal::service('ood_software.repo_progress')->steps($repo);
+  $progress = [
+    '#theme' => 'appverse_progress',
+    '#steps' => $isAdmin ? $steps['reviewer'] : $steps['contributor'],
+    '#variant' => 'bar',
+    '#labels' => $isAdmin,
+  ];
+
+  $actions = _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished());
+
+  // One action stays inline beside the Actions menu; the rest are named items
+  // inside it. Two labelled buttons plus the menu overflow the 13rem column
+  // and wrap onto the progress line, which is the problem the menu replaced.
+  //
+  // Open review comes first because the card is otherwise the only route to
+  // the review page: the title links to the catalog, and the progress chip is
+  // not a link. Burying it would hide a reviewer's main destination behind a
+  // click. Failing that, the inline slot goes to the action the card is
+  // waiting on — run the report for a reviewer, send for review for a
+  // contributor (appverse-planning#55).
+  $primaryAction = NULL;
+  if ($review['review_url'] !== NULL) {
+    $primaryAction = [
+      '#type' => 'inline_template',
+      '#template' => '<a href="{{ href }}" class="appverse-hub-card__action-btn" aria-label="{{ label }}">'
+        . '<i class="bi bi-clipboard-check" aria-hidden="true"></i> {{ text }}</a>',
+      '#context' => [
+        'href' => $review['review_url'],
+        'label' => t('Open review for @t', ['@t' => $repo->label()]),
+        'text' => t('Open review'),
+      ],
+    ];
+  }
+  elseif ($review['run_review_action'] !== NULL) {
+    $primaryAction = $review['run_review_action'];
+  }
+  elseif ($actions['send_for_review'] !== NULL) {
+    $primaryAction = $actions['send_for_review_inline'];
+  }
+
   return [
     'repo_id' => (int) $repo->id(),
     'title' => $repo->label(),
@@ -1998,14 +2572,27 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     // The card shows when the repo was submitted (node created time) rather
     // than the former last-sync timestamp, which is now surfaced only via
     // the exposed "Last synced" views filter.
-    'submitted' => \Drupal::service('date.formatter')->format($repo->getCreatedTime(), 'custom', 'm-d-y H:i'),
+    'submitted' => \Drupal::service('date.formatter')->format($repo->getCreatedTime(), 'custom', 'M j, Y g:i A'),
     'unpublished_after_publish' => !$repo->isPublished() && $moderationState === 'published',
     'moderation_comment' => $moderationComment,
     'edit_url' => $editUrl,
     'owner' => $owner,
-    'actions' => _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished()),
+    'actions' => $actions,
+    // The template must know whether a menu exists before it opens markup for
+    // one; the action set decides, and repo_id above labels the toggle. See
+    // in_menu there.
+    'has_menu' => !empty($actions['in_menu']),
+    'primary_action' => $primaryAction,
     'discovery_tags' => $discoveryTags,
     'single_app_tags' => $singleAppTags,
+    'review' => $review,
+    'progress' => $progress,
+    // Reviewers only: who is reviewing this repo (appverse-planning#33).
+    'assignee' => $isAdmin ? (\Drupal::service('ood_software.review_assignment')->assignee($repo)?->getDisplayName() ?? '') : NULL,
+    'progress_sentence' => $isAdmin ? '' : \Drupal\ood_software\Service\ReviewProgress::contributorSentence($steps['contributor']),
+    // One chip for the card; the full five-step line stays on the review page
+    // (appverse-planning#55).
+    'progress_chip' => \Drupal\ood_software\Service\ReviewProgress::chip($isAdmin ? $steps['reviewer'] : $steps['contributor']),
     'apps' => $apps,
   ];
 }
@@ -2039,12 +2626,12 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
   // Per-app status: when the parent repo is unpublished, member apps are
   // hidden from the catalog regardless of their own state.
   if (!$repoPublished) {
-    $status = ['label' => t('Hidden'), 'modifier' => 'muted'];
+    $status = ['label' => t('Hidden'), 'modifier' => 'muted', 'description' => t('Not in the catalog because its repo is unpublished, whatever the app\'s own state.')];
   }
   else {
     $status = $app->isPublished()
-      ? ['label' => t('Published'), 'modifier' => 'success']
-      : ['label' => t('Unpublished'), 'modifier' => 'warning'];
+      ? ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public Appverse catalog.')]
+      : ['label' => t('Unpublished'), 'modifier' => 'warning', 'description' => t('Not in the catalog; its repo is published, so publishing the app lists it.')];
   }
 
   // Resolved implementation tags (chips) + unresolved (flagged, with a
@@ -2101,8 +2688,12 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
     'edit_url' => ($parentInferred && $canEdit) ? '/node/' . $app->id() . '/edit' : NULL,
     'status' => $status,
     'tags' => $tags,
-    'unpublish_form' => $repoPublished
-      ? _ood_software_hub_action_form('appverse/app/' . $app->id() . '/unpublish', $app->isPublished() ? t('Unpublish app') : t('Publish app'), $app->isPublished() ? 'bi-slash-circle' : 'bi-check-circle')
+    // A contributor may take their app down but not put one up: publishing is
+    // the review's call, and an unpublished app may be one it sent back or
+    // declined. Letting them put back an app the review accepted is
+    // appverse-planning#61.
+    'unpublish_form' => $repoPublished && ($app->isPublished() || \Drupal::currentUser()->hasPermission('administer appverse content'))
+      ? _ood_software_hub_confirm_link('appverse/app/' . $app->id() . '/unpublish/confirm', $app->isPublished() ? t('Unpublish app…') : t('Publish app…'), $app->isPublished() ? 'bi-slash-circle' : 'bi-check-circle')
       : NULL,
   ];
 }
@@ -2182,10 +2773,12 @@ function ood_software_preprocess_views_view(array &$variables): void {
 /**
  * Implements hook_views_data_alter().
  *
- * The manage-repos "Software used" exposed filter gets the wrong filter plugin
- * from core's field-storage discovery: its target_id is an integer column, so
- * it is typed as a numeric filter. Override it to entity_reference so it
- * renders as an autocomplete bound to appverse_software titles.
+ * Adds the manage-repos "Assigned" filter (assigned to me / unassigned).
+ *
+ * And the manage-repos "Software used" exposed filter gets the wrong filter
+ * plugin from core's field-storage discovery: its target_id is an integer
+ * column, so it is typed as a numeric filter. Override it to entity_reference
+ * so it renders as an autocomplete bound to appverse_software titles.
  *
  * @param array<string, mixed> $data
  */
@@ -2194,5 +2787,13 @@ function ood_software_views_data_alter(array &$data): void {
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['id'] = 'entity_reference';
     $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['entity_type'] = 'node';
   }
+  // The manage-repos "Assigned" filter: assigned to me / unassigned
+  // (appverse-planning#33; the AssignedReviewer filter plugin).
+  $data['node_field_data']['ood_assigned_reviewer'] = [
+    'title' => t('Assigned reviewer (me or unassigned)'),
+    'help' => t('Repos assigned to the current user, or to no one.'),
+    'real field' => 'nid',
+    'filter' => ['id' => 'ood_software_assigned_reviewer'],
+  ];
 }
 

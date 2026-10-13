@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * Regression guard for per-app implementation-tag resolution.
@@ -53,7 +54,7 @@ class DeclaredAppTagsTest extends KernelTestBase {
     'workflows',
     'key',
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -139,6 +140,7 @@ class DeclaredAppTagsTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -199,6 +201,9 @@ class DeclaredAppTagsTest extends KernelTestBase {
 
   /**
    * Build a parsed-root-yaml declaring one app, with the given tags.
+   *
+   * @param array<int, string> $tags
+   * @return array<string, mixed>
    */
   protected function rootYml(array $tags): array {
     return [
@@ -408,6 +413,7 @@ class DeclaredAppTagsTest extends KernelTestBase {
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

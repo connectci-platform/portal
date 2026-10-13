@@ -1,0 +1,23 @@
+uuid: b37fda31-b224-4d47-a9a0-f3d77c0ba92a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_line
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_line
+field_name: field_rvf_line
+entity_type: paragraph
+bundle: review_finding
+label: 'Line number'
+description: 'Line number in the evidence file. Mutable — not part of the stable ID.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: null
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

@@ -1,0 +1,21 @@
+uuid: a23c30ba-ffd7-4339-9458-085e5100be65
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rvf_override_summary
+field_name: field_rvf_override_summary
+entity_type: paragraph
+type: string
+settings:
+  max_length: 512
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false
