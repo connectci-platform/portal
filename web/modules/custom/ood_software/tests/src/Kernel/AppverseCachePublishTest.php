@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\AppverseCacheService;
+use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
  * End-to-end guard for the "cache stale after publish" cascade bug.
@@ -52,7 +53,7 @@ class AppverseCachePublishTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**
@@ -86,6 +87,11 @@ class AppverseCachePublishTest extends KernelTestBase {
     // pattern; avoids installConfig(['ood_software']) which fails on
     // ultimate_cron.job.ood_software without schema in kernel context).
     $this->importProdConfig([
+      // Hub cards and the catalog cache look up each repo's newest review
+      // by field_arv_repo, so the review type and that field must exist.
+      'node.type.appverse_review',
+      'field.storage.node.field_arv_repo',
+      'field.field.node.appverse_review.field_arv_repo',
       'node.type.appverse_repo',
       'node.type.appverse_app',
       'node.type.appverse_software',
@@ -161,6 +167,7 @@ class AppverseCachePublishTest extends KernelTestBase {
       if ($existingId && $storage->load($existingId)) {
         continue;
       }
+      assert($storage instanceof ConfigEntityStorageInterface);
       $entity = $storage->createFromStorageRecord($data);
       $entity->save();
     }
@@ -218,8 +225,9 @@ class AppverseCachePublishTest extends KernelTestBase {
    *
    * @param string $title
    *   Software title.
-   * @param string $state
-   *   Moderation state: 'published' or 'draft'.
+   * @param bool $published
+   *   Whether the node is published. appverse_software has no moderation
+   *   workflow, so this is the raw status.
    */
   private function makeSoftware(string $title, bool $published): NodeInterface {
     // appverse_software is NOT under the editorial moderation workflow (that
@@ -236,6 +244,8 @@ class AppverseCachePublishTest extends KernelTestBase {
 
   /**
    * Run generate() and return the decoded JSON cache.
+   *
+   * @return array<string, mixed>
    */
   private function generateAndDecode(): array {
     $cache = $this->container->get('ood_software.appverse_cache');
@@ -249,6 +259,9 @@ class AppverseCachePublishTest extends KernelTestBase {
 
   /**
    * Find a repo entry by title in the decoded cache.
+   *
+   * @param array<string, mixed> $data
+   * @return array<string, mixed>|null
    */
   private function findRepo(array $data, string $title): ?array {
     foreach ($data['repos'] ?? [] as $repo) {
@@ -263,6 +276,7 @@ class AppverseCachePublishTest extends KernelTestBase {
    * Collect every app title appearing under any repo's apps array.
    *
    * @return string[]
+   * @param array<string, mixed> $data
    */
   private function allRepoAppTitles(array $data): array {
     $titles = [];
@@ -443,6 +457,7 @@ class AppverseCachePublishTest extends KernelTestBase {
         if ($existingId && $storage->load($existingId)) {
           continue;
         }
+        assert($storage instanceof ConfigEntityStorageInterface);
         $entity = $storage->createFromStorageRecord($data);
         $entity->save();
       }

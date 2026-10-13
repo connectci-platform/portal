@@ -1,0 +1,18 @@
+uuid: 43137533-6f42-42b5-b68d-5a2222cbb92c
+langcode: en
+status: true
+dependencies:
+  module:
+    - menu_ui
+    - node
+third_party_settings:
+  menu_ui:
+    available_menus: {  }
+    parent: ''
+name: 'Appverse Review'
+type: appverse_review
+description: 'A review of an Appverse repo at a specific commit. Created by ingesting the review tool artifact; curated by a reviewer; published to show signals.'
+help: 'Reviews are created automatically when the review tool artifact is ingested. One review per repo per reviewed commit, with per-app verdicts inside.'
+new_revision: true
+preview_mode: 1
+display_submitted: false

@@ -1,0 +1,44 @@
+uuid: e5a6b041-08fd-4aa8-859c-89a90fbf0c98
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_note.field_rvn_at
+    - field.field.paragraph.review_note.field_rvn_author
+    - field.field.paragraph.review_note.field_rvn_text
+    - paragraphs.paragraphs_type.review_note
+  module:
+    - paragraphs
+    - text
+id: paragraph.review_note.default
+targetEntityType: paragraph
+bundle: review_note
+mode: default
+content:
+  field_rvn_at:
+    type: datetime_timestamp
+    weight: 2
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_rvn_author:
+    type: entity_reference_autocomplete
+    weight: 1
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rvn_text:
+    type: text_textarea
+    weight: 0
+    region: content
+    settings:
+      rows: 3
+      placeholder: ''
+    third_party_settings: {  }
+hidden:
+  created: true
+  status: true

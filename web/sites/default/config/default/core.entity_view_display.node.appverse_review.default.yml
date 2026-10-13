@@ -1,0 +1,203 @@
+uuid: 9cc6cc8c-c1bb-4955-8532-a0ddf29e7c32
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.appverse_review.field_arv_assessment
+    - field.field.node.appverse_review.field_arv_catalog
+    - field.field.node.appverse_review.field_arv_catalog_checks
+    - field.field.node.appverse_review.field_arv_contributor_response
+    - field.field.node.appverse_review.field_arv_decision_sent_at
+    - field.field.node.appverse_review.field_arv_decision_sent_by
+    - field.field.node.appverse_review.field_arv_gate_evidence
+    - field.field.node.appverse_review.field_arv_indicators_default
+    - field.field.node.appverse_review.field_arv_internal_notes
+    - field.field.node.appverse_review.field_arv_maint_anchor
+    - field.field.node.appverse_review.field_arv_maint_level
+    - field.field.node.appverse_review.field_arv_maint_level_note
+    - field.field.node.appverse_review.field_arv_maint_summary
+    - field.field.node.appverse_review.field_arv_moderator_notes
+    - field.field.node.appverse_review.field_arv_prior_review
+    - field.field.node.appverse_review.field_arv_recommendation
+    - field.field.node.appverse_review.field_arv_recommendation_note
+    - field.field.node.appverse_review.field_arv_ref
+    - field.field.node.appverse_review.field_arv_repo
+    - field.field.node.appverse_review.field_arv_repo_criteria
+    - field.field.node.appverse_review.field_arv_repo_findings
+    - field.field.node.appverse_review.field_arv_repo_shape
+    - field.field.node.appverse_review.field_arv_report_html
+    - field.field.node.appverse_review.field_arv_report_md
+    - field.field.node.appverse_review.field_arv_report_pdf
+    - field.field.node.appverse_review.field_arv_reviewed_at
+    - field.field.node.appverse_review.field_arv_run_meta
+    - field.field.node.appverse_review.field_arv_sent_decisions
+    - field.field.node.appverse_review.field_arv_sha
+    - field.field.node.appverse_review.field_arv_tool_version
+    - field.field.node.appverse_review.field_arv_verdicts
+    - field.field.node.appverse_review.field_arv_withdrawn_at
+    - node.type.appverse_review
+  module:
+    - file
+    - options
+    - paragraphs
+    - text
+id: node.appverse_review.default
+targetEntityType: node
+bundle: appverse_review
+mode: default
+content:
+  content_moderation_control:
+    settings: {  }
+    third_party_settings: {  }
+    weight: -20
+    region: content
+  field_arv_assessment:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_arv_maint_level:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_arv_maint_summary:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_arv_recommendation:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_arv_recommendation_note:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_arv_ref:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 12
+    region: content
+  field_arv_repo:
+    type: entity_reference_label
+    label: inline
+    settings:
+      link: true
+    third_party_settings: {  }
+    weight: 10
+    region: content
+  field_arv_repo_findings:
+    type: entity_reference_revisions_entity_view
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+    weight: 6
+    region: content
+  field_arv_report_html:
+    type: file_default
+    label: inline
+    settings:
+      use_description_as_link_text: true
+    third_party_settings: {  }
+    weight: 8
+    region: content
+  field_arv_report_md:
+    type: file_default
+    label: inline
+    settings:
+      use_description_as_link_text: true
+    third_party_settings: {  }
+    weight: 9
+    region: content
+  field_arv_report_pdf:
+    type: file_default
+    label: inline
+    settings:
+      use_description_as_link_text: true
+    third_party_settings: {  }
+    weight: 7
+    region: content
+  field_arv_reviewed_at:
+    type: timestamp
+    label: inline
+    settings:
+      date_format: medium
+      custom_date_format: ''
+      timezone: ''
+      tooltip:
+        date_format: long
+        custom_date_format: ''
+      time_diff:
+        enabled: false
+        future_format: '@interval hence'
+        past_format: '@interval ago'
+        granularity: 2
+        refresh: 60
+    third_party_settings: {  }
+    weight: 13
+    region: content
+  field_arv_sha:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 11
+    region: content
+  field_arv_tool_version:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 14
+    region: content
+  field_arv_verdicts:
+    type: entity_reference_revisions_entity_view
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+    weight: 5
+    region: content
+hidden:
+  field_arv_catalog: true
+  field_arv_catalog_checks: true
+  field_arv_contributor_response: true
+  field_arv_decision_sent_at: true
+  field_arv_decision_sent_by: true
+  field_arv_gate_evidence: true
+  field_arv_indicators_default: true
+  field_arv_internal_notes: true
+  field_arv_maint_anchor: true
+  field_arv_maint_level_note: true
+  field_arv_moderator_notes: true
+  field_arv_prior_review: true
+  field_arv_repo_criteria: true
+  field_arv_repo_shape: true
+  field_arv_run_meta: true
+  field_arv_sent_decisions: true
+  field_arv_withdrawn_at: true
+  langcode: true
+  links: true
+  search_api_excerpt: true

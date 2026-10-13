@@ -1,0 +1,30 @@
+uuid: 7a2e8f3c-b4d1-4e9a-a8c7-3f5e2d1b9a4e
+langcode: en
+status: true
+dependencies:
+  module:
+    - ood_software
+title: 'AppVerse Review Poll'
+id: ood_software_review_poll
+weight: 14
+module: ood_software
+callback: '\Drupal\ood_software\Plugin\CronManager::reviewPoll'
+scheduler:
+  id: crontab
+  configuration:
+    rules:
+      - '*/5 * * * *'
+    catch_up: 900
+launcher:
+  id: serial
+  configuration:
+    timeouts:
+      lock_timeout: 300
+    launcher:
+      thread: 0
+logger:
+  id: database
+  configuration:
+    method: '3'
+    expire: 1209600
+    retain: 1000

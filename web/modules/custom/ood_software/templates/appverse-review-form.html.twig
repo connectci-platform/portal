@@ -1,0 +1,582 @@
+{#
+/**
+ * @file
+ * The review page, laid out as the moderation wireframe.
+ *
+ * Available: form (the render array; form['#page'] is the shaped data and
+ * form['#can_edit'] says whether the reviewer controls are present).
+ * Class names follow the wireframe so its CSS ports as-is; everything is
+ * scoped under .arv-page.
+ */
+#}
+{% set page = form['#page'] %}
+{% set can_edit = form['#can_edit'] %}
+{# Reviewer chrome (notes, assignee, Publish, the AI suggestion) shows to
+   reviewers even once the decision is sent and the content is read-only
+   (the decision-sent view, appverse-planning#56). #}
+{% set is_reviewer = form['#is_reviewer'] %}
+{# The decisions and the response: editable before sending, and again while a
+   sent decision is being updated (appverse-planning#56). #}
+{% set can_decide = form['#can_decide'] %}
+{# The wireframe's dot classes rate quality: level-high is the good end (solid
+   green), level-low the poor end (red ring). #}
+{% set level_class = {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'} %}
+
+{% macro level_badge(level, labels, level_class) %}
+  {% if level %}
+    <span class="rating-badge" title="{{ labels[level] ?? level }}">
+      <span class="rating-dot level-{{ level_class[level] ?? 'none' }}"></span>
+      <span class="rating-label">{{ labels[level] ?? level }}</span>
+    </span>
+  {% else %}
+    <span class="rating-badge rating-badge--none">{{ 'not rated'|t }}</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro finding_row(finding, form, can_edit) %}
+  {% set editable = can_edit and form.save_finding[finding.pid] is defined %}
+  <div class="finding" id="finding-{{ finding.pid }}">
+    <div class="frow">
+      <div class="rule">{{ finding.rule }}</div>
+      <div>
+        <div class="sum">
+          {# What changed since the last round is what a reviewer is looking
+             for, so the new ones are marked rather than every carried-over
+             one being labelled (appverse-planning#54). #}
+          {% if finding.is_new %}<span class="finding-new">{{ 'New'|t }}</span> {% endif %}
+          {# The rubric's Reject trigger. Reviewer-only: the contributor gets
+             the reviewer's own words, not the tool's suspicion. #}
+          {% if can_edit and finding.tag == 'potentially_malicious' %}<span class="finding-malicious">{{ 'Potentially malicious'|t }}</span> {% endif %}
+          {{ finding.summary }}
+          {% if finding.override and finding.override.edited %} <span class="finding-edited">{{ 'Edited by the reviewer'|t }}</span>{% endif %}
+        </div>
+        <div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>
+
+        {# A reviewer's change to the tool's finding (A1). The note below is
+           the reason; the tool's own values stay on the record. #}
+        {% if finding.override and (finding.dismissed or finding.override.severity) %}
+          <div class="override-mark">
+            {% if finding.dismissed %}
+              {{ 'Dismissed by @name · @when'|t({'@name': finding.override.by ?: 'a reviewer'|t, '@when': finding.override.at}) }}
+            {% else %}
+              {{ 'Reviewer changed the severity from @severity'|t({'@severity': finding.tool_severity|capitalize}) }}
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if finding.prose %}
+          <div class="finding-note"><span class="finding-note-label">{{ 'Note'|t }}</span> {{ finding.prose }}</div>
+        {% endif %}
+        {% if can_edit and finding.original %}
+          <details class="finding-original">
+            <summary>{{ 'Original wording'|t }}</summary>
+            <div>{{ finding.original.summary }}</div>
+            <div class="ev">{{ finding.original.evidence }}</div>
+          </details>
+        {% endif %}
+
+        {% if finding.source == 'reviewer' %}
+          <div class="added-by"><span class="reviewer-tag">{{ 'Reviewer'|t }}</span> {{ 'Added by @name · @when'|t({'@name': finding.author ?: 'a reviewer'|t, '@when': finding.created}) }}</div>
+        {% endif %}
+      </div>
+      {% if editable %}
+        <div class="frow-actions">
+          <button type="button" class="expand-hint" aria-expanded="false">{{ 'Edit'|t }}</button>
+        </div>
+      {% endif %}
+    </div>
+    {% if editable %}
+      {# The edit box: the finding's fields, the note to the contributor and
+         a Save beside it. Starts closed; Cancel puts the fields back. #}
+      <div class="fnote">
+        {% if form.override[finding.pid] is defined %}
+          {{ attribute(form.override, finding.pid) }}
+        {% elseif form.edit_finding[finding.pid] is defined %}
+          {{ attribute(form.edit_finding, finding.pid) }}
+        {% endif %}
+        {{ attribute(form.prose, finding.pid) }}
+        <div class="fnote-actions">
+          {{ attribute(form.save_finding, finding.pid) }}
+          <button type="button" class="btn ghost finding-cancel">{{ 'Cancel'|t }}</button>
+          {% if form.delete_finding[finding.pid] is defined %}
+            <span class="finding-delete">{{ attribute(form.delete_finding, finding.pid) }}</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# A group of gates: the passes as a count behind a toggle, and anything that
+   is not a pass out in full. Both the repo's gates and a block's own use it,
+   so one kind of thing reads one way (appverse-planning#53). #}
+{# A gate's result as a mark rather than the word: a white check on teal for
+   a pass, a white cross on red for a fail, and the value spelled out for
+   anything else. The title and the visually-hidden text carry the meaning,
+   since colour alone must not (appverse-planning#53). #}
+{% macro gate_mark(value) %}
+  {% set label = value == 'pass' ? 'passed'|t : (value == 'fail' ? 'failed'|t : value|replace({'_': ' '})) %}
+  {% if value in ['pass', 'fail'] %}
+    <span class="gate-mark gate-mark--{{ value }}" title="{{ label }}">
+      <span class="visually-hidden">{{ label }}</span>
+      <span aria-hidden="true">{{ value == 'pass' ? '✓' : '✕' }}</span>
+    </span>
+  {% else %}
+    <b class="gate-word">{{ label }}</b>
+  {% endif %}
+{% endmacro %}
+
+{% macro gate_group(summary, label) %}
+  {% import _self as m %}
+  {% if summary and summary.total %}
+    <div class="gates">
+      {% if summary.passes %}
+        <details class="gate-passes">
+          <summary class="gate-passes__count">
+            {{ '@label: @n of @total passed'|t({'@label': label, '@n': summary.passed, '@total': summary.total}) }}
+          </summary>
+          <div class="gate-passes__list">
+            {% for gate in summary.passes %}
+              <span class="gate gate--pass">{{ gate.label }} {{ m.gate_mark('pass') }}</span>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
+      {% for gate in summary.others %}
+        <span class="gate gate--{{ gate.value }}">{{ gate.label }} {{ m.gate_mark(gate.value) }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro catblock(block, form, can_edit, page, level_el, note_el, scope, repo_gates, duplicate) %}
+  {% import _self as m %}
+  {# level-changed: the reviewer has moved off the automated rating, so the
+     dropdown and the note stay open rather than collapsing behind the icon. #}
+  {# The id carries its app: a monorepo renders these blocks once per app, and
+     without the scope every one of them was id="block-structure" and the rest,
+     ten duplicate ids on a two-app page. Nothing links to them today, but an
+     anchor that cannot reach the second app's block is not an anchor. #}
+  <div class="catblock{% if block.level and block.tool_level and block.level != block.tool_level %} level-changed{% endif %}" id="block-{{ scope ? scope ~ '-' : '' }}{{ block.key }}">
+    <div class="cat-top">
+      <div class="cat-title-row">
+        <div class="cat-left">
+          <span class="cat-name">{{ block.title }}</span>
+          {# Security carries no rating, so its heading had nothing after the
+             name where the other blocks show a badge. The shield marks it as
+             the one to read first (appverse-planning#53). #}
+          {% if block.key == 'security' %}
+            <i class="bi bi-shield-exclamation cat-icon" aria-hidden="true"></i>
+          {% endif %}
+          {% if block.level is not null or block.key in ['portability', 'documentation', 'maintenance'] %}
+            {# The rating reads as a badge and the dropdown stays hidden until
+               the edit icon is clicked. It was always an editable control with
+               the automated rating captioned under it, which is sidebar
+               clutter on the rows nobody is changing (appverse-planning#54).
+               Both are rendered: the JS swaps which one is shown, so with no
+               JS the dropdown is simply there. #}
+            {% if can_edit and level_el %}
+              {# Literal map: a macro cannot see the template's level_class. #}
+              <span class="level-readonly">{{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}</span>
+              <span class="level-control">{{ level_el }}</span>
+            {% else %}
+              {{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
+            {% endif %}
+            {% if can_edit and level_el %}
+              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+            {% endif %}
+          {% endif %}
+        </div>
+        <div class="cat-count">{{ block.count_line }}</div>
+      </div>
+      {# Like Decision's "Automated suggestion": what the tool rated, and
+         whether the reviewer has changed it. #}
+      {# Only worth saying once the reviewer has moved off the automated
+         rating; otherwise the badge above already is the automated rating
+         (appverse-planning#54). #}
+      {% if can_edit and level_el and block.tool_level and block.level and block.level != block.tool_level %}
+        <div class="concl-caption level-caption">
+          {{ 'Changed from automated rating: @l'|t({'@l': (page.level_labels[block.key] ?? {})[block.tool_level] ?? block.tool_level}) }}
+        </div>
+      {% endif %}
+      {# The note belongs with the rating it explains, so it sits under the
+         dropdown the edit icon reveals rather than below the section summary,
+         where clicking the icon opened a field two elements away
+         (appverse-planning#54). The read-only note keeps its old place: it is
+         prose about the rating, and reads as part of the summary. #}
+      {% if can_edit and note_el %}
+        <div class="override-box">{{ note_el }}</div>
+      {% endif %}
+      {% if block.summary %}<div class="cat-summary">{{ block.summary }}</div>{% endif %}
+      {% if not (can_edit and note_el) and block.note %}
+        <div class="override-note">{{ block.note }}</div>
+      {% endif %}
+      {# The repo's own gates lead, because they decide whether the app belongs
+         in the catalog at all; the block's gates are the per-app file checks
+         that follow. Both render the same way (appverse-planning#53). #}
+      <div class="gate-groups">
+        {{ m.gate_group(repo_gates, 'Repo'|t) }}
+        {{ m.gate_group(block.gate_summary, 'Files'|t) }}
+      </div>
+    </div>
+    {# The gate evidence and the catalog checks come with the gates. #}
+    {% if repo_gates and repo_gates.rows %}
+      <ul class="gate-rows">
+        {% for row in repo_gates.rows %}
+          <li>
+            <span class="gate-result gate-result--{{ row.result|lower }}">{{ row.result }}</span>
+            {% if row.rule %}<span class="rule">{{ row.rule }}</span>{% endif %}
+            <span class="gate-evidence">{{ row.evidence_html }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if repo_gates and repo_gates.catalog_html %}
+      <div class="catalog-checks">
+        <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
+        {{ repo_gates.catalog_html }}
+      </div>
+    {% endif %}
+    {# The app's catalog checks as rows, when the review carries them (A4b);
+       the report's text above otherwise. #}
+    {% if duplicate and duplicate.catalog.rows %}
+      <div class="catalog-checks catalog-checks--rows">
+        <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
+        {% if repo_gates and repo_gates.catalog_read %}<div class="catalog-read">{{ repo_gates.catalog_read }}</div>{% endif %}
+        <ul class="gate-rows">
+          {% for row in duplicate.catalog.rows %}
+            <li>
+              <span class="gate-result gate-result--{{ row.result == 'N/A' ? 'na' : row.result|lower }}">{{ row.result }}</span>
+              <span class="catalog-check">{{ row.check|t }}</span>
+              <span class="gate-evidence">
+                {{- row.text -}}
+                {%- if row.links %}: {% for link in row.links %}{% if link.url %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% else %}{{ link.title }}{% endif %}{{ not loop.last ? ', ' }}{% endfor %}{% endif -%}
+                {%- if row.add_software and can_edit %} · <a href="{{ path('node.add', {'node_type': 'appverse_software'}) }}" target="_blank" rel="noopener">{{ 'Add the Software entry'|t }}</a>{% endif -%}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    {# The reviewer's duplicate check for this app (A4): the decision the
+       catalog checks above leave to them. Required to accept the app. #}
+    {% if duplicate and (duplicate.el or duplicate.data.outcome) %}
+      <div class="duplicate-check-block">
+        {% if duplicate.el %}
+          {{ duplicate.el }}
+        {% else %}
+          <div class="catalog-checks-title">{{ 'Duplicate check'|t }}</div>
+          <div>{{ duplicate.data.label }}</div>
+          {% if duplicate.data.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ duplicate.data.note }}</div>{% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+    {% for group in block.groups %}
+      <div class="sev-group">
+        {# The worst group opens, except info, which starts collapsed even when
+           it is the only one: it is the group nobody is reading first
+           (appverse-planning#54). #}
+        {# Open the worst group, and any group small enough that collapsing it
+           hides one or two rows behind a click. Info stays shut unless it is
+           that small (appverse-planning#53). #}
+        <div class="sev-head{% if (loop.first and group.severity != 'info') or group.count <= 2 %} sev-head--open{% endif %}">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span><span class="car" aria-hidden="true">⌄</span></div>
+        <div class="sev-body">
+          {% for finding in group.findings %}
+            {{ m.finding_row(finding, form, can_edit) }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+    {# The tool's findings the reviewer dismissed (A1): out of the count,
+       listed here with the reason. The public summary leaves them out. #}
+    {% if block.dismissed is not empty %}
+      <details class="dismissed-rows">
+        <summary>{{ 'Dismissed by the reviewer (@n)'|t({'@n': block.dismissed|length}) }}</summary>
+        {% for finding in block.dismissed %}
+          {{ m.finding_row(finding, form, can_edit) }}
+        {% endfor %}
+      </details>
+    {% endif %}
+    {# PASS and NOT CHECKED rows: not findings, but listed so a reviewer can
+       confirm a cleared check. Full page only; the public summary omits them. #}
+    {% if block.checked.rows is not empty %}
+      {% set parts = [] %}
+      {% for result, n in block.checked.counts %}
+        {% set parts = parts|merge([n ~ ' ' ~ (result == 'PASS' ? 'passed'|t : (result == 'NOT CHECKED' ? 'not checked'|t : result|lower))]) %}
+      {% endfor %}
+      <details class="checked-rows">
+        <summary>{{ 'Checked: @parts'|t({'@parts': parts|join(' · ')}) }}</summary>
+        {% for row in block.checked.rows %}
+          <div class="frow">
+            <div class="rule">{{ row.rule }}</div>
+            <div>
+              <div class="sum"><span class="result-pill result-pill--{{ row.result|lower|replace({' ': '-'}) }}">{{ row.result }}</span> {{ row.summary }}</div>
+              {% if row.evidence %}<div class="ev">{% if row.evidence_link %}<a href="{{ row.evidence_link.url }}" target="_blank" rel="noopener">{{ row.evidence_link.text }}</a>{{ row.evidence_link.rest }}{% else %}{{ row.evidence }}{% endif %}</div>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </details>
+    {% endif %}
+    {% if can_edit and block.target and form.add_finding[block.target] is defined %}
+      <details class="add-finding">
+        <summary>{{ '+ Add finding'|t }}</summary>
+        {{ attribute(form.add_finding, block.target) }}
+      </details>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% import _self as m %}
+
+<div class="arv-page">
+  {# No <h1> here: the page title block already renders "Review of …". #}
+  {% if page.withdrawn %}
+    <div class="arv-superseded">
+      {{ 'The contributor withdrew this submission on @at.'|t({'@at': page.withdrawn}) }}
+      {% if is_reviewer %}<span class="arv-superseded-note">{{ 'There is nothing to decide unless they re-submit, which starts a new review.'|t }}</span>{% endif %}
+    </div>
+  {% endif %}
+  {% if page.superseded_by %}
+    <div class="arv-superseded">
+      {{ 'A newer review of this repo exists'|t }} ({{ page.superseded_by.label }}).
+      <a href="{{ page.superseded_by.url }}">{{ 'Go to the newer review'|t }} ›</a>
+      {% if can_edit and page.state != 'published' %}<span class="arv-superseded-note">{{ 'This one can still be saved, but not published.'|t }}</span>{% endif %}
+    </div>
+  {% endif %}
+  {# After an Accept with suggestions: publish when the contributor has had a
+     chance to act on the suggestions, or right away (appverse-planning#29). #}
+  {% if is_reviewer and page.decision.publish_url %}
+    <div class="arv-publish-bar">
+      <span>{{ 'Accepted with suggestions. Publish when the contributor has had a chance to act on them, or right away.'|t }}</span>
+      <a class="btn primary" href="{{ page.decision.publish_url }}">{{ 'Publish app and review'|t }}</a>
+    </div>
+  {% endif %}
+  <div class="overview-block">
+    <div class="overview-row">
+      {# Two lines: what was reviewed, then who/when and the links. One long
+         line wrapped unevenly. #}
+      {# Who and what, separated by slashes: the repo, who submitted it, who
+         maintains it, and what shape it is. The commit and the run details
+         follow on their own line, since they are about this review rather
+         than the app (appverse-planning#53). #}
+      <div class="overview-meta">
+        <div class="overview-line overview-facts">
+          {% if page.repo_url %}
+            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
+          {% endif %}
+          {% if page.maintainer %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ 'Maintainer: @m'|t({'@m': page.maintainer}) }}
+          {% endif %}
+          {% if page.contributor %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ 'Contributor:'|t }} <a href="{{ page.contributor.url }}">{{ page.contributor.name }}</a>
+          {% endif %}
+          {% if page.shape %}
+            <span class="overview-sep" aria-hidden="true">/</span>
+            {{ page.shape }}
+          {% endif %}
+        </div>
+        <div class="overview-line overview-line--sub">
+          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
+          {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
+        </div>
+      </div>
+      {# The header keeps the position and the rerun note; the reviews
+         themselves are listed below it, one line each, rather than as a
+         prev/next pair (appverse-planning#54). #}
+      {# Right-aligned: the public view link over how many reviews this repo
+         has had (appverse-planning#53). #}
+      <div class="prev-reviews review-history">
+        {% if is_reviewer %}<div><a href="{{ page.public_url }}">{{ 'Public view'|t }}</a></div>{% endif %}
+        {% if page.history and page.history.total > 1 %}
+          <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
+          {% if page.history.is_rerun %}
+            · <span class="rerun-note">{{ 'Rerun of the same commit'|t }}</span>
+          {% endif %}
+        {% else %}
+          <span class="muted">{{ 'First review of this repo'|t }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% if form['#progress'] %}
+    <div class="arv-progress-block">
+      {{ form['#progress'] }}
+
+    </div>
+  {% endif %}
+
+  <div class="layout">
+    <div class="main-col">
+      {# One line per earlier review: decision, date, reviewer, commit. They
+         need much less than the review you are reading (appverse-planning#54). #}
+      {% if page.history.others is not empty %}
+        <details class="other-reviews">
+          {% set n = page.history.others|length %}
+          {# trans/plural rather than two separate strings, so translators get
+             one plural form and languages with other plural rules work. #}
+          <summary class="other-reviews__count">{% trans %}{{ n }} other review of this repo{% plural n %}{{ n }} other reviews of this repo{% endtrans %}</summary>
+          <ul class="other-reviews__list">
+            {% for other in page.history.others %}
+              <li>
+                <a href="{{ other.url }}">{{ other.at }}</a>
+                <code>{{ other.sha7 }}</code>
+                {% if other.is_rerun %}<span class="rerun-note">{{ 'rerun'|t }}</span>{% endif %}
+                {% if other.decision %}· {{ other.decision }}{% endif %}
+                {% if other.reviewer %}· {{ other.reviewer }}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+      {% if page.round_delta.has_previous and (page.round_delta.new or page.round_delta.resolved) %}
+        <div class="round-delta">
+          {% if page.round_delta.new %}<span class="round-delta__new">{{ '@n new since the last round'|t({'@n': page.round_delta.new}) }}</span>{% endif %}
+          {% if page.round_delta.new and page.round_delta.resolved %} · {% endif %}
+          {% if page.round_delta.resolved %}<span class="round-delta__resolved">{{ '@n resolved'|t({'@n': page.round_delta.resolved}) }}</span>{% endif %}
+        </div>
+      {% endif %}
+      {% for app in page.apps %}
+        <div class="app-section" id="app-{{ app.app_id }}">
+          {% if page.apps|length > 1 %}
+            <h2 class="app-name">{{ app.name }} <span class="muted">({{ app.app_id }})</span></h2>
+          {% endif %}
+          <div class="vbody">
+            {% for key, block in app.blocks %}
+              {% set level_el = can_edit and key in ['portability', 'documentation'] ? attribute(attribute(form.level, app.pid), key) : null %}
+              {% set note_el = can_edit and key in ['portability', 'documentation'] ? attribute(attribute(form.level_note, app.pid), key) : null %}
+              {# Repo gates ride on the first app's Structure block: they are
+                 the repo's, so they are shown once however many apps there
+                 are. #}
+              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': (can_edit or form['#updating']) ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate, 'catalog': app.catalog} : null) }}
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+
+      <div class="app-section app-section--repo" id="maintenance">
+        {% if page.apps|length > 1 %}<h2 class="app-name">{{ 'Repository'|t }}</h2>{% endif %}
+        <div class="vbody">
+          {% for key, block in page.repo_blocks %}
+            {{ m.catblock(block, form, can_edit, page, null, null) }}
+          {% endfor %}
+          {{ m.catblock(page.maintenance, form, can_edit, page, can_edit ? form.maint_level : null, can_edit ? form.maint_level_note : null) }}
+        </div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      {# Once sent: the decision, who it waits on and the email as sent
+         (appverse-planning#56). #}
+      {% if is_reviewer and page.decision.sent %}
+        <div class="decision-sent-panel">
+          <h2 class="sec">{{ 'Decision sent'|t }}</h2>
+          <p class="decision-sent-line">
+            <span class="decision-sent">{{ page.decision.label }}</span>
+            {% if page.decision.by %} · {{ page.decision.by }}{% endif %} · {{ page.decision.at }}
+          </p>
+          {% if page.decision.updated_from %}<p class="decision-updated muted">{{ page.decision.updated_from }}</p>{% endif %}
+          <p class="decision-waiting">{{ page.decision.waiting_on }}</p>
+          {% if form['#updating'] %}
+            <p class="decision-updating"><strong>{{ 'Updating the decision.'|t }}</strong> {{ 'Change the decisions or the response below; nothing changes until you confirm, and the contributor is told it replaces the one sent.'|t }}</p>
+          {% endif %}
+          {% if page.decision.email %}
+            <details class="decision-email" open>
+              <summary>{{ 'The email as sent'|t }}</summary>
+              <div class="email-head">
+                <div><span class="muted">{{ 'To'|t }}:</span> {{ page.decision.to }}</div>
+                <div><span class="muted">{{ 'Subject'|t }}:</span> {{ page.decision.email.subject }}</div>
+              </div>
+              <div class="email-body">{{ page.decision.email.html }}</div>
+            </details>
+          {% endif %}
+        </div>
+      {% endif %}
+      {# Who reviews the repo, across rounds (appverse-planning#33). #}
+      {% if is_reviewer %}
+        <div class="assignee-block">
+          <h2 class="sec">{{ 'Reviewer'|t }}</h2>
+          {{ form.assignee }}
+        </div>
+      {% endif %}
+      <div class="decision-row">
+        <h2 class="sec">{{ 'Decision'|t }}</h2>
+      </div>
+      {% for app in page.apps %}
+        <div class="decision-app">
+          {% if page.apps|length > 1 %}<div class="decision-app-name">{{ app.name }}</div>{% endif %}
+          {% if can_decide %}
+            {{ attribute(form.conclusion, app.pid) }}
+          {% else %}
+            <div class="decision-value">{{ page.conclusion_labels[app.conclusion] ?? 'Not decided'|t }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      {# The tool's suggestion is for reviewers; contributors never see AI
+         state (appverse-planning#42). Only once a decision differs from it:
+         while they agree the caption repeats the value right above it
+         (appverse-planning#53). #}
+      {% if is_reviewer and page.recommendation and page.recommendation_differs %}
+        <div class="concl-caption" title="{{ page.recommendation_note }}">{{ 'Changed from the automated suggestion: @s'|t({'@s': page.recommendation_label}) }}</div>
+      {% endif %}
+      {# The two things the reviewer writes, each under a black bar: one goes
+         to the contributor, the other goes public, and the bar is what tells
+         them apart at a glance. No rules between sections; the bars do that
+         work now (appverse-planning#53). #}
+      <div class="sidebar-bar"><h2 class="sec">{{ 'Email to Contributor'|t }}</h2></div>
+      {% if can_decide %}{{ form.response }}{% else %}<div class="arv-text">{{ page.response }}</div>{% endif %}
+
+      <div class="sidebar-bar"><h2 class="sec">{{ 'Public Summary'|t }}</h2></div>
+      {% if can_edit %}{{ form.assessment }}{% else %}<div class="arv-text">{{ page.assessment }}</div>{% endif %}
+
+      {% if is_reviewer %}
+        <div class="publish-block">
+          {% if page.decision.sent %}
+            <div class="publish-note">
+              {{ page.state == 'published' ? 'Published.'|t : 'The contributor can read this; the public cannot.'|t }}
+            </div>
+          {% else %}
+            <h2 class="sec">{{ 'Finish Review'|t }}</h2>
+            {# One sentence, under the heading and about the buttons below it.
+               It used to open with what the Public Summary does, which
+               belongs to that field's own bar above, and close with a second
+               line under the buttons, so the block explained two other things
+               and nothing about itself. There is no opt-out on the email:
+               sending the decision sends it, and the next screen is its
+               preview (appverse-planning#53). #}
+            <div class="publish-note">
+              {{ can_decide
+                ? 'Save your work, or send the decision. Sending opens a preview of the email first.'|t
+                : 'Save your work on this review.'|t }}
+            </div>
+          {% endif %}
+          <div class="publish-row">{{ form.actions }}</div>
+        </div>
+
+        <div class="internal-notes-block">
+          <h2 class="sec">{{ 'Internal notes'|t }}</h2>
+          <p class="notes-help">{{ 'Reviewers only. Leave context for whoever picks this up next.'|t }}</p>
+          <div class="note-add">{{ form.new_note }}</div>
+          <div class="notes-list">
+            {% for note in page.notes %}
+              <div class="note-entry">
+                <div class="note-meta"><span class="note-name">{{ note.author }}</span><span class="note-date">{{ note.at }}</span></div>
+                <div class="note-text">{{ note.text|nl2br }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </aside>
+  </div>
+
+  {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'assignee', 'actions', 'add_finding', 'edit_finding', 'delete_finding', 'override', 'save_finding', 'duplicate') }}
+
+  {# Which build of the tool wrote this report. It matters when a finding
+     looks wrong and someone is working out whether the tool has changed
+     since, which is not often enough to earn a place in the header
+     (appverse-planning#53). #}
+  {% if page.tool_version %}
+    <p class="arv-footnote">{{ 'Report produced by @tool'|t({'@tool': page.tool_version}) }}</p>
+  {% endif %}
+</div>

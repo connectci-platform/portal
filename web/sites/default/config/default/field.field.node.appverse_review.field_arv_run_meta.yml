@@ -1,0 +1,19 @@
+uuid: f11b88c0-b04b-42b4-aa15-874301d98a5b
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_run_meta
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_run_meta
+field_name: field_arv_run_meta
+entity_type: node
+bundle: appverse_review
+label: 'Run metadata'
+description: 'Model, tokens, cost from the review run. Stored as JSON.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

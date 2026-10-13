@@ -56,6 +56,22 @@ class RepoMemberApps {
   }
 
   /**
+   * How many of a repo's apps were sent back and wait on changes.
+   *
+   * A live monorepo can have an app sent back while the others stay listed;
+   * the contributor then re-submits the whole repo (appverse-planning#48).
+   */
+  public function sentBackCount(NodeInterface $repo): int {
+    $count = 0;
+    foreach ($this->entityTypeManager->getStorage('node')->loadMultiple($this->queryMemberAppIds($repo)) as $app) {
+      if ($app->hasField('moderation_state') && $app->get('moderation_state')->value === 'needs_adjustment') {
+        $count++;
+      }
+    }
+    return $count;
+  }
+
+  /**
    * Cascade a moderation-state change from a Repo to its member apps.
    *
    * @param \Drupal\node\NodeInterface $repo

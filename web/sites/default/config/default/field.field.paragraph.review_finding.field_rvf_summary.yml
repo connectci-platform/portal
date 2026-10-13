@@ -1,0 +1,19 @@
+uuid: d8395140-0bdb-46ab-ada7-0517ee1e4650
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvf_summary
+    - paragraphs.paragraphs_type.review_finding
+id: paragraph.review_finding.field_rvf_summary
+field_name: field_rvf_summary
+entity_type: paragraph
+bundle: review_finding
+label: Summary
+description: 'Human-readable one-line description. Display text only — not part of the stable ID.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

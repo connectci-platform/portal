@@ -1,0 +1,31 @@
+uuid: f8218c41-ded8-4140-a613-e6689d371d5f
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_arv_decision_sent_by
+    - node.type.appverse_review
+id: node.appverse_review.field_arv_decision_sent_by
+field_name: field_arv_decision_sent_by
+entity_type: node
+bundle: appverse_review
+label: 'Decision sent by'
+description: 'The reviewer who sent the decision.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:user'
+  handler_settings:
+    target_bundles: null
+    sort:
+      field: _none
+    auto_create: false
+    filter:
+      type: role
+      role:
+        appverse_pm: appverse_pm
+        administrator: administrator
+    include_anonymous: false
+field_type: entity_reference

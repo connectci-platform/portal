@@ -1,0 +1,95 @@
+uuid: 6562ddd4-480e-4453-91f3-cd554c9daf43
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.review_finding.field_rvf_anchor
+    - field.field.paragraph.review_finding.field_rvf_app_id
+    - field.field.paragraph.review_finding.field_rvf_aspect
+    - field.field.paragraph.review_finding.field_rvf_author
+    - field.field.paragraph.review_finding.field_rvf_category
+    - field.field.paragraph.review_finding.field_rvf_created
+    - field.field.paragraph.review_finding.field_rvf_defect_key
+    - field.field.paragraph.review_finding.field_rvf_dismissed
+    - field.field.paragraph.review_finding.field_rvf_evidence
+    - field.field.paragraph.review_finding.field_rvf_line
+    - field.field.paragraph.review_finding.field_rvf_override_at
+    - field.field.paragraph.review_finding.field_rvf_override_by
+    - field.field.paragraph.review_finding.field_rvf_override_evidence
+    - field.field.paragraph.review_finding.field_rvf_override_severity
+    - field.field.paragraph.review_finding.field_rvf_override_summary
+    - field.field.paragraph.review_finding.field_rvf_result
+    - field.field.paragraph.review_finding.field_rvf_reviewer_prose
+    - field.field.paragraph.review_finding.field_rvf_rule
+    - field.field.paragraph.review_finding.field_rvf_severity
+    - field.field.paragraph.review_finding.field_rvf_source
+    - field.field.paragraph.review_finding.field_rvf_stable_id
+    - field.field.paragraph.review_finding.field_rvf_summary
+    - field.field.paragraph.review_finding.field_rvf_tag
+    - paragraphs.paragraphs_type.review_finding
+  module:
+    - options
+    - text
+id: paragraph.review_finding.default
+targetEntityType: paragraph
+bundle: review_finding
+mode: default
+content:
+  field_rvf_evidence:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_rvf_reviewer_prose:
+    type: text_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_rvf_rule:
+    type: string
+    label: inline
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_rvf_severity:
+    type: list_default
+    label: inline
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_rvf_summary:
+    type: string
+    label: hidden
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 2
+    region: content
+hidden:
+  field_rvf_anchor: true
+  field_rvf_app_id: true
+  field_rvf_aspect: true
+  field_rvf_author: true
+  field_rvf_category: true
+  field_rvf_created: true
+  field_rvf_defect_key: true
+  field_rvf_dismissed: true
+  field_rvf_line: true
+  field_rvf_override_at: true
+  field_rvf_override_by: true
+  field_rvf_override_evidence: true
+  field_rvf_override_severity: true
+  field_rvf_override_summary: true
+  field_rvf_result: true
+  field_rvf_source: true
+  field_rvf_stable_id: true
+  field_rvf_tag: true
+  search_api_excerpt: true

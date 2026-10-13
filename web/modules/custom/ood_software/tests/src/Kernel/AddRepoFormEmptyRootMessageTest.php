@@ -63,7 +63,7 @@ class AddRepoFormEmptyRootMessageTest extends KernelTestBase {
     'key',
     // ood_software_node_insert() on appverse_app nodes calls the `flag` service.
     'flag',
-    'ood_software',
+    'file', 'ood_software',
   ];
 
   /**

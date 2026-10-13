@@ -1,0 +1,19 @@
+uuid: bd32d426-481e-49d4-b27e-7aa99a576cde
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rvn_at
+    - paragraphs.paragraphs_type.review_note
+id: paragraph.review_note.field_rvn_at
+field_name: field_rvn_at
+entity_type: paragraph
+bundle: review_note
+label: 'Noted at'
+description: 'When the note was written. Auto-stamping on save is planned (code).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: timestamp

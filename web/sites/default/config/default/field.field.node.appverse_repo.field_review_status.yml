@@ -1,0 +1,21 @@
+uuid: a1a02ab6-5ed1-49e7-96d7-635d71f71a51
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_review_status
+    - node.type.appverse_repo
+  module:
+    - options
+id: node.appverse_repo.field_review_status
+field_name: field_review_status
+entity_type: node
+bundle: appverse_repo
+label: 'Review status'
+description: 'Current state of the AI review: pending (dispatched), in_progress (workflow running), complete (results downloaded), or error.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string
