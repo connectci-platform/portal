@@ -11,6 +11,8 @@
       unapproved   NOT approved, ACCESS, tag xalt
       otherdomain  approved, Great Plains only, tag xalt
       sort one/two approved, ACCESS, own token, for the like sort test
+      count ten/two approved, ACCESS, own token, given 10 and 2 likes, for the
+                   numeric like sort test
       per-user     approved, ACCESS, own token, owned by the admin, for the
                    per-user cache tests
       many 1-3     approved, ACCESS, six tags each: 18 distinct tags that put
@@ -44,6 +46,7 @@ const PREFIX = `kbfacet-${RUN}`;
 const SORT_ID = RUN.split("").reverse().join("");
 const MANY_ID = RUN.slice(5) + RUN.slice(0, 5);
 const USER_ID = RUN.slice(3) + RUN.slice(0, 3);
+const COUNT_ID = RUN.slice(8) + RUN.slice(0, 8);
 const TITLE = {
   alpha: `${PREFIX}-alpha`,
   beta: `${PREFIX}-beta`,
@@ -51,6 +54,8 @@ const TITLE = {
   otherDomain: `${PREFIX}-otherdomain`,
   sortOne: `kbsort-${SORT_ID}-one`,
   sortTwo: `kbsort-${SORT_ID}-two`,
+  countTen: `kbcount-${COUNT_ID}-ten`,
+  countTwo: `kbcount-${COUNT_ID}-two`,
   perUser: `kbuser-${USER_ID}-item`,
 };
 // Slugs of the clickable tag buttons (`#tag-<slug>`) used by the resources.
@@ -71,6 +76,19 @@ const ITEMS = ".view-search-ci-links .details-wrap";
 const FACET_ITEMS = "li.facet-item:not(.honey)";
 
 const sid = {};
+
+/**
+ * Runs a PHP snippet with drush and yields its stdout. Fails the test with the
+ * stderr when drush exits non-zero (cy.drush does not).
+ */
+function phpEval(php) {
+  return cy.drush("php:eval", [`'${php}'`]).then((result) => {
+    if (result.exitCode !== 0) {
+      throw new Error(`drush php:eval failed: ${JSON.stringify(result)}`);
+    }
+    return result.stdout.trim();
+  });
+}
 
 /** The deep link to a single item of the listing. */
 const deepLink = (id) => `${RESOURCES}?f%5B0%5D=submission_id%3A${id}`;
@@ -104,6 +122,8 @@ describe("KB Resources page facets, copy link and sorting", () => {
     createKbResource({ title: TITLE.otherDomain, domain: "Great Plains", tags: [TAG_A] }).then((id) => { sid.otherDomain = id; });
     createKbResource({ title: TITLE.sortOne, tags: [TAG_A] });
     createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] });
+    createKbResource({ title: TITLE.countTen, tags: [TAG_A] }).then((id) => { sid.countTen = id; });
+    createKbResource({ title: TITLE.countTwo, tags: [TAG_A] }).then((id) => { sid.countTwo = id; });
     MANY_TAGS.forEach((tags, i) => {
       createKbResource({ title: `kbmany-${MANY_ID}-${i + 1}`, tags });
     });
@@ -317,6 +337,57 @@ describe("KB Resources page facets, copy link and sorting", () => {
         cy.visit(sortUrl);
         likeCount(second).should("eq", 0);
         item(second).find(".flag-upvote.action-flag a").should("exist");
+      });
+    });
+
+    // The sort field is indexed as an integer. As a string, 2 would sort above
+    // 10 ("2" > "10"), which the 1-vs-0 test above cannot tell apart.
+    describe("like count sorting", () => {
+      const countUrl = `${RESOURCES}?search_api_fulltext=${COUNT_ID}`;
+      const likeCount = (title) =>
+        item(title).find("details.search-ci-links > summary .linkcount").then(($count) => Number($count.text().trim()));
+
+      before(() => {
+        // Flag through the flag service, as 10 and 2 distinct active users.
+        // Flagging reindexes the item (index_directly), so no explicit index
+        // run is needed.
+        const php =
+          '$flag = \\Drupal::service("flag")->getFlagById("upvote");' +
+          '$uids = \\Drupal::entityQuery("user")->condition("status", 1)->condition("uid", 0, ">")->accessCheck(FALSE)->sort("uid")->range(0, 10)->execute();' +
+          '$out = [];' +
+          'foreach ([[' + sid.countTen + ', 10], [' + sid.countTwo + ', 2]] as [$sid, $n]) {' +
+          '$sub = \\Drupal\\webform\\Entity\\WebformSubmission::load($sid);' +
+          'foreach (array_slice($uids, 0, $n) as $uid) {' +
+          '$account = \\Drupal\\user\\Entity\\User::load($uid);' +
+          'if (!\\Drupal::service("flag")->getFlagging($flag, $sub, $account)) { \\Drupal::service("flag")->flag($flag, $sub, $account); }' +
+          '}' +
+          '$out[] = $sid . "=" . (\\Drupal::service("flag.count")->getEntityFlagCounts($sub)["upvote"] ?? 0);' +
+          '}' +
+          'print implode(",", $out);';
+        phpEval(php).should("eq", `${sid.countTen}=10,${sid.countTwo}=2`);
+      });
+
+      after(() => {
+        // Remove only the likes seeded above.
+        const php =
+          '$flag = \\Drupal::service("flag")->getFlagById("upvote");' +
+          'foreach ([' + sid.countTen + ', ' + sid.countTwo + '] as $sid) {' +
+          '$sub = \\Drupal\\webform\\Entity\\WebformSubmission::load($sid);' +
+          'foreach (\\Drupal::service("flag")->getEntityFlaggings($flag, $sub) as $flagging) {' +
+          '\\Drupal::service("flag")->unflag($flag, $sub, $flagging->getOwner());' +
+          '}' +
+          '}' +
+          'print "done";';
+        phpEval(php).should("eq", "done");
+      });
+
+      it("lists 10 likes above 2 likes", () => {
+        cy.loginAs(...AUTHENTICATED);
+        cy.visit(countUrl);
+        cy.get(ITEMS).should("have.length", 2);
+        likeCount(TITLE.countTen).should("eq", 10);
+        likeCount(TITLE.countTwo).should("eq", 2);
+        listedTitles().should("deep.eq", [TITLE.countTen, TITLE.countTwo]);
       });
     });
   });
