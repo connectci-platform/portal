@@ -48,6 +48,19 @@ $settings['ood_software.review_full_environments'] = ['md-2788'];
 // test runs of test repos (appverse-planning#27).
 $settings['ood_software.review_model'] = 'qwen';
 
+// Send mail to the null transport everywhere except live, so non-live
+// environments (dev, test, multidevs) never deliver mail to real users. Set
+// before the additional settings files so local.settings.php can override, and
+// before settings.ddev.php, which repoints sendmail at Mailpit. 'query' must be
+// nulled: NullTransport has no default query, and TransportBase::getDsn()
+// passes the stored query to array_diff_assoc(), which throws a TypeError.
+// Config overrides merge with NestedArray::mergeDeepArray(), so NULL replaces
+// the stored array. The live case below removes these overrides.
+foreach (['smtp', 'smtp_ccmnet', 'smtp_ood', 'sendmail'] as $mailer_transport_id) {
+  $config["symfony_mailer.mailer_transport.$mailer_transport_id"]['plugin'] = 'null';
+  $config["symfony_mailer.mailer_transport.$mailer_transport_id"]['configuration']['query'] = NULL;
+}
+
 $additionalSettingsFiles = [
   (DRUPAL_ROOT . "/../vendor/acquia/blt/settings/blt.settings.php"),
   (__DIR__ . "/settings.pantheon.php"),
@@ -118,6 +131,12 @@ if (isset($env)) {
 
     case 'live':
       $config['config_split.config_split.live']['status'] = TRUE;
+
+      // Live uses the stored transport config (see the null override above).
+      foreach (['smtp', 'smtp_ccmnet', 'smtp_ood', 'sendmail'] as $mailer_transport_id) {
+        unset($config["symfony_mailer.mailer_transport.$mailer_transport_id"]['plugin']);
+        unset($config["symfony_mailer.mailer_transport.$mailer_transport_id"]['configuration']['query']);
+      }
 
       $config['environment_indicator.indicator']['bg_color'] = '#DC2525';
       $config['environment_indicator.indicator']['fg_color'] = '#FFFFFF';
