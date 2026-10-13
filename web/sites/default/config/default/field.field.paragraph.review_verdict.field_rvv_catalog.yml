@@ -10,7 +10,7 @@ field_name: field_rvv_catalog
 entity_type: paragraph
 bundle: review_verdict
 label: 'Catalog checks'
-description: 'This app''s catalog comparison (artifact apps[].catalog, schema 1.5), as JSON: software, app_type, implementation_tags and the published apps with the same Software entry. Empty on reviews from an older tool.'
+description: "This app's catalog comparison (artifact apps[].catalog, schema 1.5), as JSON: software, app_type, implementation_tags and the published apps with the same Software entry. Empty on reviews from an older tool."
 required: false
 translatable: false
 default_value: {  }

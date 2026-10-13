@@ -10,7 +10,7 @@ field_name: field_rvf_override_evidence
 entity_type: paragraph
 bundle: review_finding
 label: 'Reviewer evidence'
-description: 'The reviewer''s wording of an automated finding''s evidence, when they edited it. Empty when unchanged; field_rvf_evidence keeps the tool''s.'
+description: "The reviewer's wording of an automated finding's evidence, when they edited it. Empty when unchanged; field_rvf_evidence keeps the tool's."
 required: false
 translatable: false
 default_value: {  }
