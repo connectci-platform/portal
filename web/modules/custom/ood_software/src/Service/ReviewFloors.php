@@ -14,13 +14,14 @@ use Drupal\node\NodeInterface;
  * - A security FAIL (aspect "security", or an OODT rule) at High or Critical
  *   sets the floor for every app, wherever in the repo it was found:
  *   installing any one app clones the whole repo.
- * - A structure gate FAIL (an STR rule, whichever aspect filed it) sets at
- *   least Request changes at any severity, since every Structure row is a
- *   gate and a missing gate criterion is Request changes; Critical sets
- *   Reject. An STR note tagged "other" is not a gate row and floors only at
- *   High or Critical. The upkeep gate
- *   (MNT-01) sets a floor at High or Critical. Both apply to their own app,
- *   or to every app when the finding is repo-level.
+ * - A structure gate FAIL (an STR rule, whichever aspect filed it) sets
+ *   Request changes at any severity: every Structure row is a gate, a
+ *   missing gate criterion is Request changes, and a gate failure can always
+ *   be fixed, so it is never Reject. An STR note tagged "other" is not a gate
+ *   row and floors only at High or Critical. Both apply to their own app, or
+ *   to every app when the finding is repo-level.
+ * - Inactivity (MNT-01) sets no floor: it is the Inactive upkeep level, and
+ *   whether an inactive repo is abandoned (a Reject) is the reviewer's call.
  * - A failed not_archived or public repo gate sets Request changes for every
  *   app.
  *
@@ -77,11 +78,13 @@ final class ReviewFloors {
         // A gate row the security aspect filed (a shellcheck code that maps
         // to STR-04, say) is still a gate, so its floor matches its pill.
         $security = !$gate && (strtolower(trim((string) ($f['aspect'] ?? ''))) === 'security' || str_starts_with($rule, 'OODT'));
-        if (!$security && !str_starts_with($rule, 'STR') && $rule !== 'MNT-01') {
+        if (!$security && !str_starts_with($rule, 'STR')) {
           continue;
         }
-        if ($decision === NULL && $gate && $result === 'FAIL') {
-          $decision = 'request_changes';
+        // A gate: Request changes when it failed (a row seeded before results
+        // were stored still needs High to count), never Reject.
+        if ($gate) {
+          $decision = $decision !== NULL || $result === 'FAIL' ? 'request_changes' : NULL;
         }
         if ($decision === NULL) {
           continue;
