@@ -25,9 +25,6 @@
             "Resolve the generation timezone from the event rather than the saving user": "patches/recurring_events-generation-event-timezone.patch",
             "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report": "patches/recurring_events-quiet-instance-status-message.patch"
         },
-        "drupal/domain": {
-            "Fix TypeError when domain source field is not present": "patches/domain_source-null-check-3482951.patch"
-        },
         "drupal/multiple_registration": {
             "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
         },

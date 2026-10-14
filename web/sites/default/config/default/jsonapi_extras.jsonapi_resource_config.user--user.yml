@@ -81,3 +81,15 @@ resourceFields:
     publicName: field_hide_community_profile
     enhancer:
       id: ''
+  field_domain_access:
+    disabled: true
+    fieldName: field_domain_access
+    publicName: field_domain_access
+    enhancer:
+      id: ''
+  field_domain_admin:
+    disabled: true
+    fieldName: field_domain_admin
+    publicName: field_domain_admin
+    enhancer:
+      id: ''
