@@ -7,6 +7,7 @@
 
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\FieldConfigInterface;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_theme().
@@ -135,5 +136,54 @@ function _ood_general_add_tag_suggester(array &$form) {
       'span',
       'h2',
     ],
+  ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave() for node entities.
+ *
+ * Open OnDemand classroom stories and Appverse apps and software are Open
+ * OnDemand content only. Their domain fields are hidden on the node form, so
+ * Domain Access' add_current_domain setting would otherwise assign whatever
+ * domain the editor happens to be browsing (and cron saves would grant empty
+ * nodes to the ACCESS domain). Force the domain on every save instead.
+ */
+function ood_general_node_presave(NodeInterface $node): void {
+  if (!in_array($node->bundle(), _ood_general_domain_pinned_bundles(), TRUE)) {
+    return;
+  }
+  $domain_id = _ood_general_domain_id();
+  foreach ($node->getTranslationLanguages() as $langcode => $language) {
+    $translation = $node->getTranslation($langcode);
+    foreach (['field_domain_access', 'field_domain_source'] as $field_name) {
+      if (!$translation->hasField($field_name)) {
+        continue;
+      }
+      $current = array_column($translation->get($field_name)->getValue(), 'target_id');
+      if ($current !== [$domain_id]) {
+        $translation->set($field_name, [$domain_id]);
+      }
+    }
+  }
+}
+
+/**
+ * Returns the domain record id of the Open OnDemand site.
+ */
+function _ood_general_domain_id(): string {
+  return 'openondemand_cyberinfrastructure_org';
+}
+
+/**
+ * Returns the content types that belong only to the Open OnDemand domain.
+ *
+ * @return string[]
+ *   Node bundle machine names.
+ */
+function _ood_general_domain_pinned_bundles(): array {
+  return [
+    'open_ondemand_classroom_stories',
+    'appverse_app',
+    'appverse_software',
   ];
 }
