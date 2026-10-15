@@ -1813,7 +1813,9 @@ function _ood_software_repo_catalog_url(NodeInterface $node): string {
   if ($slug === '') {
     $slug = (string) $node->id();
   }
-  return _ood_software_mail_url('/appverse/#/repo/' . $slug);
+  // No slash before the fragment: Url::fromUserInput() used to normalise it
+  // away, and the hub's own links are /appverse#/repo/<slug>.
+  return _ood_software_mail_url('/appverse#/repo/' . $slug);
 }
 
 /**
