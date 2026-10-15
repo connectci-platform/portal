@@ -42,6 +42,7 @@ jobs:
           - name: other-modules
             paths: >-
               web/modules/custom/access/modules/access_affinitygroup/tests/
+              web/modules/custom/access/modules/access_cilink/tests/
               web/modules/custom/access/modules/access_content_api/tests/
               web/modules/custom/access/modules/access_events/tests/src/Unit/
               web/modules/custom/access/modules/access_misc/tests/
@@ -54,6 +55,7 @@ jobs:
               web/modules/custom/ood_general/tests/
               web/modules/custom/ood_software/tests/
               web/modules/custom/operations_cider/tests/
+              web/modules/custom/webform_submission_search_api/tests/
           - name: events-1
             shard_index: '0'
           - name: events-2
