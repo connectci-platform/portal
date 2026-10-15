@@ -19,11 +19,14 @@ describe("Unauthenticated user tests the XDMoD Page", () => {
 
     cy.contains("View information about allocations, usage data, and usage");
 
-    //Checkpoint section
+    //Checkpoint section: three cards, each with its own heading and copy.
     cy.get("#about > .grid > :nth-child(1)").contains(
       "Optimize job efficiency"
     );
-    cy.get("#about > .grid > :nth-child(1)").contains(
+    cy.get("#about > .grid > :nth-child(2)").contains(
+      "Monitor allocation usage"
+    );
+    cy.get("#about > .grid > :nth-child(2)").contains(
       "View information about active and expired allocations."
     );
 

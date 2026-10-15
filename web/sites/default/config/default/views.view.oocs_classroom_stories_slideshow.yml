@@ -960,7 +960,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: text
-          empty: true
+          empty: false
           content:
             value: "  <div class=\"d-flex justify-content-center py-5\">\r\n    <a class=\"btn-primary btn btn-rounded text-white m-0 text-decoration-none mt-1 px-5 mb-3\" href=\"/appverse/classroom/stories\">Read the stories</a>\r\n  </div>"
             format: full_html

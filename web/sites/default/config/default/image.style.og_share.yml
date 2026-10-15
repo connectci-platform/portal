@@ -1,0 +1,21 @@
+uuid: 2e001d20-02d4-424f-bfc5-39d54117e4d6
+langcode: en
+status: true
+dependencies: {  }
+name: og_share
+label: 'OG share (1200x630)'
+effects:
+  eb28865b-63d4-41aa-9b81-585441bbf375:
+    uuid: eb28865b-63d4-41aa-9b81-585441bbf375
+    id: image_scale_and_crop
+    weight: 1
+    data:
+      width: 1200
+      height: 630
+      anchor: center-center
+  188bd664-7418-4eb3-a3a2-5e325f014484:
+    uuid: 188bd664-7418-4eb3-a3a2-5e325f014484
+    id: image_convert
+    weight: 2
+    data:
+      extension: jpg
