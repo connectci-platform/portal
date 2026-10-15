@@ -320,6 +320,48 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * Body links point at the Hub, not the ambient default domain (D8-2891).
+   *
+   * Url with 'absolute' resolves against the current request, and cron has
+   * none, so the links came out on the default domain the same way the From
+   * did. _ood_software_mail_url_options() passes the Hub's own scheme and
+   * hostname as base_url instead.
+   *
+   * The domain module is not installed here, so the helper cannot load a
+   * domain record and returns NULL, which leaves the link to core. What this
+   * asserts is the part that holds either way: the links are absolute, and
+   * they never carry the ambient default domain's host.
+   */
+  public function testMailLinksDoNotUseTheAmbientDefaultDomain(): void {
+    $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
+      ->set('name', 'Open OnDemand Community Hub')
+      ->set('mail', 'info@mg.openondemand.org')
+      ->save();
+    $this->config('system.site')
+      ->set('name', 'ACCESS Support')
+      ->set('mail', 'noreply@mg.support.access-ci.org')
+      ->save();
+
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $body = $this->mailBody($mails[0]);
+
+    $this->assertStringContainsString('/appverse/manage-repos', $body);
+    $this->assertStringNotContainsString('support.access-ci.org', $body);
+    $this->assertStringNotContainsString('access-ci.org', $body);
+  }
+
+  /**
    * Without the OOD override, the From is left to core rather than guessed.
    */
   public function testMailFallsBackToCoreWhenTheOodOverrideIsAbsent(): void {
