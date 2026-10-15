@@ -1536,48 +1536,39 @@ function _ood_software_mail_sender(): array {
 }
 
 /**
- * The base URL Appverse mail links point at (D8-2891).
+ * An absolute Appverse mail link on the OOD Hub (D8-2891).
  *
- * Url::toString() with 'absolute' resolves against the current request, and
- * under cron or drush there is no request, so links came out on the default
- * domain (support.access-ci.org) rather than the Hub. The domain record
- * carries its own scheme and hostname and needs no request, so pass this as
- * the 'base_url' option instead of relying on the active domain.
+ * Appverse is an Open OnDemand Community Hub feature, so these links always
+ * belong on the Hub whatever domain is active. Url's 'absolute' option
+ * resolves against the current request, and cron has none, so links came out
+ * on the default domain (support.access-ci.org) the same way the From did.
  *
- * @return string|null
- *   The Hub's base URL with no trailing slash, or NULL when the domain record
- *   is absent, which leaves the link to core.
+ * The Hub's base is read off its domain record, which carries its own scheme
+ * and hostname and needs no request. Note that passing 'base_url' as a Url
+ * option is not enough: UnroutedUrlAssembler ignores it entirely, so an
+ * unrouted path would silently keep the request's host.
+ *
+ * @param string $path
+ *   A root-relative path, starting with /.
+ *
+ * @return string
+ *   The absolute URL, or the path unchanged when the domain record is absent,
+ *   which is what a site without this domain gets.
  */
-function _ood_software_mail_base_url(): ?string {
+function _ood_software_mail_url(string $path): string {
   try {
     $domain = \Drupal::entityTypeManager()
       ->getStorage('domain')
       ->load(OOD_SOFTWARE_HUB_DOMAIN);
   }
   catch (\Exception $e) {
-    return NULL;
+    $domain = NULL;
   }
   if ($domain === NULL) {
-    return NULL;
+    return $path;
   }
-  // scheme . hostname, with no request involved.
-  return rtrim($domain->getRawPath(), '/');
-}
-
-/**
- * Link options that keep Appverse mail links on the Hub (D8-2891).
- *
- * @param array<string, mixed> $options
- *
- * @return array<string, mixed>
- */
-function _ood_software_mail_url_options(array $options = []): array {
-  $options['absolute'] = TRUE;
-  $base = _ood_software_mail_base_url();
-  if ($base !== NULL) {
-    $options['base_url'] = $base;
-  }
-  return $options;
+  // getRawPath() is scheme . hostname, with no request involved.
+  return rtrim($domain->getRawPath(), '/') . $path;
 }
 
 /**
@@ -1620,7 +1611,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       $repo = $node->hasField('field_repo_url') && !$node->get('field_repo_url')->isEmpty()
         ? ($node->get('field_repo_url')->first()->getValue()['uri'] ?? '')
         : '';
-      $admin_queue = \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', _ood_software_mail_url_options())->toString();
+      $admin_queue = _ood_software_mail_url('/appverse/manage-repos');
       $message['subject'] = t('[@site] Repo submitted for review: @title', [
         '@site' => $site_name,
         '@title' => $title,
@@ -1662,7 +1653,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       $review = $params['review'] ?? NULL;
       $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [
         ':url' => $review instanceof NodeInterface
-          ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $review->id()], _ood_software_mail_url_options())->toString()
+          ? _ood_software_mail_url(\Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString())
           : _ood_software_review_url($node),
       ]);
       break;
@@ -1677,7 +1668,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         ]);
       }
       $message['body'][] = t('<p>The repo in the review queue: <a href=":url">:url</a></p>', [
-        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', _ood_software_mail_url_options())->toString(),
+        ':url' => _ood_software_mail_url('/appverse/manage-repos'),
       ]);
       break;
 
@@ -1694,7 +1685,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@tag' => (string) ($params['tag'] ?? ''),
       ]);
       $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [
-        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', _ood_software_mail_url_options())->toString(),
+        ':url' => _ood_software_mail_url('/appverse/manage-repos'),
       ]);
       break;
 
@@ -1722,7 +1713,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         }
       }
       $hub_link = $node->getOwnerId()
-        ? \Drupal\Core\Url::fromUserInput('/user/' . $node->getOwnerId() . '/my-appverse', _ood_software_mail_url_options())->toString()
+        ? _ood_software_mail_url('/user/' . $node->getOwnerId() . '/my-appverse')
         : '';
       $message['subject'] = t('[@site] Changes requested on your Repo: @title', [
         '@site' => $site_name,
@@ -1787,8 +1778,8 @@ function _ood_software_review_url(NodeInterface $repo): string {
     ->count()
     ->execute();
   return $hasReview
-    ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $repo->id()], _ood_software_mail_url_options())->toString()
-    : \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', _ood_software_mail_url_options())->toString();
+    ? _ood_software_mail_url(\Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $repo->id()])->toString())
+    : _ood_software_mail_url('/appverse/manage-repos');
 }
 
 /**
@@ -1815,8 +1806,7 @@ function _ood_software_repo_catalog_url(NodeInterface $node): string {
   if ($slug === '') {
     $slug = (string) $node->id();
   }
-  return \Drupal\Core\Url::fromUserInput('/appverse/#/repo/' . $slug, _ood_software_mail_url_options())
-    ->toString();
+  return _ood_software_mail_url('/appverse/#/repo/' . $slug);
 }
 
 /**

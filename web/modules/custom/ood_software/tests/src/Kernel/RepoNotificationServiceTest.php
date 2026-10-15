@@ -50,6 +50,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     'flag',
     // ood_software.review_seeder depends on file.repository.
     'file',
+    // _ood_software_mail_url() loads the Hub's domain record (D8-2891).
+    'domain',
     'ood_software',
   ];
 
@@ -246,6 +248,26 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * The OOD Hub's domain record, as _ood_software_mail_url() reads it.
+   *
+   * Mirrors domain.record.openondemand_cyberinfrastructure_org.yml.
+   */
+  protected function createHubDomain(): void {
+    $this->container->get('entity_type.manager')
+      ->getStorage('domain')
+      ->create([
+        'id' => 'openondemand_cyberinfrastructure_org',
+        'hostname' => 'openondemand.connectci.org',
+        'name' => 'Open OnDemand',
+        'scheme' => 'https',
+        'status' => TRUE,
+        'is_default' => FALSE,
+        'weight' => 15,
+      ])
+      ->save();
+  }
+
+  /**
    * Flatten a captured mail body (array of strings) for substring checks.
    *
    * @param array<string, mixed> $mail
@@ -320,19 +342,18 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
-   * Body links point at the Hub, not the ambient default domain (D8-2891).
+   * Body links are built on the Hub's host (D8-2891).
    *
-   * Url with 'absolute' resolves against the current request, and cron has
-   * none, so the links came out on the default domain the same way the From
-   * did. _ood_software_mail_url_options() passes the Hub's own scheme and
-   * hostname as base_url instead.
+   * Url's 'absolute' option resolves against the current request and cron has
+   * none, so links came out on the default domain the same way the From did.
+   * _ood_software_mail_url() prefixes the Hub's own scheme and hostname from
+   * its domain record instead.
    *
-   * The domain module is not installed here, so the helper cannot load a
-   * domain record and returns NULL, which leaves the link to core. What this
-   * asserts is the part that holds either way: the links are absolute, and
-   * they never carry the ambient default domain's host.
+   * A real domain entity is created here so the helper's actual path runs,
+   * rather than falling through its no-record branch.
    */
-  public function testMailLinksDoNotUseTheAmbientDefaultDomain(): void {
+  public function testMailLinksAreBuiltOnTheHubHost(): void {
+    $this->createHubDomain();
     $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
       ->set('name', 'Open OnDemand Community Hub')
       ->set('mail', 'info@mg.openondemand.org')
@@ -356,8 +377,33 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertCount(1, $mails);
     $body = $this->mailBody($mails[0]);
 
+    $this->assertStringContainsString(
+      'https://openondemand.connectci.org/appverse/manage-repos',
+      $body,
+      'The admin queue link is absolute on the Hub host.',
+    );
+    $this->assertStringNotContainsString('access-ci.org', $body);
+  }
+
+  /**
+   * Without the Hub's domain record, links are left as paths (D8-2891).
+   */
+  public function testMailLinksFallBackToPathsWithoutTheDomainRecord(): void {
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $body = $this->mailBody($mails[0]);
+
     $this->assertStringContainsString('/appverse/manage-repos', $body);
-    $this->assertStringNotContainsString('support.access-ci.org', $body);
     $this->assertStringNotContainsString('access-ci.org', $body);
   }
 

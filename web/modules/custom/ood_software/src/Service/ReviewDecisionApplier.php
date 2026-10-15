@@ -660,8 +660,8 @@ final class ReviewDecisionApplier {
    */
   protected function links(NodeInterface $review, NodeInterface $repo): array {
     return [
-      'review' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()], _ood_software_mail_url_options())->toString(),
-      'hub' => Url::fromUserInput('/user/' . $repo->getOwnerId() . '/my-appverse', _ood_software_mail_url_options())->toString(),
+      'review' => _ood_software_mail_url(Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString()),
+      'hub' => _ood_software_mail_url('/user/' . $repo->getOwnerId() . '/my-appverse'),
       'catalog' => _ood_software_repo_catalog_url($repo),
     ];
   }
