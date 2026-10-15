@@ -9,3 +9,4 @@ name: 'Campus Champions'
 scheme: https
 weight: 8
 is_default: false
+path_prefix: ''

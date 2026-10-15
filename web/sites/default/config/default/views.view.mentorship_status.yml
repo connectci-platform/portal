@@ -1472,7 +1472,7 @@ display:
           group_type: group
           admin_label: ''
           plugin_id: domain_access_filter
-          operator: in
+          operator: or
           value:
             campuschampions_cyberinfrastructure_org: campuschampions_cyberinfrastructure_org
             ccmnet_org: ccmnet_org

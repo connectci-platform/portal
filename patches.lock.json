@@ -1,5 +1,5 @@
 {
-    "_hash": "0b4088526f125e4eb0d196f77764ed33f886a0101eed1f2a18415eb0f23a0ce3",
+    "_hash": "7b10deaefb3db93797b80e2ae976fc418898d9b5ca4b84aa7ef1ebbc7304e3eb",
     "patches": {
         "drupal/core": [
             {
@@ -149,14 +149,12 @@
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
                 }
-            }
-        ],
-        "drupal/domain": [
+            },
             {
-                "package": "drupal/domain",
-                "description": "Fix TypeError when domain source field is not present",
-                "url": "patches/domain_source-null-check-3482951.patch",
-                "sha256": "644b01de70c4374b2f8bc0b81809823e8ee62196877845886e1965a51c23d02e",
+                "package": "drupal/recurring_events",
+                "description": "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report",
+                "url": "patches/recurring_events-quiet-instance-status-message.patch",
+                "sha256": "be6911876d93b83352f8c995325f54f2bb396429d28b76b10006ffbfd1fba825",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
