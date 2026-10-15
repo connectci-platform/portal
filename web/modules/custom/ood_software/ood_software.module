@@ -1556,6 +1556,13 @@ function _ood_software_mail_sender(): array {
  *   which is what a site without this domain gets.
  */
 function _ood_software_mail_url(string $path): string {
+  // domain_source's outbound path processor sets absolute on routes carrying a
+  // content entity whose field_domain_source differs from the active domain.
+  // No Appverse bundle has that field today, but if one gains it, toString()
+  // would already return an absolute URL and prefixing would double the host.
+  if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+    return $path;
+  }
   try {
     $domain = \Drupal::entityTypeManager()
       ->getStorage('domain')

@@ -564,7 +564,8 @@ final class ReviewDecisionApplier {
     return [
       'to' => $owner ? (string) $owner->getEmail() : '',
       // Without the reviewer's address, replies go to the site's.
-      'reply_to' => (string) ($this->reviewer($review)?->getEmail() ?: $this->configFactory->get('system.site')->get('mail')),
+      // Falls back to the Hub's address, not the active domain's (D8-2891).
+      'reply_to' => (string) ($this->reviewer($review)?->getEmail() ?: (_ood_software_mail_sender()[1] ?? $this->configFactory->get('system.site')->get('mail'))),
       'subject' => $rendered['subject'],
       'body' => $rendered['body'],
       'contributor' => $this->people($review, $repo)['contributor'],
@@ -649,8 +650,16 @@ final class ReviewDecisionApplier {
     ];
   }
 
+  /**
+   * The site name these emails are branded with (D8-2891).
+   *
+   * The Hub's own name, not the active domain's: under cron there is no
+   * request to negotiate a domain from, so ambient system.site resolves to
+   * the default domain and the subject and body read ACCESS Support.
+   */
   protected function siteName(): string {
-    return (string) $this->configFactory->get('system.site')->get('name');
+    [$name] = _ood_software_mail_sender();
+    return $name;
   }
 
   /**
