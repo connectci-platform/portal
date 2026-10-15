@@ -9,3 +9,4 @@ name: 'Kentucky Cyberteam'
 scheme: https
 weight: 4
 is_default: false
+path_prefix: ''

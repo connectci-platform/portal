@@ -9,3 +9,4 @@ name: 'Northeast Cyberteam'
 scheme: https
 weight: 1
 is_default: true
+path_prefix: ''
