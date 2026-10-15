@@ -29,6 +29,10 @@ field_settings:
     dependencies:
       module:
         - webform
+  webform_submission_approved:
+    label: Approved
+    property_path: search_api_webform_submission_approved
+    type: boolean
   webform_submission_category:
     label: Category
     property_path: search_api_webform_submission_category
@@ -41,6 +45,10 @@ field_settings:
     label: Domain
     property_path: search_api_webform_submission_domain
     type: string
+  webform_submission_private:
+    label: Private
+    property_path: search_api_webform_submission_private
+    type: boolean
   webform_submission_skill_level:
     label: 'Skill Level'
     property_path: search_api_webform_submission_skill_level
@@ -169,9 +177,16 @@ processor_settings:
       - was
       - will
       - with
+  user_affinity_groups: {  }
+  user_badges: {  }
+  user_interests: {  }
+  user_skills: {  }
+  user_skills_id: {  }
+  webform_submission_approved: {  }
   webform_submission_category: {  }
   webform_submission_description: {  }
   webform_submission_domain: {  }
+  webform_submission_private: {  }
   webform_submission_skill_level: {  }
   webform_submission_tags: {  }
   webform_submission_title: {  }

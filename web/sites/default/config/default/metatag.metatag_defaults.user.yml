@@ -9,4 +9,6 @@ label: User
 tags:
   canonical_url: '[user:url]'
   description: '[site:name]'
+  og_image: '[user:user_picture:og_share:url]'
+  og_image_alt: '[user:display-name]'
   title: '[user:display-name] | [site:name]'

@@ -10,7 +10,7 @@ tags:
   canonical_url: '[node:url]'
   description: '[node:summary]'
   og_description: '[node:summary]'
-  og_image_url: '[node:field_image][node:field_project_image]'
+  og_image: '[node:field_image:og_share:url][node:field_project_image:og_share:url][node:field_tcs_main_image:og_share:url]'
   og_site_name: '[site:name]'
   og_title: '[current-page:title]'
   og_type: article
