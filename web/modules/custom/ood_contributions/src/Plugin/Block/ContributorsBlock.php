@@ -98,6 +98,7 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
     return [
       '#theme' => 'contributors_block',
       '#items' => $contributors,
+      '#shuffle' => TRUE,
       '#cache' => [
         'max-age' => 3600,
       ],
@@ -111,16 +112,14 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
    *   Array of contributor data.
    */
   protected function getContributors() {
-    // Order contributors by their most recent commit (newest first) so the
-    // most-recently-active people lead the grid. Group by uid and sort on
-    // MAX(commit_date); loadMultiple() ignores the id order it's given, so we
-    // re-apply the query order when building the list below.
+    // The order is randomized in the browser (people-grid-shuffle), so the
+    // server only needs the distinct contributors. Sort by uid for a stable
+    // no-JavaScript fallback.
     $query = $this->database->select('ood_user_commits', 'ouc');
+    $query->distinct();
     $query->addField('ouc', 'uid');
-    $query->addExpression('MAX(ouc.commit_date)', 'last_commit');
     $query->condition('ouc.uid', 0, '>');
-    $query->groupBy('ouc.uid');
-    $query->orderBy('last_commit', 'DESC');
+    $query->orderBy('ouc.uid', 'ASC');
     $uids = $query->execute()->fetchCol();
 
     if (empty($uids)) {
@@ -130,7 +129,7 @@ class ContributorsBlock extends BlockBase implements ContainerFactoryPluginInter
     $users = $this->entityTypeManager->getStorage('user')->loadMultiple($uids);
     $contributors = [];
 
-    // Iterate the ordered uids (not $users) to preserve the most-recent sort.
+    // Iterate the ordered uids: loadMultiple() ignores the order it's given.
     foreach ($uids as $uid) {
       if (empty($users[$uid])) {
         continue;

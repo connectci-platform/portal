@@ -2,6 +2,8 @@
 
 namespace Drupal\ood_contributions\Plugin;
 
+use Drupal\ood_contributions\Service\DiscourseAlertNotifier;
+
 /**
  * Manages cron job callbacks for the the contributions module.
  */
@@ -90,8 +92,11 @@ class CronManager {
 
   /**
    * Store Discourse contributions.
+   *
+   * @return array{updated: int, failed: int}
+   *   How many users were updated and how many failed.
    */
-  public static function discourseStoreContrib() {
+  public static function discourseStoreContrib(): array {
     // Lookup users to store stats.
     $entity_query = \Drupal::entityQuery('user')
       ->condition('status', 1)
@@ -99,35 +104,71 @@ class CronManager {
       ->exists('field_discourse_openondemand_org');
     $uids = $entity_query->execute();
 
+    $summary = ['updated' => 0, 'failed' => 0];
+    $service = \Drupal::service('ood_contributions.discourse_contribution');
     foreach ($uids as $uid) {
-      $service = \Drupal::service('ood_contributions.discourse_contribution');
-      $result = $service->updateUserContributions($uid);
+      $result = $service->updateUserContributions((int) $uid);
+      if (!empty($result['success'])) {
+        $summary['updated']++;
+      }
+      else {
+        $summary['failed']++;
+      }
     }
+
+    // The Discourse Participation block orders by last_posted_at and is
+    // cached with this tag.
+    \Drupal::service('cache_tags.invalidator')->invalidateTags(['ood_disc_contrib']);
+
+    return $summary;
   }
 
   /**
    * Update Discourse daily post statistics.
    *
-   * Fetches 365 days on first run, then only new data on subsequent runs.
+   * Re-fetches a trailing window on every run. Failures and stalls raise
+   * alerts through the notifier; this is cron only, drush never alerts.
    */
   public static function discourseUpdateDailyStats() {
     $service = \Drupal::service('ood_contributions.discourse_stats');
-    $result = $service->updateDailyPostStats();
+    $notifier = \Drupal::service('ood_contributions.discourse_alert');
 
-    if ($result['success']) {
-      \Drupal::logger('ood_contributions')->info('Discourse daily stats updated: @message', [
-        '@message' => $result['message'],
-      ]);
-
-      // Update the block with the contribution graph.
-      $service->updateBlock();
+    try {
+      $result = $service->updateDailyPostStats();
     }
-    else {
+    catch (\Throwable $e) {
+      $result = ['success' => FALSE, 'message' => $e->getMessage()];
+    }
+
+    if (!$result['success']) {
       \Drupal::logger('ood_contributions')->error('Failed to update Discourse daily stats: @message', [
         '@message' => $result['message'],
       ]);
+      $notifier->notify('failure', 'Daily post stats could not be updated', (string) $result['message']);
+      return;
+    }
+
+    \Drupal::logger('ood_contributions')->info('Discourse daily stats updated: @message', [
+      '@message' => $result['message'],
+    ]);
+    // A success re-arms the failure alert.
+    \Drupal::state()->delete(DiscourseAlertNotifier::STATE_PREFIX . DiscourseAlertNotifier::TYPE_FAILURE);
+
+    // Update the block with the contribution graph.
+    $service->updateBlock();
+
+    try {
+      $stall = $service->checkStall();
+    }
+    catch (\Throwable $e) {
+      \Drupal::logger('ood_contributions')->error('Discourse stall check failed: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+      $stall = NULL;
+    }
+    if ($stall !== NULL) {
+      $notifier->notify('stall', 'Daily post counts have stopped tracking Discourse', $stall);
     }
   }
 
 }
-

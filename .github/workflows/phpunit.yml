@@ -52,6 +52,7 @@ jobs:
               web/modules/custom/domain_menu_system_block/tests/
               web/modules/custom/expandable_text/tests/
               web/modules/custom/infrastructure_news/tests/
+              web/modules/custom/ood_contributions/tests/
               web/modules/custom/ood_general/tests/
               web/modules/custom/ood_software/tests/
               web/modules/custom/operations_cider/tests/
