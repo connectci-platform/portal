@@ -9,6 +9,21 @@
 describe("PA Science - Project Submissions (Manager View)", () => {
 
   let project2Url;
+  let nonPaSid;
+
+  // Real pascience_manager credentials (a non-admin account). Supply via
+  // CYPRESS_PASCIENCE_MANAGER_USER / CYPRESS_PASCIENCE_MANAGER_PASS. When
+  // absent, the delete-flow test falls back to the administrator (who can also
+  // delete) and the 403 test is skipped, since admins are never denied.
+  const managerUser = Cypress.env('PASCIENCE_MANAGER_USER');
+  const managerPass = Cypress.env('PASCIENCE_MANAGER_PASS');
+  const loginAsManager = () => {
+    if (managerUser && managerPass) {
+      cy.loginUser(managerUser, managerPass);
+    } else {
+      cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    }
+  };
 
   it("PA Science Manager can view all PA Science project submissions", () => {
     // Create a PA Science project as regular user
@@ -101,6 +116,9 @@ describe("PA Science - Project Submissions (Manager View)", () => {
     cy.get('textarea[name="project_description"]').type('This is not a PA Science project');
 
     cy.get('input#edit-actions-01-submit').click();
+    cy.url().should('match', /\/project\/\d+/).then((url) => {
+      nonPaSid = url.match(/\/project\/(\d+)/)[1];
+    });
 
     // Visit PA Science project submissions page
     cy.visit('/project-submissions');
@@ -189,6 +207,62 @@ describe("PA Science - Project Submissions (Manager View)", () => {
     cy.contains('PA Science Manager Test Project 2').should('be.visible');
   });
 
+  it("PA Science manager can delete a PA Science project from the listing", () => {
+    const title = 'PA Science Manager Delete Test Project';
+
+    // Create the project to be deleted.
+    cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    cy.visit('/form/project');
+    cy.get('input[name="approved_milestones"]').check();
+    cy.get('input[name="approved"]').check();
+    cy.get('input[name="project_title"]').type(title);
+    cy.get('select[name="status"]').select('Recruiting');
+    cy.get('input[name="project_leader[first]"]').type('Delete');
+    cy.get('input[name="project_leader[last]"]').type('Me');
+    cy.get('input[name="email"]').clear();
+    cy.get('input[name="email"]').type('deleteme@test.com');
+    cy.get('textarea[name="project_description"]').type('Project that will be deleted');
+    cy.get('input#edit-actions-01-submit').click();
+    cy.url().should('include', '/project/');
+
+    loginAsManager();
+    cy.visit('/project-submissions');
+    cy.contains(title)
+      .closest('tr')
+      .find('a')
+      .contains('Delete')
+      .click();
+
+    // Confirmation page names the project and warns about attached files.
+    cy.contains(title).should('be.visible');
+    cy.contains(/permanently deleted/i).should('be.visible');
+    cy.contains(/Declined/).should('be.visible');
+
+    cy.get('input#edit-submit, button#edit-submit, input[value="Delete"]')
+      .first()
+      .click();
+
+    cy.location('pathname').should('eq', '/project-submissions');
+    cy.contains(title).should('not.exist');
+  });
+
+  it("PA Science manager is denied direct delete access to a non-PA Science project", function () {
+    if (!managerUser || !managerPass) {
+      this.skip();
+    }
+    expect(nonPaSid, 'sid of the non-PA Science project').to.be.a('string');
+
+    loginAsManager();
+    cy.request({
+      url: `/webform/project/submissions/${nonPaSid}/delete`,
+      failOnStatusCode: false,
+    }).its('status').should('eq', 403);
+    cy.request({
+      url: `/admin/structure/webform/manage/project/submission/${nonPaSid}/delete`,
+      failOnStatusCode: false,
+    }).its('status').should('eq', 403);
+  });
+
   it("Cleanup - Delete test projects", () => {
     cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
     cy.visit('/admin/structure/webform/manage/project/results/submissions');
@@ -196,6 +270,7 @@ describe("PA Science - Project Submissions (Manager View)", () => {
     const testTitles = [
       'PA Science Manager Test Project 1',
       'PA Science Manager Test Project 2',
+      'PA Science Manager Delete Test Project',
       'Non-PA Science Project - Should Not Appear'
     ];
 
