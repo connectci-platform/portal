@@ -34,6 +34,9 @@ class TitleAndSummaryLengthTest extends KernelTestBase {
     'filter',
     'key',
     'flag',
+    'workflows',
+    'content_moderation',
+    'file',
     'ood_software',
     'ood_general',
   ];
