@@ -110,10 +110,11 @@ describe("Contributor Wall - Badge & Data-Driven Blocks", () => {
         cy.get('.profile-photo').should('have.length.greaterThan', 0);
       });
 
-      // The section title links to the Appverse.
+      // The section title links to the Appverse. The href is rendered
+      // absolute (host varies by environment), so match the path suffix.
       cy.contains('.cw-title h2', 'Appverse App Reviewers')
         .closest('.cw-title')
-        .find('a[href="/appverse"]')
+        .find('a[href$="/appverse"]')
         .should('exist');
     });
   });
