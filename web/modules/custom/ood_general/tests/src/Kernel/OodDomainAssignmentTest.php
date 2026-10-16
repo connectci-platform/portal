@@ -44,6 +44,9 @@ class OodDomainAssignmentTest extends KernelTestBase {
     'domain_source',
     'key',
     'flag',
+    'workflows',
+    'content_moderation',
+    'file',
     'ood_software',
     'ood_general',
   ];

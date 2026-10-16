@@ -70,3 +70,6 @@ docs/local/
 .claude
 CLAUDE.personal.md
 docs/superpowers/
+
+# PHPUnit shard lists and logs written by .github/actions/ddev-phpunit
+.phpunit-ci/
