@@ -21,18 +21,19 @@ jobs:
     # no change-based selection (a mechanism whose failure mode is "silently skip
     # a test that would have caught the regression" was rejected in design).
     #
-    # Sharded only for wall-clock: access_events is ~20 min of kernel tests on its
-    # own (measured), so it is split into three, while every other custom module
-    # runs fast in one shard. The events split is BY ROUND-ROBIN FILE POSITION
-    # over the whole kernel directory (shard_dir/shard_index/shard_total), never
-    # an enumerated filename list: a new test file auto-enrolls into exactly one
-    # shard, so coverage can never silently drop, and the balance holds no matter
-    # how class names cluster. `other-modules` uses plain directory paths, so its
-    # new files auto-enroll too.
+    # Sharded only for wall-clock: access_events has the bulk of the kernel tests,
+    # so its kernel directory is split across the events shards; ood_software is
+    # the next largest (~5 min) and gets its own shard; every other custom module
+    # runs in one shard. The events split is BY ROUND-ROBIN FILE POSITION over
+    # the whole kernel directory (shard_dir/shard_index/shard_total), never an
+    # enumerated filename list: a new test file auto-enrolls into exactly one
+    # shard, and the balance holds no matter how class names cluster. `other-modules` takes all of web/modules/custom minus
+    # that kernel directory and ood_software, so a new module's tests auto-enroll
+    # there too.
     #
-    # The events shards discover ONLY tests/src/Kernel/. Any OTHER suite dir
-    # under access_events (Unit, Functional, ...) must be listed explicitly in
-    # the other-modules paths below, or its tests never run in this gate.
+    # To change the events shard count, add or remove matrix entries AND update
+    # shard_total below to match. The gate fails if any test file is in no shard
+    # or in more than one.
     name: PHPUnit (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
@@ -40,38 +41,34 @@ jobs:
       matrix:
         include:
           - name: other-modules
-            paths: >-
-              web/modules/custom/access/modules/access_affinitygroup/tests/
-              web/modules/custom/access/modules/access_content_api/tests/
-              web/modules/custom/access/modules/access_events/tests/src/Unit/
-              web/modules/custom/access/modules/access_misc/tests/
-              web/modules/custom/access/modules/user_profiles/tests/
-              web/modules/custom/access/tests/
-              web/modules/custom/campuschampions/tests/
-              web/modules/custom/connectci_llms/tests/
-              web/modules/custom/domain_menu_system_block/tests/
-              web/modules/custom/expandable_text/tests/
-              web/modules/custom/infrastructure_news/tests/
-              web/modules/custom/ood_contributions/tests/
-              web/modules/custom/ood_general/tests/
-              web/modules/custom/ood_software/tests/
-              web/modules/custom/operations_cider/tests/
+            paths: web/modules/custom/
+            exclude: >-
+              web/modules/custom/access/modules/access_events/tests/src/Kernel/
+              web/modules/custom/ood_software/
+          - name: ood-software
+            paths: web/modules/custom/ood_software/
           - name: events-1
             shard_index: '0'
           - name: events-2
             shard_index: '1'
           - name: events-3
             shard_index: '2'
+          - name: events-4
+            shard_index: '3'
+          - name: events-5
+            shard_index: '4'
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/ddev-phpunit
         with:
+          shard_name: ${{ matrix.name }}
           paths: ${{ matrix.paths }}
+          exclude: ${{ matrix.exclude }}
           # The events shards set shard_index; other-modules leaves it blank and
           # uses paths. shard_dir/shard_total are constant for the events split.
           shard_dir: ${{ matrix.shard_index != '' && 'web/modules/custom/access/modules/access_events/tests/src/Kernel/' || '' }}
           shard_index: ${{ matrix.shard_index }}
-          shard_total: ${{ matrix.shard_index != '' && '3' || '' }}
+          shard_total: ${{ matrix.shard_index != '' && '5' || '' }}
           database: ${{ github.event.inputs.database }}
           database_branch: ${{ github.event.inputs.database_branch }}
           github_token: ${{ secrets.GH_TOKEN_REPO }}
@@ -79,14 +76,64 @@ jobs:
 
   # Single fixed required check: branch protection points HERE, not at the dynamic
   # per-shard job names (which would leave a stale required context pending on a
-  # rename — finding F5). Passes iff every shard succeeded.
+  # rename — finding F5). Passes iff every test file is in exactly one shard and
+  # every shard succeeded.
   phpunit-gate:
     name: PHPUnit
     needs: phpunit
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Download shard target lists
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: phpunit-targets-*
+          path: shards/
+
+      - name: Require every test file to be in exactly one shard
+        shell: bash
+        run: |
+          # Each shard uploaded targets.txt (the files it ran) and all.txt (every
+          # test file under web/modules/custom, as it saw the tree after composer
+          # install). Union of targets must equal all.txt, with no file in two
+          # shards. This catches a module left out by an exclude, a shard_total
+          # that does not match the matrix, or a shard that never uploaded.
+          shopt -s nullglob
+          lists=(shards/*/targets.txt)
+          if [ ${#lists[@]} -eq 0 ]; then
+            echo "::error::No shard target lists were uploaded."
+            exit 1
+          fi
+          echo "Shard lists found: ${#lists[@]}"
+          first=""
+          for all in shards/*/all.txt; do
+            if [ -z "$first" ]; then
+              first="$all"
+            elif ! cmp -s "$first" "$all"; then
+              echo "::error::Shards saw different test trees ($first vs $all)."
+              diff "$first" "$all" || true
+              exit 1
+            fi
+          done
+          cat "${lists[@]}" | LC_ALL=C sort > union.txt
+          dups=$(uniq -d union.txt)
+          missing=$(LC_ALL=C sort -u union.txt | LC_ALL=C comm -23 "$first" -)
+          echo "Test files: $(grep -c . "$first" || true); in shards: $(LC_ALL=C sort -u union.txt | grep -c . || true)"
+          if [ -n "$missing" ]; then
+            echo "::error::Test files in no shard:"
+            printf '%s\n' "$missing" | sed 's/^/  /'
+          fi
+          if [ -n "$dups" ]; then
+            echo "::error::Test files in more than one shard:"
+            printf '%s\n' "$dups" | sed 's/^/  /'
+          fi
+          if [ -n "$missing" ] || [ -n "$dups" ]; then
+            exit 1
+          fi
+          echo "Every test file is in exactly one shard."
+
       - name: Require all shards to have passed
+        if: ${{ always() }}
         shell: bash
         run: |
           result="${{ needs.phpunit.result }}"

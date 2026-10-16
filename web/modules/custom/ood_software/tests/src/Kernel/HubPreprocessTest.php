@@ -177,7 +177,7 @@ class HubPreprocessTest extends KernelTestBase {
 
     $hub = _ood_software_build_hub_row($repo);
 
-    $expected = \Drupal::service('date.formatter')->format(1700000000, 'custom', 'm-d-y H:i');
+    $expected = \Drupal::service('date.formatter')->format(1700000000, 'custom', 'M j, Y g:i A');
     $this->assertSame($expected, $hub['submitted']);
     $this->assertArrayNotHasKey('last_synced', $hub);
   }
