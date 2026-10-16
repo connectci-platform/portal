@@ -7,6 +7,8 @@
  * - items: Array of person data with uid, name, and photo_url.
  * - empty_message: Message to show when no items found.
  * - scrollable: Whether to constrain height with overflow scroll (default true).
+ * - shuffle: Whether the browser should randomize the order of the people
+ *   (default false). Visitors without JavaScript see the server order.
  */
 #}
 
@@ -31,10 +33,20 @@
     padding: 0;
     margin: 0;
   }
+  .people-grid-block .people-grid-name {
+    font-size: 0.85rem;
+  }
+  /* Hide shuffled lists until the script has reordered them (no flash). */
+  .js .people-grid-list[data-shuffle]:not(.is-shuffled) {
+    visibility: hidden;
+  }
 </style>
 <div class="people-grid-block{{ block_class ? ' ' ~ block_class }}{{ scrollable is not same as(false) ? ' people-grid-block--scrollable' }}">
   {% if items %}
-    <ul class="people-grid-list">
+    {% if shuffle %}
+      {{ attach_library('ood_software/people-grid-shuffle') }}
+    {% endif %}
+    <ul class="people-grid-list"{{ shuffle ? ' data-shuffle' }}>
       {% for item in items %}
         <li class="people-grid-item text-center">
           <a href="/community-persona/{{ item.uid }}" class="people-grid-link">

@@ -1,0 +1,18 @@
+uuid: 6f0d3c52-8e1a-4b7e-9c24-5a1d7e3b9f41
+langcode: en
+status: true
+dependencies:
+  module:
+    - ood_contributions
+id: ood_contributions.discourse_sync_alert
+configuration:
+  email_body:
+    content:
+      value: |-
+        <p>The Discourse sync on the Open OnDemand community site needs attention (<strong>{{ type }}</strong>).</p>
+        <p>{{ alert_subject }}</p>
+        <p>Details: {{ message }}</p>
+        <p>To re-run the sync by hand: <code>drush ood:discourse-stats --since=2025-10-01</code> and <code>drush ood:discourse-contrib</code>. This alert is sent at most once a day per type.</p>
+      format: basic_html
+  email_subject:
+    value: 'Discourse sync {{ type }}: {{ alert_subject }}'

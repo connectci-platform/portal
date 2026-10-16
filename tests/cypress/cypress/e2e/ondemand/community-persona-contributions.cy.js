@@ -164,12 +164,13 @@ describe("Community Persona - Contribution Graphs", () => {
         return;
       }
       cy.exec(
-        `ddev drush sqlq "SELECT COUNT(*) FROM ood_disc_contrib WHERE uid = ${testUserUid}"`,
+        `ddev drush sqlq "SELECT COUNT(*) FROM ood_disc_contrib WHERE uid = ${testUserUid} AND post_count > 0 AND last_posted_at IS NOT NULL"`,
         { failOnNonZeroExit: false, timeout: 30000 }
       ).then((result) => {
         const count = parseInt(result.stdout.trim(), 10);
-        cy.log(`Discourse contributions stored for user ${testUserUid}: ${count}`);
-        // jeff.ohrstrom should have Discourse activity
+        cy.log(`Discourse contributions with posts stored for user ${testUserUid}: ${count}`);
+        // jeff.ohrstrom should have Discourse activity: real counts (from the
+        // summary endpoint) and a last post time, not just a linked row.
         expect(count).to.be.greaterThan(0);
       });
     });

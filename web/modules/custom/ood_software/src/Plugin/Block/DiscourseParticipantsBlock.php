@@ -88,35 +88,48 @@ class DiscourseParticipantsBlock extends BlockBase implements ContainerFactoryPl
       '#theme' => 'discourse_participants_block',
       '#items' => $participants,
       '#cache' => [
+        'tags' => ['user_list', 'ood_disc_contrib'],
         'max-age' => 3600,
       ],
     ];
   }
 
   /**
-   * Get list of participants from the ood_disc_contrib table.
+   * Get participants, most recent Discourse post first.
    *
-   * @return array
+   * Only active users are listed. Linked users who have never posted (NULL
+   * last_posted_at) come last, ordered by uid.
+   *
+   * @return array<int, array<string, mixed>>
    *   Array of participant data.
    */
   protected function getParticipants() {
     $participants = [];
 
     $query = $this->database->select('ood_disc_contrib', 'odc');
+    $query->join('users_field_data', 'u', 'u.uid = odc.uid');
     $query->fields('odc', ['uid']);
     $query->condition('odc.uid', 0, '>');
-    $results = $query->execute()->fetchCol();
+    $query->condition('u.status', 1);
+    // Portable "NULLs last" ordering (works on MySQL and SQLite).
+    $query->addExpression('CASE WHEN odc.last_posted_at IS NULL THEN 1 ELSE 0 END', 'never_posted');
+    $query->orderBy('never_posted', 'ASC');
+    $query->orderBy('odc.last_posted_at', 'DESC');
+    $query->orderBy('odc.uid', 'ASC');
+    $uids = array_unique($query->execute()->fetchCol());
 
-    if (empty($results)) {
+    if (empty($uids)) {
       return $participants;
     }
 
-    $users = $this->entityTypeManager->getStorage('user')->loadMultiple($results);
+    $users = $this->entityTypeManager->getStorage('user')->loadMultiple($uids);
 
-    foreach ($users as $user) {
-      if ($user->isAnonymous()) {
+    // Iterate the ordered uids: loadMultiple() ignores the order it's given.
+    foreach ($uids as $uid) {
+      if (empty($users[$uid]) || $users[$uid]->isAnonymous()) {
         continue;
       }
+      $user = $users[$uid];
 
       $photo_url = NULL;
       if ($user->hasField('user_picture') && !$user->get('user_picture')->isEmpty()) {

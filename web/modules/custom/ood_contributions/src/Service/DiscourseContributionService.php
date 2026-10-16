@@ -101,8 +101,19 @@ class DiscourseContributionService {
 
       $user_data = $result['data'];
 
+      // The counts live only in /u/{name}/summary.json, not /u/{name}.json.
+      // A failed summary fetch must not store zeros over real numbers.
+      $summary = $this->discourseApi->getUserSummary($discourse_username);
+
+      if ($summary['error']) {
+        return [
+          'success' => FALSE,
+          'message' => 'Failed to fetch Discourse summary: ' . $summary['message'],
+        ];
+      }
+
       // Extract contribution data.
-      $contribution_data = $this->extractContributionData($user_data);
+      $contribution_data = $this->extractContributionData($user_data, $summary['data']);
 
       // Store the data using the storage service.
       $stored = $this->discourseStorage->storeContributions($uid, $contribution_data);
@@ -137,19 +148,21 @@ class DiscourseContributionService {
    * Extracts contribution data from Discourse API response.
    *
    * @param array $user_data
-   *   The user data from Discourse API.
+   *   The /u/{name}.json response (badges and the user's last_posted_at).
+   * @param array $summary_data
+   *   The /u/{name}/summary.json response (the user_summary counts).
    *
    * @return array
    *   The extracted contribution data.
    */
-  protected function extractContributionData(array $user_data): array {
-    $post_count = $user_data['user_summary']['post_count'] ?? 0;
-    $topic_count = $user_data['user_summary']['topic_count'] ?? 0;
-    $likes_given = $user_data['user_summary']['likes_given'] ?? 0;
-    $likes_received = $user_data['user_summary']['likes_received'] ?? 0;
-    $days_visited = $user_data['user_summary']['days_visited'] ?? 0;
-    $time_read = $user_data['user_summary']['time_read'] ?? 0;
-    $solved_count = $user_data['user_summary']['solved_count'] ?? 0;
+  protected function extractContributionData(array $user_data, array $summary_data = []): array {
+    $post_count = $summary_data['user_summary']['post_count'] ?? 0;
+    $topic_count = $summary_data['user_summary']['topic_count'] ?? 0;
+    $likes_given = $summary_data['user_summary']['likes_given'] ?? 0;
+    $likes_received = $summary_data['user_summary']['likes_received'] ?? 0;
+    $days_visited = $summary_data['user_summary']['days_visited'] ?? 0;
+    $time_read = $summary_data['user_summary']['time_read'] ?? 0;
+    $solved_count = $summary_data['user_summary']['solved_count'] ?? 0;
 
     // Build badges string.
     $badges = '';
@@ -163,7 +176,15 @@ class DiscourseContributionService {
       $badges = implode(', ', $badge_names);
     }
 
+    // ISO 8601 string to a timestamp; NULL if missing or unparseable.
+    $last_posted_at = NULL;
+    if (!empty($user_data['user']['last_posted_at']) && is_string($user_data['user']['last_posted_at'])) {
+      $parsed = strtotime($user_data['user']['last_posted_at']);
+      $last_posted_at = $parsed === FALSE ? NULL : $parsed;
+    }
+
     return [
+      'last_posted_at' => $last_posted_at,
       'post_count' => $post_count,
       'topic_count' => $topic_count,
       'likes_given' => $likes_given,

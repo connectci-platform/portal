@@ -42,3 +42,11 @@ appverse_doc_sidebar:
   dependencies:
     - core/drupal
     - core/once
+
+people-grid-shuffle:
+  version: 1.x
+  js:
+    js/people-grid-shuffle.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
