@@ -3,3 +3,5 @@ type: module
 description: 'Tracks user contributions from GitHub repositories'
 core_version_requirement: ^10 || ^11
 package: Custom
+dependencies:
+  - ood_software:ood_software

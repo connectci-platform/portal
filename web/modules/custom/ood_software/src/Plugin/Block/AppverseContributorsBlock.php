@@ -88,40 +88,58 @@ class AppverseContributorsBlock extends BlockBase implements ContainerFactoryPlu
       '#theme' => 'appverse_contributors_block',
       '#items' => $contributors,
       '#cache' => [
+        'tags' => ['node_list:appverse_app', 'user_list'],
         'max-age' => 3600,
       ],
     ];
   }
 
   /**
-   * Get list of contributors from the database.
+   * Get list of contributors, most recent app first.
    *
-   * @return array
+   * The appverse_pm role group is pinned first, in recency order of each PM's
+   * most recent app (PMs with no apps last, by uid). Everyone else follows,
+   * also by most recent app.
+   *
+   * @return array<int, array<string, mixed>>
    *   Array of contributor data.
    */
   protected function getContributors() {
-    $contributors = [];
-    $seen_uids = [];
+    $latest = $this->getLatestAppByAuthor();
 
-    // First, get users with appverse_pm role.
     $pm_users = $this->getUsersByRole('appverse_pm');
-    foreach ($pm_users as $user) {
-      $contributor_data = $this->getUserData($user);
-      if ($contributor_data) {
-        $contributors[] = $contributor_data;
-        $seen_uids[$user->id()] = TRUE;
+    // Order PMs: those with apps by recency (the query order), then the rest
+    // by uid.
+    $pm_ordered = [];
+    foreach (array_keys($latest) as $uid) {
+      if (isset($pm_users[$uid])) {
+        $pm_ordered[] = $uid;
       }
     }
+    $pm_without_apps = array_diff(array_keys($pm_users), $pm_ordered);
+    sort($pm_without_apps);
+    $pm_ordered = array_merge($pm_ordered, $pm_without_apps);
 
-    // Then, get authors of appverse_app nodes, sorted by count.
-    $author_data = $this->getAppverseAuthors($seen_uids);
-    foreach ($author_data as $author_info) {
-      $user = $this->entityTypeManager->getStorage('user')->load($author_info['uid']);
-      if ($user) {
-        $contributor_data = $this->getUserData($user);
-        if ($contributor_data) {
-          $contributors[] = $contributor_data;
-        }
+    $other_uids = array_diff(array_keys($latest), $pm_ordered);
+
+    $user_storage = $this->entityTypeManager->getStorage('user');
+    $others = $user_storage->loadMultiple($other_uids);
+
+    $contributors = [];
+    foreach ($pm_ordered as $uid) {
+      $data = $this->getUserData($pm_users[$uid]);
+      if ($data) {
+        $contributors[] = $data;
+      }
+    }
+    // Iterate the ordered uids: loadMultiple() ignores the order it's given.
+    foreach ($other_uids as $uid) {
+      if (empty($others[$uid])) {
+        continue;
+      }
+      $data = $this->getUserData($others[$uid]);
+      if ($data) {
+        $contributors[] = $data;
       }
     }
 
@@ -152,39 +170,26 @@ class AppverseContributorsBlock extends BlockBase implements ContainerFactoryPlu
   }
 
   /**
-   * Get authors of appverse_app nodes sorted by count.
+   * Get published appverse_app authors by their most recent app.
    *
-   * @param array $exclude_uids
-   *   Array of UIDs to exclude (already listed).
-   *
-   * @return array
-   *   Array of author data with uid and count.
+   * @return array<int, int>
+   *   Most recent app created timestamp keyed by author uid, newest first.
    */
-  protected function getAppverseAuthors(array $exclude_uids = []) {
+  protected function getLatestAppByAuthor(): array {
     $query = $this->database->select('node_field_data', 'n');
     $query->fields('n', ['uid']);
-    $query->addExpression('COUNT(n.nid)', 'node_count');
+    $query->addExpression('MAX(n.created)', 'latest_created');
     $query->condition('n.type', 'appverse_app');
     $query->condition('n.status', 1);
     $query->condition('n.uid', 0, '>');
-
-    if (!empty($exclude_uids)) {
-      $query->condition('n.uid', array_keys($exclude_uids), 'NOT IN');
-    }
-
     $query->groupBy('n.uid');
-    $query->orderBy('node_count', 'DESC');
-
-    $results = $query->execute()->fetchAll();
+    $query->orderBy('latest_created', 'DESC');
+    $query->orderBy('n.uid', 'ASC');
 
     $authors = [];
-    foreach ($results as $result) {
-      $authors[] = [
-        'uid' => $result->uid,
-        'count' => $result->node_count,
-      ];
+    foreach ($query->execute()->fetchAll() as $result) {
+      $authors[(int) $result->uid] = (int) $result->latest_created;
     }
-
     return $authors;
   }
 

@@ -23,7 +23,7 @@ describe("Contributor Wall - Badge & Data-Driven Blocks", () => {
 
   describe("Badge block setup", () => {
     // Assign badge terms to the test user so they appear in badge blocks.
-    const badges = ['Committee member', 'GOOD Committee', 'Tips & Tricks'];
+    const badges = ['Committee member', 'GOOD Committee', 'Tips & Tricks', 'Appverse App Reviewer'];
 
     it("Assign badge terms to test user", function () {
       if (!testUserUid) {
@@ -34,7 +34,7 @@ describe("Contributor Wall - Badge & Data-Driven Blocks", () => {
       cy.exec(
         `ddev drush eval "` +
         `\\$user = \\Drupal\\user\\Entity\\User::load(${testUserUid}); ` +
-        `\\$terms = \\Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadByProperties(['vid' => 'open_ondemand_badges', 'name' => ['Committee member', 'GOOD Committee', 'Tips & Tricks']]); ` +
+        `\\$terms = \\Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadByProperties(['vid' => 'open_ondemand_badges', 'name' => ['Committee member', 'GOOD Committee', 'Tips & Tricks', 'Appverse App Reviewer']]); ` +
         `\\$tids = array_map(fn(\\$t) => ['target_id' => \\$t->id()], \\$terms); ` +
         `\\$user->set('field_open_ondemand_badges', array_values(\\$tids)); ` +
         `\\$user->save(); ` +
@@ -42,7 +42,7 @@ describe("Contributor Wall - Badge & Data-Driven Blocks", () => {
         { failOnNonZeroExit: false, timeout: 30000 }
       ).then((result) => {
         cy.log(result.stdout);
-        expect(result.stdout).to.contain('Badges assigned: 3');
+        expect(result.stdout).to.contain('Badges assigned: 4');
       });
     });
 
@@ -93,6 +93,63 @@ describe("Contributor Wall - Badge & Data-Driven Blocks", () => {
         cy.get(`a[href="/community-persona/${testUserUid}"]`).should('exist');
         cy.get('.profile-photo').should('have.length.greaterThan', 0);
       });
+    });
+  });
+
+  describe("App Reviewers block on contributor wall", () => {
+    it("App Reviewers block renders with badged user", function () {
+      if (!testUserUid) {
+        this.skip();
+        return;
+      }
+
+      cy.visit('/contributor-wall');
+      cy.get('.app-reviewers-block').should('exist');
+      cy.get('.app-reviewers-block').within(() => {
+        cy.get(`a[href="/community-persona/${testUserUid}"]`).should('exist');
+        cy.get('.profile-photo').should('have.length.greaterThan', 0);
+      });
+
+      // The section title links to the Appverse. The href is rendered
+      // absolute (host varies by environment), so match the path suffix.
+      cy.contains('.cw-title h2', 'Appverse App Reviewers')
+        .closest('.cw-title')
+        .find('a[href$="/appverse"]')
+        .should('exist');
+    });
+  });
+
+  describe("Randomized sections", () => {
+    it("Shuffled sections are revealed", () => {
+      // The raw HTML (no JavaScript) has every person in each shuffled list.
+      cy.request('/contributor-wall').then((response) => {
+        const doc = new DOMParser().parseFromString(response.body, 'text/html');
+        const rawCounts = Array.from(doc.querySelectorAll('.people-grid-list[data-shuffle]'))
+          .map((list) => list.querySelectorAll('li').length);
+        expect(rawCounts.length).to.be.greaterThan(0);
+
+        cy.visit('/contributor-wall');
+        cy.get('.people-grid-list[data-shuffle]').should('have.length', rawCounts.length);
+        cy.get('.people-grid-list[data-shuffle]').each(($list, index) => {
+          // Revealed and counted the same as the server output. The order is
+          // random, so it is deliberately not asserted.
+          cy.wrap($list).should('have.class', 'is-shuffled');
+          cy.wrap($list).should('be.visible');
+          cy.wrap($list).find('li').should('have.length', rawCounts[index]);
+        });
+      });
+    });
+
+    it("Ordered lists are not shuffled", () => {
+      cy.visit('/contributor-wall');
+
+      // Discourse Participation is ordered by most recent post.
+      cy.get('.discourse-participants-block .people-grid-list').should('exist');
+      cy.get('.discourse-participants-block .people-grid-list[data-shuffle]').should('not.exist');
+
+      // Appverse Contributors reuses the .contributors-block class and is the
+      // only one of those lists that is not shuffled.
+      cy.get('.contributors-block .people-grid-list:not([data-shuffle])').should('have.length', 1);
     });
   });
 

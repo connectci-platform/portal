@@ -260,14 +260,17 @@ function _ood_contributions_batch_finished($success, $results, $operations) {
  */
 function ood_contributions_theme() {
   return [
+    // Uses the shared people-grid template from ood_software.
     'contributors_block' => [
       'variables' => [
         'items' => [],
         'empty_message' => NULL,
         'scrollable' => TRUE,
         'block_class' => 'contributors-block',
+        'shuffle' => FALSE,
       ],
-      'template' => 'contributors-block',
+      'path' => \Drupal::service('extension.path.resolver')->getPath('module', 'ood_software') . '/templates',
+      'template' => 'people-grid-block',
     ],
     'community_spotlight_block' => [
       'variables' => [

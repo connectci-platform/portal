@@ -76,6 +76,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
       'content_moderation',
       'workflows',
     ]);
+    // The site name is empty after installConfig(); mail bodies use it.
+    $this->config('system.site')->set('name', 'Test Site')->save();
 
     // The Repo bundle, its fields, and the appverse_editorial
     // workflow live in sites/default/config/default — not the module's
@@ -649,7 +651,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertSame('owner@example.com', $oodMails[0]['to']);
     $this->assertStringContainsString('Your Repo is published', $oodMails[0]['subject']);
     $body = $this->mailBody($oodMails[0]);
-    $this->assertStringContainsString('/appverse/#/repo/', $body);
+    $this->assertStringContainsString('published to the Test Site catalog', $body);
+    $this->assertStringContainsString('/appverse#/repo/', $body);
   }
 
   /**
@@ -666,7 +669,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $message = $this->buildOodSoftwareMail('published', ['node' => $node]);
 
     $body = $this->mailBody($message);
-    $this->assertMatchesRegularExpression('~href="[^"]*/appverse/#/repo/[^"]*"~', $body, 'The href attribute must point at the catalog repo path.');
+    $this->assertMatchesRegularExpression('~href="[^"]*/appverse#/repo/[^"]*"~', $body, 'The href attribute must point at the catalog repo path.');
   }
 
   /**
