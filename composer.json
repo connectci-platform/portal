@@ -59,7 +59,7 @@
         }
     },
     "require": {
-        "access/drupal_seamless_cilogon": "3.0.x-dev",
+        "access/drupal_seamless_cilogon": "dev-d8-2896-handoff-test",
         "access/infrastructure_news": "1.0.x-dev",
         "composer/installers": "^2.3.0",
         "connectci/access": "3.0.x-dev",
