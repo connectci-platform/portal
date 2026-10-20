@@ -12,7 +12,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/drupal_seamless_cilogon.git",
-                "reference": "13df4233d9765c910c8eb4eaa84e0ef8f9a27c4c"
+                "reference": "e56d45f1bca7c117b381014b615ae6c221204694"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -24,7 +24,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-10-16T22:36:23+00:00"
+            "time": "2026-10-19T01:23:11+00:00"
         },
         {
             "name": "access/infrastructure_news",
