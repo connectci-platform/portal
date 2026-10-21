@@ -11,18 +11,13 @@ describe("PA Science - Project Submissions (Manager View)", () => {
   let project2Url;
   let nonPaSid;
 
-  // Real pascience_manager credentials (a non-admin account). Supply via
-  // CYPRESS_PASCIENCE_MANAGER_USER / CYPRESS_PASCIENCE_MANAGER_PASS. When
-  // absent, the delete-flow test falls back to the administrator (who can also
-  // delete) and the 403 test is skipped, since admins are never denied.
-  const managerUser = Cypress.env('PASCIENCE_MANAGER_USER');
-  const managerPass = Cypress.env('PASCIENCE_MANAGER_PASS');
+  // A real pascience_manager account, created by amp_dev's install hook
+  // alongside the other shared test users. It holds only that role, which is
+  // the point: administrator is allowed everything, so logging in as an admin
+  // would pass the delete test without the role granting anything and make the
+  // denial test assert a 403 that never comes.
   const loginAsManager = () => {
-    if (managerUser && managerPass) {
-      cy.loginUser(managerUser, managerPass);
-    } else {
-      cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
-    }
+    cy.loginUser('pascience_manager@amptesting.com', 'Vn4^kT7qM2d#');
   };
 
   it("PA Science Manager can view all PA Science project submissions", () => {
@@ -62,9 +57,10 @@ describe("PA Science - Project Submissions (Manager View)", () => {
       project2Url = url;
     });
 
-    // Now login as user with pascience_manager role (user 1995)
-    // Note: We'll need to create login credentials for this user or use a test account
-    cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    // Assert as the manager, not as the admin who created the project above:
+    // administrator can see every program's submissions, so this test would
+    // pass without the pascience_manager role granting anything.
+    loginAsManager();
 
     // Visit the project submissions page
     cy.visit('/project-submissions');
@@ -81,7 +77,8 @@ describe("PA Science - Project Submissions (Manager View)", () => {
   });
 
   it("Project submissions page shows project details", () => {
-    cy.loginUser('administrator@amptesting.com', 'b8QW]X9h7#5n');
+    // The manager's own view of the queue, not an admin's.
+    loginAsManager();
     cy.visit('/project-submissions');
 
     // Verify we can see submission details
@@ -120,14 +117,24 @@ describe("PA Science - Project Submissions (Manager View)", () => {
       nonPaSid = url.match(/\/project\/(\d+)/)[1];
     });
 
-    // Visit PA Science project submissions page
+    // The project above is created as administrator, who sees every program's
+    // submissions. Switch to the manager before asserting, or the listing
+    // renders for an admin and the assertion below is about the wrong user.
+    loginAsManager();
     cy.visit('/project-submissions');
 
     // Verify PA Science projects appear
     cy.contains('PA Science Manager Test Project 1').should('be.visible');
 
-    // Verify non-PA Science project does NOT appear
-    cy.contains('Non-PA Science Project - Should Not Appear').should('not.exist');
+    // The page stacks one section per program (At-Large, CAREERS, Kentucky,
+    // ..., then PA Science), so a page-wide assertion finds the At-Large
+    // project in its own section and fails for the wrong reason. What matters
+    // here is that it is absent from the PA Science queue, which is the table
+    // carrying the manager's Delete links.
+    cy.contains('table', 'Delete').within(() => {
+      cy.contains('PA Science Manager Test Project 1').should('exist');
+      cy.contains('Non-PA Science Project - Should Not Appear').should('not.exist');
+    });
   });
 
   it("Declined project is hidden from the default queue, and visible only when the filter doesn't exclude it", () => {
@@ -233,23 +240,34 @@ describe("PA Science - Project Submissions (Manager View)", () => {
       .contains('Delete')
       .click();
 
+    // Assert we actually left the listing before asserting on page content.
+    // The listing shows the project title and a "Declined" status filter, so
+    // the three content assertions below also pass on the listing itself — if
+    // the Delete link failed to navigate they would not catch it, and the
+    // submit would then resolve against the listing's own hidden exposed-filter
+    // button instead of this form's.
+    cy.location('pathname').should('include', '/delete');
+
     // Confirmation page names the project and warns about attached files.
     cy.contains(title).should('be.visible');
     cy.contains(/permanently deleted/i).should('be.visible');
     cy.contains(/Declined/).should('be.visible');
 
-    cy.get('input#edit-submit, button#edit-submit, input[value="Delete"]')
-      .first()
+    // Scoped to the confirm form: a bare #edit-submit also matches the
+    // listing's exposed-filter Search button.
+    cy.get('form').contains('input[type="submit"], button[type="submit"]', /^Delete$/)
       .click();
 
     cy.location('pathname').should('eq', '/project-submissions');
+
+    // Re-request the listing rather than asserting on the response the delete
+    // redirected to. The view itself no longer returns the row, so a stale
+    // render here is the redirect's cached copy, not a failed delete.
+    cy.reload();
     cy.contains(title).should('not.exist');
   });
 
   it("PA Science manager is denied direct delete access to a non-PA Science project", function () {
-    if (!managerUser || !managerPass) {
-      this.skip();
-    }
     expect(nonPaSid, 'sid of the non-PA Science project').to.be.a('string');
 
     loginAsManager();
@@ -275,11 +293,25 @@ describe("PA Science - Project Submissions (Manager View)", () => {
     ];
 
     testTitles.forEach(title => {
+      // Each delete redirects away from the listing, so come back before
+      // looking for the next title.
+      cy.visit('/admin/structure/webform/manage/project/results/submissions');
       cy.get('body').then($body => {
         if ($body.text().includes(title)) {
-          cy.contains(title).closest('tr').find('a').contains('Delete').click({ force: true });
-          cy.get('.ui-dialog-buttonpane button.button--primary').contains('Delete').click();
-          cy.wait(1000);
+          // Follow the row's delete route directly rather than clicking the
+          // link. The link requests _wrapper_format=drupal_modal, and whether
+          // a dialog actually opens or the browser just loads the confirm page
+          // varies; cleanup should not depend on which happened.
+          cy.contains(title)
+            .closest('tr')
+            .find('a')
+            .contains('Delete')
+            .invoke('attr', 'href')
+            .then((href) => {
+              cy.visit(href.replace(/[?&]_wrapper_format=drupal_modal/, ''));
+            });
+          cy.get('form').contains('input[type="submit"], button[type="submit"]', /^Delete$/)
+            .click();
         }
       });
     });
