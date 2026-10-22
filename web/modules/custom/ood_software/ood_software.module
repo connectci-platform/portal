@@ -1620,10 +1620,10 @@ function _ood_software_mail_url(string $path): string {
  * browser request on the OOD domain and wrong everywhere else: cron and drush
  * have no request to negotiate from, so the active domain falls back to the
  * default (support.access-ci.org) and every cron-sent Appverse mail went out
- * branded ACCESS Support. Switching the active domain here does not help,
- * since system.site is already resolved for the request by the time this
- * runs. Reading the OOD override directly, from its domain.<domain id> config
- * collection, is what works (see _ood_software_mail_sender()).
+ * branded ACCESS Support. Under domain 3.x, setActiveDomain() would switch the
+ * system.site override, but these mails read the OOD override directly from
+ * its domain.<domain id> config collection instead, so they neither depend on
+ * nor disturb the active domain (see _ood_software_mail_sender()).
  *
  * @param array<string, mixed> $message
  * @param array<string, mixed> $params

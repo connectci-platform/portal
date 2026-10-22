@@ -531,7 +531,8 @@ describe('Appverse Maintenance Hub', () => {
 
         // From-address verification: this spec runs at /e2e/ondemand/, so
         // the request resolves to the openondemand domain and
-        // domain_site_settings overlays system.site at request time.
+        // domain_config's domain.openondemand_cyberinfrastructure_org
+        // collection overlays system.site at request time.
         // Verified DB values: site_name="Open OnDemand Community Hub",
         // site_mail="info@mg.openondemand.org". If a different From slips
         // through (e.g., the global noreply@wpi.edu used by the default
