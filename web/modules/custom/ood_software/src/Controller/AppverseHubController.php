@@ -375,6 +375,10 @@ final class AppverseHubController extends ControllerBase {
       //    another forward draft and never demotes the published default.
       //  - When the target state is published: transition the LATEST
       //    revision so any in-flight draft edits are what get published.
+      //    $node is the default revision (route upcasting), so for a live
+      //    node with a ready_for_review revision pending this is the step
+      //    that makes the pending content the live content; saving the
+      //    default would discard the review (D8-2882).
       $storage = $this->entityTypeManager()->getStorage('node');
       $workflow = $this->moderationInformation->getWorkflowForEntity($node);
       $targetState = $workflow ? $workflow->getTypePlugin()->getState($newState) : NULL;
@@ -514,7 +518,16 @@ final class AppverseHubController extends ControllerBase {
       $this->messenger()->addError($this->t('Could not start the review for @title. Please try again later.', ['@title' => $repo->label()]));
       return $this->redirectToHub();
     }
-    $this->repoMemberApps->cascadeModeration($repo, 'ready_for_review', ['needs_adjustment'], 'Re-submitted with the repo.');
+    // The sent-back apps moving to ready_for_review must not also queue the
+    // live repo as a pending review: this method has already started the run
+    // and is about to tell the reviewers (D8-2882).
+    _ood_software_repo_review_sync_suspended(TRUE);
+    try {
+      $this->repoMemberApps->cascadeModeration($repo, 'ready_for_review', ['needs_adjustment'], 'Re-submitted with the repo.');
+    }
+    finally {
+      _ood_software_repo_review_sync_suspended(FALSE);
+    }
     $this->notifier->notifyResubmitted($repo);
     $this->messenger()->addStatus($repo->isPublished()
       ? $this->t('Re-submitted @title. A new review has started, and the apps already accepted stay live.', ['@title' => $repo->label()])
