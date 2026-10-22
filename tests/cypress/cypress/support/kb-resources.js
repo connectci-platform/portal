@@ -64,7 +64,9 @@ export function createKbResource({
   cy.get(".form-item-domain")
     .find(".select2-search__field")
     .type(`${domain}{enter}`);
-  cy.get("#edit-submit").click();
+  // Scoped to the webform: on themes with a header search form, that form
+  // takes #edit-submit and the webform's button gets a suffixed id.
+  cy.get('form.webform-submission-resource-form [data-drupal-selector="edit-submit"]').click();
 
   return cy
     .location("pathname")
@@ -72,14 +74,16 @@ export function createKbResource({
     .then((path) => Number(path.split("/").pop()));
 }
 
-// A listed resource on every theme: the view wrapper class differs per theme.
+// A listed resource. The markup comes from the access_cilink module, so it is
+// the same on every theme.
 export const RESOURCE_ITEMS = ".details-wrap";
 
 /**
  * Checks the first visible item of the Topics facet on /knowledge-base/resources
  * and asserts the filter took: the URL gains f[0]=tags:..., the list does not
  * grow and shows as many items as the facet counted (up to the page size).
- * Uses whatever data the site has.
+ * Uses whatever the current page lists, so visit a listing narrowed to
+ * resources the spec created (e.g. ?search_api_fulltext=<id>) first.
  */
 export function checkFirstTagFacet() {
   cy.get(RESOURCE_ITEMS).should("have.length.greaterThan", 0);

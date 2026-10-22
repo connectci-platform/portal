@@ -90,6 +90,33 @@ function phpEval(php) {
   });
 }
 
+/**
+ * Removes the given users' likes from the given submissions through the flag
+ * service. Used by hooks, so a test that fails before its own unlike step does
+ * not leave a resource liked for the tests that follow. Unflagging fires the
+ * flag events, so the count, cache tags and search index are updated. Skips
+ * undefined sids (a failed before() hook) and users that do not exist.
+ */
+function unlikeAs(emails, sids) {
+  const ids = sids.filter(Boolean);
+  if (!ids.length) {
+    return cy.wrap(null);
+  }
+  const php =
+    '$flag = \\Drupal::service("flag")->getFlagById("upvote");' +
+    'foreach (' + JSON.stringify(emails) + ' as $mail) {' +
+    '$accounts = \\Drupal::entityTypeManager()->getStorage("user")->loadByProperties(["mail" => $mail]);' +
+    'if (!$accounts) { continue; }' +
+    '$account = reset($accounts);' +
+    'foreach (' + JSON.stringify(ids) + ' as $sid) {' +
+    '$sub = \\Drupal\\webform\\Entity\\WebformSubmission::load($sid);' +
+    'if ($sub && \\Drupal::service("flag")->getFlagging($flag, $sub, $account)) { \\Drupal::service("flag")->unflag($flag, $sub, $account); }' +
+    '}' +
+    '}' +
+    'print "done";';
+  return phpEval(php).should("eq", "done");
+}
+
 /** The deep link to a single item of the listing. */
 const deepLink = (id) => `${RESOURCES}?f%5B0%5D=submission_id%3A${id}`;
 
@@ -120,8 +147,8 @@ describe("KB Resources page facets, copy link and sorting", () => {
     createKbResource({ title: TITLE.beta, category: "Code", skillLevels: [SKILL.advanced], tags: [TAG_B] }).then((id) => { sid.beta = id; });
     createKbResource({ title: TITLE.unapproved, approved: false, tags: [TAG_A] }).then((id) => { sid.unapproved = id; });
     createKbResource({ title: TITLE.otherDomain, domain: "Great Plains", tags: [TAG_A] }).then((id) => { sid.otherDomain = id; });
-    createKbResource({ title: TITLE.sortOne, tags: [TAG_A] });
-    createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] });
+    createKbResource({ title: TITLE.sortOne, tags: [TAG_A] }).then((id) => { sid.sortOne = id; });
+    createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] }).then((id) => { sid.sortTwo = id; });
     createKbResource({ title: TITLE.countTen, tags: [TAG_A] }).then((id) => { sid.countTen = id; });
     createKbResource({ title: TITLE.countTwo, tags: [TAG_A] }).then((id) => { sid.countTwo = id; });
     MANY_TAGS.forEach((tags, i) => {
@@ -299,44 +326,52 @@ describe("KB Resources page facets, copy link and sorting", () => {
       cy.get(ITEMS).should("not.exist");
     });
 
-    it("lists a liked resource above one with fewer likes, and unliking restores the count", () => {
-      const sortUrl = `${RESOURCES}?search_api_fulltext=${SORT_ID}`;
-      const likeCount = (title) =>
-        item(title).find("details.search-ci-links > summary .linkcount").then(($count) => Number($count.text().trim()));
-      // Flag and unflag are plain links: the server flags, then redirects.
-      cy.intercept("GET", "**/flag/*/upvote/**").as("upvote");
+    // The test below unlikes at its end, which a failed assertion skips. Reset
+    // before and after, so a leftover like (also from an aborted earlier run)
+    // cannot skew the counts or the other tests.
+    describe("like sorting", () => {
+      beforeEach(() => unlikeAs([AUTHENTICATED[0]], [sid.sortOne, sid.sortTwo]));
+      afterEach(() => unlikeAs([AUTHENTICATED[0]], [sid.sortOne, sid.sortTwo]));
 
-      cy.visit(sortUrl);
-      listedTitles().should("include.members", [TITLE.sortOne, TITLE.sortTwo]);
-      likeCount(TITLE.sortOne).should("eq", 0);
-      likeCount(TITLE.sortTwo).should("eq", 0);
-
-      // With equal counts the order is the index's tie order. Like whichever
-      // is listed second, so that moving to first proves the like sorted it.
-      listedTitles().then((titles) => {
-        const [first, second] = titles.filter((t) => t === TITLE.sortOne || t === TITLE.sortTwo);
-
-        item(second).find("details.search-ci-links > summary").click();
-        item(second).find(".flag-upvote a").click();
-        cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+      it("lists a liked resource above one with fewer likes, and unliking restores the count", () => {
+        const sortUrl = `${RESOURCES}?search_api_fulltext=${SORT_ID}`;
+        const likeCount = (title) =>
+          item(title).find("details.search-ci-links > summary .linkcount").then(($count) => Number($count.text().trim()));
+        // Flag and unflag are plain links: the server flags, then redirects.
+        cy.intercept("GET", "**/flag/*/upvote/**").as("upvote");
 
         cy.visit(sortUrl);
-        likeCount(second).should("eq", 1);
-        likeCount(first).should("eq", 0);
-        item(second).find(".flag-upvote.action-unflag a").should("exist");
-        listedTitles().should((after) => {
-          expect(after.indexOf(second), "liked resource first").to.eq(0);
-          expect(after.indexOf(second)).to.be.lessThan(after.indexOf(first));
+        listedTitles().should("include.members", [TITLE.sortOne, TITLE.sortTwo]);
+        likeCount(TITLE.sortOne).should("eq", 0);
+        likeCount(TITLE.sortTwo).should("eq", 0);
+
+        // With equal counts the order is the index's tie order. Like whichever
+        // is listed second, so that moving to first proves the like sorted it.
+        listedTitles().then((titles) => {
+          const [first, second] = titles.filter((t) => t === TITLE.sortOne || t === TITLE.sortTwo);
+
+          item(second).find("details.search-ci-links > summary").click();
+          item(second).find(".flag-upvote a").click();
+          cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+
+          cy.visit(sortUrl);
+          likeCount(second).should("eq", 1);
+          likeCount(first).should("eq", 0);
+          item(second).find(".flag-upvote.action-unflag a").should("exist");
+          listedTitles().should((after) => {
+            expect(after.indexOf(second), "liked resource first").to.eq(0);
+            expect(after.indexOf(second)).to.be.lessThan(after.indexOf(first));
+          });
+
+          // Unlike: part of what is tested. The hooks reset the like if this is not reached.
+          item(second).find("details.search-ci-links > summary").click();
+          item(second).find(".flag-upvote.action-unflag a").click();
+          cy.wait("@upvote").its("response.statusCode").should("eq", 302);
+
+          cy.visit(sortUrl);
+          likeCount(second).should("eq", 0);
+          item(second).find(".flag-upvote.action-flag a").should("exist");
         });
-
-        // Unlike to leave the user as found.
-        item(second).find("details.search-ci-links > summary").click();
-        item(second).find(".flag-upvote.action-unflag a").click();
-        cy.wait("@upvote").its("response.statusCode").should("eq", 302);
-
-        cy.visit(sortUrl);
-        likeCount(second).should("eq", 0);
-        item(second).find(".flag-upvote.action-flag a").should("exist");
       });
     });
 
@@ -412,9 +447,15 @@ describe("KB Resources page facets, copy link and sorting", () => {
       cy.drupalLogout();
     });
 
+    // Tests that like the resource unlike it in their last steps, which a
+    // failed assertion skips. Reset server-side before and after each test, so
+    // one failure cannot leave a user flagged and break the tests that follow.
     beforeEach(() => {
+      unlikeAs([AUTHENTICATED[0], ADMIN[0]], [sid.perUser]);
       cy.intercept("GET", "**/flag/*/upvote/**").as("upvote");
     });
+
+    afterEach(() => unlikeAs([AUTHENTICATED[0], ADMIN[0]], [sid.perUser]));
 
     it("gives another user their own Like link, state and no Edit button", () => {
       // Warm the cache as the owner.
@@ -455,7 +496,7 @@ describe("KB Resources page facets, copy link and sorting", () => {
         item(TITLE.perUser).find(".flag-upvote.action-unflag a").should("exist");
         likeCount().should("eq", before + 1);
 
-        // Unlike to leave the user as found.
+        // Unlike: part of what is tested. The hooks reset the like if this is not reached.
         item(TITLE.perUser).find("details.search-ci-links > summary").click();
         item(TITLE.perUser).find(".flag-upvote.action-unflag a").click();
         cy.wait("@upvote").its("response.statusCode").should("eq", 302);
@@ -512,7 +553,7 @@ describe("KB Resources page facets, copy link and sorting", () => {
       notDenied();
       cy.get(".flag-upvote.action-unflag a").should("exist");
 
-      // Unlike to leave the user as found.
+      // Unlike: part of what is tested. The hooks reset the like if this is not reached.
       cy.get(".flag-upvote.action-unflag a").click();
       cy.wait("@upvote").its("response.statusCode").should("eq", 302);
       notDenied();
