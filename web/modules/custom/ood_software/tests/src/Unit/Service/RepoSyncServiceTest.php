@@ -8,6 +8,7 @@ use Drupal\Core\Entity\Query\QueryInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\UnitTestCase;
+use Drupal\ood_software\Service\InPlaceSaver;
 use Drupal\ood_software\Service\RepoSyncService;
 use Psr\Log\LoggerInterface;
 
@@ -114,7 +115,7 @@ class RepoSyncServiceTest extends UnitTestCase {
     // applyDeclared (the Repo-level path under test).
     $githubService = $this->createMock(\Drupal\ood_software\Plugin\GitHubService::class);
 
-    $this->service = new RepoSyncService($entityTypeManager, $loggerFactory, $time, $githubService);
+    $this->service = new RepoSyncService($entityTypeManager, $loggerFactory, $time, $githubService, $this->createMock(InPlaceSaver::class));
   }
 
   /**
@@ -323,8 +324,11 @@ YAML;
     $keptSubpath = $this->buildSubpathFieldItem('jupyter_example');
     // Field item with getValue() for validation_er reads; ->value for st reads.
     $emptyValidationField = new class {
-      public $value = NULL;
+      public mixed $value = NULL;
 
+      /**
+       * @return array<int, mixed>
+       */
       public function getValue(): array {
         return [];
       }
@@ -409,7 +413,7 @@ YAML;
     $githubService->method('resolveTaxonomyTermsFromAppverseYml')
       ->willReturn(['resolved' => [], 'unresolved' => []]);
 
-    $service = new RepoSyncService($entityTypeManager, $loggerFactory, $time, $githubService);
+    $service = new RepoSyncService($entityTypeManager, $loggerFactory, $time, $githubService, $this->createMock(InPlaceSaver::class));
 
     // Parent Repo stub.
     $repo = $this->createMock(NodeInterface::class);
@@ -455,8 +459,11 @@ YAML;
     $existingApp->method('id')->willReturn(101);
     $existingSubpath = $this->buildSubpathFieldItem('jupyter_example');
     $emptyValidationField = new class {
-      public $value = NULL;
+      public mixed $value = NULL;
 
+      /**
+       * @return array<int, mixed>
+       */
       public function getValue(): array {
         return [];
       }
@@ -517,7 +524,7 @@ YAML;
     $githubService->method('resolveTaxonomyTermsFromAppverseYml')
       ->willReturn(['resolved' => [], 'unresolved' => []]);
 
-    $service = new RepoSyncService($entityTypeManager, $loggerFactory, $time, $githubService);
+    $service = new RepoSyncService($entityTypeManager, $loggerFactory, $time, $githubService, $this->createMock(InPlaceSaver::class));
 
     $repo = $this->createMock(NodeInterface::class);
     $repo->method('id')->willReturn(50);
