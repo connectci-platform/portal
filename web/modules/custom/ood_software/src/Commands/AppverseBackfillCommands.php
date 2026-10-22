@@ -2,9 +2,13 @@
 
 namespace Drupal\ood_software\Commands;
 
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Consolidation\OutputFormatters\StructuredData\RowsOfFields;
+use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
+use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drush\Commands\DrushCommands;
 
@@ -42,6 +46,13 @@ class AppverseBackfillCommands extends DrushCommands {
   protected $oodLogger;
 
   /**
+   * The repo member app helper.
+   *
+   * @var \Drupal\ood_software\Service\RepoMemberApps
+   */
+  protected $memberApps;
+
+  /**
    * Constructs an AppverseBackfillCommands object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -52,17 +63,21 @@ class AppverseBackfillCommands extends DrushCommands {
    *   The GitHub service.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger factory.
+   * @param \Drupal\ood_software\Service\RepoMemberApps $member_apps
+   *   The repo member app helper.
    */
   public function __construct(
     EntityTypeManagerInterface $entity_type_manager,
     RepoSyncService $repo_sync,
     GitHubService $github,
     LoggerChannelFactoryInterface $logger_factory,
+    RepoMemberApps $member_apps,
   ) {
     parent::__construct();
     $this->entityTypeManager = $entity_type_manager;
     $this->repoSync = $repo_sync;
     $this->github = $github;
+    $this->memberApps = $member_apps;
     // Drush asserts that $this->logger stays under its LoggerManager
     // control, so we keep the module's logger channel under a separate
     // property name. Use $this->logger() for command-line output and
@@ -73,7 +88,7 @@ class AppverseBackfillCommands extends DrushCommands {
   /**
    * Create inferred Repos for legacy Apps with no parent.
    *
-   * @param array $options
+   * @param array<string, mixed> $options
    *   Command options.
    *
    * @command appverse:backfill-inferred-repos
@@ -132,7 +147,7 @@ class AppverseBackfillCommands extends DrushCommands {
    *
    * @param int[] $appIds
    *   App node IDs to process in this chunk.
-   * @param array $context
+   * @param array<string, mixed> $context
    *   The batch context array.
    */
   public static function processChunk(array $appIds, array &$context): void {
@@ -199,6 +214,7 @@ class AppverseBackfillCommands extends DrushCommands {
         // with no working SMTP, the per-repo send stalls the whole run). The
         // flag is read in ood_software_node_update(); it's a runtime property
         // on this same $repo object, so it covers every save below.
+        // @phpstan-ignore-next-line
         $repo->_ood_software_suppress_notifications = TRUE;
 
         // Inherit the app's owner so the contributor's maintenance hub
@@ -242,9 +258,9 @@ class AppverseBackfillCommands extends DrushCommands {
    *
    * @param bool $success
    *   Whether the batch completed without fatal errors.
-   * @param array $results
+   * @param array<string, mixed> $results
    *   The accumulated $context['results'] from processChunk.
-   * @param array $operations
+   * @param array<int, mixed> $operations
    *   Operations that did not complete (only set if $success is FALSE).
    */
   public static function finishedCallback(bool $success, array $results, array $operations): void {
@@ -257,6 +273,215 @@ class AppverseBackfillCommands extends DrushCommands {
     // operations may not dispatch kernel.terminate the way a web request does,
     // so flush explicitly here — once, after the whole backfill settles.
     \Drupal::service('ood_software.appverse_cache')->flushIfDirty();
+  }
+
+  /**
+   * Report nodes that lost their moderation state, and restore listed ones.
+   *
+   * Sending a repo for review used to re-save it inside its own save, which
+   * gave the node a second content_moderation_state record in draft. The repo
+   * fell back to draft and its member apps were never sent on. A node with
+   * more than one record is a candidate. Dry run unless --apply is given.
+   *
+   * The lost_state column is the state of the node revision just before the
+   * newest record began. member_apps lists the repo's apps as state:count
+   * pairs, sorted by state name (for example draft:2,published:1). The action
+   * is restore only when the node is now in draft and lost_state is
+   * ready_for_review or needs_adjustment, otherwise skip.
+   *
+   * Applying saves a new revision in the lost state, without email or a new AI
+   * review, and sends a restored repo's draft and needs_adjustment apps to
+   * ready_for_review. The duplicate records stay, since deleting them would
+   * erase the state history of older revisions.
+   *
+   * @param array<string, mixed> $options
+   *   Command options.
+   *
+   * @return \Consolidation\OutputFormatters\StructuredData\RowsOfFields
+   *   One row per affected node.
+   *
+   * @command appverse:repair-moderation
+   * @option bundle Content type to check, appverse_repo or appverse_app.
+   * @option nids Comma-separated node IDs to restore. Required with --apply.
+   * @option apply Restore the listed nodes instead of only reporting.
+   * @field-labels
+   *   nid: Nid
+   *   title: Title
+   *   current: Current
+   *   lost_state: Lost state
+   *   member_apps: Member apps
+   *   action: Action
+   * @default-fields nid,title,current,lost_state,member_apps,action
+   * @usage drush appverse:repair-moderation
+   *   List affected repos without changing anything.
+   * @usage drush appverse:repair-moderation --nids=12,34 --apply
+   *   Restore repos 12 and 34 and send their apps for review.
+   */
+  public function repairModeration(array $options = ['bundle' => 'appverse_repo', 'nids' => '', 'apply' => FALSE]): RowsOfFields {
+    $bundle = (string) ($options['bundle'] ?? 'appverse_repo');
+    if (!in_array($bundle, ['appverse_repo', 'appverse_app'], TRUE)) {
+      throw new \InvalidArgumentException('--bundle must be appverse_repo or appverse_app.');
+    }
+    $listed = array_values(array_filter(array_map('intval', explode(',', (string) ($options['nids'] ?? '')))));
+    $apply = !empty($options['apply']);
+    if ($apply && !$listed) {
+      throw new \InvalidArgumentException('--apply needs --nids with the nodes to restore. Run without --apply first to see them.');
+    }
+
+    $rows = [];
+    foreach ($this->duplicateStateNids($bundle) as $nid) {
+      $row = $this->describeAffectedNode($nid);
+      if ($apply && in_array($nid, $listed, TRUE) && $row['action'] === 'restore') {
+        $this->restoreNode($nid, $row['lost_state']);
+        $row['action'] = 'restored';
+      }
+      $rows[] = $row;
+    }
+    return new RowsOfFields($rows);
+  }
+
+  /**
+   * IDs of nodes of a bundle that have more than one moderation record.
+   *
+   * @return int[]
+   *   Node IDs, ascending.
+   */
+  protected function duplicateStateNids(string $bundle): array {
+    $storage = $this->entityTypeManager->getStorage('content_moderation_state');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('content_entity_type_id', 'node')
+      ->condition('workflow', 'appverse_editorial')
+      ->execute();
+    $perNode = [];
+    foreach (array_chunk($ids, 200) as $chunk) {
+      foreach ($storage->loadMultiple($chunk) as $state) {
+        $perNode[(int) $state->get('content_entity_id')->value][] = (int) $state->id();
+      }
+    }
+    $nids = array_keys(array_filter($perNode, fn (array $records) => count($records) > 1));
+    if (!$nids) {
+      return [];
+    }
+    $matching = $this->entityTypeManager->getStorage('node')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', $bundle)
+      ->condition('nid', $nids, 'IN')
+      ->sort('nid')
+      ->execute();
+    return array_values(array_map('intval', $matching));
+  }
+
+  /**
+   * Builds the report row for one affected node.
+   *
+   * @return array<string, mixed>
+   *   The row fields.
+   */
+  protected function describeAffectedNode(int $nid): array {
+    $node = $this->latestRevision($nid);
+    $current = (string) $node->get('moderation_state')->value;
+    $lost = $this->lostState($nid);
+    $apps = '';
+    if ($node->bundle() === 'appverse_repo') {
+      $counts = [];
+      foreach ($this->memberApps->queryMemberAppIds($node) as $appId) {
+        $state = (string) $this->latestRevision($appId)->get('moderation_state')->value;
+        $counts[$state] = ($counts[$state] ?? 0) + 1;
+      }
+      ksort($counts);
+      $apps = implode(',', array_map(fn ($state, $count) => "$state:$count", array_keys($counts), $counts));
+    }
+    return [
+      'nid' => $nid,
+      'title' => (string) $node->label(),
+      'current' => $current,
+      'lost_state' => $lost,
+      'member_apps' => $apps,
+      'action' => $current === 'draft' && in_array($lost, ['ready_for_review', 'needs_adjustment'], TRUE) ? 'restore' : 'skip',
+    ];
+  }
+
+  /**
+   * The node's latest revision.
+   */
+  protected function latestRevision(int $nid): NodeInterface {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $storage->resetCache([$nid]);
+    $revision = $storage->loadRevision($storage->getLatestRevisionId($nid));
+    assert($revision instanceof NodeInterface);
+    return $revision;
+  }
+
+  /**
+   * The state the node had before its newest moderation record began.
+   *
+   * Empty when it cannot be worked out.
+   */
+  protected function lostState(int $nid): string {
+    $stateStorage = $this->entityTypeManager->getStorage('content_moderation_state');
+    $ids = $stateStorage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('content_entity_type_id', 'node')
+      ->condition('content_entity_id', $nid)
+      ->condition('workflow', 'appverse_editorial')
+      ->execute();
+    if (!$ids) {
+      return '';
+    }
+    $newest = (int) max($ids);
+    $revisionIds = $stateStorage->getQuery()
+      ->accessCheck(FALSE)
+      ->allRevisions()
+      ->condition('id', $newest)
+      ->execute();
+    $firstNodeRevision = NULL;
+    foreach (array_keys($revisionIds) as $revisionId) {
+      $state = $stateStorage->loadRevision($revisionId);
+      $vid = $state instanceof ContentEntityInterface ? (int) $state->get('content_entity_revision_id')->value : 0;
+      if ($vid && ($firstNodeRevision === NULL || $vid < $firstNodeRevision)) {
+        $firstNodeRevision = $vid;
+      }
+    }
+    if ($firstNodeRevision === NULL) {
+      return '';
+    }
+    $nodeStorage = $this->entityTypeManager->getStorage('node');
+    $before = $nodeStorage->getQuery()
+      ->accessCheck(FALSE)
+      ->allRevisions()
+      ->condition('nid', $nid)
+      ->condition('vid', $firstNodeRevision, '<')
+      ->sort('vid', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    if (!$before) {
+      return '';
+    }
+    $revision = $nodeStorage->loadRevision((int) array_key_first($before));
+    return $revision instanceof NodeInterface ? (string) $revision->get('moderation_state')->value : '';
+  }
+
+  /**
+   * Saves the node back into its lost state, and its apps along with a repo.
+   */
+  protected function restoreNode(int $nid, string $state): void {
+    $node = $this->latestRevision($nid);
+    $node->set('moderation_state', $state);
+    $node->setNewRevision(TRUE);
+    $node->setRevisionLogMessage('Restored moderation state lost to a duplicate moderation record.');
+    // Not a contributor submitting: no email and no new AI review.
+    // @phpstan-ignore-next-line
+    $node->_ood_software_suppress_notifications = TRUE;
+    if (method_exists($node, 'setValidationRequired')) {
+      $node->setValidationRequired(FALSE);
+    }
+    $node->save();
+    $this->oodLogger->notice('Restored node @nid to @state.', ['@nid' => $nid, '@state' => $state]);
+    if ($node->bundle() === 'appverse_repo' && $state === 'ready_for_review') {
+      $count = $this->memberApps->cascadeModeration($node, 'ready_for_review', ['draft', 'needs_adjustment'], 'Restored with the repo.');
+      $this->oodLogger->notice('Sent @count member apps of node @nid for review.', ['@count' => $count, '@nid' => $nid]);
+    }
   }
 
 }

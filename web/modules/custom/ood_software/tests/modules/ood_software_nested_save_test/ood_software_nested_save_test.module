@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * @file
+ * Test-only reproduction of the nested save that broke review moderation.
+ */
+
+declare(strict_types=1);
+
+use Drupal\node\NodeInterface;
+
+/**
+ * Implements hook_node_update().
+ *
+ * Mirrors the old review dispatch: on entering ready_for_review it reloaded
+ * the node and saved it again inside the outer save, before content_moderation
+ * wrote its state record. That created a second content_moderation_state
+ * entity in draft. Gated by state so only fixtures that ask for it get it.
+ */
+function ood_software_nested_save_test_node_update(NodeInterface $node): void {
+  if (!\Drupal::state()->get('ood_software_nested_save_test.on')) {
+    return;
+  }
+  if (!in_array($node->bundle(), ['appverse_repo', 'appverse_app'], TRUE)) {
+    return;
+  }
+  if ($node->get('moderation_state')->value !== 'ready_for_review') {
+    return;
+  }
+  $fresh = \Drupal::entityTypeManager()->getStorage('node')->loadUnchanged($node->id());
+  $fresh->setNewRevision(TRUE);
+  $fresh->save();
+}
