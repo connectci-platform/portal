@@ -343,7 +343,10 @@ class AppverseBackfillCommands extends DrushCommands {
       $seen = array_column($rows, 'nid');
       foreach ($listed as $nid) {
         if (!in_array($nid, $seen, TRUE)) {
-          $this->oodLogger->warning('Node @nid was listed in --nids but is not a @bundle with a duplicate moderation record, so it was left alone.', ['@nid' => $nid, '@bundle' => $bundle]);
+          $this->oodLogger->warning('Node @nid was listed in --nids but is not a @bundle with a duplicate moderation record, so it was left alone.', [
+            '@nid' => $nid,
+            '@bundle' => $bundle,
+          ]);
           $rows[] = [
             'nid' => $nid,
             'title' => '',
@@ -356,7 +359,9 @@ class AppverseBackfillCommands extends DrushCommands {
       }
       foreach ($rows as $row) {
         if (in_array($row['nid'], $listed, TRUE) && $row['action'] === 'skip') {
-          $this->oodLogger->warning('Node @nid was listed in --nids but is not in draft with a lost review state, so it was left alone.', ['@nid' => $row['nid']]);
+          $this->oodLogger->warning('Node @nid was listed in --nids but is not in draft with a lost review state, so it was left alone.', [
+            '@nid' => $row['nid'],
+          ]);
         }
       }
     }
