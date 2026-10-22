@@ -357,8 +357,9 @@ class AppverseReviewService implements DestructableInterface {
    * Record a successful dispatch on the node's review tracking fields.
    *
    * Re-loads the node to avoid saving stale state from the caller's copy.
-   * A dispatch from a transition happens in destruct(), after the save. Sets dispatched_at, status=pending,
-   * and clears prior recommendation/report/run_id.
+   * A dispatch from a transition happens in destruct(), after the save.
+   * Sets dispatched_at, status=pending, and clears prior
+   * recommendation/report/run_id.
    */
   protected function recordDispatch(NodeInterface $node, int $dispatchedAt): void {
     try {
