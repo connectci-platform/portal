@@ -35,6 +35,11 @@ class AppverseReviewService implements DestructableInterface {
   const DEBOUNCE_SECONDS = 300;
 
   /**
+   * How long a dispatch lock lasts if its process dies before releasing it.
+   */
+  const DISPATCH_LOCK_SECONDS = 120;
+
+  /**
    * Seconds after which a pending review is considered stale.
    * Reviewers then rerun it with Run AI report.
    */
@@ -239,10 +244,19 @@ class AppverseReviewService implements DestructableInterface {
     $this->pendingTransitionDispatch = [];
     $storage = $this->entityTypeManager->getStorage('node');
     foreach ($pending as $nid) {
-      $revisionId = $storage->getLatestRevisionId($nid);
-      $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
-      if ($latest instanceof NodeInterface && $latest->get('moderation_state')->value === 'ready_for_review') {
-        $this->dispatchForNode($latest);
+      // One repo failing must not stop the others from being dispatched.
+      try {
+        $revisionId = $storage->getLatestRevisionId($nid);
+        $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
+        if ($latest instanceof NodeInterface && $latest->get('moderation_state')->value === 'ready_for_review') {
+          $this->dispatchForNode($latest);
+        }
+      }
+      catch (\Throwable $e) {
+        $this->logger->error('Review dispatch for repo node @nid failed: @message', [
+          '@nid' => $nid,
+          '@message' => $e->getMessage(),
+        ]);
       }
     }
   }
@@ -283,7 +297,7 @@ class AppverseReviewService implements DestructableInterface {
       return FALSE;
     }
     $lockName = 'ood_software.review_dispatch.' . $node->id();
-    if ($this->lock && !$this->lock->acquire($lockName, 30)) {
+    if ($this->lock && !$this->lock->acquire($lockName, self::DISPATCH_LOCK_SECONDS)) {
       $this->logger->info('Skipping review dispatch for node @nid: another dispatch holds the lock.', [
         '@nid' => $node->id(),
       ]);

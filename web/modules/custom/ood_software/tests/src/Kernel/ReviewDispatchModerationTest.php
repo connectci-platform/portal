@@ -155,7 +155,7 @@ class ReviewDispatchModerationTest extends KernelTestBase {
   public function testConcurrentDispatchIsLockedOut(): void {
     $repo = $this->makeRepo('ready_for_review');
     // A second backend has its own lock id, like a second request would.
-    (new DatabaseLockBackend(\Drupal::database()))->acquire('ood_software.review_dispatch.' . $repo->id(), 30);
+    (new DatabaseLockBackend(\Drupal::database()))->acquire('ood_software.review_dispatch.' . $repo->id(), 120);
     $this->assertFalse($this->dispatcher->dispatchForNode($this->latest($repo)));
     $this->assertSame([], $this->dispatcher->sent);
   }
@@ -196,6 +196,48 @@ class ReviewDispatchModerationTest extends KernelTestBase {
     $this->assertTrue($this->dispatcher->dispatchForNode($this->latest($repo)));
     $this->assertFalse($this->dispatcher->dispatchForNode($this->latest($repo)));
     $this->assertCount(1, $this->dispatcher->sent);
+  }
+
+  /**
+   * A dispatch that throws does not stop the other queued repos.
+   */
+  public function testFailingDispatchDoesNotStopTheRest(): void {
+    $throwing = new class(
+      $this->container->get('http_client'),
+      $this->container->get('key.repository'),
+      $this->container->get('logger.factory'),
+      $this->container->get('entity_type.manager'),
+      $this->container->get('datetime.time'),
+      $this->container->get('file_system'),
+      $this->container->get('ood_software.review_seeder'),
+      $this->container->get('current_user'),
+      $this->container->get('ood_software.repo_notifier'),
+      $this->container->get('ood_software.in_place_saver'),
+      new DatabaseLockBackend(\Drupal::database()),
+    ) extends StubDispatchReviewService {
+
+      /**
+       * {@inheritdoc}
+       */
+      public function dispatch(string $targetRepo, ?string $model = NULL, string $correlationId = '', ?string $aspectsOverride = NULL, ?string $ref = NULL): bool {
+        if (!$this->sent) {
+          $this->sent[] = $targetRepo;
+          throw new \RuntimeException('GitHub is down');
+        }
+        return parent::dispatch($targetRepo, $model, $correlationId, $aspectsOverride, $ref);
+      }
+
+    };
+    $this->container->set('ood_software.review_dispatcher', $throwing);
+    $first = $this->makeRepo('draft');
+    $second = $this->makeRepo('draft');
+    $first->set('moderation_state', 'ready_for_review')->save();
+    $second->set('moderation_state', 'ready_for_review')->save();
+
+    $throwing->destruct();
+
+    $this->assertCount(2, $throwing->sent);
+    $this->assertSame('pending', $this->latest($second)->get('field_review_status')->value);
   }
 
 }

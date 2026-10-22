@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\Core\Lock\DatabaseLockBackend;
+use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\Core\Test\AssertMailTrait;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
@@ -84,6 +85,21 @@ class RepairModerationCommandTest extends KernelTestBase {
   protected NodeInterface $brokenApp;
 
   /**
+   * A repo in ready_for_review whose member app was never cascaded.
+   */
+  protected NodeInterface $skippedCascade;
+
+  /**
+   * The skipped-cascade repo's member app, still in draft.
+   */
+  protected NodeInterface $skippedCascadeApp;
+
+  /**
+   * A repo in ready_for_review whose apps are all past draft.
+   */
+  protected NodeInterface $healthy;
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
@@ -156,6 +172,24 @@ class RepairModerationCommandTest extends KernelTestBase {
     $this->brokenApp->set('moderation_state', 'ready_for_review')->save();
     \Drupal::state()->set('ood_software_nested_save_test.on', FALSE);
 
+    // A repo someone put back in ready_for_review by hand: the cascade the
+    // send-for-review should have run is still owed.
+    $this->skippedCascade = $this->makeRepo('draft');
+    $this->skippedCascadeApp = $this->makeMemberApp($this->skippedCascade, 'draft');
+    \Drupal::state()->set('ood_software_nested_save_test.on', TRUE);
+    $this->skippedCascade->set('moderation_state', 'ready_for_review')->save();
+    \Drupal::state()->set('ood_software_nested_save_test.on', FALSE);
+    $this->latest($this->skippedCascade)->set('moderation_state', 'ready_for_review')->save();
+
+    // Same record history, but its apps already moved on.
+    \Drupal::state()->set('ood_software_nested_save_test.on', TRUE);
+    $this->healthy = $this->makeRepo('draft');
+    $this->makeMemberApp($this->healthy, 'ready_for_review');
+    $this->makeMemberApp($this->healthy, 'published');
+    $this->healthy->set('moderation_state', 'ready_for_review')->save();
+    \Drupal::state()->set('ood_software_nested_save_test.on', FALSE);
+    $this->latest($this->healthy)->set('moderation_state', 'ready_for_review')->save();
+
     $this->manualDraft = $this->makeRepo('draft');
     $this->manualDraft->set('moderation_state', 'ready_for_review')->save();
     $this->latest($this->manualDraft)->set('moderation_state', 'draft')->save();
@@ -177,6 +211,21 @@ class RepairModerationCommandTest extends KernelTestBase {
       new DatabaseLockBackend(\Drupal::database()),
     );
     $this->container->set('ood_software.review_dispatcher', $this->dispatcher);
+  }
+
+  /**
+   * Creates a member app of a repo, in a moderation state.
+   */
+  protected function makeMemberApp(NodeInterface $repo, string $state): NodeInterface {
+    $app = Node::create([
+      'type' => 'appverse_app',
+      'title' => 'member',
+      'uid' => $this->owner->id(),
+      'field_appverse_repo' => $repo->id(),
+      'moderation_state' => $state,
+    ]);
+    $app->save();
+    return $app;
   }
 
   /**
@@ -254,8 +303,100 @@ class RepairModerationCommandTest extends KernelTestBase {
         'member_apps' => 'draft:2',
         'action' => 'restore',
       ],
+      [
+        'nid' => (int) $this->skippedCascade->id(),
+        'current' => 'ready_for_review',
+        'lost_state' => 'ready_for_review',
+        'member_apps' => 'draft:1',
+        'action' => 'cascade',
+      ],
+      [
+        'nid' => (int) $this->healthy->id(),
+        'current' => 'ready_for_review',
+        'lost_state' => 'ready_for_review',
+        'member_apps' => 'published:1,ready_for_review:1',
+        'action' => 'skip',
+      ],
     ], $rows);
     $this->assertLatestState('draft', $this->broken);
+  }
+
+  /**
+   * Applying a cascade moves the apps, not the repo, silently.
+   */
+  public function testApplyCascadeMovesAppsWithoutSavingRepo(): void {
+    $revisions = $this->revisionCount($this->skippedCascade);
+    $rows = $this->report('appverse_repo', (string) $this->skippedCascade->id(), TRUE);
+    $this->assertSame('cascaded', array_column($rows, 'action', 'nid')[(int) $this->skippedCascade->id()]);
+    $this->assertLatestState('ready_for_review', $this->skippedCascadeApp);
+    $this->assertSame($revisions, $this->revisionCount($this->skippedCascade));
+    $this->assertCount(0, $this->getMails(), "No email is sent.");
+    $this->assertNoReviewStarted();
+  }
+
+  /**
+   * A repo whose apps are past draft is left alone even when listed.
+   */
+  public function testApplyOnHealthyRepoIsSkipped(): void {
+    $rows = $this->report('appverse_repo', (string) $this->healthy->id(), TRUE);
+    $this->assertSame('skip', array_column($rows, 'action', 'nid')[(int) $this->healthy->id()]);
+  }
+
+  /**
+   * The report counts default revisions, as the cascade acts on them.
+   */
+  public function testMemberAppsCountsDefaultRevisions(): void {
+    $app = $this->makeMemberApp($this->healthy, 'published');
+    $app->set('moderation_state', 'ready_for_review')->save();
+    $this->assertAppLatestDiffers($app);
+    $rows = array_column($this->report('appverse_repo'), 'member_apps', 'nid');
+    $this->assertSame('published:2,ready_for_review:1', $rows[(int) $this->healthy->id()]);
+  }
+
+  /**
+   * Asserts the app has a forward revision, so latest and default differ.
+   */
+  protected function assertAppLatestDiffers(NodeInterface $app): void {
+    $this->assertSame('ready_for_review', $this->latest($app)->get('moderation_state')->value);
+    $this->assertSame('published', $this->defaultRevision($app)->get('moderation_state')->value);
+  }
+
+  /**
+   * The report shows what happened after the bad record began.
+   */
+  public function testEditsSinceAndLastEdit(): void {
+    $rows = array_column($this->report('appverse_repo'), NULL, 'nid');
+    $before = $rows[(int) $this->broken->id()];
+    $this->assertSame(0, $before['edits_since']);
+
+    $edit = $this->latest($this->broken);
+    $edit->setNewRevision(TRUE);
+    $edit->setRevisionLogMessage('Moved to draft on purpose');
+    $edit->setRevisionUserId((int) $this->owner->id());
+    $edit->save();
+
+    $after = array_column($this->report('appverse_repo'), NULL, 'nid')[(int) $this->broken->id()];
+    $this->assertSame(1, $after['edits_since']);
+    $this->assertSame($this->owner->id() . ': Moved to draft on purpose', $after['last_edit']);
+  }
+
+  /**
+   * The restore revision is attributed and dated.
+   */
+  public function testRestoreIsAttributed(): void {
+    $this->report('appverse_repo', (string) $this->broken->id(), TRUE);
+    $restored = $this->latest($this->broken);
+    $this->assertSame((int) $this->owner->id(), (int) $restored->getRevisionUserId());
+    $this->assertGreaterThanOrEqual(\Drupal::time()->getRequestTime(), (int) $restored->getRevisionCreationTime());
+  }
+
+  /**
+   * Without a logged-in user (drush without -u) the restore is user 1.
+   */
+  public function testRestoreAsAnonymousIsAttributedToUserOne(): void {
+    $this->setCurrentUser(new AnonymousUserSession());
+    $this->report('appverse_repo', (string) $this->broken->id(), TRUE);
+    $this->assertSame(1, (int) $this->latest($this->broken)->getRevisionUserId());
   }
 
   /**

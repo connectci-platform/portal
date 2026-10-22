@@ -88,8 +88,10 @@ class AppverseBackfillCommands extends DrushCommands {
   /**
    * Create inferred Repos for legacy Apps with no parent.
    *
-   * @param array<string, mixed> $options
+   * @param array $options
    *   Command options.
+   *
+   * @phpstan-param array<string, mixed> $options
    *
    * @command appverse:backfill-inferred-repos
    * @aliases appverse-backfill
@@ -276,7 +278,7 @@ class AppverseBackfillCommands extends DrushCommands {
   }
 
   /**
-   * Report nodes that lost their moderation state, and restore listed ones.
+   * Report nodes that lost their moderation state, and repair listed ones.
    *
    * Sending a repo for review used to re-save it inside its own save, which
    * gave the node a second content_moderation_state record in draft. The repo
@@ -284,40 +286,60 @@ class AppverseBackfillCommands extends DrushCommands {
    * more than one record is a candidate. Dry run unless --apply is given.
    *
    * The lost_state column is the state of the node revision just before the
-   * newest record began. member_apps lists the repo's apps as state:count
-   * pairs, sorted by state name (for example draft:2,published:1). The action
-   * is restore only when the node is now in draft and lost_state is
-   * ready_for_review or needs_adjustment, otherwise skip. A node listed in
-   * --nids with --apply that is not restored is logged as a warning, and one
-   * that is not a candidate at all gets a not-a-candidate row.
+   * newest record began. member_apps lists the repo's apps (default
+   * revisions, the ones the cascade acts on) as state:count pairs, sorted by
+   * state name (for example draft:2,published:1).
    *
-   * Applying saves a new revision in the lost state, without email or a new AI
+   * The action column is one of these. restore: the node is now in draft and
+   * lost_state is ready_for_review or needs_adjustment. cascade: a repo is in
+   * ready_for_review but has member apps in draft or needs_adjustment, because
+   * the cascade was skipped when it was sent. skip: nothing to repair. After
+   * --apply the repaired rows read restored or cascaded, and a listed nid that
+   * is not a candidate at all gets a not-a-candidate row. A listed node that
+   * is skipped is logged as a warning.
+   *
+   * Applying a restore saves a new revision in the lost state, attributed to
+   * the current user (user 1 for drush without -u), without email or a new AI
    * review, and sends a restored repo's draft and needs_adjustment apps to
-   * ready_for_review. The duplicate records stay, since deleting them would
+   * ready_for_review. Applying a cascade only moves the member apps and does
+   * not save the repo. The duplicate records stay, since deleting them would
    * erase the state history of older revisions.
    *
-   * @param array<string, mixed> $options
+   * Check edits_since and last_edit before listing a nid for --apply.
+   * edits_since counts the node revisions saved after the bad record began, so
+   * 0 means nothing happened since. A higher number, or a last_edit by a
+   * person, can mean someone moved the node to draft on purpose, and a restore
+   * would undo that.
+   *
+   * Operator order: run the repo dry run, apply the repos you checked, then
+   * run the app dry run (--bundle=appverse_app) for standalone apps.
+   *
+   * @param array $options
    *   Command options.
+   *
+   * @phpstan-param array<string, mixed> $options
    *
    * @return \Consolidation\OutputFormatters\StructuredData\RowsOfFields
    *   One row per affected node.
    *
    * @command appverse:repair-moderation
    * @option bundle Content type to check, appverse_repo or appverse_app.
-   * @option nids Comma-separated node IDs to restore. Required with --apply.
-   * @option apply Restore the listed nodes instead of only reporting.
+   * @option nids Comma-separated node IDs to repair. Required with --apply.
+   * @option apply Repair the listed nodes instead of only reporting.
    * @field-labels
    *   nid: Nid
    *   title: Title
    *   current: Current
    *   lost_state: Lost state
    *   member_apps: Member apps
+   *   edits_since: Edits since
+   *   last_edit: Last edit
    *   action: Action
-   * @default-fields nid,title,current,lost_state,member_apps,action
+   * @default-fields nid,title,current,lost_state,member_apps,edits_since,last_edit,action
    * @usage drush appverse:repair-moderation
    *   List affected repos without changing anything.
    * @usage drush appverse:repair-moderation --nids=12,34 --apply
-   *   Restore repos 12 and 34 and send their apps for review.
+   *   Repair repos 12 and 34 and send their apps for review.
    */
   public function repairModeration(array $options = ['bundle' => 'appverse_repo', 'nids' => '', 'apply' => FALSE]): RowsOfFields {
     $bundle = (string) ($options['bundle'] ?? 'appverse_repo');
@@ -333,9 +355,15 @@ class AppverseBackfillCommands extends DrushCommands {
     $rows = [];
     foreach ($this->duplicateStateNids($bundle) as $nid) {
       $row = $this->describeAffectedNode($nid);
-      if ($apply && in_array($nid, $listed, TRUE) && $row['action'] === 'restore') {
-        $this->restoreNode($nid, $row['lost_state']);
-        $row['action'] = 'restored';
+      if ($apply && in_array($nid, $listed, TRUE)) {
+        if ($row['action'] === 'restore') {
+          $this->restoreNode($nid, $row['lost_state']);
+          $row['action'] = 'restored';
+        }
+        elseif ($row['action'] === 'cascade') {
+          $this->cascadeToApps($nid);
+          $row['action'] = 'cascaded';
+        }
       }
       $rows[] = $row;
     }
@@ -353,13 +381,15 @@ class AppverseBackfillCommands extends DrushCommands {
             'current' => '',
             'lost_state' => '',
             'member_apps' => '',
+            'edits_since' => '',
+            'last_edit' => '',
             'action' => 'not-a-candidate',
           ];
         }
       }
       foreach ($rows as $row) {
         if (in_array($row['nid'], $listed, TRUE) && $row['action'] === 'skip') {
-          $this->oodLogger->warning('Node @nid was listed in --nids but is not in draft with a lost review state, so it was left alone.', [
+          $this->oodLogger->warning('Node @nid was listed in --nids but has nothing to repair, so it was left alone.', [
             '@nid' => $row['nid'],
           ]);
         }
@@ -411,22 +441,50 @@ class AppverseBackfillCommands extends DrushCommands {
     $current = (string) $node->get('moderation_state')->value;
     $lost = $this->lostState($nid);
     $apps = '';
+    $repairable = 0;
     if ($node->bundle() === 'appverse_repo') {
       $counts = [];
-      foreach ($this->memberApps->queryMemberAppIds($node) as $appId) {
-        $state = (string) $this->latestRevision($appId)->get('moderation_state')->value;
+      // Default revisions, the ones cascadeModeration() loads and acts on.
+      $appStorage = $this->entityTypeManager->getStorage('node');
+      $appStorage->resetCache();
+      foreach ($appStorage->loadMultiple($this->memberApps->queryMemberAppIds($node)) as $app) {
+        $state = (string) $app->get('moderation_state')->value;
         $counts[$state] = ($counts[$state] ?? 0) + 1;
+        if (in_array($state, ['draft', 'needs_adjustment'], TRUE)) {
+          $repairable++;
+        }
       }
       ksort($counts);
       $apps = implode(',', array_map(fn ($state, $count) => "$state:$count", array_keys($counts), $counts));
     }
+    $action = 'skip';
+    if ($current === 'draft' && in_array($lost, ['ready_for_review', 'needs_adjustment'], TRUE)) {
+      $action = 'restore';
+    }
+    elseif ($current === 'ready_for_review' && $repairable > 0) {
+      $action = 'cascade';
+    }
+    $start = $this->newestRecordStart($nid);
+    $editsSince = '';
+    if ($start !== NULL) {
+      $editsSince = (int) $this->entityTypeManager->getStorage('node')->getQuery()
+        ->accessCheck(FALSE)
+        ->allRevisions()
+        ->condition('nid', $nid)
+        ->condition('vid', $start, '>')
+        ->count()
+        ->execute();
+    }
+    $log = (string) $node->getRevisionLogMessage();
     return [
       'nid' => $nid,
       'title' => (string) $node->label(),
       'current' => $current,
       'lost_state' => $lost,
       'member_apps' => $apps,
-      'action' => $current === 'draft' && in_array($lost, ['ready_for_review', 'needs_adjustment'], TRUE) ? 'restore' : 'skip',
+      'edits_since' => $editsSince,
+      'last_edit' => $node->getRevisionUserId() . ': ' . mb_substr($log, 0, 60),
+      'action' => $action,
     ];
   }
 
@@ -442,11 +500,11 @@ class AppverseBackfillCommands extends DrushCommands {
   }
 
   /**
-   * The state the node had before its newest moderation record began.
+   * The node revision id at which the newest moderation record began.
    *
-   * Empty when it cannot be worked out.
+   * NULL when it cannot be worked out.
    */
-  protected function lostState(int $nid): string {
+  protected function newestRecordStart(int $nid): ?int {
     $stateStorage = $this->entityTypeManager->getStorage('content_moderation_state');
     $ids = $stateStorage->getQuery()
       ->accessCheck(FALSE)
@@ -455,7 +513,7 @@ class AppverseBackfillCommands extends DrushCommands {
       ->condition('workflow', 'appverse_editorial')
       ->execute();
     if (!$ids) {
-      return '';
+      return NULL;
     }
     $newest = (int) max($ids);
     $revisionIds = $stateStorage->getQuery()
@@ -463,14 +521,24 @@ class AppverseBackfillCommands extends DrushCommands {
       ->allRevisions()
       ->condition('id', $newest)
       ->execute();
-    $firstNodeRevision = NULL;
+    $first = NULL;
     foreach (array_keys($revisionIds) as $revisionId) {
       $state = $stateStorage->loadRevision($revisionId);
       $vid = $state instanceof ContentEntityInterface ? (int) $state->get('content_entity_revision_id')->value : 0;
-      if ($vid && ($firstNodeRevision === NULL || $vid < $firstNodeRevision)) {
-        $firstNodeRevision = $vid;
+      if ($vid && ($first === NULL || $vid < $first)) {
+        $first = $vid;
       }
     }
+    return $first;
+  }
+
+  /**
+   * The state the node had before its newest moderation record began.
+   *
+   * Empty when it cannot be worked out.
+   */
+  protected function lostState(int $nid): string {
+    $firstNodeRevision = $this->newestRecordStart($nid);
     if ($firstNodeRevision === NULL) {
       return '';
     }
@@ -498,6 +566,12 @@ class AppverseBackfillCommands extends DrushCommands {
     $node->set('moderation_state', $state);
     $node->setNewRevision(TRUE);
     $node->setRevisionLogMessage('Restored moderation state lost to a duplicate moderation record.');
+    // Attribute the restore: drush without -u runs as anonymous.
+    // @phpstan-ignore-next-line
+    $uid = (int) \Drupal::currentUser()->id();
+    $node->setRevisionUserId($uid ?: 1);
+    // @phpstan-ignore-next-line
+    $node->setRevisionCreationTime(\Drupal::time()->getRequestTime());
     // Not a contributor submitting: no email and no new AI review.
     // @phpstan-ignore-next-line
     $node->_ood_software_suppress_notifications = TRUE;
@@ -507,9 +581,17 @@ class AppverseBackfillCommands extends DrushCommands {
     $node->save();
     $this->oodLogger->notice('Restored node @nid to @state.', ['@nid' => $nid, '@state' => $state]);
     if ($node->bundle() === 'appverse_repo' && $state === 'ready_for_review') {
-      $count = $this->memberApps->cascadeModeration($node, 'ready_for_review', ['draft', 'needs_adjustment'], 'Restored with the repo.');
-      $this->oodLogger->notice('Sent @count member apps of node @nid for review.', ['@count' => $count, '@nid' => $nid]);
+      $this->cascadeToApps($nid, $node);
     }
+  }
+
+  /**
+   * Sends a repo's draft and needs_adjustment apps to ready_for_review.
+   */
+  protected function cascadeToApps(int $nid, ?NodeInterface $repo = NULL): void {
+    $repo ??= $this->latestRevision($nid);
+    $count = $this->memberApps->cascadeModeration($repo, 'ready_for_review', ['draft', 'needs_adjustment'], 'Restored with the repo.');
+    $this->oodLogger->notice('Sent @count member apps of node @nid for review.', ['@count' => $count, '@nid' => $nid]);
   }
 
 }
