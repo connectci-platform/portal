@@ -733,8 +733,12 @@ final class ReviewDecisionApplier {
    */
   protected function publishNode(NodeInterface $node, string $log): bool {
     // Already live: nothing to move, and a published-to-published save of a
-    // repo would send the publish email again.
-    if ($node->isPublished()) {
+    // repo would send the publish email again. A live node with a review
+    // pending on top is not done, though: its default revision is published
+    // but the accepted content is the forward revision, which would stay
+    // "Published, review pending" and queued for review (D8-2882). The save
+    // below carries the suppress flag, so no second publish email goes out.
+    if ($node->isPublished() && !_ood_software_has_pending_review($node)) {
       return FALSE;
     }
     $storage = $this->entityTypeManager->getStorage('node');

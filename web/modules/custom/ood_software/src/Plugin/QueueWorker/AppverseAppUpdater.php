@@ -256,7 +256,8 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       }
 
       if ($needsSave) {
-        $node->save();
+        // Keeps a review pending on a published app (a forward revision).
+        RepoSyncService::saveKeepingPending($node, $this->entityTypeManager->getStorage('node'));
       }
     }
     else {
@@ -307,7 +308,7 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
     // Match every other validation-state write in the codebase, which stamps
     // last_synced so the hub reflects when the state was last evaluated.
     $repo->set('field_repo_last_synced', $this->time->getCurrentTime());
-    $repo->save();
+    RepoSyncService::saveKeepingPending($repo, $this->entityTypeManager->getStorage('node'));
     $this->logger->notice('Repo @nid appverse.yml shape changed since registration; flagged degraded for attended Resync.', ['@nid' => $repo->id()]);
   }
 

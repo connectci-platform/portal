@@ -100,3 +100,15 @@ services:
     class: Drupal\ood_software\EventSubscriber\ReviewNodePageRedirectSubscriber
     tags:
       - { name: event_subscriber }
+
+  # Only a user's own My Appverse hub, or any hub for administer appverse
+  # content (D8-2882). The route subscriber adds this requirement to
+  # view.my_appverse.page_user alongside the view's access content check.
+  ood_software.my_appverse_hub_access:
+    class: Drupal\ood_software\Access\MyAppverseHubAccessCheck
+    tags:
+      - { name: access_check, applies_to: _ood_software_my_appverse_hub }
+  ood_software.my_appverse_hub_route_subscriber:
+    class: Drupal\ood_software\Routing\MyAppverseHubRouteSubscriber
+    tags:
+      - { name: event_subscriber }

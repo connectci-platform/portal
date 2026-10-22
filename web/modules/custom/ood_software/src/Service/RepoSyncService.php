@@ -3,7 +3,9 @@
 namespace Drupal\ood_software\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\RevisionableStorageInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\node\Entity\Node;
@@ -21,6 +23,18 @@ use Symfony\Component\Yaml\Exception\ParseException;
  * when absent, the sync derives minimal metadata from the repo itself.
  */
 class RepoSyncService {
+
+  /**
+   * Fields a sync never copies onto a pending revision.
+   *
+   * Identity, revision bookkeeping and the state fields, which the pending
+   * revision keeps as its own.
+   */
+  protected const PENDING_SKIP_FIELDS = [
+    'nid', 'vid', 'uuid', 'langcode', 'status', 'changed', 'moderation_state',
+    'revision_timestamp', 'revision_uid', 'revision_log', 'revision_default',
+    'revision_translation_affected', 'default_langcode',
+  ];
 
   protected LoggerInterface $logger;
 
@@ -99,7 +113,7 @@ class RepoSyncService {
         sprintf('appverse.yml: parse error — %s. Fix: validate YAML syntax at https://www.yamllint.com/', $this->sanitizeError($e->getMessage())),
       ]);
       $node->set('field_repo_last_synced', $this->time->getCurrentTime());
-      $node->save();
+      $this->saveSynced($node);
       $this->logger->warning('Repo sync failed for @repo: malformed appverse.yml.', ['@repo' => $repoUrl]);
       return $node;
     }
@@ -112,7 +126,7 @@ class RepoSyncService {
         'appverse.yml: top-level must be a YAML mapping. Fix: ensure the file starts with `key: value` pairs, not a list or scalar.',
       ]);
       $node->set('field_repo_last_synced', $this->time->getCurrentTime());
-      $node->save();
+      $this->saveSynced($node);
       return $node;
     }
 
@@ -126,7 +140,7 @@ class RepoSyncService {
         sprintf('appverse.yml: appverse.min_version = "%s" but this catalog supports up to "1.0". Fix: upgrade the catalog or lower min_version.', $minVersion),
       ]);
       $node->set('field_repo_last_synced', $this->time->getCurrentTime());
-      $node->save();
+      $this->saveSynced($node);
       return $node;
     }
 
@@ -225,7 +239,7 @@ class RepoSyncService {
       ]);
     }
 
-    $node->save();
+    $this->saveSynced($node);
     return $node;
   }
 
@@ -343,7 +357,7 @@ class RepoSyncService {
             '@repo' => $repoUrl,
           ]);
           $memberApp->set('moderation_state', 'archived');
-          $memberApp->save();
+          $this->saveSynced($memberApp);
         }
       }
     }
@@ -605,8 +619,81 @@ class RepoSyncService {
       $app->set('moderation_state', 'draft');
     }
 
-    $app->save();
+    $this->saveSynced($app);
     return $app;
+  }
+
+  /**
+   * Saves a node the sync changed; see saveKeepingPending().
+   */
+  protected function saveSynced(NodeInterface $node): void {
+    self::saveKeepingPending($node, $this->entityTypeManager->getStorage('node'));
+  }
+
+  /**
+   * Saves a node a sync changed, without losing a review pending on it.
+   *
+   * A published node sent for review keeps its live default revision and gains
+   * a forward revision (ready_for_review is not a default state). The sync
+   * works on the default revision, and saving that makes it the newest, which
+   * would drop the pending review. So when a forward revision exists the
+   * changed values go to the default revision (the catalog stays current) and
+   * then onto the pending revision, saved as a new revision in its own state
+   * so it is newest again. The pending revision's other edits are kept.
+   *
+   * A sync is not a submission: the node_update hook's review email and AI
+   * dispatch are suppressed for both saves. A save that moves the node to a
+   * different moderation state (auto-archive) is deliberate and goes through
+   * unchanged. Nodes with no pending revision are saved exactly as before.
+   *
+   * Static so the cron updater, which has no RepoSyncService wired to its own
+   * storage, shares it.
+   */
+  public static function saveKeepingPending(NodeInterface $node, EntityStorageInterface $storage): void {
+    $pendingId = self::pendingRevisionId($node, $storage);
+    $original = $pendingId ? $storage->loadUnchanged($node->id()) : NULL;
+    if (!$pendingId || !$original instanceof NodeInterface
+      || $node->get('moderation_state')->value !== $original->get('moderation_state')->value) {
+      $node->save();
+      return;
+    }
+
+    // Everything the sync changed on the default revision.
+    $changed = [];
+    foreach ($node->getFields() as $name => $items) {
+      if (!in_array($name, self::PENDING_SKIP_FIELDS, TRUE) && !$items->equals($original->get($name))) {
+        $changed[$name] = $items->getValue();
+      }
+    }
+
+    // Runtime flag ood_software_node_update() reads, not a field.
+    // @phpstan-ignore-next-line
+    $node->_ood_software_suppress_notifications = TRUE;
+    $node->save();
+
+    /** @var \Drupal\node\NodeInterface $pending */
+    $pending = $storage->loadRevision($pendingId);
+    $state = $pending->get('moderation_state')->value;
+    foreach ($changed as $name => $value) {
+      $pending->set($name, $value);
+    }
+    $pending->set('moderation_state', $state);
+    $pending->setNewRevision(TRUE);
+    // @phpstan-ignore-next-line
+    $pending->_ood_software_suppress_notifications = TRUE;
+    $pending->save();
+  }
+
+  /**
+   * The id of the forward revision pending on a node, if it has one.
+   */
+  protected static function pendingRevisionId(NodeInterface $node, EntityStorageInterface $storage): ?int {
+    if ($node->isNew() || !$node->id() || !$node->hasField('moderation_state')
+      || !$storage instanceof RevisionableStorageInterface) {
+      return NULL;
+    }
+    $latestId = $storage->getLatestRevisionId($node->id());
+    return $latestId && (int) $latestId !== (int) $node->getRevisionId() ? (int) $latestId : NULL;
   }
 
   /**
@@ -906,7 +993,7 @@ class RepoSyncService {
         'App at @repo / @path rejected: missing required fields: @missing',
         ['@repo' => $repoUrl, '@path' => $subpath, '@missing' => implode(', ', $missing)]
       );
-      $app->save();
+      $this->saveSynced($app);
       return;
     }
 
@@ -964,7 +1051,7 @@ class RepoSyncService {
       $app->set('field_appverse_readme', NULL);
     }
 
-    $app->save();
+    $this->saveSynced($app);
   }
 
   /**
@@ -1144,7 +1231,7 @@ class RepoSyncService {
       ]);
     }
 
-    $node->save();
+    $this->saveSynced($node);
     return $node;
   }
 
