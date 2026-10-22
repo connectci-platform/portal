@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2c4582c98b173d61e9c9c2627a0214ec",
+    "content-hash": "32e1c0e89d391a9c1216c271424ee9c6",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -675,17 +675,18 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-d8-1957",
+            "version": "3.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "3ca647fb61ccda61e97d83246ce5700f4ec42c37"
+                "reference": "67650d3f2c0e70e710593e5e7aed7c7c70f59b11"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -701,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-13T16:16:25+00:00"
+            "time": "2026-10-22T19:31:27+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -794,16 +795,17 @@
         },
         {
             "name": "connectci/webform_submission_search_api",
-            "version": "dev-d8-1957",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/webform_submission_search_api.git",
-                "reference": "4026939117666b5b75569869fbc42bdb6ad187d3"
+                "reference": "54ff3b7275d1ebf89ef317c73c2dc28d8ddf4169"
             },
             "require": {
                 "drupal/search_api": "^1.3",
                 "drupal/webform": "^6"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "MIT"
@@ -822,7 +824,7 @@
                 "issues": "https://github.com/connectci-platform/webform_submission_search_api/issues",
                 "source": "https://github.com/connectci-platform/webform_submission_search_api"
             },
-            "time": "2026-10-13T15:17:14+00:00"
+            "time": "2026-10-08T15:42:59+00:00"
         },
         {
             "name": "consolidation/annotated-command",
