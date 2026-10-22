@@ -3,7 +3,7 @@
 namespace Drupal\Tests\ood_software\Unit\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\node\NodeStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldItemInterface;
 use Drupal\Core\Field\FieldItemListInterface;
@@ -76,7 +76,7 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
       $this->freshSaves++;
       return 2;
     });
-    $storage = $this->createMock(EntityStorageInterface::class);
+    $storage = $this->createMock(NodeStorageInterface::class);
     $storage->method('loadUnchanged')->with(self::NID)->willReturn($fresh);
     $etm = $this->createMock(EntityTypeManagerInterface::class);
     $etm->method('getStorage')->with('node')->willReturn($storage);

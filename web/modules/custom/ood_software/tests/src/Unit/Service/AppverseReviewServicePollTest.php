@@ -3,7 +3,7 @@
 namespace Drupal\Tests\ood_software\Unit\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\node\NodeStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Query\QueryInterface;
 use Drupal\Core\File\FileSystemInterface;
@@ -109,7 +109,7 @@ class AppverseReviewServicePollTest extends UnitTestCase {
       return $fresh;
     });
 
-    $storage = $this->createMock(EntityStorageInterface::class);
+    $storage = $this->createMock(NodeStorageInterface::class);
     $storage->method('getQuery')->willReturn($query);
     $storage->method('loadMultiple')->willReturn($status === NULL ? [] : [self::NID => $this->makeRepoNode($status)]);
     $storage->method('loadUnchanged')->with(self::NID)->willReturn($fresh);

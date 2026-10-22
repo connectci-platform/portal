@@ -102,8 +102,19 @@ class AppverseReviewService implements DestructableInterface {
     protected ?AccountInterface $currentUser = NULL,
     // Emails the reviewers when a run is ready or fails (#47).
     protected ?RepoNotificationService $notifier = NULL,
+    // Writes review tracking fields without burying a forward revision.
+    protected ?InPlaceSaver $inPlaceSaver = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
+  }
+
+  /**
+   * The saver for review tracking writes.
+   *
+   * Built on demand for callers constructed without one (unit tests).
+   */
+  protected function inPlaceSaver(): InPlaceSaver {
+    return $this->inPlaceSaver ??= new InPlaceSaver($this->entityTypeManager);
   }
 
   /**
@@ -363,38 +374,26 @@ class AppverseReviewService implements DestructableInterface {
    */
   protected function recordDispatch(NodeInterface $node, int $dispatchedAt): void {
     try {
-      $storage = $this->entityTypeManager->getStorage('node');
-      $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh) {
-        return;
-      }
-
-      if ($fresh->hasField('field_review_dispatched_at')) {
-        $fresh->set('field_review_dispatched_at', $dispatchedAt);
-      }
-      if ($fresh->hasField('field_review_status')) {
-        $fresh->set('field_review_status', 'pending');
-      }
-      if ($fresh->hasField('field_review_recommendation')) {
-        $fresh->set('field_review_recommendation', NULL);
-      }
-      if ($fresh->hasField('field_review_run_id')) {
-        $fresh->set('field_review_run_id', NULL);
-      }
-      if ($fresh->hasField('field_review_dispatched_by')) {
-        // Run AI report, or the contributor's send-for-review transition.
-        $starter = $this->currentUser && $this->currentUser->isAuthenticated() ? $this->currentUser->id() : NULL;
-        $fresh->set('field_review_dispatched_by', $starter);
-      }
-
-      // A runtime flag ood_software_node_update() reads, not a field; the
-      // Drupal PHPStan extension types every node property as a field list.
-      // @phpstan-ignore-next-line
-      $fresh->_ood_software_suppress_notifications = TRUE;
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
+      // Starter: Run AI report, or the contributor's send-for-review
+      // transition.
+      $starter = $this->currentUser && $this->currentUser->isAuthenticated() ? $this->currentUser->id() : NULL;
+      $this->inPlaceSaver()->updateRevisions($node, function (NodeInterface $revision) use ($dispatchedAt, $starter): void {
+        if ($revision->hasField('field_review_dispatched_at')) {
+          $revision->set('field_review_dispatched_at', $dispatchedAt);
+        }
+        if ($revision->hasField('field_review_status')) {
+          $revision->set('field_review_status', 'pending');
+        }
+        if ($revision->hasField('field_review_recommendation')) {
+          $revision->set('field_review_recommendation', NULL);
+        }
+        if ($revision->hasField('field_review_run_id')) {
+          $revision->set('field_review_run_id', NULL);
+        }
+        if ($revision->hasField('field_review_dispatched_by')) {
+          $revision->set('field_review_dispatched_by', $starter);
+        }
+      });
     }
     catch (\Throwable $e) {
       $this->logger->warning('Failed to record review dispatch on node @nid: @msg', [
@@ -1179,35 +1178,25 @@ class AppverseReviewService implements DestructableInterface {
    */
   protected function recordSeededReview(NodeInterface $node, int $runId, NodeInterface $review, ?string $decision): void {
     try {
-      $storage = $this->entityTypeManager->getStorage('node');
-      $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh) {
-        return;
+      $mapped = self::mapRecommendation($decision);
+      if ($mapped === NULL && $decision !== NULL) {
+        $this->logger->warning('Run @id: recommendation "@decision" has no field value; left empty.', [
+          '@id' => $runId,
+          '@decision' => $decision,
+        ]);
       }
-      if ($fresh->hasField('field_review_status')) {
-        $fresh->set('field_review_status', 'complete');
-      }
-      if ($fresh->hasField('field_review_run_id')) {
-        $fresh->set('field_review_run_id', $runId);
-      }
-      if ($fresh->hasField('field_review_recommendation')) {
-        $mapped = self::mapRecommendation($decision);
-        if ($mapped === NULL && $decision !== NULL) {
-          $this->logger->warning('Run @id: recommendation "@decision" has no field value; left empty.', [
-            '@id' => $runId,
-            '@decision' => $decision,
-          ]);
+      $this->inPlaceSaver()->updateRevisions($node, function (NodeInterface $revision) use ($runId, $mapped): void {
+        if ($revision->hasField('field_review_status')) {
+          $revision->set('field_review_status', 'complete');
         }
-        $fresh->set('field_review_recommendation', $mapped);
-      }
-      // A runtime flag ood_software_node_update() reads, not a field; the
-      // Drupal PHPStan extension types every node property as a field list.
-      // @phpstan-ignore-next-line
-      $fresh->_ood_software_suppress_notifications = TRUE;
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
+        if ($revision->hasField('field_review_run_id')) {
+          $revision->set('field_review_run_id', $runId);
+        }
+        if ($revision->hasField('field_review_recommendation')) {
+          $revision->set('field_review_recommendation', $mapped);
+        }
+      });
+      $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($node->id());
 
       $this->logger->notice('Seeded review @review from run @id for repo @nid (recommendation: @rec).', [
         '@review' => $review->id(),
@@ -1215,7 +1204,9 @@ class AppverseReviewService implements DestructableInterface {
         '@nid' => $node->id(),
         '@rec' => $decision ?? 'none',
       ]);
-      $this->notifier?->notifyRunReady($fresh, $review);
+      if ($fresh instanceof NodeInterface) {
+        $this->notifier?->notifyRunReady($fresh, $review);
+      }
     }
     catch (\Throwable $e) {
       $this->logger->error('Review @review was seeded from run @id but the repo node @nid could not be updated: @msg', [
@@ -1233,30 +1224,24 @@ class AppverseReviewService implements DestructableInterface {
   protected function updateNodeReviewStatus(NodeInterface $node, string $status, int $runId, string $reason = ''): void {
     try {
       $storage = $this->entityTypeManager->getStorage('node');
-      $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh instanceof NodeInterface) {
+      $current = $storage->loadUnchanged($node->id());
+      if (!$current instanceof NodeInterface) {
         return;
       }
-      $was = $fresh->hasField('field_review_status') ? (string) ($fresh->get('field_review_status')->value ?? '') : '';
+      $was = $current->hasField('field_review_status') ? (string) ($current->get('field_review_status')->value ?? '') : '';
 
-      if ($fresh->hasField('field_review_status')) {
-        $fresh->set('field_review_status', $status);
-      }
-      if ($fresh->hasField('field_review_run_id')) {
-        $fresh->set('field_review_run_id', $runId);
-      }
-
-      // A runtime flag ood_software_node_update() reads, not a field; the
-      // Drupal PHPStan extension types every node property as a field list.
-      // @phpstan-ignore-next-line
-      $fresh->_ood_software_suppress_notifications = TRUE;
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
+      $this->inPlaceSaver()->updateRevisions($node, function (NodeInterface $revision) use ($status, $runId): void {
+        if ($revision->hasField('field_review_status')) {
+          $revision->set('field_review_status', $status);
+        }
+        if ($revision->hasField('field_review_run_id')) {
+          $revision->set('field_review_run_id', $runId);
+        }
+      });
+      $fresh = $storage->loadUnchanged($node->id());
       // One email per failure: only the change into error sends it, so a
       // later poll of the same run cannot send it again (appverse-planning#47).
-      if ($status === 'error' && $was !== 'error') {
+      if ($fresh instanceof NodeInterface && $status === 'error' && $was !== 'error') {
         $this->notifier?->notifyRunFailed($fresh, $reason !== '' ? $reason : 'the run ended without a report', $runId);
       }
     }

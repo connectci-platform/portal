@@ -92,6 +92,7 @@ class ReviewDispatchModerationTest extends KernelTestBase {
       $this->container->get('ood_software.review_seeder'),
       $this->container->get('current_user'),
       $this->container->get('ood_software.repo_notifier'),
+      $this->container->get('ood_software.in_place_saver'),
     );
     $this->container->set('ood_software.review_dispatcher', $this->dispatcher);
   }
@@ -120,6 +121,16 @@ class ReviewDispatchModerationTest extends KernelTestBase {
     $this->dispatcher->destruct();
 
     $this->assertSame([], $this->dispatcher->sent);
+  }
+
+  /**
+   * Recording the dispatch on a published repo keeps its forward revision.
+   */
+  public function testDispatchOnPublishedRepoKeepsForwardRevision(): void {
+    $repo = $this->publishedRepoWithForwardRevision('ready_for_review');
+    $this->dispatcher->dispatchForNode($this->latest($repo));
+    $this->assertLatestState('ready_for_review', $repo);
+    $this->assertTrue($this->defaultRevision($repo)->isPublished());
   }
 
 }
