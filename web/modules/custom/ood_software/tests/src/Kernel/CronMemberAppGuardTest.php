@@ -15,6 +15,7 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
 use Drupal\ood_software\Plugin\QueueWorker\AppverseAppUpdater;
+use Drupal\ood_software\Service\InPlaceSaver;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
 use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
@@ -129,7 +130,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
   /**
    * Build the worker with a stubbed GitHubService reporting a NEW commit.
    */
-  private function makeWorker(NodeInterface $repo, int $stars = 0): AppverseAppUpdater {
+  private function makeWorker(NodeInterface $repo, int $stars = 0, ?InPlaceSaver $saver = NULL): AppverseAppUpdater {
     $gh = new class(
       $this->container->get('http_client'),
       $this->container->get('key.repository'),
@@ -226,7 +227,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $repoSync,
       $this->container->get('logger.factory')->get('ood_software'),
       $this->container->get('datetime.time'),
-      $this->container->get('ood_software.in_place_saver'),
+      $saver ?? $this->container->get('ood_software.in_place_saver'),
     );
   }
 
@@ -463,10 +464,11 @@ class CronMemberAppGuardTest extends KernelTestBase {
   }
 
   /**
-   * An app whose stars did not change is not saved again.
+   * An app whose stars did not change is not saved at all.
    *
    * The stored value reloads as the string '5' and GitHub reports the int 5,
-   * which a strict compare reads as a change on every pass.
+   * which a strict compare reads as a change on every pass. A save, even an
+   * in-place one, fires hook_node_update and regenerates the appverse cache.
    */
   public function testUnchangedAppIsNotResaved(): void {
     $repo = $this->makeMonoRepo();
@@ -480,12 +482,28 @@ class CronMemberAppGuardTest extends KernelTestBase {
       'moderation_state' => 'published',
     ]);
     $app->save();
+    // Reload so the stored value is the database string '5'.
     \Drupal::entityTypeManager()->getStorage('node')->resetCache([$app->id()]);
-    $worker = $this->makeWorker($repo, 5);
+    $saver = new class(\Drupal::entityTypeManager()) extends InPlaceSaver {
+
+      /**
+       * Ids of the nodes passed to save().
+       *
+       * @var int[]
+       */
+      public array $saved = [];
+
+      public function save(NodeInterface $node): void {
+        $this->saved[] = (int) $node->id();
+        parent::save($node);
+      }
+
+    };
+    $worker = $this->makeWorker($repo, 5, $saver);
     $worker->processItem(['nid' => $app->id()]);
-    $before = $this->revisionCount($app);
     $worker->processItem(['nid' => $app->id()]);
-    $this->assertSame($before, $this->revisionCount($app));
+    // The repo may be flagged once; the app itself must never be saved.
+    $this->assertNotContains((int) $app->id(), $saver->saved);
   }
 
   /**

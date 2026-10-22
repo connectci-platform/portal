@@ -242,8 +242,6 @@ class BackgroundRepoSyncTest extends KernelTestBase {
   public function testRepeatedBackgroundSyncAddsNoRevisions(): void {
     $repo = $this->sync->resolveRepo($this->repoUrl, $this->yml, $this->meta);
     $repo->set('moderation_state', 'ready_for_review')->save();
-    // The first background pass settles any field the setup left unsynced.
-    $this->sync->resolveRepoInBackground($this->repoUrl, $this->yml, $this->meta);
     $before = $this->revisionCount($repo);
     $this->sync->resolveRepoInBackground($this->repoUrl, $this->yml, $this->meta);
     $this->sync->resolveRepoInBackground($this->repoUrl, $this->yml, $this->meta);
