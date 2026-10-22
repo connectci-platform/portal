@@ -1,0 +1,6 @@
+name: 'Appverse nested save (test only)'
+type: module
+description: 'Reproduces the old nested save in hook_node_update that split a node moderation state in two. For kernel test fixtures only.'
+package: Testing
+core_version_requirement: ^10 || ^11
+hidden: true
