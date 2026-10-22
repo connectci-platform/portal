@@ -7,6 +7,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\DestructableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Site\Settings;
@@ -104,6 +105,8 @@ class AppverseReviewService implements DestructableInterface {
     protected ?RepoNotificationService $notifier = NULL,
     // Writes review tracking fields without burying a forward revision.
     protected ?InPlaceSaver $inPlaceSaver = NULL,
+    // Serializes dispatches per repo. Optional: unit tests skip locking.
+    protected ?LockBackendInterface $lock = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -170,11 +173,10 @@ class AppverseReviewService implements DestructableInterface {
     if ($previousState === 'ready_for_review') {
       return FALSE;
     }
-    $status = $node->hasField('field_review_status') ? (string) ($node->get('field_review_status')->value ?? '') : '';
-    if (in_array($status, ['pending', 'in_progress'], TRUE)) {
+    if ($this->isRunInFlight($node)) {
       $this->logger->info('Skipping review dispatch for node @nid: a run is already @status.', [
         '@nid' => $node->id(),
-        '@status' => $status,
+        '@status' => $node->get('field_review_status')->value,
       ]);
       return FALSE;
     }
@@ -188,6 +190,31 @@ class AppverseReviewService implements DestructableInterface {
     }
 
     return TRUE;
+  }
+
+  /**
+   * The newest revision of a node, reloaded; $node when it has none.
+   */
+  public function latestRevision(NodeInterface $node): NodeInterface {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $revisionId = $storage->getLatestRevisionId((int) $node->id());
+    $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
+    return $latest instanceof NodeInterface ? $latest : $node;
+  }
+
+  /**
+   * Whether a review run for the repo has been started and not yet finished.
+   *
+   * A run stuck in pending is turned into an error by the poller after
+   * STALE_TIMEOUT_SECONDS, so no staleness is judged here.
+   *
+   * @phpstan-impure
+   */
+  public function isRunInFlight(NodeInterface $node): bool {
+    if (!$node->hasField('field_review_status')) {
+      return FALSE;
+    }
+    return in_array((string) ($node->get('field_review_status')->value ?? ''), ['pending', 'in_progress'], TRUE);
   }
 
   /**
@@ -220,8 +247,14 @@ class AppverseReviewService implements DestructableInterface {
    * is polled for. A failed dispatch leaves the node untouched: marking it
    * pending would have the poll loop wait for a run that was never created.
    *
+   * One run per repo at a time: the dispatch holds a per-repo lock and, under
+   * it, refuses when the latest revision already has a run in flight. The
+   * GitHub call comes before the pending write, so without the lock two clicks
+   * seconds apart both saw no run and started two.
+   *
    * @return bool
-   *   TRUE when GitHub accepted the dispatch.
+   *   TRUE when GitHub accepted the dispatch; FALSE when it did not or a run
+   *   is already in flight or being started.
    */
   public function dispatchForNode(NodeInterface $node, ?string $model = NULL, ?string $aspectsOverride = NULL, ?string $ref = NULL): bool {
     $repoUrl = $this->extractRepoUrl($node);
@@ -239,15 +272,36 @@ class AppverseReviewService implements DestructableInterface {
       ]);
       return FALSE;
     }
-    // One timestamp for both the node and the id, so the id can be recomputed
-    // from the node when the run is polled for.
-    $dispatchedAt = $this->time->getRequestTime();
-    $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
-    if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride, $ref)) {
+    $lockName = 'ood_software.review_dispatch.' . $node->id();
+    if ($this->lock && !$this->lock->acquire($lockName, 30)) {
+      $this->logger->info('Skipping review dispatch for node @nid: another dispatch holds the lock.', [
+        '@nid' => $node->id(),
+      ]);
       return FALSE;
     }
-    $this->recordDispatch($node, $dispatchedAt);
-    return TRUE;
+    try {
+      // Under the lock, so a dispatch that just finished is seen.
+      $latest = $this->latestRevision($node);
+      if ($this->isRunInFlight($latest)) {
+        $this->logger->info('Skipping review dispatch for node @nid: a run is already @status.', [
+          '@nid' => $node->id(),
+          '@status' => $latest->get('field_review_status')->value,
+        ]);
+        return FALSE;
+      }
+      // One timestamp for both the node and the id, so the id can be
+      // recomputed from the node when the run is polled for.
+      $dispatchedAt = $this->time->getRequestTime();
+      $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
+      if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride, $ref)) {
+        return FALSE;
+      }
+      $this->recordDispatch($node, $dispatchedAt);
+      return TRUE;
+    }
+    finally {
+      $this->lock?->release($lockName);
+    }
   }
 
   /**

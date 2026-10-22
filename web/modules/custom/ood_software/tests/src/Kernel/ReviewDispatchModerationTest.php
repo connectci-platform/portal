@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\Core\Lock\DatabaseLockBackend;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\ood_software\Controller\AppverseHubController;
 use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
@@ -93,6 +95,8 @@ class ReviewDispatchModerationTest extends KernelTestBase {
       $this->container->get('current_user'),
       $this->container->get('ood_software.repo_notifier'),
       $this->container->get('ood_software.in_place_saver'),
+      // The kernel container's lock is a no-op, so use the database one.
+      new DatabaseLockBackend(\Drupal::database()),
     );
     $this->container->set('ood_software.review_dispatcher', $this->dispatcher);
   }
@@ -131,6 +135,38 @@ class ReviewDispatchModerationTest extends KernelTestBase {
     $this->dispatcher->dispatchForNode($this->latest($repo));
     $this->assertLatestState('ready_for_review', $repo);
     $this->assertTrue($this->defaultRevision($repo)->isPublished());
+  }
+
+  /**
+   * A second Run AI report while the first run is in flight starts nothing.
+   */
+  public function testSecondRunReviewWhileFirstInFlightDoesNotDispatch(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $controller = AppverseHubController::create($this->container);
+    $controller->runReview($this->latest($repo));
+    $controller->runReview($this->latest($repo));
+    $this->assertCount(1, $this->dispatcher->sent);
+  }
+
+  /**
+   * A dispatch for a repo another request is dispatching is refused.
+   */
+  public function testConcurrentDispatchIsLockedOut(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    // A second backend has its own lock id, like a second request would.
+    (new DatabaseLockBackend(\Drupal::database()))->acquire('ood_software.review_dispatch.' . $repo->id(), 30);
+    $this->assertFalse($this->dispatcher->dispatchForNode($this->latest($repo)));
+    $this->assertSame([], $this->dispatcher->sent);
+  }
+
+  /**
+   * A reviewer can rerun a failed run at once; the debounce does not apply.
+   */
+  public function testRetryAfterErrorIsNotDebounced(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $this->latest($repo)->set('field_review_status', 'error')->set('field_review_dispatched_at', \Drupal::time()->getRequestTime() - 10)->save();
+    AppverseHubController::create($this->container)->runReview($this->latest($repo));
+    $this->assertCount(1, $this->dispatcher->sent);
   }
 
 }

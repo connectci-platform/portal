@@ -102,7 +102,13 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $node->method('id')->willReturn(self::NID);
     $node->method('bundle')->willReturn('appverse_repo');
     $node->method('hasField')->willReturn(TRUE);
-    $node->method('get')->with('field_repo_url')->willReturn($list);
+    // No run in flight: dispatchForNode() reads the status before sending.
+    $status = $this->createMock(FieldItemListInterface::class);
+    $status->method('__get')->with('value')->willReturn(NULL);
+    $node->method('get')->willReturnMap([
+      ['field_repo_url', $list],
+      ['field_review_status', $status],
+    ]);
     return $node;
   }
 
