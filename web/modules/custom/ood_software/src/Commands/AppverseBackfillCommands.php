@@ -287,7 +287,9 @@ class AppverseBackfillCommands extends DrushCommands {
    * newest record began. member_apps lists the repo's apps as state:count
    * pairs, sorted by state name (for example draft:2,published:1). The action
    * is restore only when the node is now in draft and lost_state is
-   * ready_for_review or needs_adjustment, otherwise skip.
+   * ready_for_review or needs_adjustment, otherwise skip. A node listed in
+   * --nids with --apply that is not restored is logged as a warning, and one
+   * that is not a candidate at all gets a not-a-candidate row.
    *
    * Applying saves a new revision in the lost state, without email or a new AI
    * review, and sends a restored repo's draft and needs_adjustment apps to
@@ -336,6 +338,27 @@ class AppverseBackfillCommands extends DrushCommands {
         $row['action'] = 'restored';
       }
       $rows[] = $row;
+    }
+    if ($apply) {
+      $seen = array_column($rows, 'nid');
+      foreach ($listed as $nid) {
+        if (!in_array($nid, $seen, TRUE)) {
+          $this->oodLogger->warning('Node @nid was listed in --nids but is not a @bundle with a duplicate moderation record, so it was left alone.', ['@nid' => $nid, '@bundle' => $bundle]);
+          $rows[] = [
+            'nid' => $nid,
+            'title' => '',
+            'current' => '',
+            'lost_state' => '',
+            'member_apps' => '',
+            'action' => 'not-a-candidate',
+          ];
+        }
+      }
+      foreach ($rows as $row) {
+        if (in_array($row['nid'], $listed, TRUE) && $row['action'] === 'skip') {
+          $this->oodLogger->warning('Node @nid was listed in --nids but is not in draft with a lost review state, so it was left alone.', ['@nid' => $row['nid']]);
+        }
+      }
     }
     return new RowsOfFields($rows);
   }
