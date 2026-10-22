@@ -47,6 +47,7 @@ function ood_software_theme(): array {
         'empty_message' => NULL,
         'scrollable' => TRUE,
         'block_class' => $block_class,
+        'shuffle' => FALSE,
       ],
       'template' => 'people-grid-block',
     ];
@@ -59,6 +60,7 @@ function ood_software_theme(): array {
     'ag_coordinators_block' => $people_grid('ag-coordinators-block'),
     'good_conference_committee_block' => $people_grid('good-committee-block'),
     'tips_tricks_calls_block' => $people_grid('tips-tricks-block'),
+    'app_reviewers_block' => $people_grid('app-reviewers-block'),
     'appverse_hub' => [
       'variables' => ['hub' => []],
       'template' => 'appverse-hub',

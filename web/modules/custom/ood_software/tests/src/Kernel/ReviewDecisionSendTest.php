@@ -152,7 +152,7 @@ class ReviewDecisionSendTest extends KernelTestBase {
     $this->assertSame('[Appverse] Changes requested on example/repo', $mail['subject']);
     $this->assertStringContainsString('Hi owner,', $mail['body']);
     $this->assertStringContainsString('reviewer reviewed your repo "example/repo"', $mail['body']);
-    $this->assertStringContainsString('Reply to this email and it goes to reviewer.', $mail['body']);
+    $this->assertStringContainsString('Reply to this email and it goes to the reviewer.', $mail['body']);
     // The response is escaped: the mail is turned into plain text, which
     // strips a tag but keeps escaped text as written.
     $this->assertStringContainsString('Please add a <LICENSE>.', $mail['body']);
