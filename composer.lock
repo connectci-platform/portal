@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "19c32c4c2d12e19a708c954d53e88f49",
+    "content-hash": "32e1c0e89d391a9c1216c271424ee9c6",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -28,11 +28,11 @@
         },
         {
             "name": "access/infrastructure_news",
-            "version": "dev-d8-2912",
+            "version": "1.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/infrastructure_news",
-                "reference": "99f5bd63f09f14b6e96ebba0e011310b533d705a"
+                "reference": "4f3e10b705cd0a1fe97e3e3dfa50c278affe5ce1"
             },
             "require": {
                 "access/operations_cider": "*",
@@ -40,6 +40,7 @@
                 "drupal/feeds_ex": "^1.0@beta",
                 "drupal/field_group": "^3.4 || ^4.0"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -59,7 +60,7 @@
                 "issues": "https://github.com/access-ci-org/infrastructure_news/issues",
                 "source": "https://github.com/access-ci-org/infrastructure_news"
             },
-            "time": "2026-10-22T18:05:56+00:00"
+            "time": "2026-10-22T19:31:04+00:00"
         },
         {
             "name": "asm89/stack-cors",
@@ -674,17 +675,18 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-d8-2912",
+            "version": "3.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "393a355d78f7fba0d9e55b112e566c5f600820d4"
+                "reference": "67650d3f2c0e70e710593e5e7aed7c7c70f59b11"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -700,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-22T18:06:08+00:00"
+            "time": "2026-10-22T19:31:27+00:00"
         },
         {
             "name": "connectci/asp-theme",
