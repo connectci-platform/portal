@@ -1,0 +1,56 @@
+diff --git a/src/Plugin/Filter/RelToAbs.php b/src/Plugin/Filter/RelToAbs.php
+--- a/src/Plugin/Filter/RelToAbs.php
++++ b/src/Plugin/Filter/RelToAbs.php
+@@ -48,6 +48,12 @@
+   public function process($text, $langcode) {
+     $resultText = preg_replace_callback('/(href|background|src)=["\']([\/#][^"\']*)["\']/', function ($matches) {
+       $url = preg_replace('/\/{2,}/', '/', $matches[2]);
++      // The path is already percent-encoded in the markup (e.g. "%20" for a
++      // space) and the URL generator encodes it again, producing "%2520".
++      // Decode only the path; the query and fragment survive untouched.
++      $parts = preg_split('/(?=[?#])/', $url, 2);
++      $parts[0] = rawurldecode($parts[0]);
++      $url = implode('', $parts);
+       try {
+         $url = Url::fromUserInput($url)->setAbsolute()->toString();
+       }
+diff --git a/tests/src/Functional/RelToAbsTest.php b/tests/src/Functional/RelToAbsTest.php
+--- a/tests/src/Functional/RelToAbsTest.php
++++ b/tests/src/Functional/RelToAbsTest.php
+@@ -57,4 +57,36 @@
+     $this->assertEquals($check, $result);
+   }
+ 
++  /**
++   * Ensures already-encoded paths are not encoded a second time.
++   */
++  public function testRelToAbsFilterEncodedPaths() {
++    $language = \Drupal::getContainer()
++      ->get('language_manager')
++      ->getLanguage(LanguageInterface::LANGCODE_NOT_SPECIFIED);
++
++    $front = rtrim(Url::fromRoute('<front>', [], [
++      'absolute' => TRUE,
++      'language' => $language,
++    ])->toString(), '/');
++
++    $filter = new RelToAbs([], 'rel_to_abs', ['provider' => 'rel_to_abs']);
++
++    $cases = [
++      // Spaces, literal percent signs and multibyte characters in the path.
++      '/files/a%20b.jpg' => '/files/a%20b.jpg',
++      '/files/100%25.jpg' => '/files/100%25.jpg',
++      '/files/caf%C3%A9.jpg' => '/files/caf%C3%A9.jpg',
++      // Unencoded input is still encoded once.
++      '/files/a b.jpg' => '/files/a%20b.jpg',
++      // Encoded query and fragment values are left as-is.
++      '/node/1?q=a%26b' => '/node/1?q=a%26b',
++      '/node/1#sec%20one' => '/node/1#sec%20one',
++    ];
++    foreach ($cases as $input => $expected) {
++      $result = $filter->process('<img src="' . $input . '"/>', NULL);
++      $this->assertEquals('<img src="' . $front . $expected . '"/>', (string) $result, $input);
++    }
++  }
++
+ }
