@@ -39,7 +39,7 @@ services:
 
   ood_software.repo_sync:
     class: Drupal\ood_software\Service\RepoSyncService
-    arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh']
+    arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh', '@ood_software.in_place_saver']
 
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService

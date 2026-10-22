@@ -21,6 +21,8 @@ trait AppverseModerationTestTrait {
     $repo = Node::create([
       'type' => 'appverse_repo',
       'title' => 'example/app',
+      // The using test provides the owner.
+      // @phpstan-ignore-next-line
       'uid' => $this->owner->id(),
       'field_repo_url' => 'https://github.com/example/app',
       'moderation_state' => $state,
@@ -35,8 +37,21 @@ trait AppverseModerationTestTrait {
    * Content moderation keeps the published revision as the default.
    */
   protected function publishedRepoWithForwardRevision(string $state): NodeInterface {
-    $repo = $this->makeRepo('published');
+    return $this->addForwardRevision($this->makeRepo('published'), $state);
+  }
+
+  /**
+   * Publishes an existing repo, then adds a forward revision in $state.
+   *
+   * For tests that need the published repo to be one the code under test
+   * finds itself, such as a repo a sync created.
+   */
+  protected function addForwardRevision(NodeInterface $repo, string $state): NodeInterface {
     $repo = Node::load($repo->id());
+    if ($repo->get('moderation_state')->value !== 'published') {
+      $repo->set('moderation_state', 'published')->save();
+      $repo = Node::load($repo->id());
+    }
     $repo->set('moderation_state', $state)->save();
     return $repo;
   }
