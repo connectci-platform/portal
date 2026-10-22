@@ -22,11 +22,24 @@ class StubDispatchReviewService extends AppverseReviewService {
   public array $sent = [];
 
   /**
+   * Whether GitHub accepts the dispatch.
+   */
+  public bool $accepts = TRUE;
+
+  /**
+   * Called on each dispatch, before it returns.
+   */
+  public ?\Closure $onDispatch = NULL;
+
+  /**
    * {@inheritdoc}
    */
   public function dispatch(string $targetRepo, ?string $model = NULL, string $correlationId = '', ?string $aspectsOverride = NULL, ?string $ref = NULL): bool {
     $this->sent[] = $targetRepo;
-    return TRUE;
+    if ($this->onDispatch) {
+      ($this->onDispatch)();
+    }
+    return $this->accepts;
   }
 
 }

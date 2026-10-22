@@ -182,6 +182,65 @@ class ReviewerEmailsTest extends KernelTestBase {
   }
 
   /**
+   * The emails that link to the repo's review.
+   *
+   * The run-ready email links to the review it names when it has one, and
+   * to the repo's review otherwise.
+   */
+  const REPO_LINK_KEYS = [
+    'ready_for_review',
+    'resubmitted',
+    'review_run_ready',
+    'review_run_failed',
+    'review_assigned',
+    'review_update',
+  ];
+
+  /**
+   * The emails link to the repo's review, labeled as the review.
+   *
+   * /appverse/review/{repo id} goes to the repo's newest review when the link
+   * is clicked, so the link names the repo rather than the generic queue.
+   */
+  public function testRepoEmailsLinkToTheRepoReview(): void {
+    $repo = $this->makeRepo('ready_for_review', ['title' => 'Tools & Things']);
+    Node::create(['type' => 'appverse_review', 'title' => 'Review', 'field_arv_repo' => $repo->id()])->save();
+
+    foreach (self::REPO_LINK_KEYS as $key) {
+      $body = $this->renderedBody($key, $repo);
+      $this->assertStringContainsString('<p>The review: <a href="/appverse/review/' . $repo->id() . '">', $body, $key);
+      $this->assertStringNotContainsString('manage-repos', $body, $key);
+      $this->assertStringNotContainsString('review queue', $body, $key);
+    }
+  }
+
+  /**
+   * Before the repo has a review, they link to the queue filtered to it.
+   *
+   * The link is labeled as the queue, not as a review that does not exist
+   * yet, and shows the repo whatever its moderation state.
+   */
+  public function testRepoEmailsLinkToTheFilteredQueueWithoutReview(): void {
+    $repo = $this->makeRepo('ready_for_review', ['title' => 'Tools & Things']);
+
+    foreach (self::REPO_LINK_KEYS as $key) {
+      $body = $this->renderedBody($key, $repo);
+      $this->assertStringContainsString('<p>The repo in the review queue: <a href="/appverse/manage-repos?title=Tools%20%26%20Things&amp;moderation_state=All">', $body, $key);
+      $this->assertStringNotContainsString('/appverse/review/', $body, $key);
+      $this->assertStringNotContainsString('The review:', $body, $key);
+    }
+  }
+
+  /**
+   * The raw body ood_software_mail() builds for a key, joined.
+   */
+  protected function renderedBody(string $key, NodeInterface $repo): string {
+    $message = ['subject' => '', 'body' => [], 'langcode' => 'en'];
+    ood_software_mail($key, $message, ['node' => $repo, 'reason' => 'it broke', 'tag' => 'v2.0']);
+    return implode("\n", array_map('strval', $message['body']));
+  }
+
+  /**
    * The notifier.
    */
   protected function notifier(): RepoNotificationService {

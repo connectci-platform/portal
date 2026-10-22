@@ -62,6 +62,7 @@ class AppverseReviewServiceOnTransitionTest extends UnitTestCase {
       ->getMock();
     $time = $this->createMock(TimeInterface::class);
     $time->method('getRequestTime')->willReturn(100000);
+    $time->method('getCurrentTime')->willReturn(100000);
     foreach (['logger' => $this->createMock(LoggerInterface::class), 'time' => $time] as $name => $value) {
       $property = new \ReflectionProperty(AppverseReviewService::class, $name);
       $property->setValue($service, $value);

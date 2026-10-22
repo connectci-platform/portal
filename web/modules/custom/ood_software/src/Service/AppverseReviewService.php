@@ -7,6 +7,8 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\DestructableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
+use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Session\AccountInterface;
@@ -38,6 +40,30 @@ class AppverseReviewService implements DestructableInterface {
    * How long a dispatch lock lasts if its process dies before releasing it.
    */
   const DISPATCH_LOCK_SECONDS = 120;
+
+  /**
+   * Key-value collection of the transition dispatches not yet started.
+   *
+   * One key per repo nid, valued ['queued' => request time, 'queued_at' =>
+   * current time, 'retry_after' => time, 'attempts' => int]. queued_at is the
+   * transition's time and never changes; retry_after is when the cron poll may
+   * next try it. A transition's run starts in
+   * destruct(), after the response; a fatal or timeout before then would lose
+   * it, so the cron poll retries what is left. One key per repo, not one map,
+   * so concurrent requests settling different repos do not overwrite each
+   * other's entries.
+   */
+  const PENDING_TRANSITION_COLLECTION = 'ood_software.pending_transition_dispatch';
+
+  /**
+   * Seconds an owed transition dispatch is left to its own request.
+   */
+  const PENDING_TRANSITION_RETRY_AFTER = 300;
+
+  /**
+   * Attempts at an owed transition dispatch before it is given up.
+   */
+  const PENDING_TRANSITION_MAX_ATTEMPTS = 3;
 
   /**
    * Seconds after which a pending review is considered stale.
@@ -112,8 +138,18 @@ class AppverseReviewService implements DestructableInterface {
     protected ?InPlaceSaver $inPlaceSaver = NULL,
     // Serializes dispatches per repo. Optional: unit tests skip locking.
     protected ?LockBackendInterface $lock = NULL,
+    // Keeps transition dispatches until started, for the cron retry.
+    // Optional: unit tests skip it.
+    protected ?KeyValueFactoryInterface $keyValue = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
+  }
+
+  /**
+   * The store of transition dispatches not yet started, if there is one.
+   */
+  protected function owedDispatches(): ?KeyValueStoreInterface {
+    return $this->keyValue?->get(self::PENDING_TRANSITION_COLLECTION);
   }
 
   /**
@@ -140,6 +176,10 @@ class AppverseReviewService implements DestructableInterface {
    * content_moderation has written its state record, which creates a second
    * state entity in draft and drops the repo from the reviewer queue.
    *
+   * The repo is also written to a key-value store (not a node save),
+   * so a request that dies before destruct() leaves the run for the cron
+   * poll to start (retryPendingTransitionDispatches()).
+   *
    * @param \Drupal\node\NodeInterface $node
    *   The appverse_repo node (post-save).
    * @param string|null $previousState
@@ -147,7 +187,19 @@ class AppverseReviewService implements DestructableInterface {
    */
   public function onTransition(NodeInterface $node, ?string $previousState): void {
     if ($this->shouldDispatchOnTransition($node, $previousState)) {
-      $this->pendingTransitionDispatch[(int) $node->id()] = (int) $node->id();
+      $nid = (int) $node->id();
+      $this->pendingTransitionDispatch[$nid] = $nid;
+      // queued_at is the transition's real time, on the same clock as
+      // field_review_dispatched_at. In a long drush or queue process the
+      // request time is the process start, so a run started between the two
+      // must not read as this one (startedSinceQueued()).
+      $now = $this->time->getCurrentTime();
+      $this->owedDispatches()?->set((string) $nid, [
+        'queued' => $this->time->getRequestTime(),
+        'queued_at' => $now,
+        'retry_after' => $now + self::PENDING_TRANSITION_RETRY_AFTER,
+        'attempts' => 0,
+      ]);
     }
   }
 
@@ -228,7 +280,9 @@ class AppverseReviewService implements DestructableInterface {
     if (!$node->hasField('field_review_dispatched_at') || $node->get('field_review_dispatched_at')->isEmpty()) {
       return FALSE;
     }
-    $age = $this->time->getRequestTime() - (int) $node->get('field_review_dispatched_at')->value;
+    // The current time: the dispatch was stamped with it, and a long drush or
+    // queue process's request time would make a run look ever younger.
+    $age = $this->time->getCurrentTime() - (int) $node->get('field_review_dispatched_at')->value;
     return $age < self::STALE_TIMEOUT_SECONDS;
   }
 
@@ -242,23 +296,146 @@ class AppverseReviewService implements DestructableInterface {
   public function destruct(): void {
     $pending = $this->pendingTransitionDispatch;
     $this->pendingTransitionDispatch = [];
-    $storage = $this->entityTypeManager->getStorage('node');
     foreach ($pending as $nid) {
-      // One repo failing must not stop the others from being dispatched.
-      try {
-        $revisionId = $storage->getLatestRevisionId($nid);
-        $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
-        if ($latest instanceof NodeInterface && $latest->get('moderation_state')->value === 'ready_for_review') {
-          $this->dispatchForNode($latest);
-        }
-      }
-      catch (\Throwable $e) {
-        $this->logger->error('Review dispatch for repo node @nid failed: @message', [
-          '@nid' => $nid,
-          '@message' => $e->getMessage(),
-        ]);
+      $this->startOwedDispatch($nid);
+    }
+  }
+
+  /**
+   * Retries transition dispatches whose own request did not start them.
+   *
+   * Called by the cron review poll. Only entries past their retry_after, so
+   * a request still running keeps its own and a failed attempt backs off.
+   * One key-value read when nothing is owed.
+   */
+  public function retryPendingTransitionDispatches(): void {
+    try {
+      $owed = $this->owedDispatches()?->getAll();
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Could not read the owed review dispatches: @message', ['@message' => $e->getMessage()]);
+      return;
+    }
+    if (!$owed) {
+      return;
+    }
+    $now = $this->time->getCurrentTime();
+    foreach ($owed as $nid => $entry) {
+      if (self::retryAfter($entry) < $now) {
+        $this->startOwedDispatch((int) $nid);
       }
     }
+  }
+
+  /**
+   * Starts an owed transition run and settles its entry.
+   *
+   * The entry is removed once the run is started or no longer needed: the
+   * repo's latest revision left ready_for_review, a run is in flight, or a run
+   * was already started at or after the entry was queued. The last covers an
+   * entry another process re-wrote after it was settled. Any other failure
+   * counts an attempt.
+   */
+  protected function startOwedDispatch(int $nid): void {
+    $settled = FALSE;
+    // One repo failing must not stop the others from being dispatched.
+    try {
+      $storage = $this->entityTypeManager->getStorage('node');
+      $revisionId = $storage->getLatestRevisionId($nid);
+      $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
+      if (!$latest instanceof NodeInterface || $latest->get('moderation_state')->value !== 'ready_for_review') {
+        $settled = TRUE;
+      }
+      elseif ($this->startedSinceQueued($latest)) {
+        $settled = TRUE;
+      }
+      else {
+        $settled = $this->dispatchForNode($latest) || $this->isRunInFlight($this->latestRevision($latest));
+      }
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Review dispatch for repo node @nid failed: @message', [
+        '@nid' => $nid,
+        '@message' => $e->getMessage(),
+      ]);
+    }
+    // Nothing may escape: in destruct() an exception would skip the other
+    // services' destruct().
+    try {
+      $this->settleOwedDispatch($nid, $settled);
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Could not settle the owed review dispatch of repo node @nid: @message', [
+        '@nid' => $nid,
+        '@message' => $e->getMessage(),
+      ]);
+    }
+  }
+
+  /**
+   * When an owed dispatch was queued: queued_at, or queued for older entries.
+   *
+   * @param array<string, int> $entry
+   *   The owed dispatch.
+   */
+  protected static function queuedAt(array $entry): int {
+    return (int) ($entry['queued_at'] ?? $entry['queued'] ?? 0);
+  }
+
+  /**
+   * When an owed dispatch may next be tried by the cron poll.
+   *
+   * Entries written before retry_after existed wait
+   * PENDING_TRANSITION_RETRY_AFTER seconds from when they were queued.
+   *
+   * @param array<string, int> $entry
+   *   The owed dispatch.
+   */
+  protected static function retryAfter(array $entry): int {
+    return (int) ($entry['retry_after'] ?? self::queuedAt($entry) + self::PENDING_TRANSITION_RETRY_AFTER);
+  }
+
+  /**
+   * Whether the repo's run was started at or after its entry was queued.
+   *
+   * Both field_review_dispatched_at and queued_at are the current time when
+   * written, so a dispatch made after the transition, in its own request, a
+   * reviewer's or a cron retry, is at or after queued_at. queued_at never
+   * moves, so a run started after a failed attempt still counts. When it
+   * misses one, the entry is dispatched again and dispatchForNode()'s
+   * in-flight check stops a second run.
+   */
+  protected function startedSinceQueued(NodeInterface $latest): bool {
+    if (!$latest->hasField('field_review_dispatched_at') || $latest->get('field_review_dispatched_at')->isEmpty()) {
+      return FALSE;
+    }
+    $entry = $this->owedDispatches()?->get((string) $latest->id());
+    return is_array($entry) && (int) $latest->get('field_review_dispatched_at')->value >= self::queuedAt($entry);
+  }
+
+  /**
+   * Removes an owed dispatch, or counts a failed attempt at it.
+   */
+  protected function settleOwedDispatch(int $nid, bool $settled): void {
+    $store = $this->owedDispatches();
+    $entry = $store?->get((string) $nid);
+    if (!is_array($entry)) {
+      return;
+    }
+    if (!$settled) {
+      $attempts = (int) ($entry['attempts'] ?? 0) + 1;
+      if ($attempts < self::PENDING_TRANSITION_MAX_ATTEMPTS) {
+        $entry['attempts'] = $attempts;
+        // The next retry waits another PENDING_TRANSITION_RETRY_AFTER
+        // seconds. queued_at stays the transition's time, so a run started
+        // meanwhile (Run AI report) still settles the entry.
+        $entry['retry_after'] = $this->time->getCurrentTime() + self::PENDING_TRANSITION_RETRY_AFTER;
+        $store->set((string) $nid, $entry);
+        return;
+      }
+      $this->logger->error('AI review for repo @nid could not be started after 3 attempts.', ['@nid' => $nid]);
+    }
+    $store->delete((string) $nid);
   }
 
   /**
@@ -314,8 +491,11 @@ class AppverseReviewService implements DestructableInterface {
         return FALSE;
       }
       // One timestamp for both the node and the id, so the id can be
-      // recomputed from the node when the run is polled for.
-      $dispatchedAt = $this->time->getRequestTime();
+      // recomputed from the node when the run is polled for. The current
+      // time, not the request's: owed transition entries are stamped on the
+      // same clock (startedSinceQueued()), and it is still no later than the
+      // run's creation, which matchRun() checks.
+      $dispatchedAt = $this->time->getCurrentTime();
       $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
       if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride, $ref)) {
         return FALSE;
@@ -438,7 +618,7 @@ class AppverseReviewService implements DestructableInterface {
       return FALSE;
     }
     $lastDispatch = (int) $node->get('field_review_dispatched_at')->value;
-    $elapsed = $this->time->getRequestTime() - $lastDispatch;
+    $elapsed = $this->time->getCurrentTime() - $lastDispatch;
     return $elapsed < self::DEBOUNCE_SECONDS;
   }
 
@@ -620,6 +800,10 @@ class AppverseReviewService implements DestructableInterface {
    * log; a pass with nothing to poll logs only at debug level.
    */
   public function pollForResults(): void {
+    // Before the token check: dispatch() logs a missing token itself, and
+    // the failed attempt counts toward giving the repo up.
+    $this->retryPendingTransitionDispatches();
+
     $token = $this->getToken();
     if ($token === NULL) {
       $this->logger->error('Review poll: no GitHub token found (tried keys @primary, @fallback); nothing polled.', [
@@ -641,7 +825,8 @@ class AppverseReviewService implements DestructableInterface {
     }
     $activeRuns = $this->fetchWorkflowRuns($token, 'in_progress') ?? [];
 
-    $now = $this->time->getRequestTime();
+    // The clock field_review_dispatched_at is stamped with.
+    $now = $this->time->getCurrentTime();
     $outcomes = [];
 
     foreach ($pendingNodes as $node) {

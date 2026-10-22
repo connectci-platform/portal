@@ -491,6 +491,9 @@ describe('Appverse Maintenance Hub', () => {
             .click();
         });
 
+      // The queue filtered to the repo, in any moderation state.
+      const QUEUE_PATH = `/appverse/manage-repos?title=${encodeURIComponent(COLLECTION_TITLE).replace(/[()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}&moderation_state=All`;
+
       // Assert the admin received the notification.
       cy.waitForEmail({
         to: ADMIN_EMAIL,
@@ -499,7 +502,7 @@ describe('Appverse Maintenance Hub', () => {
         cy.assertEmailContent(message, {
           subject: 'Repo submitted for review',
           to: ADMIN_EMAIL,
-          bodyContains: [COLLECTION_TITLE, '/appverse/manage-repos'],
+          bodyContains: [COLLECTION_TITLE, QUEUE_PATH],
         });
 
         // Strict check: each URL must render as a real link (HTML) and sit
@@ -507,16 +510,22 @@ describe('Appverse Maintenance Hub', () => {
         // surrounding text with no separator.
         cy.assertEmailLinks(message, [
           { label: 'Repository:', href: FIXTURE_REPO_URL },
-          { label: 'Review queue:', href: /\/appverse\/manage-repos$/ },
+          // The seeded repo is new, so it has no review yet: the link is the
+          // queue filtered to it, labeled as the queue, not as a review.
+          { label: 'The repo in the review queue:', href: new RegExp(`${escapeRegExpForTest(QUEUE_PATH)}$`) },
         ], { minParagraphs: 3 });
+        cy.getMailpitMessage(message.ID).then((fullMessage) => {
+          expect(fullMessage.Text || '').to.not.contain('The review:');
+          expect(fullMessage.HTML || '').to.not.match(/\/appverse\/review\/\d+/);
+        });
 
         // Belt-and-suspenders against the specific broken (pre-fix) shape:
-        // the repo URL running straight into "Review queue:" with no
+        // the repo URL running straight into "The review:" with no
         // separator, and "Repository:" glued onto the end of the previous
         // sentence ("...Site.Repository:").
         cy.getMailpitMessage(message.ID).then((fullMessage) => {
           const text = fullMessage.Text || '';
-          expect(text).to.not.contain(`${FIXTURE_REPO_URL}Review`);
+          expect(text).to.not.contain(`${FIXTURE_REPO_URL}The`);
           expect(text).to.not.match(/\.Repository:/);
         });
 

@@ -20,9 +20,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
-   * domain_config ships no schema for its domain.config.* keys, and the domain
-   * modules are not installed here — the D8-2891 test writes one of those keys
-   * directly to stand in for the overlay.
+   * The guard test writes the dead domain.config.* name, which has no schema.
    */
   protected $strictConfigSchema = FALSE;
 
@@ -52,6 +50,10 @@ class RepoNotificationServiceTest extends KernelTestBase {
     'file',
     // _ood_software_mail_url() loads the Hub's domain record (D8-2891).
     'domain',
+    // _ood_software_mail_sender() reads the Hub's system.site override
+    // through domain_config, whose language manager needs core's.
+    'language',
+    'domain_config',
     'ood_software',
   ];
 
@@ -270,6 +272,23 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * The Hub's system.site override, stored the way the site stores it.
+   *
+   * Domain 3.x keeps per-domain overrides in a config collection,
+   * domain.<domain id>, under the overridden name (config/default/domain/
+   * openondemand_cyberinfrastructure_org/system.site.yml), not under a
+   * domain.config.<id>.<name> key in the default collection.
+   */
+  protected function seedHubSiteOverride(): void {
+    $this->container->get('config.storage')
+      ->createCollection('domain.openondemand_cyberinfrastructure_org')
+      ->write('system.site', [
+        'name' => 'Open OnDemand Community Hub',
+        'mail' => 'info@mg.openondemand.org',
+      ]);
+  }
+
+  /**
    * Flatten a captured mail body (array of strings) for substring checks.
    *
    * @param array<string, mixed> $mail
@@ -312,10 +331,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
   public function testMailIsSentAsTheOodHubWhateverDomainIsActive(): void {
     // What domain_config would overlay on the OOD domain, and the unrelated
     // ambient values a cron run actually resolves.
-    $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
-      ->set('name', 'Open OnDemand Community Hub')
-      ->set('mail', 'info@mg.openondemand.org')
-      ->save();
+    $this->seedHubSiteOverride();
     $this->config('system.site')
       ->set('name', 'ACCESS Support')
       ->set('mail', 'noreply@mg.support.access-ci.org')
@@ -356,10 +372,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
    */
   public function testMailLinksAreBuiltOnTheHubHost(): void {
     $this->createHubDomain();
-    $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
-      ->set('name', 'Open OnDemand Community Hub')
-      ->set('mail', 'info@mg.openondemand.org')
-      ->save();
+    $this->seedHubSiteOverride();
     $this->config('system.site')
       ->set('name', 'ACCESS Support')
       ->set('mail', 'noreply@mg.support.access-ci.org')
@@ -380,9 +393,9 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $body = $this->mailBody($mails[0]);
 
     $this->assertStringContainsString(
-      'https://openondemand.connectci.org/appverse/manage-repos',
+      'https://openondemand.connectci.org/appverse/manage-repos?title=Test%20Repo',
       $body,
-      'The admin queue link is absolute on the Hub host.',
+      'The queue link, filtered to the repo, is absolute on the Hub host.',
     );
     $this->assertStringNotContainsString('access-ci.org', $body);
   }
@@ -405,8 +418,29 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertCount(1, $mails);
     $body = $this->mailBody($mails[0]);
 
-    $this->assertStringContainsString('/appverse/manage-repos', $body);
+    $this->assertStringContainsString('/appverse/manage-repos?title=Test%20Repo', $body);
     $this->assertStringNotContainsString('access-ci.org', $body);
+  }
+
+  /**
+   * The pre-domain-3.x override name no longer brands the mail.
+   *
+   * The domain 2.x name, domain.config.<id>.system.site, is not read by
+   * anything now. Seeded alone, it must not stand in for the collection.
+   */
+  public function testTheOldOverrideNameDoesNotBrandTheMail(): void {
+    $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
+      ->set('name', 'Open OnDemand Community Hub')
+      ->set('mail', 'info@mg.openondemand.org')
+      ->save();
+    $this->config('system.site')->set('name', 'ACCESS Support')->save();
+
+    $message = $this->buildOodSoftwareMail('ready_for_review', [
+      'node' => $this->createRepo((int) $this->createContributor()->id(), 'draft'),
+    ]);
+
+    $this->assertStringContainsString('[ACCESS Support]', (string) $message['subject']);
+    $this->assertArrayNotHasKey('from', $message);
   }
 
   /**
@@ -483,8 +517,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     }
     $body = $this->mailBody($message);
     $this->assertStringContainsString('href="' . $repoUrl . '"', $body);
-    $this->assertStringContainsString('/appverse/manage-repos"', $body);
-    $this->assertStringNotContainsString($repoUrl . 'Review', $body, 'The repo URL must not run into the following word.');
+    $this->assertStringContainsString('/appverse/manage-repos?title=Test%20Repo&amp;moderation_state=All"', $body);
+    $this->assertStringNotContainsString($repoUrl . 'The repo', $body, 'The repo URL must not run into the following word.');
   }
 
   /**

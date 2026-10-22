@@ -11,6 +11,7 @@ use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\key\KeyInterface;
 use Drupal\key\KeyRepositoryInterface;
+use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\UnitTestCase;
 use Drupal\ood_software\Service\AppverseReviewSeeder;
@@ -66,7 +67,11 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $loggerFactory->method('get')->willReturn($logger);
 
     // The fresh copy recordDispatch() loads and mutates.
-    $fresh = $this->createMock(NodeInterface::class);
+    // The concrete class, not the interface: InPlaceSaver sets the runtime
+    // _ood_software_suppress_notifications flag on it, which a real Node
+    // takes through ContentEntityBase::__set() and an interface mock would
+    // get as a deprecated dynamic property.
+    $fresh = $this->createMock(Node::class);
     $fresh->method('hasField')->willReturn(TRUE);
     $fresh->method('set')->willReturnCallback(function (string $field, $value) use ($fresh) {
       $this->freshSets[] = [$field, $value];
@@ -82,7 +87,9 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $etm->method('getStorage')->with('node')->willReturn($storage);
 
     $time = $this->createMock(TimeInterface::class);
-    $time->method('getRequestTime')->willReturn(self::NOW);
+    $time->method('getRequestTime')->willReturn(self::NOW - 30);
+    // The dispatch is stamped with the current time, not the request's.
+    $time->method('getCurrentTime')->willReturn(self::NOW);
 
     return new AppverseReviewService(
       $http, $keys, $loggerFactory, $etm, $time,

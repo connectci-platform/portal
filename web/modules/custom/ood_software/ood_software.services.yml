@@ -43,7 +43,7 @@ services:
 
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService
-    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier', '@ood_software.in_place_saver', '@lock']
+    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier', '@ood_software.in_place_saver', '@lock', '@keyvalue']
     tags:
       - { name: needs_destruction }
 

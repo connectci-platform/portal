@@ -31,3 +31,16 @@ function ood_software_nested_save_test_node_update(NodeInterface $node): void {
   $fresh->setNewRevision(TRUE);
   $fresh->save();
 }
+
+/**
+ * Implements hook_node_presave().
+ *
+ * Counts node saves while state asks for it, so a test can prove code saves
+ * no node.
+ */
+function ood_software_nested_save_test_node_presave(NodeInterface $node): void {
+  $state = \Drupal::state();
+  if ($state->get('ood_software_nested_save_test.count_saves') !== NULL) {
+    $state->set('ood_software_nested_save_test.count_saves', $state->get('ood_software_nested_save_test.count_saves') + 1);
+  }
+}

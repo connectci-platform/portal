@@ -155,6 +155,8 @@ class RepairModerationCommandTest extends KernelTestBase {
       $this->container->get('ood_software.gh'),
       $this->container->get('logger.factory'),
       $this->container->get('ood_software.repo_member_apps'),
+      $this->container->get('current_user'),
+      $this->container->get('datetime.time'),
     );
 
     \Drupal::state()->set('ood_software_nested_save_test.on', TRUE);
@@ -219,6 +221,7 @@ class RepairModerationCommandTest extends KernelTestBase {
       $this->container->get('ood_software.repo_notifier'),
       $this->container->get('ood_software.in_place_saver'),
       new DatabaseLockBackend(\Drupal::database()),
+      $this->container->get('keyvalue'),
     );
     $this->container->set('ood_software.review_dispatcher', $this->dispatcher);
   }
@@ -320,10 +323,10 @@ class RepairModerationCommandTest extends KernelTestBase {
    *   Rows from the command.
    *
    * @return array<int, array<string, mixed>>
-   *   Rows with nid, current, lost_state, member_apps, action.
+   *   Rows with nid, current, lost_state, member_apps, human_edits, action.
    */
   protected function project(array $rows): array {
-    $keep = array_flip(['nid', 'current', 'lost_state', 'member_apps', 'action']);
+    $keep = array_flip(['nid', 'current', 'lost_state', 'member_apps', 'human_edits', 'action']);
     return array_map(fn (array $row) => array_intersect_key($row, $keep), array_values($rows));
   }
 
@@ -352,6 +355,7 @@ class RepairModerationCommandTest extends KernelTestBase {
         'current' => 'draft',
         'lost_state' => 'ready_for_review',
         'member_apps' => 'draft:2',
+        'human_edits' => 0,
         'action' => 'restore',
       ],
       [
@@ -359,6 +363,7 @@ class RepairModerationCommandTest extends KernelTestBase {
         'current' => 'ready_for_review',
         'lost_state' => 'ready_for_review',
         'member_apps' => 'draft:1',
+        'human_edits' => 0,
         'action' => 'cascade',
       ],
       [
@@ -366,6 +371,8 @@ class RepairModerationCommandTest extends KernelTestBase {
         'current' => 'ready_for_review',
         'lost_state' => 'ready_for_review',
         'member_apps' => 'published:1,ready_for_review:1',
+        // Only counted for rows that would be repaired.
+        'human_edits' => '',
         'action' => 'skip',
       ],
     ], $rows);
@@ -467,6 +474,172 @@ class RepairModerationCommandTest extends KernelTestBase {
   }
 
   /**
+   * The row for one nid from a dry run.
+   *
+   * @return array<string, mixed>
+   *   The row.
+   */
+  protected function rowFor(NodeInterface $node): array {
+    $rows = array_column($this->report($node->bundle()), NULL, 'nid');
+    $this->assertArrayHasKey((int) $node->id(), $rows);
+    return $rows[(int) $node->id()];
+  }
+
+  /**
+   * Saves a new revision of the node's latest, as a person would.
+   */
+  protected function editLatest(NodeInterface $node, string $state, string $log = ''): void {
+    $edit = $this->latest($node);
+    $edit->set('moderation_state', $state);
+    $edit->setNewRevision(TRUE);
+    if ($log !== '') {
+      $edit->setRevisionLogMessage($log);
+    }
+    $edit->setRevisionUserId((int) $this->owner->id());
+    $edit->save();
+  }
+
+  /**
+   * Saves a new revision without touching state or log, as old cron did.
+   *
+   * The new revision carries the previous revision's log message.
+   */
+  protected function churn(NodeInterface $node): void {
+    $copy = $this->latest($node);
+    $copy->setNewRevision(TRUE);
+    $copy->save();
+  }
+
+  /**
+   * A repo the contributor withdrew after the bad record is left to a person.
+   */
+  public function testWithdrawnAfterBadRecordIsReviewManually(): void {
+    $this->editLatest($this->broken, 'ready_for_review');
+    $this->editLatest($this->broken, 'draft', 'Withdrawn from review by owner');
+    $row = $this->rowFor($this->broken);
+    $this->assertSame('draft', $row['current']);
+    $this->assertSame('ready_for_review', $row['lost_state']);
+    $this->assertSame(2, $row['human_edits']);
+    $this->assertSame('review-manually', $row['action']);
+
+    $revisions = $this->revisionCount($this->broken);
+    $rows = $this->report('appverse_repo', (string) $this->broken->id(), TRUE);
+    $this->assertSame('review-manually', array_column($rows, 'action', 'nid')[(int) $this->broken->id()]);
+    $this->assertSame($revisions, $this->revisionCount($this->broken));
+    $this->assertLatestState('draft', $this->broken);
+    foreach ($this->brokenApps as $app) {
+      $this->assertLatestState('draft', $app);
+    }
+  }
+
+  /**
+   * A log message with no state change is a human edit too.
+   */
+  public function testLoggedEditWithoutStateChangeIsReviewManually(): void {
+    $this->editLatest($this->broken, 'draft', 'Holding this back for now');
+    $row = $this->rowFor($this->broken);
+    $this->assertSame(1, $row['human_edits']);
+    $this->assertSame('review-manually', $row['action']);
+  }
+
+  /**
+   * Old cron revisions that copy the previous log are not human edits.
+   */
+  public function testCopiedLogIsNotCountedAsHumanEdit(): void {
+    $repo = $this->makeRepo('draft');
+    $this->makeMemberApp($repo, 'draft');
+    \Drupal::state()->set('ood_software_nested_save_test.on', TRUE);
+    $repo->set('moderation_state', 'ready_for_review')->save();
+    \Drupal::state()->set('ood_software_nested_save_test.on', FALSE);
+    $this->editLatest($repo, 'ready_for_review', 'Sent for review with its member app');
+    $this->churn($repo);
+    $this->churn($repo);
+    $this->assertSame('Sent for review with its member app', $this->latest($repo)->getRevisionLogMessage());
+    $row = $this->rowFor($repo);
+    $this->assertSame(0, $row['human_edits']);
+    $this->assertSame('cascade', $row['action']);
+  }
+
+  /**
+   * A human edit after the re-send makes a cascade candidate manual.
+   */
+  public function testHumanEditAfterResendIsReviewManually(): void {
+    $this->editLatest($this->skippedCascade, 'ready_for_review', 'Reviewer note: waiting on the contributor');
+    $row = $this->rowFor($this->skippedCascade);
+    $this->assertSame(1, $row['human_edits']);
+    $this->assertSame('review-manually', $row['action']);
+    $this->report('appverse_repo', (string) $this->skippedCascade->id(), TRUE);
+    $this->assertLatestState('draft', $this->skippedCascadeApp);
+  }
+
+  /**
+   * An app a reviewer sent back is not a cascade's to move.
+   */
+  public function testSentBackAppIsNotCascaded(): void {
+    $repo = $this->makeRepo('draft');
+    $app = $this->makeMemberApp($repo, 'needs_adjustment');
+    \Drupal::state()->set('ood_software_nested_save_test.on', TRUE);
+    $repo->set('moderation_state', 'ready_for_review')->save();
+    \Drupal::state()->set('ood_software_nested_save_test.on', FALSE);
+    $this->latest($repo)->set('moderation_state', 'ready_for_review')->save();
+    $row = $this->rowFor($repo);
+    $this->assertSame('needs_adjustment:1', $row['member_apps']);
+    $this->assertSame('skip', $row['action']);
+
+    $this->report('appverse_repo', (string) $repo->id(), TRUE);
+    $this->assertLatestState('needs_adjustment', $app);
+  }
+
+  /**
+   * Applying a cascade moves draft apps only, not sent-back ones.
+   */
+  public function testApplyCascadeLeavesSentBackApps(): void {
+    $sentBack = $this->makeMemberApp($this->skippedCascade, 'needs_adjustment');
+    $this->assertSame('cascade', $this->rowFor($this->skippedCascade)['action']);
+    $this->report('appverse_repo', (string) $this->skippedCascade->id(), TRUE);
+    $this->assertLatestState('ready_for_review', $this->skippedCascadeApp);
+    $this->assertLatestState('needs_adjustment', $sentBack);
+  }
+
+  /**
+   * A cascade leaves a draft app the contributor drafted on purpose.
+   *
+   * The human-edit rule applies to each draft member app since the repo
+   * entered ready_for_review: an app the contributor sent and pulled back is
+   * reported and left, and an untouched one is moved.
+   */
+  public function testCascadeLeavesAnAppTheContributorDrafted(): void {
+    $drafted = $this->makeMemberApp($this->skippedCascade, 'draft');
+    $this->editLatest($drafted, 'ready_for_review');
+    $this->editLatest($drafted, 'draft', 'Not ready yet');
+
+    $row = $this->rowFor($this->skippedCascade);
+    $this->assertSame('draft:2', $row['member_apps']);
+    $this->assertSame((string) $drafted->id(), $row['held_apps']);
+    $this->assertSame(0, $row['human_edits']);
+    $this->assertSame('cascade', $row['action']);
+
+    $rows = $this->report('appverse_repo', (string) $this->skippedCascade->id(), TRUE);
+    $this->assertSame('cascaded', array_column($rows, 'action', 'nid')[(int) $this->skippedCascade->id()]);
+    $this->assertLatestState('ready_for_review', $this->skippedCascadeApp);
+    $this->assertLatestState('draft', $drafted);
+  }
+
+  /**
+   * A cascade whose only draft app was drafted on purpose has nothing to do.
+   */
+  public function testCascadeWithOnlyDraftedAppsIsSkipped(): void {
+    $this->editLatest($this->skippedCascadeApp, 'ready_for_review');
+    $this->editLatest($this->skippedCascadeApp, 'draft', 'Not ready yet');
+
+    $row = $this->rowFor($this->skippedCascade);
+    $this->assertSame((string) $this->skippedCascadeApp->id(), $row['held_apps']);
+    $this->assertSame('skip', $row['action']);
+    $this->report('appverse_repo', (string) $this->skippedCascade->id(), TRUE);
+    $this->assertLatestState('draft', $this->skippedCascadeApp);
+  }
+
+  /**
    * Nodes not listed in --nids are left alone.
    */
   public function testApplyOnlyTouchesListedNids(): void {
@@ -493,6 +666,23 @@ class RepairModerationCommandTest extends KernelTestBase {
     $this->assertLatestState('ready_for_review', $this->brokenApp);
     $this->assertCount(0, $this->getMails(), "No email is sent.");
     $this->assertNoReviewStarted();
+  }
+
+  /**
+   * A standalone app a person edited after the bad record is left to a person.
+   */
+  public function testEditedAppIsReviewManually(): void {
+    $this->editLatest($this->brokenApp, 'draft', 'Holding this app back');
+    $row = $this->rowFor($this->brokenApp);
+    $this->assertSame('ready_for_review', $row['lost_state']);
+    $this->assertSame(1, $row['human_edits']);
+    $this->assertSame('review-manually', $row['action']);
+
+    $revisions = $this->revisionCount($this->brokenApp);
+    $rows = $this->report('appverse_app', (string) $this->brokenApp->id(), TRUE);
+    $this->assertSame('review-manually', array_column($rows, 'action', 'nid')[(int) $this->brokenApp->id()]);
+    $this->assertSame($revisions, $this->revisionCount($this->brokenApp));
+    $this->assertLatestState('draft', $this->brokenApp);
   }
 
   /**
