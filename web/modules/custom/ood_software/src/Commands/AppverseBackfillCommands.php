@@ -302,8 +302,9 @@ class AppverseBackfillCommands extends DrushCommands {
    * the current user (user 1 for drush without -u), without email or a new AI
    * review, and sends a restored repo's draft and needs_adjustment apps to
    * ready_for_review. Applying a cascade only moves the member apps and does
-   * not save the repo. The duplicate records stay, since deleting them would
-   * erase the state history of older revisions.
+   * not save the repo. Moving the apps sends no email either, including the
+   * "New Appverse App submitted" notification. The duplicate records stay,
+   * since deleting them would erase the state history of older revisions.
    *
    * Check edits_since and last_edit before listing a nid for --apply.
    * edits_since counts the node revisions saved after the bad record began, so
@@ -590,7 +591,7 @@ class AppverseBackfillCommands extends DrushCommands {
    */
   protected function cascadeToApps(int $nid, ?NodeInterface $repo = NULL): void {
     $repo ??= $this->latestRevision($nid);
-    $count = $this->memberApps->cascadeModeration($repo, 'ready_for_review', ['draft', 'needs_adjustment'], 'Restored with the repo.');
+    $count = $this->memberApps->cascadeModeration($repo, 'ready_for_review', ['draft', 'needs_adjustment'], 'Restored with the repo.', FALSE, TRUE);
     $this->oodLogger->notice('Sent @count member apps of node @nid for review.', ['@count' => $count, '@nid' => $nid]);
   }
 

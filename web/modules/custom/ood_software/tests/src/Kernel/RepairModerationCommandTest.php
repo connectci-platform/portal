@@ -39,7 +39,7 @@ class RepairModerationCommandTest extends KernelTestBase {
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias', 'file',
     'content_moderation', 'workflows', 'key', 'flag', 'ood_software',
-    'ood_software_nested_save_test',
+    'ood_software_nested_save_test', 'content_moderation_notifications',
   ];
 
   /**
@@ -73,6 +73,11 @@ class RepairModerationCommandTest extends KernelTestBase {
    * A reviewer who gets the ready-for-review email.
    */
   protected UserInterface $reviewer;
+
+  /**
+   * An appverse_pm, who gets the contrib "New Appverse App submitted" email.
+   */
+  protected UserInterface $projectManager;
 
   /**
    * The review service, recording runs instead of starting them.
@@ -129,6 +134,7 @@ class RepairModerationCommandTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_review_recommendation',
       'field.storage.node.field_review_run_id',
       'field.field.node.appverse_repo.field_review_run_id',
+      'content_moderation_notifications.content_moderation_notification.appverse_review_requested',
     ]);
     $this->config('system.mail')->set('interface.default', 'test_mail_collector')->save();
     $this->config('system.site')->set('name', 'Appverse')->set('mail', 'site@example.org')->save();
@@ -137,6 +143,10 @@ class RepairModerationCommandTest extends KernelTestBase {
     // An active user in a role granting the permission is who the notifier
     // emails when a repo enters ready_for_review.
     $this->reviewer = $this->createUser(['administer appverse content'], 'reviewer', FALSE, ['mail' => 'reviewer@example.com']);
+    // The contrib notification emails appverse_pm users on send_for_review.
+    // They see unpublished apps, or the notification leaves them out.
+    $this->createRole(['access content', 'view any unpublished content'], 'appverse_pm');
+    $this->projectManager = $this->createUser([], 'pm', FALSE, ['mail' => 'pm@example.com', 'roles' => ['appverse_pm']]);
     $this->setCurrentUser($this->owner);
 
     $this->command = new AppverseBackfillCommands(
@@ -250,6 +260,47 @@ class RepairModerationCommandTest extends KernelTestBase {
     $this->dispatcher->destruct();
     $this->assertCount(1, array_filter($this->getMails(), fn ($m) => $m['to'] === 'reviewer@example.com'));
     $this->assertSame(['example/app'], $this->dispatcher->sent);
+  }
+
+  /**
+   * The "New Appverse App submitted" emails sent to the project manager.
+   *
+   * @return array<int, array<string, mixed>>
+   *   The collected mails.
+   */
+  protected function projectManagerMails(): array {
+    return array_values(array_filter($this->getMails(), fn ($m) => str_contains((string) ($m['headers']['Bcc'] ?? ''), 'pm@example.com')));
+  }
+
+  /**
+   * Control: a normal cascade emails the project manager about each app.
+   *
+   * So the no-email assertions on the repair are not vacuous for apps.
+   */
+  public function testUnsuppressedAppCascadeEmailsProjectManager(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $this->makeMemberApp($repo, 'draft');
+    \Drupal::state()->set('system.test_mail_collector', []);
+    $moved = $this->container->get('ood_software.repo_member_apps')->cascadeModeration($repo, 'ready_for_review', ['draft'], 'Sent with the repo.');
+    $this->assertSame(1, $moved);
+    $mails = $this->projectManagerMails();
+    $this->assertCount(1, $mails);
+    $this->assertSame('New Appverse App submitted', $mails[0]['subject']);
+  }
+
+  /**
+   * Control: a standalone app sent for review emails the project manager.
+   */
+  public function testUnsuppressedAppSendForReviewEmailsProjectManager(): void {
+    $app = Node::create([
+      'type' => 'appverse_app',
+      'title' => 'solo two',
+      'uid' => $this->owner->id(),
+      'moderation_state' => 'draft',
+    ]);
+    $app->save();
+    $app->set('moderation_state', 'ready_for_review')->save();
+    $this->assertCount(1, $this->projectManagerMails());
   }
 
   /**

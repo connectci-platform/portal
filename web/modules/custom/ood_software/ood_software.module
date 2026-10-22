@@ -1506,10 +1506,19 @@ function _ood_software_previous_moderation_state(NodeInterface $node): ?string {
  * contrib config; Repo-bundle transitions notify via our
  * RepoNotificationService (see ood_software_node_update).
  *
+ * Also suppress it for any node saved with the runtime flag
+ * _ood_software_suppress_notifications, such as an app the repair command
+ * moves to ready_for_review. Every recipient the contrib module collects
+ * (author, roles, ad hoc addresses, user fields) is in $data['to'], and it
+ * sends nothing, not even to the site address, when that list is empty.
+ *
  * @param array<string, mixed> $data
  */
 function ood_software_content_moderation_notification_mail_data_alter(EntityInterface $entity, array &$data): void {
-  if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'appverse_repo') {
+  if ($entity->getEntityTypeId() !== 'node') {
+    return;
+  }
+  if ($entity->bundle() === 'appverse_repo' || !empty($entity->_ood_software_suppress_notifications)) {
     $data['to'] = [];
   }
 }
