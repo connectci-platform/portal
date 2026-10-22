@@ -7,6 +7,7 @@ namespace Drupal\Tests\ood_software\Kernel;
 use Drupal\Core\Lock\DatabaseLockBackend;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
@@ -166,6 +167,34 @@ class ReviewDispatchModerationTest extends KernelTestBase {
     $repo = $this->makeRepo('ready_for_review');
     $this->latest($repo)->set('field_review_status', 'error')->set('field_review_dispatched_at', \Drupal::time()->getRequestTime() - 10)->save();
     AppverseHubController::create($this->container)->runReview($this->latest($repo));
+    $this->assertCount(1, $this->dispatcher->sent);
+  }
+
+  /**
+   * A stale pending status on a forward revision does not block a rerun.
+   *
+   * The poller only times out default revisions, so nothing else clears it.
+   */
+  public function testStalePendingOnForwardRevisionDoesNotBlockRunReview(): void {
+    $repo = $this->publishedRepoWithForwardRevision('ready_for_review');
+    $this->latest($repo)
+      ->set('field_review_status', 'pending')
+      ->set('field_review_dispatched_at', \Drupal::time()->getRequestTime() - (AppverseReviewService::STALE_TIMEOUT_SECONDS + 60))
+      ->save();
+    $this->assertSame('pending', $this->latest($repo)->get('field_review_status')->value);
+    AppverseHubController::create($this->container)->runReview($this->latest($repo));
+    $this->assertCount(1, $this->dispatcher->sent);
+  }
+
+  /**
+   * The check under the lock stops a second dispatch of the same repo.
+   *
+   * Calls the service directly, past the controller's own check.
+   */
+  public function testSecondDispatchForNodeWhileFirstInFlightIsRefused(): void {
+    $repo = $this->publishedRepoWithForwardRevision('ready_for_review');
+    $this->assertTrue($this->dispatcher->dispatchForNode($this->latest($repo)));
+    $this->assertFalse($this->dispatcher->dispatchForNode($this->latest($repo)));
     $this->assertCount(1, $this->dispatcher->sent);
   }
 

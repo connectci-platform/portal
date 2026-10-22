@@ -205,8 +205,11 @@ class AppverseReviewService implements DestructableInterface {
   /**
    * Whether a review run for the repo has been started and not yet finished.
    *
-   * A run stuck in pending is turned into an error by the poller after
-   * STALE_TIMEOUT_SECONDS, so no staleness is judged here.
+   * A pending or in-progress status older than STALE_TIMEOUT_SECONDS is not
+   * in flight. The poller times such a status out only on a default revision,
+   * so one left on a forward revision (older code wrote only the default)
+   * would otherwise block Run AI report for good. A status with no dispatch
+   * time is not in flight either: nothing can ever clear it.
    *
    * @phpstan-impure
    */
@@ -214,7 +217,14 @@ class AppverseReviewService implements DestructableInterface {
     if (!$node->hasField('field_review_status')) {
       return FALSE;
     }
-    return in_array((string) ($node->get('field_review_status')->value ?? ''), ['pending', 'in_progress'], TRUE);
+    if (!in_array((string) ($node->get('field_review_status')->value ?? ''), ['pending', 'in_progress'], TRUE)) {
+      return FALSE;
+    }
+    if (!$node->hasField('field_review_dispatched_at') || $node->get('field_review_dispatched_at')->isEmpty()) {
+      return FALSE;
+    }
+    $age = $this->time->getRequestTime() - (int) $node->get('field_review_dispatched_at')->value;
+    return $age < self::STALE_TIMEOUT_SECONDS;
   }
 
   /**

@@ -44,6 +44,8 @@ class AppverseReviewServiceOnTransitionTest extends UnitTestCase {
       'a save that stays awaiting review' => ['ready_for_review', 'ready_for_review', 'complete', 3600, 0],
       'not while a run is pending' => ['needs_adjustment', 'ready_for_review', 'pending', 3600, 0],
       'not while a run is in progress' => ['draft', 'ready_for_review', 'in_progress', 3600, 0],
+      'a stale pending run does not block' => ['needs_adjustment', 'ready_for_review', 'pending', 8000, 1],
+      'a pending run with no dispatch time does not block' => ['needs_adjustment', 'ready_for_review', 'pending', 0, 1],
       'not within the debounce' => ['draft', 'ready_for_review', '', 60, 0],
       'leaving review' => ['ready_for_review', 'needs_adjustment', '', 0, 0],
       'unknown previous state' => [NULL, 'ready_for_review', '', 0, 0],
