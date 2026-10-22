@@ -44,6 +44,8 @@ services:
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService
     arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier']
+    tags:
+      - { name: needs_destruction }
 
   ood_software.review_seeder:
     class: Drupal\ood_software\Service\AppverseReviewSeeder

@@ -4,6 +4,7 @@ namespace Drupal\ood_software\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Serialization\Json;
+use Drupal\Core\DestructableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -25,7 +26,7 @@ use Psr\Log\LoggerInterface;
  * This is fire-and-forget: a dispatch failure never blocks the Drupal
  * moderation transition. Errors are logged for admin visibility.
  */
-class AppverseReviewService {
+class AppverseReviewService implements DestructableInterface {
 
   /**
    * Minimum seconds between dispatches for the same node.
@@ -81,6 +82,13 @@ class AppverseReviewService {
 
   protected LoggerInterface $logger;
 
+  /**
+   * Repos whose save entered ready_for_review, by node id, awaiting destruct().
+   *
+   * @var array<int, int>
+   */
+  protected array $pendingTransitionDispatch = [];
+
   public function __construct(
     protected ClientInterface $httpClient,
     protected KeyRepositoryInterface $keyRepository,
@@ -101,13 +109,17 @@ class AppverseReviewService {
   /**
    * React to a moderation state transition on an appverse_repo node.
    *
-   * Only dispatches a review when entering ready_for_review from a
-   * different state, and never while a run is pending or in progress. A save
-   * that stays in ready_for_review is not a request for a new run: the app
-   * updater, Re-sync and a contributor's edit all save a repo that is
-   * awaiting review, and each used to start a run that superseded the review
-   * being curated. A deliberate rerun is Run AI report (runReview()) or Start
-   * the next round.
+   * Only queues a review when entering ready_for_review from a different
+   * state, and never while a run is pending or in progress. A save that stays
+   * in ready_for_review is not a request for a new run: the app updater,
+   * Re-sync and a contributor's edit all save a repo that is awaiting review,
+   * and each used to start a run that superseded the review being curated. A
+   * deliberate rerun is Run AI report (runReview()) or Start the next round.
+   *
+   * The run starts in destruct(), after the save: dispatching here would
+   * re-save the node inside its own hook_node_update(), before
+   * content_moderation has written its state record, which creates a second
+   * state entity in draft and drops the repo from the reviewer queue.
    *
    * @param \Drupal\node\NodeInterface $node
    *   The appverse_repo node (post-save).
@@ -115,23 +127,37 @@ class AppverseReviewService {
    *   The moderation_state before this save, or NULL if unknown.
    */
   public function onTransition(NodeInterface $node, ?string $previousState): void {
+    if ($this->shouldDispatchOnTransition($node, $previousState)) {
+      $this->pendingTransitionDispatch[(int) $node->id()] = (int) $node->id();
+    }
+  }
+
+  /**
+   * Whether a save that moved a repo to $node's state should start a run.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   The appverse_repo node (post-save).
+   * @param string|null $previousState
+   *   The moderation_state before this save, or NULL if unknown.
+   */
+  public function shouldDispatchOnTransition(NodeInterface $node, ?string $previousState): bool {
     if ($node->bundle() !== 'appverse_repo') {
-      return;
+      return FALSE;
     }
 
     $newState = $node->get('moderation_state')->value;
     if ($newState !== 'ready_for_review') {
-      return;
+      return FALSE;
     }
 
     // Skip if the previous state is unknown (NULL) to avoid false
     // triggers on bulk operations or migrations.
     if ($previousState === NULL) {
-      return;
+      return FALSE;
     }
 
     if ($previousState === 'ready_for_review') {
-      return;
+      return FALSE;
     }
     $status = $node->hasField('field_review_status') ? (string) ($node->get('field_review_status')->value ?? '') : '';
     if (in_array($status, ['pending', 'in_progress'], TRUE)) {
@@ -139,7 +165,7 @@ class AppverseReviewService {
         '@nid' => $node->id(),
         '@status' => $status,
       ]);
-      return;
+      return FALSE;
     }
 
     if ($this->isWithinDebounce($node)) {
@@ -147,10 +173,30 @@ class AppverseReviewService {
         '@nid' => $node->id(),
         '@sec' => self::DEBOUNCE_SECONDS,
       ]);
-      return;
+      return FALSE;
     }
 
-    $this->dispatchForNode($node);
+    return TRUE;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * Starts the runs queued by onTransition(), once the saves are complete.
+   * A repo whose latest revision is no longer ready_for_review (a later save
+   * moved it on) is skipped.
+   */
+  public function destruct(): void {
+    $pending = $this->pendingTransitionDispatch;
+    $this->pendingTransitionDispatch = [];
+    $storage = $this->entityTypeManager->getStorage('node');
+    foreach ($pending as $nid) {
+      $revisionId = $storage->getLatestRevisionId($nid);
+      $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
+      if ($latest instanceof NodeInterface && $latest->get('moderation_state')->value === 'ready_for_review') {
+        $this->dispatchForNode($latest);
+      }
+    }
   }
 
   /**
@@ -310,8 +356,8 @@ class AppverseReviewService {
   /**
    * Record a successful dispatch on the node's review tracking fields.
    *
-   * Re-loads the node to avoid saving stale state from the in-flight
-   * hook_node_update() context. Sets dispatched_at, status=pending,
+   * Re-loads the node to avoid saving stale state from the caller's copy.
+   * A dispatch from a transition happens in destruct(), after the save. Sets dispatched_at, status=pending,
    * and clears prior recommendation/report/run_id.
    */
   protected function recordDispatch(NodeInterface $node, int $dispatchedAt): void {
