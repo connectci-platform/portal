@@ -4,8 +4,12 @@ namespace Drupal\ood_software\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Serialization\Json;
+use Drupal\Core\DestructableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
+use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Site\Settings;
@@ -25,12 +29,41 @@ use Psr\Log\LoggerInterface;
  * This is fire-and-forget: a dispatch failure never blocks the Drupal
  * moderation transition. Errors are logged for admin visibility.
  */
-class AppverseReviewService {
+class AppverseReviewService implements DestructableInterface {
 
   /**
    * Minimum seconds between dispatches for the same node.
    */
   const DEBOUNCE_SECONDS = 300;
+
+  /**
+   * How long a dispatch lock lasts if its process dies before releasing it.
+   */
+  const DISPATCH_LOCK_SECONDS = 120;
+
+  /**
+   * Key-value collection of the transition dispatches not yet started.
+   *
+   * One key per repo nid, valued ['queued' => request time, 'queued_at' =>
+   * current time, 'retry_after' => time, 'attempts' => int]. queued_at is the
+   * transition's time and never changes; retry_after is when the cron poll may
+   * next try it. A transition's run starts in
+   * destruct(), after the response; a fatal or timeout before then would lose
+   * it, so the cron poll retries what is left. One key per repo, not one map,
+   * so concurrent requests settling different repos do not overwrite each
+   * other's entries.
+   */
+  const PENDING_TRANSITION_COLLECTION = 'ood_software.pending_transition_dispatch';
+
+  /**
+   * Seconds an owed transition dispatch is left to its own request.
+   */
+  const PENDING_TRANSITION_RETRY_AFTER = 300;
+
+  /**
+   * Attempts at an owed transition dispatch before it is given up.
+   */
+  const PENDING_TRANSITION_MAX_ATTEMPTS = 3;
 
   /**
    * Seconds after which a pending review is considered stale.
@@ -81,6 +114,13 @@ class AppverseReviewService {
 
   protected LoggerInterface $logger;
 
+  /**
+   * Repos whose save entered ready_for_review, by node id, awaiting destruct().
+   *
+   * @var array<int, int>
+   */
+  protected array $pendingTransitionDispatch = [];
+
   public function __construct(
     protected ClientInterface $httpClient,
     protected KeyRepositoryInterface $keyRepository,
@@ -94,20 +134,51 @@ class AppverseReviewService {
     protected ?AccountInterface $currentUser = NULL,
     // Emails the reviewers when a run is ready or fails (#47).
     protected ?RepoNotificationService $notifier = NULL,
+    // Writes review tracking fields without burying a forward revision.
+    protected ?InPlaceSaver $inPlaceSaver = NULL,
+    // Serializes dispatches per repo. Optional: unit tests skip locking.
+    protected ?LockBackendInterface $lock = NULL,
+    // Keeps transition dispatches until started, for the cron retry.
+    // Optional: unit tests skip it.
+    protected ?KeyValueFactoryInterface $keyValue = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
 
   /**
+   * The store of transition dispatches not yet started, if there is one.
+   */
+  protected function owedDispatches(): ?KeyValueStoreInterface {
+    return $this->keyValue?->get(self::PENDING_TRANSITION_COLLECTION);
+  }
+
+  /**
+   * The saver for review tracking writes.
+   *
+   * Built on demand for callers constructed without one (unit tests).
+   */
+  protected function inPlaceSaver(): InPlaceSaver {
+    return $this->inPlaceSaver ??= new InPlaceSaver($this->entityTypeManager);
+  }
+
+  /**
    * React to a moderation state transition on an appverse_repo node.
    *
-   * Only dispatches a review when entering ready_for_review from a
-   * different state, and never while a run is pending or in progress. A save
-   * that stays in ready_for_review is not a request for a new run: the app
-   * updater, Re-sync and a contributor's edit all save a repo that is
-   * awaiting review, and each used to start a run that superseded the review
-   * being curated. A deliberate rerun is Run AI report (runReview()) or Start
-   * the next round.
+   * Only queues a review when entering ready_for_review from a different
+   * state, and never while a run is pending or in progress. A save that stays
+   * in ready_for_review is not a request for a new run: the app updater,
+   * Re-sync and a contributor's edit all save a repo that is awaiting review,
+   * and each used to start a run that superseded the review being curated. A
+   * deliberate rerun is Run AI report (runReview()) or Start the next round.
+   *
+   * The run starts in destruct(), after the save: dispatching here would
+   * re-save the node inside its own hook_node_update(), before
+   * content_moderation has written its state record, which creates a second
+   * state entity in draft and drops the repo from the reviewer queue.
+   *
+   * The repo is also written to a key-value store (not a node save),
+   * so a request that dies before destruct() leaves the run for the cron
+   * poll to start (retryPendingTransitionDispatches()).
    *
    * @param \Drupal\node\NodeInterface $node
    *   The appverse_repo node (post-save).
@@ -115,31 +186,56 @@ class AppverseReviewService {
    *   The moderation_state before this save, or NULL if unknown.
    */
   public function onTransition(NodeInterface $node, ?string $previousState): void {
+    if ($this->shouldDispatchOnTransition($node, $previousState)) {
+      $nid = (int) $node->id();
+      $this->pendingTransitionDispatch[$nid] = $nid;
+      // queued_at is the transition's real time, on the same clock as
+      // field_review_dispatched_at. In a long drush or queue process the
+      // request time is the process start, so a run started between the two
+      // must not read as this one (startedSinceQueued()).
+      $now = $this->time->getCurrentTime();
+      $this->owedDispatches()?->set((string) $nid, [
+        'queued' => $this->time->getRequestTime(),
+        'queued_at' => $now,
+        'retry_after' => $now + self::PENDING_TRANSITION_RETRY_AFTER,
+        'attempts' => 0,
+      ]);
+    }
+  }
+
+  /**
+   * Whether a save that moved a repo to $node's state should start a run.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   The appverse_repo node (post-save).
+   * @param string|null $previousState
+   *   The moderation_state before this save, or NULL if unknown.
+   */
+  public function shouldDispatchOnTransition(NodeInterface $node, ?string $previousState): bool {
     if ($node->bundle() !== 'appverse_repo') {
-      return;
+      return FALSE;
     }
 
     $newState = $node->get('moderation_state')->value;
     if ($newState !== 'ready_for_review') {
-      return;
+      return FALSE;
     }
 
     // Skip if the previous state is unknown (NULL) to avoid false
     // triggers on bulk operations or migrations.
     if ($previousState === NULL) {
-      return;
+      return FALSE;
     }
 
     if ($previousState === 'ready_for_review') {
-      return;
+      return FALSE;
     }
-    $status = $node->hasField('field_review_status') ? (string) ($node->get('field_review_status')->value ?? '') : '';
-    if (in_array($status, ['pending', 'in_progress'], TRUE)) {
+    if ($this->isRunInFlight($node)) {
       $this->logger->info('Skipping review dispatch for node @nid: a run is already @status.', [
         '@nid' => $node->id(),
-        '@status' => $status,
+        '@status' => $node->get('field_review_status')->value,
       ]);
-      return;
+      return FALSE;
     }
 
     if ($this->isWithinDebounce($node)) {
@@ -147,10 +243,199 @@ class AppverseReviewService {
         '@nid' => $node->id(),
         '@sec' => self::DEBOUNCE_SECONDS,
       ]);
-      return;
+      return FALSE;
     }
 
-    $this->dispatchForNode($node);
+    return TRUE;
+  }
+
+  /**
+   * The newest revision of a node, reloaded; $node when it has none.
+   */
+  public function latestRevision(NodeInterface $node): NodeInterface {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $revisionId = $storage->getLatestRevisionId((int) $node->id());
+    $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
+    return $latest instanceof NodeInterface ? $latest : $node;
+  }
+
+  /**
+   * Whether a review run for the repo has been started and not yet finished.
+   *
+   * A pending or in-progress status older than STALE_TIMEOUT_SECONDS is not
+   * in flight. The poller times such a status out only on a default revision,
+   * so one left on a forward revision (older code wrote only the default)
+   * would otherwise block Run AI report for good. A status with no dispatch
+   * time is not in flight either: nothing can ever clear it.
+   *
+   * @phpstan-impure
+   */
+  public function isRunInFlight(NodeInterface $node): bool {
+    if (!$node->hasField('field_review_status')) {
+      return FALSE;
+    }
+    if (!in_array((string) ($node->get('field_review_status')->value ?? ''), ['pending', 'in_progress'], TRUE)) {
+      return FALSE;
+    }
+    if (!$node->hasField('field_review_dispatched_at') || $node->get('field_review_dispatched_at')->isEmpty()) {
+      return FALSE;
+    }
+    // The current time: the dispatch was stamped with it, and a long drush or
+    // queue process's request time would make a run look ever younger.
+    $age = $this->time->getCurrentTime() - (int) $node->get('field_review_dispatched_at')->value;
+    return $age < self::STALE_TIMEOUT_SECONDS;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * Starts the runs queued by onTransition(), once the saves are complete.
+   * A repo whose latest revision is no longer ready_for_review (a later save
+   * moved it on) is skipped.
+   */
+  public function destruct(): void {
+    $pending = $this->pendingTransitionDispatch;
+    $this->pendingTransitionDispatch = [];
+    foreach ($pending as $nid) {
+      $this->startOwedDispatch($nid);
+    }
+  }
+
+  /**
+   * Retries transition dispatches whose own request did not start them.
+   *
+   * Called by the cron review poll. Only entries past their retry_after, so
+   * a request still running keeps its own and a failed attempt backs off.
+   * One key-value read when nothing is owed.
+   */
+  public function retryPendingTransitionDispatches(): void {
+    try {
+      $owed = $this->owedDispatches()?->getAll();
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Could not read the owed review dispatches: @message', ['@message' => $e->getMessage()]);
+      return;
+    }
+    if (!$owed) {
+      return;
+    }
+    $now = $this->time->getCurrentTime();
+    foreach ($owed as $nid => $entry) {
+      if (self::retryAfter($entry) < $now) {
+        $this->startOwedDispatch((int) $nid);
+      }
+    }
+  }
+
+  /**
+   * Starts an owed transition run and settles its entry.
+   *
+   * The entry is removed once the run is started or no longer needed: the
+   * repo's latest revision left ready_for_review, a run is in flight, or a run
+   * was already started at or after the entry was queued. The last covers an
+   * entry another process re-wrote after it was settled. Any other failure
+   * counts an attempt.
+   */
+  protected function startOwedDispatch(int $nid): void {
+    $settled = FALSE;
+    // One repo failing must not stop the others from being dispatched.
+    try {
+      $storage = $this->entityTypeManager->getStorage('node');
+      $revisionId = $storage->getLatestRevisionId($nid);
+      $latest = $revisionId ? $storage->loadRevision($revisionId) : NULL;
+      if (!$latest instanceof NodeInterface || $latest->get('moderation_state')->value !== 'ready_for_review') {
+        $settled = TRUE;
+      }
+      elseif ($this->startedSinceQueued($latest)) {
+        $settled = TRUE;
+      }
+      else {
+        $settled = $this->dispatchForNode($latest) || $this->isRunInFlight($this->latestRevision($latest));
+      }
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Review dispatch for repo node @nid failed: @message', [
+        '@nid' => $nid,
+        '@message' => $e->getMessage(),
+      ]);
+    }
+    // Nothing may escape: in destruct() an exception would skip the other
+    // services' destruct().
+    try {
+      $this->settleOwedDispatch($nid, $settled);
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('Could not settle the owed review dispatch of repo node @nid: @message', [
+        '@nid' => $nid,
+        '@message' => $e->getMessage(),
+      ]);
+    }
+  }
+
+  /**
+   * When an owed dispatch was queued: queued_at, or queued for older entries.
+   *
+   * @param array<string, int> $entry
+   *   The owed dispatch.
+   */
+  protected static function queuedAt(array $entry): int {
+    return (int) ($entry['queued_at'] ?? $entry['queued'] ?? 0);
+  }
+
+  /**
+   * When an owed dispatch may next be tried by the cron poll.
+   *
+   * Entries written before retry_after existed wait
+   * PENDING_TRANSITION_RETRY_AFTER seconds from when they were queued.
+   *
+   * @param array<string, int> $entry
+   *   The owed dispatch.
+   */
+  protected static function retryAfter(array $entry): int {
+    return (int) ($entry['retry_after'] ?? self::queuedAt($entry) + self::PENDING_TRANSITION_RETRY_AFTER);
+  }
+
+  /**
+   * Whether the repo's run was started at or after its entry was queued.
+   *
+   * Both field_review_dispatched_at and queued_at are the current time when
+   * written, so a dispatch made after the transition, in its own request, a
+   * reviewer's or a cron retry, is at or after queued_at. queued_at never
+   * moves, so a run started after a failed attempt still counts. When it
+   * misses one, the entry is dispatched again and dispatchForNode()'s
+   * in-flight check stops a second run.
+   */
+  protected function startedSinceQueued(NodeInterface $latest): bool {
+    if (!$latest->hasField('field_review_dispatched_at') || $latest->get('field_review_dispatched_at')->isEmpty()) {
+      return FALSE;
+    }
+    $entry = $this->owedDispatches()?->get((string) $latest->id());
+    return is_array($entry) && (int) $latest->get('field_review_dispatched_at')->value >= self::queuedAt($entry);
+  }
+
+  /**
+   * Removes an owed dispatch, or counts a failed attempt at it.
+   */
+  protected function settleOwedDispatch(int $nid, bool $settled): void {
+    $store = $this->owedDispatches();
+    $entry = $store?->get((string) $nid);
+    if (!is_array($entry)) {
+      return;
+    }
+    if (!$settled) {
+      $attempts = (int) ($entry['attempts'] ?? 0) + 1;
+      if ($attempts < self::PENDING_TRANSITION_MAX_ATTEMPTS) {
+        $entry['attempts'] = $attempts;
+        // The next retry waits another PENDING_TRANSITION_RETRY_AFTER
+        // seconds. queued_at stays the transition's time, so a run started
+        // meanwhile (Run AI report) still settles the entry.
+        $entry['retry_after'] = $this->time->getCurrentTime() + self::PENDING_TRANSITION_RETRY_AFTER;
+        $store->set((string) $nid, $entry);
+        return;
+      }
+      $this->logger->error('AI review for repo @nid could not be started after 3 attempts.', ['@nid' => $nid]);
+    }
+    $store->delete((string) $nid);
   }
 
   /**
@@ -163,8 +448,14 @@ class AppverseReviewService {
    * is polled for. A failed dispatch leaves the node untouched: marking it
    * pending would have the poll loop wait for a run that was never created.
    *
+   * One run per repo at a time: the dispatch holds a per-repo lock and, under
+   * it, refuses when the latest revision already has a run in flight. The
+   * GitHub call comes before the pending write, so without the lock two clicks
+   * seconds apart both saw no run and started two.
+   *
    * @return bool
-   *   TRUE when GitHub accepted the dispatch.
+   *   TRUE when GitHub accepted the dispatch; FALSE when it did not or a run
+   *   is already in flight or being started.
    */
   public function dispatchForNode(NodeInterface $node, ?string $model = NULL, ?string $aspectsOverride = NULL, ?string $ref = NULL): bool {
     $repoUrl = $this->extractRepoUrl($node);
@@ -182,15 +473,39 @@ class AppverseReviewService {
       ]);
       return FALSE;
     }
-    // One timestamp for both the node and the id, so the id can be recomputed
-    // from the node when the run is polled for.
-    $dispatchedAt = $this->time->getRequestTime();
-    $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
-    if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride, $ref)) {
+    $lockName = 'ood_software.review_dispatch.' . $node->id();
+    if ($this->lock && !$this->lock->acquire($lockName, self::DISPATCH_LOCK_SECONDS)) {
+      $this->logger->info('Skipping review dispatch for node @nid: another dispatch holds the lock.', [
+        '@nid' => $node->id(),
+      ]);
       return FALSE;
     }
-    $this->recordDispatch($node, $dispatchedAt);
-    return TRUE;
+    try {
+      // Under the lock, so a dispatch that just finished is seen.
+      $latest = $this->latestRevision($node);
+      if ($this->isRunInFlight($latest)) {
+        $this->logger->info('Skipping review dispatch for node @nid: a run is already @status.', [
+          '@nid' => $node->id(),
+          '@status' => $latest->get('field_review_status')->value,
+        ]);
+        return FALSE;
+      }
+      // One timestamp for both the node and the id, so the id can be
+      // recomputed from the node when the run is polled for. The current
+      // time, not the request's: owed transition entries are stamped on the
+      // same clock (startedSinceQueued()), and it is still no later than the
+      // run's creation, which matchRun() checks.
+      $dispatchedAt = $this->time->getCurrentTime();
+      $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
+      if (!$this->dispatch($ownerRepo, $model, $correlationId, $aspectsOverride, $ref)) {
+        return FALSE;
+      }
+      $this->recordDispatch($node, $dispatchedAt);
+      return TRUE;
+    }
+    finally {
+      $this->lock?->release($lockName);
+    }
   }
 
   /**
@@ -303,51 +618,40 @@ class AppverseReviewService {
       return FALSE;
     }
     $lastDispatch = (int) $node->get('field_review_dispatched_at')->value;
-    $elapsed = $this->time->getRequestTime() - $lastDispatch;
+    $elapsed = $this->time->getCurrentTime() - $lastDispatch;
     return $elapsed < self::DEBOUNCE_SECONDS;
   }
 
   /**
    * Record a successful dispatch on the node's review tracking fields.
    *
-   * Re-loads the node to avoid saving stale state from the in-flight
-   * hook_node_update() context. Sets dispatched_at, status=pending,
-   * and clears prior recommendation/report/run_id.
+   * Re-loads the node to avoid saving stale state from the caller's copy.
+   * A dispatch from a transition happens in destruct(), after the save.
+   * Sets dispatched_at, status=pending, and clears prior
+   * recommendation/report/run_id.
    */
   protected function recordDispatch(NodeInterface $node, int $dispatchedAt): void {
     try {
-      $storage = $this->entityTypeManager->getStorage('node');
-      $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh) {
-        return;
-      }
-
-      if ($fresh->hasField('field_review_dispatched_at')) {
-        $fresh->set('field_review_dispatched_at', $dispatchedAt);
-      }
-      if ($fresh->hasField('field_review_status')) {
-        $fresh->set('field_review_status', 'pending');
-      }
-      if ($fresh->hasField('field_review_recommendation')) {
-        $fresh->set('field_review_recommendation', NULL);
-      }
-      if ($fresh->hasField('field_review_run_id')) {
-        $fresh->set('field_review_run_id', NULL);
-      }
-      if ($fresh->hasField('field_review_dispatched_by')) {
-        // Run AI report, or the contributor's send-for-review transition.
-        $starter = $this->currentUser && $this->currentUser->isAuthenticated() ? $this->currentUser->id() : NULL;
-        $fresh->set('field_review_dispatched_by', $starter);
-      }
-
-      // A runtime flag ood_software_node_update() reads, not a field; the
-      // Drupal PHPStan extension types every node property as a field list.
-      // @phpstan-ignore-next-line
-      $fresh->_ood_software_suppress_notifications = TRUE;
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
+      // Starter: Run AI report, or the contributor's send-for-review
+      // transition.
+      $starter = $this->currentUser && $this->currentUser->isAuthenticated() ? $this->currentUser->id() : NULL;
+      $this->inPlaceSaver()->updateRevisions($node, function (NodeInterface $revision) use ($dispatchedAt, $starter): void {
+        if ($revision->hasField('field_review_dispatched_at')) {
+          $revision->set('field_review_dispatched_at', $dispatchedAt);
+        }
+        if ($revision->hasField('field_review_status')) {
+          $revision->set('field_review_status', 'pending');
+        }
+        if ($revision->hasField('field_review_recommendation')) {
+          $revision->set('field_review_recommendation', NULL);
+        }
+        if ($revision->hasField('field_review_run_id')) {
+          $revision->set('field_review_run_id', NULL);
+        }
+        if ($revision->hasField('field_review_dispatched_by')) {
+          $revision->set('field_review_dispatched_by', $starter);
+        }
+      });
     }
     catch (\Throwable $e) {
       $this->logger->warning('Failed to record review dispatch on node @nid: @msg', [
@@ -496,6 +800,10 @@ class AppverseReviewService {
    * log; a pass with nothing to poll logs only at debug level.
    */
   public function pollForResults(): void {
+    // Before the token check: dispatch() logs a missing token itself, and
+    // the failed attempt counts toward giving the repo up.
+    $this->retryPendingTransitionDispatches();
+
     $token = $this->getToken();
     if ($token === NULL) {
       $this->logger->error('Review poll: no GitHub token found (tried keys @primary, @fallback); nothing polled.', [
@@ -517,7 +825,8 @@ class AppverseReviewService {
     }
     $activeRuns = $this->fetchWorkflowRuns($token, 'in_progress') ?? [];
 
-    $now = $this->time->getRequestTime();
+    // The clock field_review_dispatched_at is stamped with.
+    $now = $this->time->getCurrentTime();
     $outcomes = [];
 
     foreach ($pendingNodes as $node) {
@@ -1132,35 +1441,25 @@ class AppverseReviewService {
    */
   protected function recordSeededReview(NodeInterface $node, int $runId, NodeInterface $review, ?string $decision): void {
     try {
-      $storage = $this->entityTypeManager->getStorage('node');
-      $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh) {
-        return;
+      $mapped = self::mapRecommendation($decision);
+      if ($mapped === NULL && $decision !== NULL) {
+        $this->logger->warning('Run @id: recommendation "@decision" has no field value; left empty.', [
+          '@id' => $runId,
+          '@decision' => $decision,
+        ]);
       }
-      if ($fresh->hasField('field_review_status')) {
-        $fresh->set('field_review_status', 'complete');
-      }
-      if ($fresh->hasField('field_review_run_id')) {
-        $fresh->set('field_review_run_id', $runId);
-      }
-      if ($fresh->hasField('field_review_recommendation')) {
-        $mapped = self::mapRecommendation($decision);
-        if ($mapped === NULL && $decision !== NULL) {
-          $this->logger->warning('Run @id: recommendation "@decision" has no field value; left empty.', [
-            '@id' => $runId,
-            '@decision' => $decision,
-          ]);
+      $this->inPlaceSaver()->updateRevisions($node, function (NodeInterface $revision) use ($runId, $mapped): void {
+        if ($revision->hasField('field_review_status')) {
+          $revision->set('field_review_status', 'complete');
         }
-        $fresh->set('field_review_recommendation', $mapped);
-      }
-      // A runtime flag ood_software_node_update() reads, not a field; the
-      // Drupal PHPStan extension types every node property as a field list.
-      // @phpstan-ignore-next-line
-      $fresh->_ood_software_suppress_notifications = TRUE;
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
+        if ($revision->hasField('field_review_run_id')) {
+          $revision->set('field_review_run_id', $runId);
+        }
+        if ($revision->hasField('field_review_recommendation')) {
+          $revision->set('field_review_recommendation', $mapped);
+        }
+      });
+      $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($node->id());
 
       $this->logger->notice('Seeded review @review from run @id for repo @nid (recommendation: @rec).', [
         '@review' => $review->id(),
@@ -1168,7 +1467,9 @@ class AppverseReviewService {
         '@nid' => $node->id(),
         '@rec' => $decision ?? 'none',
       ]);
-      $this->notifier?->notifyRunReady($fresh, $review);
+      if ($fresh instanceof NodeInterface) {
+        $this->notifier?->notifyRunReady($fresh, $review);
+      }
     }
     catch (\Throwable $e) {
       $this->logger->error('Review @review was seeded from run @id but the repo node @nid could not be updated: @msg', [
@@ -1186,30 +1487,24 @@ class AppverseReviewService {
   protected function updateNodeReviewStatus(NodeInterface $node, string $status, int $runId, string $reason = ''): void {
     try {
       $storage = $this->entityTypeManager->getStorage('node');
-      $fresh = $storage->loadUnchanged($node->id());
-      if (!$fresh instanceof NodeInterface) {
+      $current = $storage->loadUnchanged($node->id());
+      if (!$current instanceof NodeInterface) {
         return;
       }
-      $was = $fresh->hasField('field_review_status') ? (string) ($fresh->get('field_review_status')->value ?? '') : '';
+      $was = $current->hasField('field_review_status') ? (string) ($current->get('field_review_status')->value ?? '') : '';
 
-      if ($fresh->hasField('field_review_status')) {
-        $fresh->set('field_review_status', $status);
-      }
-      if ($fresh->hasField('field_review_run_id')) {
-        $fresh->set('field_review_run_id', $runId);
-      }
-
-      // A runtime flag ood_software_node_update() reads, not a field; the
-      // Drupal PHPStan extension types every node property as a field list.
-      // @phpstan-ignore-next-line
-      $fresh->_ood_software_suppress_notifications = TRUE;
-      if (method_exists($fresh, 'setValidationRequired')) {
-        $fresh->setValidationRequired(FALSE);
-      }
-      $fresh->save();
+      $this->inPlaceSaver()->updateRevisions($node, function (NodeInterface $revision) use ($status, $runId): void {
+        if ($revision->hasField('field_review_status')) {
+          $revision->set('field_review_status', $status);
+        }
+        if ($revision->hasField('field_review_run_id')) {
+          $revision->set('field_review_run_id', $runId);
+        }
+      });
+      $fresh = $storage->loadUnchanged($node->id());
       // One email per failure: only the change into error sends it, so a
       // later poll of the same run cannot send it again (appverse-planning#47).
-      if ($status === 'error' && $was !== 'error') {
+      if ($fresh instanceof NodeInterface && $status === 'error' && $was !== 'error') {
         $this->notifier?->notifyRunFailed($fresh, $reason !== '' ? $reason : 'the run ended without a report', $runId);
       }
     }

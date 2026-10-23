@@ -2,9 +2,15 @@
 
 namespace Drupal\ood_software\Commands;
 
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Session\AccountProxyInterface;
+use Consolidation\OutputFormatters\StructuredData\RowsOfFields;
+use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
+use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drush\Commands\DrushCommands;
 
@@ -12,6 +18,16 @@ use Drush\Commands\DrushCommands;
  * Drush commands for backfilling legacy Apps with inferred Repos.
  */
 class AppverseBackfillCommands extends DrushCommands {
+
+  /**
+   * The log message on a node the repair restored.
+   */
+  const RESTORE_LOG = 'Restored moderation state lost to a duplicate moderation record.';
+
+  /**
+   * The log message on an app the repair sent on with its repo.
+   */
+  const CASCADE_LOG = 'Restored with the repo.';
 
   /**
    * The entity type manager.
@@ -42,6 +58,27 @@ class AppverseBackfillCommands extends DrushCommands {
   protected $oodLogger;
 
   /**
+   * The repo member app helper.
+   *
+   * @var \Drupal\ood_software\Service\RepoMemberApps
+   */
+  protected $memberApps;
+
+  /**
+   * Who runs the command, credited with the revisions the repair writes.
+   *
+   * @var \Drupal\Core\Session\AccountProxyInterface
+   */
+  protected $currentUser;
+
+  /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * Constructs an AppverseBackfillCommands object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -52,17 +89,29 @@ class AppverseBackfillCommands extends DrushCommands {
    *   The GitHub service.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger factory.
+   * @param \Drupal\ood_software\Service\RepoMemberApps $member_apps
+   *   The repo member app helper.
+   * @param \Drupal\Core\Session\AccountProxyInterface $current_user
+   *   The current user.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    */
   public function __construct(
     EntityTypeManagerInterface $entity_type_manager,
     RepoSyncService $repo_sync,
     GitHubService $github,
     LoggerChannelFactoryInterface $logger_factory,
+    RepoMemberApps $member_apps,
+    AccountProxyInterface $current_user,
+    TimeInterface $time,
   ) {
     parent::__construct();
     $this->entityTypeManager = $entity_type_manager;
     $this->repoSync = $repo_sync;
     $this->github = $github;
+    $this->memberApps = $member_apps;
+    $this->currentUser = $current_user;
+    $this->time = $time;
     // Drush asserts that $this->logger stays under its LoggerManager
     // control, so we keep the module's logger channel under a separate
     // property name. Use $this->logger() for command-line output and
@@ -75,6 +124,8 @@ class AppverseBackfillCommands extends DrushCommands {
    *
    * @param array $options
    *   Command options.
+   *
+   * @phpstan-param array<string, mixed> $options
    *
    * @command appverse:backfill-inferred-repos
    * @aliases appverse-backfill
@@ -132,7 +183,7 @@ class AppverseBackfillCommands extends DrushCommands {
    *
    * @param int[] $appIds
    *   App node IDs to process in this chunk.
-   * @param array $context
+   * @param array<string, mixed> $context
    *   The batch context array.
    */
   public static function processChunk(array $appIds, array &$context): void {
@@ -199,6 +250,7 @@ class AppverseBackfillCommands extends DrushCommands {
         // with no working SMTP, the per-repo send stalls the whole run). The
         // flag is read in ood_software_node_update(); it's a runtime property
         // on this same $repo object, so it covers every save below.
+        // @phpstan-ignore-next-line
         $repo->_ood_software_suppress_notifications = TRUE;
 
         // Inherit the app's owner so the contributor's maintenance hub
@@ -242,9 +294,9 @@ class AppverseBackfillCommands extends DrushCommands {
    *
    * @param bool $success
    *   Whether the batch completed without fatal errors.
-   * @param array $results
+   * @param array<string, mixed> $results
    *   The accumulated $context['results'] from processChunk.
-   * @param array $operations
+   * @param array<int, mixed> $operations
    *   Operations that did not complete (only set if $success is FALSE).
    */
   public static function finishedCallback(bool $success, array $results, array $operations): void {
@@ -257,6 +309,472 @@ class AppverseBackfillCommands extends DrushCommands {
     // operations may not dispatch kernel.terminate the way a web request does,
     // so flush explicitly here — once, after the whole backfill settles.
     \Drupal::service('ood_software.appverse_cache')->flushIfDirty();
+  }
+
+  /**
+   * Report nodes that lost their moderation state, and repair listed ones.
+   *
+   * Sending a repo for review used to re-save it inside its own save, which
+   * gave the node a second content_moderation_state record in draft. The repo
+   * fell back to draft and its member apps were never sent on. A node with
+   * more than one record is a candidate. Dry run unless --apply is given.
+   *
+   * The lost_state column is the state of the node revision just before the
+   * newest record began. member_apps lists the repo's apps (default
+   * revisions, the ones the cascade acts on) as state:count pairs, sorted by
+   * state name (for example draft:2,published:1).
+   *
+   * The action column is one of these. restore: the node is now in draft and
+   * lost_state is ready_for_review or needs_adjustment. cascade: a repo is in
+   * ready_for_review but has member apps in draft, because the cascade was
+   * skipped when it was sent. Apps in needs_adjustment were sent back by a
+   * reviewer and are left alone. review-manually: it would be a restore or a
+   * cascade, but a person acted on the node since (see human_edits). skip:
+   * nothing to repair. After --apply the repaired rows read restored or
+   * cascaded, and a listed nid that is not a candidate at all gets a
+   * not-a-candidate row. A listed node that is skipped or reads
+   * review-manually is left alone and logged as a warning.
+   *
+   * human_edits counts the node revisions that show a person acting, on the
+   * rows that would be a restore or a cascade (blank on the others). A
+   * revision counts when its moderation state differs from the revision
+   * before it, or when it has a log message that differs from the revision
+   * before it and is not the repair's own. Old cron saves made new revisions
+   * that copied the previous log message and state, so they do not count. For
+   * a restore the count starts after the bad record began. For a cascade it
+   * starts after the revision where the repo last entered ready_for_review,
+   * since that re-send is what the cascade completes.
+   *
+   * Applying a restore saves a new revision in the lost state, attributed to
+   * the current user (user 1 for drush without -u), without email or a new AI
+   * review, and sends a restored repo's draft apps to ready_for_review.
+   * Applying a cascade only moves the draft member apps and does not save the
+   * repo. Moving the apps sends no email either, including the
+   * "New Appverse App submitted" notification. The duplicate records stay,
+   * since deleting them would erase the state history of older revisions.
+   *
+   * The same rule applies to each draft member app, since the repo entered
+   * ready_for_review (for a restore, since the bad record began): an app a
+   * person acted on was drafted on purpose, so held_apps lists it and the
+   * repair leaves it in draft. A cascade with only held apps is skipped.
+   *
+   * edits_since counts every node revision saved after the bad record began,
+   * cron saves included, and last_edit shows the latest revision's author and
+   * log. Check them along with human_edits before listing a nid for --apply.
+   *
+   * Operator order: run the repo dry run, apply the repos you checked, then
+   * run the app dry run (--bundle=appverse_app) for standalone apps.
+   *
+   * @param array $options
+   *   Command options.
+   *
+   * @phpstan-param array<string, mixed> $options
+   *
+   * @return \Consolidation\OutputFormatters\StructuredData\RowsOfFields
+   *   One row per affected node.
+   *
+   * @command appverse:repair-moderation
+   * @option bundle Content type to check, appverse_repo or appverse_app.
+   * @option nids Comma-separated node IDs to repair. Required with --apply.
+   * @option apply Repair the listed nodes instead of only reporting.
+   * @field-labels
+   *   nid: Nid
+   *   title: Title
+   *   current: Current
+   *   lost_state: Lost state
+   *   member_apps: Member apps
+   *   held_apps: Held apps
+   *   human_edits: Human edits
+   *   edits_since: Edits since
+   *   last_edit: Last edit
+   *   action: Action
+   * @default-fields nid,title,current,lost_state,member_apps,held_apps,human_edits,edits_since,last_edit,action
+   * @usage drush appverse:repair-moderation
+   *   List affected repos without changing anything.
+   * @usage drush appverse:repair-moderation --nids=12,34 --apply
+   *   Repair repos 12 and 34 and send their apps for review.
+   */
+  public function repairModeration(array $options = ['bundle' => 'appverse_repo', 'nids' => '', 'apply' => FALSE]): RowsOfFields {
+    $bundle = (string) ($options['bundle'] ?? 'appverse_repo');
+    if (!in_array($bundle, ['appverse_repo', 'appverse_app'], TRUE)) {
+      throw new \InvalidArgumentException('--bundle must be appverse_repo or appverse_app.');
+    }
+    $listed = array_values(array_filter(array_map('intval', explode(',', (string) ($options['nids'] ?? '')))));
+    $apply = !empty($options['apply']);
+    if ($apply && !$listed) {
+      throw new \InvalidArgumentException('--apply needs --nids with the nodes to restore. Run without --apply first to see them.');
+    }
+
+    $rows = [];
+    foreach ($this->duplicateStateNids($bundle) as $nid) {
+      $row = $this->describeAffectedNode($nid);
+      if ($apply && in_array($nid, $listed, TRUE)) {
+        $held = array_map('intval', array_filter(explode(',', $row['held_apps'])));
+        if ($row['action'] === 'restore') {
+          $this->restoreNode($nid, $row['lost_state'], $held);
+          $row['action'] = 'restored';
+        }
+        elseif ($row['action'] === 'cascade') {
+          $this->cascadeToApps($nid, NULL, $held);
+          $row['action'] = 'cascaded';
+        }
+        if ($held && in_array($row['action'], ['restored', 'cascaded'], TRUE)) {
+          $this->oodLogger->warning('Left draft apps @apps of node @nid in draft: a person acted on them since the repo was sent for review.', [
+            '@apps' => implode(', ', $held),
+            '@nid' => $nid,
+          ]);
+        }
+      }
+      $rows[] = $row;
+    }
+    if ($apply) {
+      $seen = array_column($rows, 'nid');
+      foreach ($listed as $nid) {
+        if (!in_array($nid, $seen, TRUE)) {
+          $this->oodLogger->warning('Node @nid was listed in --nids but is not a @bundle with a duplicate moderation record, so it was left alone.', [
+            '@nid' => $nid,
+            '@bundle' => $bundle,
+          ]);
+          $rows[] = [
+            'nid' => $nid,
+            'title' => '',
+            'current' => '',
+            'lost_state' => '',
+            'member_apps' => '',
+            'held_apps' => '',
+            'human_edits' => '',
+            'edits_since' => '',
+            'last_edit' => '',
+            'action' => 'not-a-candidate',
+          ];
+        }
+      }
+      foreach ($rows as $row) {
+        if (in_array($row['nid'], $listed, TRUE) && $row['action'] === 'skip') {
+          if ($row['held_apps'] !== '') {
+            $this->oodLogger->warning('Node @nid was listed in --nids but its only draft apps (@apps) were put back in draft by a person, so it was left alone.', [
+              '@nid' => $row['nid'],
+              '@apps' => $row['held_apps'],
+            ]);
+          }
+          else {
+            $this->oodLogger->warning('Node @nid was listed in --nids but has nothing to repair, so it was left alone.', [
+              '@nid' => $row['nid'],
+            ]);
+          }
+        }
+        if (in_array($row['nid'], $listed, TRUE) && $row['action'] === 'review-manually') {
+          $this->oodLogger->warning('Node @nid was listed in --nids but a person acted on it since the bad record, so it was left alone.', [
+            '@nid' => $row['nid'],
+          ]);
+        }
+      }
+    }
+    return new RowsOfFields($rows);
+  }
+
+  /**
+   * IDs of nodes of a bundle that have more than one moderation record.
+   *
+   * @return int[]
+   *   Node IDs, ascending.
+   */
+  protected function duplicateStateNids(string $bundle): array {
+    $storage = $this->entityTypeManager->getStorage('content_moderation_state');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('content_entity_type_id', 'node')
+      ->condition('workflow', 'appverse_editorial')
+      ->execute();
+    $perNode = [];
+    foreach (array_chunk($ids, 200) as $chunk) {
+      foreach ($storage->loadMultiple($chunk) as $state) {
+        $perNode[(int) $state->get('content_entity_id')->value][] = (int) $state->id();
+      }
+    }
+    $nids = array_keys(array_filter($perNode, fn (array $records) => count($records) > 1));
+    if (!$nids) {
+      return [];
+    }
+    $matching = $this->entityTypeManager->getStorage('node')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', $bundle)
+      ->condition('nid', $nids, 'IN')
+      ->sort('nid')
+      ->execute();
+    return array_values(array_map('intval', $matching));
+  }
+
+  /**
+   * Builds the report row for one affected node.
+   *
+   * @return array<string, mixed>
+   *   The row fields.
+   */
+  protected function describeAffectedNode(int $nid): array {
+    $node = $this->latestRevision($nid);
+    $current = (string) $node->get('moderation_state')->value;
+    $lost = $this->lostState($nid);
+    $apps = '';
+    $drafts = [];
+    if ($node->bundle() === 'appverse_repo') {
+      $counts = [];
+      // Default revisions, the ones cascadeModeration() loads and acts on.
+      $appStorage = $this->entityTypeManager->getStorage('node');
+      $appStorage->resetCache();
+      foreach ($appStorage->loadMultiple($this->memberApps->queryMemberAppIds($node)) as $app) {
+        $state = (string) $app->get('moderation_state')->value;
+        $counts[$state] = ($counts[$state] ?? 0) + 1;
+        if ($state === 'draft') {
+          $drafts[] = (int) $app->id();
+        }
+      }
+      ksort($counts);
+      $apps = implode(',', array_map(fn ($state, $count) => "$state:$count", array_keys($counts), $counts));
+    }
+    $start = $this->newestRecordStart($nid);
+    $action = 'skip';
+    if ($current === 'draft' && in_array($lost, ['ready_for_review', 'needs_adjustment'], TRUE)) {
+      $action = 'restore';
+    }
+    elseif ($current === 'ready_for_review' && $drafts) {
+      $action = 'cascade';
+    }
+    // Loading every revision since the bad record is costly, so only for the
+    // rows a repair would act on. Without a start to count from, a person
+    // decides.
+    $humanEdits = '';
+    $held = [];
+    if ($action !== 'skip') {
+      if ($start === NULL) {
+        $action = 'review-manually';
+      }
+      else {
+        $trail = $this->personActedSince($nid, $start);
+        // A cascade completes the repo's last entry into ready_for_review,
+        // so only what came after it counts.
+        $since = $action === 'cascade' && $trail['entered'] !== NULL ? $trail['entered'] : $start;
+        $humanEdits = count(array_filter($trail['human'], fn (int $vid) => $vid > $since));
+        // A draft app a person acted on since then (a contributor who sent
+        // it and pulled it back) was drafted on purpose: the repair leaves
+        // it. Revision ids are shared by all nodes, so they order the apps'
+        // revisions against the repo's.
+        foreach ($drafts as $appId) {
+          if ($this->personActedSince($appId, $since)['human']) {
+            $held[] = $appId;
+          }
+        }
+        if ($humanEdits !== 0) {
+          $action = 'review-manually';
+        }
+        elseif ($action === 'cascade' && count($held) === count($drafts)) {
+          $action = 'skip';
+        }
+      }
+    }
+    $editsSince = '';
+    if ($start !== NULL) {
+      $editsSince = (int) $this->entityTypeManager->getStorage('node')->getQuery()
+        ->accessCheck(FALSE)
+        ->allRevisions()
+        ->condition('nid', $nid)
+        ->condition('vid', $start, '>')
+        ->count()
+        ->execute();
+    }
+    $log = (string) $node->getRevisionLogMessage();
+    return [
+      'nid' => $nid,
+      'title' => (string) $node->label(),
+      'current' => $current,
+      'lost_state' => $lost,
+      'member_apps' => $apps,
+      'held_apps' => implode(',', $held),
+      'human_edits' => $humanEdits,
+      'edits_since' => $editsSince,
+      'last_edit' => $node->getRevisionUserId() . ': ' . mb_substr($log, 0, 60),
+      'action' => $action,
+    ];
+  }
+
+  /**
+   * The revisions after $after that show a person acting on a node.
+   *
+   * See repairModeration() for the rule. Each revision is compared with the
+   * one before it, so the comparison starts from the node's newest revision
+   * at or before $after, or its first when it has none. $after need not be
+   * one of the node's own revisions: revision ids are shared by all nodes.
+   *
+   * @return array{human: int[], entered: int|null}
+   *   The revision ids that show a person acting, and the newest revision
+   *   after $after where the node entered ready_for_review.
+   */
+  protected function personActedSince(int $nid, int $after): array {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $vids = array_map('intval', array_keys($storage->getQuery()
+      ->accessCheck(FALSE)
+      ->allRevisions()
+      ->condition('nid', $nid)
+      ->sort('vid')
+      ->execute()));
+    $base = 0;
+    foreach ($vids as $vid) {
+      if ($vid <= $after) {
+        $base = $vid;
+      }
+    }
+    $vids = array_values(array_filter($vids, fn (int $vid) => $vid >= $base));
+
+    $human = [];
+    $entered = NULL;
+    $previous = NULL;
+    foreach (array_chunk($vids, 50) as $chunk) {
+      foreach ($storage->loadMultipleRevisions($chunk) as $revision) {
+        if (!$revision instanceof NodeInterface) {
+          continue;
+        }
+        $current = [
+          'vid' => (int) $revision->getRevisionId(),
+          'state' => (string) $revision->get('moderation_state')->value,
+          'log' => trim((string) $revision->getRevisionLogMessage()),
+        ];
+        if ($previous !== NULL && $current['vid'] > $after) {
+          $stateMoved = $current['state'] !== $previous['state'];
+          if ($stateMoved && $current['state'] === 'ready_for_review') {
+            $entered = $current['vid'];
+          }
+          $ours = in_array($current['log'], [self::RESTORE_LOG, self::CASCADE_LOG], TRUE);
+          $newLog = $current['log'] !== '' && $current['log'] !== $previous['log'];
+          if (!$ours && ($stateMoved || $newLog)) {
+            $human[] = $current['vid'];
+          }
+        }
+        $previous = $current;
+      }
+      $storage->resetCache();
+    }
+    return ['human' => $human, 'entered' => $entered];
+  }
+
+  /**
+   * The node's latest revision.
+   */
+  protected function latestRevision(int $nid): NodeInterface {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $storage->resetCache([$nid]);
+    $revision = $storage->loadRevision($storage->getLatestRevisionId($nid));
+    assert($revision instanceof NodeInterface);
+    return $revision;
+  }
+
+  /**
+   * The node revision id at which the newest moderation record began.
+   *
+   * NULL when it cannot be worked out.
+   */
+  protected function newestRecordStart(int $nid): ?int {
+    $stateStorage = $this->entityTypeManager->getStorage('content_moderation_state');
+    $ids = $stateStorage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('content_entity_type_id', 'node')
+      ->condition('content_entity_id', $nid)
+      ->condition('workflow', 'appverse_editorial')
+      ->execute();
+    if (!$ids) {
+      return NULL;
+    }
+    $newest = (int) max($ids);
+    $revisionIds = $stateStorage->getQuery()
+      ->accessCheck(FALSE)
+      ->allRevisions()
+      ->condition('id', $newest)
+      ->execute();
+    $first = NULL;
+    foreach (array_keys($revisionIds) as $revisionId) {
+      $state = $stateStorage->loadRevision($revisionId);
+      $vid = $state instanceof ContentEntityInterface ? (int) $state->get('content_entity_revision_id')->value : 0;
+      if ($vid && ($first === NULL || $vid < $first)) {
+        $first = $vid;
+      }
+    }
+    return $first;
+  }
+
+  /**
+   * The state the node had before its newest moderation record began.
+   *
+   * Empty when it cannot be worked out.
+   */
+  protected function lostState(int $nid): string {
+    $firstNodeRevision = $this->newestRecordStart($nid);
+    if ($firstNodeRevision === NULL) {
+      return '';
+    }
+    $nodeStorage = $this->entityTypeManager->getStorage('node');
+    $before = $nodeStorage->getQuery()
+      ->accessCheck(FALSE)
+      ->allRevisions()
+      ->condition('nid', $nid)
+      ->condition('vid', $firstNodeRevision, '<')
+      ->sort('vid', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    if (!$before) {
+      return '';
+    }
+    $revision = $nodeStorage->loadRevision((int) array_key_first($before));
+    return $revision instanceof NodeInterface ? (string) $revision->get('moderation_state')->value : '';
+  }
+
+  /**
+   * Saves the node back into its lost state, and its apps along with a repo.
+   *
+   * @param int $nid
+   *   The node ID.
+   * @param string $state
+   *   The lost state to restore.
+   * @param int[] $held
+   *   Node IDs of draft member apps to leave in draft.
+   */
+  protected function restoreNode(int $nid, string $state, array $held = []): void {
+    $node = $this->latestRevision($nid);
+    $node->set('moderation_state', $state);
+    $node->setNewRevision(TRUE);
+    $node->setRevisionLogMessage(self::RESTORE_LOG);
+    // Attribute the restore: drush without -u runs as anonymous.
+    $uid = (int) $this->currentUser->id();
+    $node->setRevisionUserId($uid ?: 1);
+    $node->setRevisionCreationTime($this->time->getRequestTime());
+    // Not a contributor submitting: no email and no new AI review.
+    // @phpstan-ignore-next-line
+    $node->_ood_software_suppress_notifications = TRUE;
+    if (method_exists($node, 'setValidationRequired')) {
+      $node->setValidationRequired(FALSE);
+    }
+    $node->save();
+    $this->oodLogger->notice('Restored node @nid to @state.', ['@nid' => $nid, '@state' => $state]);
+    if ($node->bundle() === 'appverse_repo' && $state === 'ready_for_review') {
+      $this->cascadeToApps($nid, $node, $held);
+    }
+  }
+
+  /**
+   * Sends a repo's draft apps to ready_for_review.
+   *
+   * Not needs_adjustment ones: a reviewer sent those back on purpose. Nor
+   * the $held ones, which a person drafted on purpose.
+   *
+   * @param int $nid
+   *   The repo's node ID.
+   * @param \Drupal\node\NodeInterface|null $repo
+   *   The repo, when already loaded.
+   * @param int[] $held
+   *   Node IDs of draft apps to leave in draft.
+   */
+  protected function cascadeToApps(int $nid, ?NodeInterface $repo = NULL, array $held = []): void {
+    $repo ??= $this->latestRevision($nid);
+    $count = $this->memberApps->cascadeModeration($repo, 'ready_for_review', ['draft'], self::CASCADE_LOG, FALSE, TRUE, $held);
+    $this->oodLogger->notice('Sent @count member apps of node @nid for review.', ['@count' => $count, '@nid' => $nid]);
   }
 
 }
