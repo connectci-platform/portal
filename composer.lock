@@ -7361,27 +7361,27 @@
         },
         {
             "name": "drupal/openid_connect",
-            "version": "1.5.0",
+            "version": "1.6.0",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/openid_connect.git",
-                "reference": "8.x-1.5"
+                "reference": "8.x-1.6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/openid_connect-8.x-1.5.zip",
-                "reference": "8.x-1.5",
-                "shasum": "920116a914c243144ec42b023e9609dd7098b565"
+                "url": "https://ftp.drupal.org/files/projects/openid_connect-8.x-1.6.zip",
+                "reference": "8.x-1.6",
+                "shasum": "5c434a9e3d0c45c768dfd46f6816d0d2bc3829f4"
             },
             "require": {
-                "drupal/core": "^9.5 || ^10",
+                "drupal/core": "^9.5 || ^10 || ^11",
                 "ext-json": "*"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "8.x-1.5",
-                    "datestamp": "1772646756",
+                    "version": "8.x-1.6",
+                    "datestamp": "1792363013",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -7393,6 +7393,10 @@
                 "GPL-2.0-or-later"
             ],
             "authors": [
+                {
+                    "name": "benjifisher",
+                    "homepage": "https://www.drupal.org/user/683300"
+                },
                 {
                     "name": "bojanz",
                     "homepage": "https://www.drupal.org/user/86106"
