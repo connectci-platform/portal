@@ -16,6 +16,12 @@ on:
       prnum:
         description: 'Pull request number — adds a comment to a pull request (nomally empty)'
 
+# A new push to a PR cancels that PR's older run. Merge queue groups each have
+# their own ref, so they never cancel each other, and they are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: write
   actions: read
