@@ -62,6 +62,37 @@ final class GitHubClient {
   }
 
   /**
+   * The time the PR that produced commit $sha was merged.
+   *
+   * A merge commit's own date is when GitHub built the test merge, often 20
+   * minutes or more before the PR's merged_at, so it can't bound a window
+   * that's compared against merged_at.
+   *
+   * @return string
+   *   ISO time, or $fallback when no merged PR has $sha as its merge commit.
+   */
+  public function mergeTimeOf(string $sha, string $fallback): string {
+    $prs = $this->http->json('GET', "https://api.github.com/repos/{$this->repo}/commits/$sha/pulls", $this->headers());
+    foreach ($prs as $pr) {
+      if (($pr['merge_commit_sha'] ?? NULL) === $sha && $pr['merged_at'] !== NULL) {
+        return $pr['merged_at'];
+      }
+    }
+    return $fallback;
+  }
+
+  /**
+   * @return array<string, string>
+   */
+  private function headers(): array {
+    return [
+      'Authorization' => "Bearer {$this->token}",
+      'Accept' => 'application/vnd.github+json',
+      'X-GitHub-Api-Version' => '2022-11-28',
+    ];
+  }
+
+  /**
    * @param array<string, string> $filters
    *
    * @return \Generator<list<array<string, mixed>>>
@@ -69,11 +100,7 @@ final class GitHubClient {
   private function pages(array $filters): \Generator {
     for ($page = 1;; $page++) {
       $query = http_build_query(['state' => 'closed'] + $filters + ['sort' => 'updated', 'direction' => 'desc', 'per_page' => 100, 'page' => $page]);
-      $prs = $this->http->json('GET', "https://api.github.com/repos/{$this->repo}/pulls?$query", [
-        'Authorization' => "Bearer {$this->token}",
-        'Accept' => 'application/vnd.github+json',
-        'X-GitHub-Api-Version' => '2022-11-28',
-      ]);
+      $prs = $this->http->json('GET', "https://api.github.com/repos/{$this->repo}/pulls?$query", $this->headers());
       if (!$prs) {
         return;
       }

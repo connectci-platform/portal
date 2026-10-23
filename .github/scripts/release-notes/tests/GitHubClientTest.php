@@ -64,4 +64,19 @@ class GitHubClientTest extends TestCase {
     $client->mergedInto('main', '2026-10-22T00:00:00Z', '2026-10-24T00:00:00Z');
   }
 
+  public function testMergeTimeOfUsesPrMergedAt(): void {
+    $send = new FakeSend([self::page([
+      ['number' => 2279, 'merge_commit_sha' => 'abc123', 'merged_at' => '2026-10-22T21:55:07Z', 'updated_at' => '2026-10-22T21:55:07Z'],
+    ])]);
+    $client = new GitHubClient(new Http($send), 'connectci-platform/portal', 'token');
+    $this->assertSame('2026-10-22T21:55:07Z', $client->mergeTimeOf('abc123', '2026-10-22T21:36:33Z'));
+    $this->assertStringEndsWith('/repos/connectci-platform/portal/commits/abc123/pulls', $send->requests[0]['url']);
+  }
+
+  public function testMergeTimeOfFallsBackWithoutAMergedPr(): void {
+    $send = new FakeSend([self::page([['number' => 5, 'merge_commit_sha' => 'other', 'merged_at' => NULL, 'updated_at' => '2026-10-22T00:00:00Z']])]);
+    $client = new GitHubClient(new Http($send), 'connectci-platform/portal', 'token');
+    $this->assertSame('2026-10-22T21:36:33Z', $client->mergeTimeOf('abc123', '2026-10-22T21:36:33Z'));
+  }
+
 }

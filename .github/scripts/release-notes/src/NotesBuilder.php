@@ -39,12 +39,20 @@ final class NotesBuilder {
       $groups[$id]['prs'][] = (int) $pr['number'];
     }
 
-    // A sub-task shipped with its parent folds into the parent's line.
-    foreach ($groups as $id => $group) {
-      $parent = $group['key'] !== NULL ? ($tickets[$group['key']]['parent'] ?? NULL) : NULL;
-      if ($parent !== NULL && isset($groups[$parent])) {
-        $groups[$parent]['prs'] = [...$groups[$parent]['prs'], ...$group['prs']];
-        $groups[$parent]['labels'] = array_values(array_unique([...$groups[$parent]['labels'], ...$group['labels']]));
+    // A child ticket shipped with an ancestor folds into the top-most
+    // ancestor that is also in this release (sub-task -> story -> epic).
+    foreach (array_keys($groups) as $id) {
+      $target = NULL;
+      $seen = [$id => TRUE];
+      for ($key = $id; ($parent = $tickets[$key]['parent'] ?? NULL) !== NULL && !isset($seen[$parent]); $key = $parent) {
+        $seen[$parent] = TRUE;
+        if (isset($groups[$parent])) {
+          $target = $parent;
+        }
+      }
+      if ($target !== NULL) {
+        $groups[$target]['prs'] = [...$groups[$target]['prs'], ...$groups[$id]['prs']];
+        $groups[$target]['labels'] = array_values(array_unique([...$groups[$target]['labels'], ...$groups[$id]['labels']]));
         unset($groups[$id]);
       }
     }
@@ -75,7 +83,11 @@ final class NotesBuilder {
     $labels = $group['labels'];
     $default = $this->programs->default();
 
+    // A security PR label always wins, even with no ticket: the repo is public.
     if ($key === NULL) {
+      if (in_array('security', $labels, TRUE)) {
+        return ['section' => 'Fixes', 'program' => $default, 'text' => 'Security hardening', 'key' => NULL];
+      }
       return ['section' => $this->labelSection($labels) ?? 'Maintenance', 'program' => $default, 'text' => $group['title'], 'key' => NULL];
     }
 

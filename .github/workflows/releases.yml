@@ -107,7 +107,8 @@ jobs:
           since=$(git log -1 --format=%cI "$prev_sha")
           until=$(git log -1 --format=%cI "$TARGET_SHA")
           php .github/scripts/release-notes/release-notes.php \
-            --since="$since" --until="$until" --out=release.md --bump-out=bump.txt
+            --since="$since" --until="$until" --since-sha="$prev_sha" --until-sha="$TARGET_SHA" \
+            --out=release.md --bump-out=bump.txt
           {
             echo "## Release notes"
             echo

@@ -53,4 +53,24 @@ class JiraClientTest extends TestCase {
     (new JiraClient(new Http($send), 'https://cyberteamportal.atlassian.net', 'a@b.c', 't'))->fetch(['D8-1']);
   }
 
+  public function testUnknownKeyDoesNotSinkTheChunk(): void {
+    $one = file_get_contents(__DIR__ . '/fixtures/jira-raw.json');
+    $send = new FakeSend([
+      ['status' => 400, 'body' => '{"errorMessages":["An issue with key \'D8-999999\' does not exist for field \'key\'."]}'],
+      self::ok($one),
+      ['status' => 400, 'body' => '{"errorMessages":["does not exist"]}'],
+    ]);
+    $tickets = (new JiraClient(new Http($send), 'https://cyberteamportal.atlassian.net', 'a@b.c', 't'))->fetch(['D8-2878', 'D8-999999']);
+    $this->assertArrayHasKey('D8-2878', $tickets);
+    $this->assertArrayNotHasKey('D8-999999', $tickets);
+    $this->assertCount(3, $send->requests);
+    $this->assertStringContainsString('key in (D8-2878)', json_decode($send->requests[1]['body'], TRUE)['jql']);
+  }
+
+  public function testNon400StillThrows(): void {
+    $send = new FakeSend([['status' => 500, 'body' => 'down']]);
+    $this->expectException(RuntimeException::class);
+    (new JiraClient(new Http($send), 'https://cyberteamportal.atlassian.net', 'a@b.c', 't'))->fetch(['D8-1', 'D8-2']);
+  }
+
 }

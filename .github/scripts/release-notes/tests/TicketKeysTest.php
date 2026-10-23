@@ -20,6 +20,7 @@ class TicketKeysTest extends TestCase {
       'branch wins over title' => [['head' => ['ref' => 'md-1957'], 'title' => '#2843', 'body' => ''], 'D8-1957'],
       'composer bump' => [['head' => ['ref' => 'drupal/flag'], 'title' => '[Composer] drupal/flag #nobuild', 'body' => ''], NULL],
       'non-numeric key' => [['head' => ['ref' => 'gh-concurrency'], 'title' => '#concurrency', 'body' => 'https://cyberteamportal.atlassian.net/browse/D8-concurrency'], NULL],
+      'hash number inside a title is a PR reference, not a ticket' => [['head' => ['ref' => 'fix-y'], 'title' => 'Follow-up to #2275 cache tags', 'body' => ''], NULL],
       'key in title' => [['head' => ['ref' => 'fix-x'], 'title' => 'Fix D8-2912 import', 'body' => NULL], 'D8-2912'],
       'browse link in issue link section' => [['head' => ['ref' => 'fix-y'], 'title' => 'Fix import', 'body' => "## Describe context\n\nText.\n\n## Issue link\n\nhttps://cyberteamportal.atlassian.net/browse/D8-2900\n\n## Any other related PRs?\n\n- none"], 'D8-2900'],
       'browse link only in related PRs is ignored' => [['head' => ['ref' => 'fix-z'], 'title' => 'Fix import', 'body' => "## Issue link\n\nNone\n\n## Any other related PRs?\n\n- https://cyberteamportal.atlassian.net/browse/D8-2908"], NULL],

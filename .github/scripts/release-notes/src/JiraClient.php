@@ -26,14 +26,29 @@ final class JiraClient {
   public function fetch(array $keys): array {
     $tickets = [];
     foreach (array_chunk(array_values(array_unique($keys)), 100) as $chunk) {
-      $data = $this->http->json('POST', rtrim($this->site, '/') . '/rest/api/3/search/jql', [
-        'Authorization' => 'Basic ' . base64_encode("{$this->email}:{$this->token}"),
-      ], [
-        'jql' => 'key in (' . implode(',', $chunk) . ')',
-        'fields' => self::FIELDS,
-        'maxResults' => 100,
-      ]);
-      foreach ($data['issues'] ?? [] as $issue) {
+      try {
+        $issues = $this->search($chunk);
+      }
+      catch (\RuntimeException $e) {
+        // Jira answers 400 for the whole query when any key doesn't exist or
+        // isn't visible. Retry one key at a time so one bad key only costs
+        // its own item; a key that still 400s is left out.
+        if (!str_contains($e->getMessage(), 'HTTP 400')) {
+          throw $e;
+        }
+        $issues = [];
+        foreach ($chunk as $key) {
+          try {
+            $issues = [...$issues, ...$this->search([$key])];
+          }
+          catch (\RuntimeException $e) {
+            if (!str_contains($e->getMessage(), 'HTTP 400')) {
+              throw $e;
+            }
+          }
+        }
+      }
+      foreach ($issues as $issue) {
         $f = $issue['fields'];
         $tickets[$issue['key']] = [
           'summary' => (string) $f['summary'],
@@ -45,6 +60,22 @@ final class JiraClient {
       }
     }
     return $tickets;
+  }
+
+  /**
+   * @param list<string> $keys
+   *
+   * @return list<array<string, mixed>>
+   */
+  private function search(array $keys): array {
+    $data = $this->http->json('POST', rtrim($this->site, '/') . '/rest/api/3/search/jql', [
+      'Authorization' => 'Basic ' . base64_encode("{$this->email}:{$this->token}"),
+    ], [
+      'jql' => 'key in (' . implode(',', $keys) . ')',
+      'fields' => self::FIELDS,
+      'maxResults' => 100,
+    ]);
+    return array_values($data['issues'] ?? []);
   }
 
 }

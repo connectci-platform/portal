@@ -114,4 +114,23 @@ class NotesBuilderTest extends TestCase {
     $this->assertSame([2288, 2295], $items[0]['prs']);
   }
 
+  public function testSecurityLabelWithoutTicketHidesTitle(): void {
+    $items = $this->builder()->build([self::pr(2301, 'hotfix-xss', 'Fix stored XSS in webform search', ['security'])], self::tickets());
+    $this->assertSame('Security hardening', $items[0]['text']);
+    $this->assertSame('Fixes', $items[0]['section']);
+    $this->assertStringNotContainsString('XSS', json_encode($items));
+  }
+
+  public function testNestedParentsRollUpToTopAncestor(): void {
+    $tickets = [
+      'D8-1' => ['summary' => 'Epic', 'type' => 'Epic', 'labels' => [], 'sprints' => [], 'parent' => NULL],
+      'D8-2' => ['summary' => 'Story', 'type' => 'Story', 'labels' => [], 'sprints' => [], 'parent' => 'D8-1'],
+      'D8-3' => ['summary' => 'Sub', 'type' => 'Sub-task', 'labels' => [], 'sprints' => [], 'parent' => 'D8-2'],
+    ];
+    $items = $this->builder()->build([self::pr(10, 'md-3'), self::pr(11, 'md-2'), self::pr(12, 'md-1')], $tickets);
+    $this->assertCount(1, $items);
+    $this->assertSame('D8-1', $items[0]['key']);
+    $this->assertSame([10, 11, 12], $items[0]['prs']);
+  }
+
 }
