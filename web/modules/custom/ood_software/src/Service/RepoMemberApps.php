@@ -86,13 +86,18 @@ class RepoMemberApps {
    *   Revision log message recorded on each changed app.
    * @param bool $published_only
    *   Restrict the member-app query to published apps (status = 1).
+   * @param bool $suppress_notifications
+   *   Mark each app so its save sends no moderation email. For repairs, not
+   *   for a contributor or reviewer acting.
+   * @param int[] $except_ids
+   *   Node IDs of member apps to leave as they are.
    *
    * @return int
    *   The number of member apps changed.
    */
-  public function cascadeModeration(NodeInterface $repo, string $target_state, array $from_states, string $log_message, bool $published_only = FALSE): int {
+  public function cascadeModeration(NodeInterface $repo, string $target_state, array $from_states, string $log_message, bool $published_only = FALSE, bool $suppress_notifications = FALSE, array $except_ids = []): int {
     $storage = $this->entityTypeManager->getStorage('node');
-    $ids = $this->queryMemberAppIds($repo, $published_only);
+    $ids = array_diff($this->queryMemberAppIds($repo, $published_only), $except_ids);
 
     $count = 0;
     foreach ($storage->loadMultiple($ids) as $app) {
@@ -109,6 +114,11 @@ class RepoMemberApps {
       // when validationRequired is TRUE without a recent validate() call.
       if (method_exists($app, 'setValidationRequired')) {
         $app->setValidationRequired(FALSE);
+      }
+      if ($suppress_notifications) {
+        // A runtime flag the module's hooks read, not a field.
+        // @phpstan-ignore-next-line
+        $app->_ood_software_suppress_notifications = TRUE;
       }
       $app->save();
       $count++;

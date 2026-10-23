@@ -17,6 +17,9 @@
  *    request_adjustment (email-only + cascade-unpublish), and publish
  *    (email + no-fan-out + cascade-publish).
  *
+ * Fixtures are seeded by fixtures/scripts/appverse-seed.php via drush, because
+ * JSON:API is read-only (D8-2832) and rejects POST/PATCH/DELETE with 405.
+ *
  * Every manage-repos visit below that asserts on .appverse-hub-card rows
  * appends &moderation_state=All: now that the moderation filter actually
  * applies its default (ready_for_review + needs_adjustment only), a bare
@@ -36,14 +39,13 @@ const CONTRIBUTOR_EMAIL = 'authenticated@amptesting.com';
 const CONTRIBUTOR_PASS = '6%l7iF}6(4tI';
 const CONTRIBUTOR_NAME = 'authenticated_test_user';
 
-// Real GitHub repo we own; used as the Collection's canonical URL so the
-// fixture points at a stable repo under our control rather than fabricated
-// data. Nothing here calls GitHub — the URL is stored as a plain field value.
+// Real GitHub repo we own; the seed script stores it as each Collection's
+// canonical URL (a plain field value, nothing calls GitHub), and the email
+// assertions below expect it. Keep in sync with appverse-seed.php.
 const FIXTURE_REPO_URL = 'https://github.com/Sweet-and-Fizzy/appverse-example-monorepo';
-const JSONAPI_HEADERS = {
-  'Content-Type': 'application/vnd.api+json',
-  Accept: 'application/vnd.api+json',
-};
+// Drush script (in-container path) that seeds the Collection fixtures; see
+// seedRepo().
+const SEED_SCRIPT = '/var/www/html/tests/cypress/cypress/fixtures/scripts/appverse-seed.php';
 
 // Escape a literal string for safe embedding inside a `new RegExp(...)`
 // source string, used by the Text-part line assertions below.
@@ -51,47 +53,10 @@ function escapeRegExpForTest(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Resolve an entity's JSON:API UUID by a filter, so the seed never hardcodes
-// UUIDs (which differ per environment / DB artifact). Fails loudly if absent.
-function resolveUuid(resource, filterField, filterValue, label) {
-  return cy.request({
-    url: `/jsonapi/${resource}?filter[${filterField}]=${encodeURIComponent(filterValue)}&page[limit]=1`,
-    headers: JSONAPI_HEADERS,
-    failOnStatusCode: false,
-  }).then((res) => {
-    const id = res.body?.data?.[0]?.id;
-    if (!id) {
-      throw new Error(`seedRepo: could not resolve ${label} (${resource} where ${filterField}=${filterValue}). status=${res.status}`);
-    }
-    return id;
-  });
-}
-
-// The user JSON:API resource (user--user) is deliberately disabled in
-// jsonapi_extras (users must not be enumerable over the API), so the
-// contributor's UUID cannot be resolved with resolveUuid(). Look it up with a
-// single, tiny drush call that echoes only the UUID — unlike the former seed
-// this is a one-value deterministic command, not a large node-creating
-// payload. Wrapped in a short retry to absorb transient ddev container churn.
-function resolveContributorUuid(attempt = 1) {
-  const cmd = `ddev drush ev "\\$u = user_load_by_name('${CONTRIBUTOR_NAME}'); echo \\$u ? \\$u->uuid() : '';"`;
-  return cy.exec(cmd, { timeout: 60000, failOnNonZeroExit: false }).then((res) => {
-    const uuid = (res.stdout || '').trim();
-    if (/^[0-9a-f-]{36}$/.test(uuid)) {
-      return uuid;
-    }
-    if (attempt < 3) {
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      return cy.wait(500 * attempt, { log: false }).then(() => resolveContributorUuid(attempt + 1));
-    }
-    throw new Error(`seedRepo: could not resolve contributor UUID for ${CONTRIBUTOR_NAME}. code=${res.code} stdout=[${res.stdout}] stderr=[${(res.stderr || '').slice(0, 200)}]`);
-  });
-}
-
 // The contributor's canonical /user/<uid> profile is rewritten by pathauto to
 // an aliased slug (e.g. /user/authenticatedtestuser), so the numeric uid can
-// not be scraped off the profile URL. Resolve it directly (same tiny-drush
-// approach as the UUID lookup) so callers can build /user/<uid>/my-appverse.
+// not be scraped off the profile URL. Resolve it directly with a tiny drush
+// call so callers can build /user/<uid>/my-appverse.
 function resolveContributorUid(attempt = 1) {
   const cmd = `ddev drush ev "\\$u = user_load_by_name('${CONTRIBUTOR_NAME}'); echo \\$u ? \\$u->id() : '';"`;
   return cy.exec(cmd, { timeout: 60000, failOnNonZeroExit: false }).then((res) => {
@@ -107,43 +72,17 @@ function resolveContributorUid(attempt = 1) {
   });
 }
 
-// Delete every existing appverse_repo (and its member apps) with this title,
-// so re-runs are deterministic. JSON:API DELETE as the logged-in admin.
-function purgeReposByTitle(title, csrf) {
-  const headers = { ...JSONAPI_HEADERS, 'X-CSRF-Token': csrf };
-  return cy.request({
-    url: `/jsonapi/node/appverse_repo?filter[title]=${encodeURIComponent(title)}`,
-    headers: JSONAPI_HEADERS,
-    failOnStatusCode: false,
-  }).then((res) => {
-    const repos = res.body?.data || [];
-    return cy.wrap(repos).each((repo) => {
-      // Delete member apps first (they reference the repo).
-      cy.request({
-        url: `/jsonapi/node/appverse_app?filter[field_appverse_repo.id]=${repo.id}`,
-        headers: JSONAPI_HEADERS,
-        failOnStatusCode: false,
-      }).then((appsRes) => {
-        (appsRes.body?.data || []).forEach((app) => {
-          cy.request({ method: 'DELETE', url: `/jsonapi/node/appverse_app/${app.id}`, headers, failOnStatusCode: false });
-        });
-      });
-      cy.request({ method: 'DELETE', url: `/jsonapi/node/appverse_repo/${repo.id}`, headers, failOnStatusCode: false });
-    });
-  });
-}
-
 /**
- * Seed a fresh appverse_repo (Collection) via JSON:API, optionally with member
- * apps. The admin must be logged in (cy.loginUser(ADMIN_...)) before calling —
- * the session cookie authenticates the writes.
+ * Seed a fresh appverse_repo (Collection) via the checked-in drush script
+ * fixtures/scripts/appverse-seed.php, optionally with member apps.
  *
- * Creates content directly through JSON:API rather than shelling out to
- * `ddev drush`: the previous drush approach returned empty output
- * intermittently under full-suite load and coupled the test to the local ddev
- * container, which does not exist the same way in every environment. JSON:API
- * is hermetic (no GitHub call — FIXTURE_REPO_URL is a plain field value) and
- * environment-independent (all UUIDs resolved at runtime).
+ * JSON:API is read-only (D8-2832), so fixtures cannot be created with POST /
+ * PATCH / DELETE any more; the script creates them with the entity API instead.
+ * It is a script FILE with simple positional args and a marker-prefixed result
+ * line, not PHP piped over stdin: that earlier drush approach returned empty
+ * output intermittently under full-suite load. The script purges any prior
+ * fixture with the same title first, so the retry below is idempotent. Nothing
+ * calls GitHub — FIXTURE_REPO_URL is a plain field value.
  *
  * Yields { nid, uuid } and stashes them in Cypress.env for later cascade
  * assertions. Titles must be unique per block to avoid collisions on re-run.
@@ -154,95 +93,50 @@ function purgeReposByTitle(title, csrf) {
  * @param {number} opts.memberApps - How many member apps to create.
  * @param {string} opts.memberAppState - moderation_state for member apps.
  */
-function seedRepo(opts) {
+function seedRepo(opts, attempt = 1) {
   const title = opts.title;
   const state = opts.state;
   const memberApps = opts.memberApps || 0;
   const memberAppState = opts.memberAppState || 'draft';
 
+  // Guard the values that reach the shell. Fixture titles are fixed literals;
+  // the script validates again server-side.
+  if (!/^[A-Za-z0-9 _().:-]+$/.test(title)) {
+    throw new Error(`seedRepo: title contains unsafe characters: ${title}`);
+  }
+  if (!/^[a-z_]+$/.test(state)) {
+    throw new Error(`seedRepo: state contains unsafe characters: ${state}`);
+  }
+  if (!/^[a-z_]+$/.test(memberAppState)) {
+    throw new Error(`seedRepo: memberAppState contains unsafe characters: ${memberAppState}`);
+  }
   if (!Number.isInteger(memberApps) || memberApps < 0) {
     throw new Error(`seedRepo: memberApps must be a non-negative integer: ${memberApps}`);
   }
 
-  return cy.request('/session/token').then((tok) => {
-    const csrf = tok.body;
-    const writeHeaders = { ...JSONAPI_HEADERS, 'X-CSRF-Token': csrf };
-
-    // Resolve all relationship UUIDs by known values (env-independent).
-    return purgeReposByTitle(title, csrf)
-      .then(() => resolveContributorUuid())
-      .then((contributorUuid) => {
-        // Create the Collection.
-        return cy.request({
-          method: 'POST',
-          url: '/jsonapi/node/appverse_repo',
-          headers: writeHeaders,
-          failOnStatusCode: false,
-          body: {
-            data: {
-              type: 'node--appverse_repo',
-              attributes: {
-                title,
-                moderation_state: state,
-                field_repo_url: { uri: FIXTURE_REPO_URL },
-                field_repo_description: 'Cypress fixture Collection for the Appverse maintenance hub tests.',
-                field_repo_validation_st: 'valid',
-              },
-              relationships: {
-                uid: { data: { type: 'user--user', id: contributorUuid } },
-              },
-            },
-          },
-        }).then((repoRes) => {
-          if (repoRes.status !== 201) {
-            const errs = (repoRes.body?.errors || []).map((e) => e.detail).join('; ');
-            throw new Error(`seedRepo: repo create failed (${repoRes.status}): ${errs}`);
-          }
-          const uuid = repoRes.body.data.id;
-          const nid = repoRes.body.data.attributes.drupal_internal__nid;
-          Cypress.env('TEST_COLLECTION_NID', nid);
-          Cypress.env('TEST_COLLECTION_UUID', uuid);
-
-          if (memberApps === 0) {
-            return { nid, uuid };
-          }
-
-          // Member apps need app_type, license, and domain references; resolve
-          // them once, then create N apps under the Collection.
-          return resolveUuid('taxonomy_term/appverse_app_type', 'name', 'batch-connect-VNC', 'app_type term')
-            .then((appTypeUuid) => resolveUuid('taxonomy_term/appverse_license', 'name', 'Open-Source License', 'license term')
-              .then((licenseUuid) => resolveUuid('domain/domain', 'drupal_internal__id', 'openondemand_cyberinfrastructure_org', 'ondemand domain')
-                .then((domainUuid) => {
-                  const apps = Array.from({ length: memberApps }, (_, i) => i + 1);
-                  return cy.wrap(apps).each((n) => {
-                    cy.request({
-                      method: 'POST',
-                      url: '/jsonapi/node/appverse_app',
-                      headers: writeHeaders,
-                      failOnStatusCode: false,
-                      body: {
-                        data: {
-                          type: 'node--appverse_app',
-                          attributes: { title: `${title} App ${n}`, moderation_state: memberAppState },
-                          relationships: {
-                            uid: { data: { type: 'user--user', id: contributorUuid } },
-                            field_appverse_repo: { data: { type: 'node--appverse_repo', id: uuid } },
-                            field_appverse_app_type: { data: { type: 'taxonomy_term--appverse_app_type', id: appTypeUuid } },
-                            field_license: { data: { type: 'taxonomy_term--appverse_license', id: licenseUuid } },
-                            field_domain_access: { data: [{ type: 'domain--domain', id: domainUuid }] },
-                          },
-                        },
-                      },
-                    }).then((appRes) => {
-                      if (appRes.status !== 201) {
-                        const errs = (appRes.body?.errors || []).map((e) => e.detail).join('; ');
-                        throw new Error(`seedRepo: app create failed (${appRes.status}): ${errs}`);
-                      }
-                    });
-                  }).then(() => ({ nid, uuid }));
-                })));
-        });
-      });
+  // The title is single-quoted for the shell; the allowlist above excludes
+  // single quotes, so no escaping is needed.
+  const cmd = `ddev drush php:script ${SEED_SCRIPT} -- '${title}' ${state} ${memberApps} ${memberAppState}`;
+  return cy.exec(cmd, { timeout: 60000, failOnNonZeroExit: false }).then((res) => {
+    const match = (res.stdout || '').match(/^APPVERSE_SEED_RESULT:(\{.*\})\s*$/m);
+    let seeded = null;
+    if (match) {
+      try {
+        seeded = JSON.parse(match[1]);
+      } catch (e) {
+        seeded = null;
+      }
+    }
+    if (seeded && seeded.nid && seeded.uuid) {
+      Cypress.env('TEST_COLLECTION_NID', seeded.nid);
+      Cypress.env('TEST_COLLECTION_UUID', seeded.uuid);
+      return { nid: seeded.nid, uuid: seeded.uuid };
+    }
+    if (attempt < 3) {
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
+      return cy.wait(500 * attempt, { log: false }).then(() => seedRepo(opts, attempt + 1));
+    }
+    throw new Error(`seedRepo: could not seed Collection "${title}". code=${res.code} stdout=[${(res.stdout || '').slice(0, 300)}] stderr=[${(res.stderr || '').slice(0, 300)}]`);
   });
 }
 
@@ -491,6 +385,9 @@ describe('Appverse Maintenance Hub', () => {
             .click();
         });
 
+      // The queue filtered to the repo, in any moderation state.
+      const QUEUE_PATH = `/appverse/manage-repos?title=${encodeURIComponent(COLLECTION_TITLE).replace(/[()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}&moderation_state=All`;
+
       // Assert the admin received the notification.
       cy.waitForEmail({
         to: ADMIN_EMAIL,
@@ -499,7 +396,7 @@ describe('Appverse Maintenance Hub', () => {
         cy.assertEmailContent(message, {
           subject: 'Repo submitted for review',
           to: ADMIN_EMAIL,
-          bodyContains: [COLLECTION_TITLE, '/appverse/manage-repos'],
+          bodyContains: [COLLECTION_TITLE, QUEUE_PATH],
         });
 
         // Strict check: each URL must render as a real link (HTML) and sit
@@ -507,22 +404,29 @@ describe('Appverse Maintenance Hub', () => {
         // surrounding text with no separator.
         cy.assertEmailLinks(message, [
           { label: 'Repository:', href: FIXTURE_REPO_URL },
-          { label: 'Review queue:', href: /\/appverse\/manage-repos$/ },
+          // The seeded repo is new, so it has no review yet: the link is the
+          // queue filtered to it, labeled as the queue, not as a review.
+          { label: 'The repo in the review queue:', href: new RegExp(`${escapeRegExpForTest(QUEUE_PATH)}$`) },
         ], { minParagraphs: 3 });
+        cy.getMailpitMessage(message.ID).then((fullMessage) => {
+          expect(fullMessage.Text || '').to.not.contain('The review:');
+          expect(fullMessage.HTML || '').to.not.match(/\/appverse\/review\/\d+/);
+        });
 
         // Belt-and-suspenders against the specific broken (pre-fix) shape:
-        // the repo URL running straight into "Review queue:" with no
+        // the repo URL running straight into "The review:" with no
         // separator, and "Repository:" glued onto the end of the previous
         // sentence ("...Site.Repository:").
         cy.getMailpitMessage(message.ID).then((fullMessage) => {
           const text = fullMessage.Text || '';
-          expect(text).to.not.contain(`${FIXTURE_REPO_URL}Review`);
+          expect(text).to.not.contain(`${FIXTURE_REPO_URL}The`);
           expect(text).to.not.match(/\.Repository:/);
         });
 
         // From-address verification: this spec runs at /e2e/ondemand/, so
         // the request resolves to the openondemand domain and
-        // domain_site_settings overlays system.site at request time.
+        // domain_config's domain.openondemand_cyberinfrastructure_org
+        // collection overlays system.site at request time.
         // Verified DB values: site_name="Open OnDemand Community Hub",
         // site_mail="info@mg.openondemand.org". If a different From slips
         // through (e.g., the global noreply@wpi.edu used by the default

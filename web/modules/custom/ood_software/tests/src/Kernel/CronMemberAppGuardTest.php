@@ -5,12 +5,19 @@ declare(strict_types=1);
 namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\Core\Config\FileStorage;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\key\KeyRepositoryInterface;
+use GuzzleHttp\ClientInterface;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
 use Drupal\ood_software\Plugin\QueueWorker\AppverseAppUpdater;
+use Drupal\ood_software\Service\InPlaceSaver;
 use Drupal\ood_software\Service\RepoSyncService;
+use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
 use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 
 /**
@@ -50,6 +57,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
     'file', 'ood_software',
   ];
 
+  use AppverseModerationTestTrait;
   use Traits\ProdConfigTrait;
 
   /**
@@ -122,14 +130,19 @@ class CronMemberAppGuardTest extends KernelTestBase {
   /**
    * Build the worker with a stubbed GitHubService reporting a NEW commit.
    */
-  private function makeWorker(NodeInterface $repo): AppverseAppUpdater {
+  private function makeWorker(NodeInterface $repo, int $stars = 0, ?InPlaceSaver $saver = NULL): AppverseAppUpdater {
     $gh = new class(
       $this->container->get('http_client'),
       $this->container->get('key.repository'),
       $this->container->get('messenger'),
       $this->container->get('logger.factory'),
       $this->container->get('entity_type.manager'),
+      $stars,
     ) extends GitHubService {
+
+      public function __construct(ClientInterface $http, KeyRepositoryInterface $keys, MessengerInterface $messenger, LoggerChannelFactoryInterface $loggerFactory, EntityTypeManagerInterface $etm, private int $fakeStars) {
+        parent::__construct($http, $keys, $messenger, $loggerFactory, $etm);
+      }
 
       public function parseUrl(string $repo): bool {
         return TRUE;
@@ -157,7 +170,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
       }
 
       public function getStars(): ?int {
-        return 0;
+        return $this->fakeStars;
       }
 
       public function getRepoUrl(): string {
@@ -214,10 +227,11 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $repoSync,
       $this->container->get('logger.factory')->get('ood_software'),
       $this->container->get('datetime.time'),
+      $saver ?? $this->container->get('ood_software.in_place_saver'),
     );
   }
 
-  private function makeRepo(): NodeInterface {
+  private function makeMonoRepo(): NodeInterface {
     $repo = Node::create([
       'type' => 'appverse_repo',
       'title' => 'Mono',
@@ -233,7 +247,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
    * A member app (has a subpath) keeps its per-subpath body after cron.
    */
   public function testMemberAppBodyNotClobbered(): void {
-    $repo = $this->makeRepo();
+    $repo = $this->makeMonoRepo();
     $app = Node::create([
       'type' => 'appverse_app',
       'title' => 'Member',
@@ -260,7 +274,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
    * A non-member app (no subpath) still gets root content synced (control).
    */
   public function testNonMemberAppBodyStillSynced(): void {
-    $repo = $this->makeRepo();
+    $repo = $this->makeMonoRepo();
     $app = Node::create([
       'type' => 'appverse_app',
       'title' => 'Standalone',
@@ -358,6 +372,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $repoSync,
       $this->container->get('logger.factory')->get('ood_software'),
       $this->container->get('datetime.time'),
+      $this->container->get('ood_software.in_place_saver'),
     );
     $worker->processItem(['nid' => $app->id()]);
 
@@ -438,6 +453,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
       $repoSync,
       $this->container->get('logger.factory')->get('ood_software'),
       $this->container->get('datetime.time'),
+      $this->container->get('ood_software.in_place_saver'),
     );
     $worker->processItem(['nid' => $app->id()]);
 
@@ -445,6 +461,71 @@ class CronMemberAppGuardTest extends KernelTestBase {
     $reloadedRepo = Node::load($repo->id());
     self::assertSame('degraded', $reloadedRepo->get('field_repo_validation_st')->value, 'Reverse shape change is flagged degraded.');
     self::assertSame('declared', $reloadedRepo->get('field_repo_shape')->value, 'Shape left unchanged (not flipped to inferred).');
+  }
+
+  /**
+   * An app whose stars did not change is not saved at all.
+   *
+   * The stored value reloads as the string '5' and GitHub reports the int 5,
+   * which a strict compare reads as a change on every pass. A save, even an
+   * in-place one, fires hook_node_update and regenerates the appverse cache.
+   */
+  public function testUnchangedAppIsNotResaved(): void {
+    $repo = $this->makeMonoRepo();
+    $app = Node::create([
+      'type' => 'appverse_app',
+      'title' => 'Member',
+      'field_appverse_repo' => $repo->id(),
+      'field_appverse_app_subpath' => 'jupyter',
+      'field_appverse_github_url' => ['uri' => 'https://github.com/OSC/mono'],
+      'field_appverse_stars' => 5,
+      'moderation_state' => 'published',
+    ]);
+    $app->save();
+    // Reload so the stored value is the database string '5'.
+    \Drupal::entityTypeManager()->getStorage('node')->resetCache([$app->id()]);
+    $saver = new class(\Drupal::entityTypeManager()) extends InPlaceSaver {
+
+      /**
+       * Ids of the nodes passed to save().
+       *
+       * @var int[]
+       */
+      public array $saved = [];
+
+      public function save(NodeInterface $node): void {
+        $this->saved[] = (int) $node->id();
+        parent::save($node);
+      }
+
+    };
+    $worker = $this->makeWorker($repo, 5, $saver);
+    $worker->processItem(['nid' => $app->id()]);
+    $worker->processItem(['nid' => $app->id()]);
+    // The repo may be flagged once; the app itself must never be saved.
+    $this->assertNotContains((int) $app->id(), $saver->saved);
+  }
+
+  /**
+   * A changed star count updates the published app in place.
+   */
+  public function testChangedStarsSaveInPlace(): void {
+    $repo = $this->makeMonoRepo();
+    $app = Node::create([
+      'type' => 'appverse_app',
+      'title' => 'Member',
+      'field_appverse_repo' => $repo->id(),
+      'field_appverse_app_subpath' => 'jupyter',
+      'field_appverse_github_url' => ['uri' => 'https://github.com/OSC/mono'],
+      'field_appverse_stars' => 5,
+      'moderation_state' => 'published',
+    ]);
+    $app->save();
+    $before = $this->revisionCount($app);
+    $this->makeWorker($repo, 9)->processItem(['nid' => $app->id()]);
+    $this->assertSame($before, $this->revisionCount($app));
+    $this->assertSame('9', (string) $this->defaultRevision($app)->get('field_appverse_stars')->value);
+    $this->assertLatestState('published', $app);
   }
 
 }
