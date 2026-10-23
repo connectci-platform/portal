@@ -21,6 +21,12 @@ permissions:
   actions: read
   pull-requests: write
 
+# A new push to a PR cancels that PR's in-progress run. merge_group and
+# workflow_dispatch runs key on run_id, so they are never cancelled.
+concurrency:
+  group: cypress-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   accessmatch1:
     name: accessmatch1
