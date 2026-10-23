@@ -580,13 +580,31 @@ final class AppverseHubController extends ControllerBase {
     return $this->redirectToHub();
   }
 
+  /**
+   * Whether the repo's latest revision has an AI report run in flight.
+   *
+   * @phpstan-impure
+   */
+  protected function runInFlight(NodeInterface $node): bool {
+    return $this->reviewService->isRunInFlight($this->reviewService->latestRevision($node));
+  }
+
   public function runReview(NodeInterface $node): RedirectResponse {
     if ($node->bundle() !== 'appverse_repo') {
       $this->messenger()->addError($this->t('Reviews are only available for Repos.'));
       return $this->redirectToHub();
     }
+    $running = $this->t('An AI report for @title is already running.', ['@title' => $node->label()]);
+    if ($this->runInFlight($node)) {
+      $this->messenger()->addWarning($running);
+      return $this->redirectToHub();
+    }
     if ($this->reviewService->dispatchForNode($node)) {
       $this->messenger()->addStatus($this->t('AI report started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full report).', ['@title' => $node->label()]));
+    }
+    elseif ($this->runInFlight($node)) {
+      // Another request started a run between the check and the dispatch.
+      $this->messenger()->addWarning($running);
     }
     else {
       $this->messenger()->addError($this->t('Could not start the AI report for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));

@@ -6,11 +6,11 @@ namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 use Drupal\Core\Config\FileStorage;
-use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Test\AssertMailTrait;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
+use Drupal\node\NodeStorageInterface;
 use Drupal\ood_software\Plugin\GitHubService;
 use Drupal\ood_software\Plugin\QueueWorker\AppverseAppUpdater;
 use Drupal\ood_software\Service\AppverseReviewService;
@@ -185,7 +185,7 @@ class PendingRevisionSyncTest extends KernelTestBase {
   /**
    * The node storage.
    */
-  protected function nodeStorage(): EntityStorageInterface {
+  protected function nodeStorage(): NodeStorageInterface {
     return \Drupal::entityTypeManager()->getStorage('node');
   }
 
@@ -238,7 +238,6 @@ class PendingRevisionSyncTest extends KernelTestBase {
     $pending->set('moderation_state', 'ready_for_review');
     $pending->setNewRevision(TRUE);
     // The submission itself is not under test: keep its mail and dispatch out.
-    // @phpstan-ignore-next-line
     $pending->_ood_software_suppress_notifications = TRUE;
     $pending->save();
 
@@ -273,6 +272,7 @@ class PendingRevisionSyncTest extends KernelTestBase {
     $storage = $this->nodeStorage();
     $storage->resetCache();
     $default = $storage->load($nid);
+    /** @var \Drupal\node\NodeInterface $latest */
     $latest = $storage->loadRevision($storage->getLatestRevisionId($nid));
     $moderation = $this->container->get('content_moderation.moderation_information');
 
@@ -300,8 +300,9 @@ class PendingRevisionSyncTest extends KernelTestBase {
     ]);
 
     $this->assertReviewKept((int) $repo->id(), 'field_repo_description', 'value', 'NEW DESC');
+    /** @var \Drupal\node\NodeInterface $latest */
     $latest = $this->nodeStorage()->loadRevision($this->nodeStorage()->getLatestRevisionId($repo->id()));
-    self::assertSame('https://example.org/pending-edit', $latest->get('field_repo_www_url')->uri, 'Edits made only in the pending revision survive the sync.');
+    self::assertSame('https://example.org/pending-edit', $latest->get('field_repo_www_url')->getValue()[0]['uri'], 'Edits made only in the pending revision survive the sync.');
   }
 
   /**
@@ -451,6 +452,7 @@ class PendingRevisionSyncTest extends KernelTestBase {
       $repoSync,
       $this->container->get('logger.factory')->get('ood_software'),
       $this->container->get('datetime.time'),
+      $this->container->get('ood_software.in_place_saver'),
     );
   }
 

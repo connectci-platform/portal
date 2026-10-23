@@ -32,7 +32,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/infrastructure_news",
-                "reference": "03d8e978c5266b94c80b0af76e00646392a05606"
+                "reference": "4f3e10b705cd0a1fe97e3e3dfa50c278affe5ce1"
             },
             "require": {
                 "access/operations_cider": "*",
@@ -60,7 +60,7 @@
                 "issues": "https://github.com/access-ci-org/infrastructure_news/issues",
                 "source": "https://github.com/access-ci-org/infrastructure_news"
             },
-            "time": "2026-10-13T17:47:56+00:00"
+            "time": "2026-10-22T19:31:04+00:00"
         },
         {
             "name": "asm89/stack-cors",
@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "a3168b48e0ab49c6085514f299cf38d7f804f29f"
+                "reference": "67650d3f2c0e70e710593e5e7aed7c7c70f59b11"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -702,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-22T02:16:04+00:00"
+            "time": "2026-10-22T19:31:27+00:00"
         },
         {
             "name": "connectci/asp-theme",

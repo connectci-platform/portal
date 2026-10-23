@@ -9,6 +9,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueWorkerBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\ood_software\Plugin\GitHubService;
+use Drupal\ood_software\Service\InPlaceSaver;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\node\NodeInterface;
 
@@ -77,8 +78,10 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
    *   The ood_software logger channel.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
+   * @param \Drupal\ood_software\Service\InPlaceSaver $inPlaceSaver
+   *   Saves the app and repo without adding a revision.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, GitHubService $github_service, RepoSyncService $repo_sync, LoggerChannelInterface $logger, TimeInterface $time) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, GitHubService $github_service, RepoSyncService $repo_sync, LoggerChannelInterface $logger, TimeInterface $time, protected InPlaceSaver $inPlaceSaver) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->entityTypeManager = $entity_type_manager;
     $this->githubService = $github_service;
@@ -102,7 +105,8 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       $container->get('ood_software.gh'),
       $container->get('ood_software.repo_sync'),
       $container->get('logger.factory')->get('ood_software'),
-      $container->get('datetime.time')
+      $container->get('datetime.time'),
+      $container->get('ood_software.in_place_saver')
     );
   }
 
@@ -180,7 +184,7 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       }
       else {
         // Normal path: refresh the repo (metadata, and the shape it already is).
-        $repo = $this->repoSync->resolveRepo(
+        $repo = $this->repoSync->resolveRepoInBackground(
           $this->githubService->getRepoUrl(),
           $appverseYmlText,
           $repoMetadata
@@ -196,7 +200,8 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       // Always update stars.
       $currentStars = $node->get('field_appverse_stars')->value;
       $newStars = $this->githubService->getStars();
-      if ($currentStars === NULL || $currentStars !== $newStars) {
+      // The stored value reloads as a string and GitHub reports an int.
+      if ($currentStars === NULL || (int) $currentStars !== (int) $newStars) {
         $node->set('field_appverse_stars', $newStars);
         $needsSave = TRUE;
       }
@@ -256,8 +261,7 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
       }
 
       if ($needsSave) {
-        // Keeps a review pending on a published app (a forward revision).
-        RepoSyncService::saveKeepingPending($node, $this->entityTypeManager->getStorage('node'));
+        $this->inPlaceSaver->save($node);
       }
     }
     else {
@@ -308,7 +312,7 @@ final class AppverseAppUpdater extends QueueWorkerBase implements ContainerFacto
     // Match every other validation-state write in the codebase, which stamps
     // last_synced so the hub reflects when the state was last evaluated.
     $repo->set('field_repo_last_synced', $this->time->getCurrentTime());
-    RepoSyncService::saveKeepingPending($repo, $this->entityTypeManager->getStorage('node'));
+    $this->inPlaceSaver->save($repo);
     $this->logger->notice('Repo @nid appverse.yml shape changed since registration; flagged degraded for attended Resync.', ['@nid' => $repo->id()]);
   }
 

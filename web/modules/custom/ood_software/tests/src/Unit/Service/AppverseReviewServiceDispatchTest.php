@@ -3,7 +3,7 @@
 namespace Drupal\Tests\ood_software\Unit\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\node\NodeStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldItemInterface;
 use Drupal\Core\Field\FieldItemListInterface;
@@ -11,6 +11,7 @@ use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\key\KeyInterface;
 use Drupal\key\KeyRepositoryInterface;
+use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\UnitTestCase;
 use Drupal\ood_software\Service\AppverseReviewSeeder;
@@ -66,7 +67,11 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $loggerFactory->method('get')->willReturn($logger);
 
     // The fresh copy recordDispatch() loads and mutates.
-    $fresh = $this->createMock(NodeInterface::class);
+    // The concrete class, not the interface: InPlaceSaver sets the runtime
+    // _ood_software_suppress_notifications flag on it, which a real Node
+    // takes through ContentEntityBase::__set() and an interface mock would
+    // get as a deprecated dynamic property.
+    $fresh = $this->createMock(Node::class);
     $fresh->method('hasField')->willReturn(TRUE);
     $fresh->method('set')->willReturnCallback(function (string $field, $value) use ($fresh) {
       $this->freshSets[] = [$field, $value];
@@ -76,13 +81,15 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
       $this->freshSaves++;
       return 2;
     });
-    $storage = $this->createMock(EntityStorageInterface::class);
+    $storage = $this->createMock(NodeStorageInterface::class);
     $storage->method('loadUnchanged')->with(self::NID)->willReturn($fresh);
     $etm = $this->createMock(EntityTypeManagerInterface::class);
     $etm->method('getStorage')->with('node')->willReturn($storage);
 
     $time = $this->createMock(TimeInterface::class);
-    $time->method('getRequestTime')->willReturn(self::NOW);
+    $time->method('getRequestTime')->willReturn(self::NOW - 30);
+    // The dispatch is stamped with the current time, not the request's.
+    $time->method('getCurrentTime')->willReturn(self::NOW);
 
     return new AppverseReviewService(
       $http, $keys, $loggerFactory, $etm, $time,
@@ -102,7 +109,13 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $node->method('id')->willReturn(self::NID);
     $node->method('bundle')->willReturn('appverse_repo');
     $node->method('hasField')->willReturn(TRUE);
-    $node->method('get')->with('field_repo_url')->willReturn($list);
+    // No run in flight: dispatchForNode() reads the status before sending.
+    $status = $this->createMock(FieldItemListInterface::class);
+    $status->method('__get')->with('value')->willReturn(NULL);
+    $node->method('get')->willReturnMap([
+      ['field_repo_url', $list],
+      ['field_review_status', $status],
+    ]);
     return $node;
   }
 

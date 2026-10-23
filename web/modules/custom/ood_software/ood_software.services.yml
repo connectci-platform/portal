@@ -39,11 +39,18 @@ services:
 
   ood_software.repo_sync:
     class: Drupal\ood_software\Service\RepoSyncService
-    arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh']
+    arguments: ['@entity_type.manager', '@logger.factory', '@datetime.time', '@ood_software.gh', '@ood_software.in_place_saver']
 
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService
-    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier']
+    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier', '@ood_software.in_place_saver', '@lock', '@keyvalue']
+    tags:
+      - { name: needs_destruction }
+
+  # Non-editorial saves that do not add a revision or bury a forward one.
+  ood_software.in_place_saver:
+    class: Drupal\ood_software\Service\InPlaceSaver
+    arguments: ['@entity_type.manager']
 
   ood_software.review_seeder:
     class: Drupal\ood_software\Service\AppverseReviewSeeder

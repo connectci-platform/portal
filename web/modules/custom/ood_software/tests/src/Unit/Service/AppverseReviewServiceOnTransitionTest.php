@@ -24,22 +24,16 @@ use Psr\Log\LoggerInterface;
 class AppverseReviewServiceOnTransitionTest extends UnitTestCase {
 
   /**
-   * How many runs the service started.
-   */
-  protected int $dispatched = 0;
-
-  /**
-   * @covers ::onTransition
+   * @covers ::shouldDispatchOnTransition
    * @dataProvider transitions
    */
   public function testOnTransition(?string $previous, string $now, string $status, int $dispatchedAgo, int $expected): void {
-    $this->service()->onTransition($this->repo($now, $status, $dispatchedAgo), $previous);
-    $this->assertSame($expected, $this->dispatched);
+    $this->assertSame($expected === 1, $this->service()->shouldDispatchOnTransition($this->repo($now, $status, $dispatchedAgo), $previous));
   }
 
   /**
    * Previous state, new state, run status, seconds since the last dispatch,
-   * runs started.
+   * runs started (1 when the save should queue a run).
    *
    * @return array<string, array<int, mixed>>
    */
@@ -50,6 +44,8 @@ class AppverseReviewServiceOnTransitionTest extends UnitTestCase {
       'a save that stays awaiting review' => ['ready_for_review', 'ready_for_review', 'complete', 3600, 0],
       'not while a run is pending' => ['needs_adjustment', 'ready_for_review', 'pending', 3600, 0],
       'not while a run is in progress' => ['draft', 'ready_for_review', 'in_progress', 3600, 0],
+      'a stale pending run does not block' => ['needs_adjustment', 'ready_for_review', 'pending', 8000, 1],
+      'a pending run with no dispatch time does not block' => ['needs_adjustment', 'ready_for_review', 'pending', 0, 1],
       'not within the debounce' => ['draft', 'ready_for_review', '', 60, 0],
       'leaving review' => ['ready_for_review', 'needs_adjustment', '', 0, 0],
       'unknown previous state' => [NULL, 'ready_for_review', '', 0, 0],
@@ -57,19 +53,16 @@ class AppverseReviewServiceOnTransitionTest extends UnitTestCase {
   }
 
   /**
-   * The service, with the dispatch counted instead of sent.
+   * The service, built without its collaborators.
    */
   protected function service(): AppverseReviewService {
     $service = $this->getMockBuilder(AppverseReviewService::class)
       ->disableOriginalConstructor()
-      ->onlyMethods(['dispatchForNode'])
+      ->onlyMethods([])
       ->getMock();
-    $service->method('dispatchForNode')->willReturnCallback(function (): bool {
-      $this->dispatched++;
-      return TRUE;
-    });
     $time = $this->createMock(TimeInterface::class);
     $time->method('getRequestTime')->willReturn(100000);
+    $time->method('getCurrentTime')->willReturn(100000);
     foreach (['logger' => $this->createMock(LoggerInterface::class), 'time' => $time] as $name => $value) {
       $property = new \ReflectionProperty(AppverseReviewService::class, $name);
       $property->setValue($service, $value);
