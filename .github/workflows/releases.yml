@@ -3,12 +3,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Tag next major/minor release. Use 1.x.x scheme. Leave default iterate to auto tag the next patch version.'
+        description: 'auto picks minor or patch from the release notes; type a version like 7.0.0 to override.'
         required: true
-        default: 'iterate'
+        default: 'auto'
+      dry_run:
+        description: 'Write the notes and chosen version to the run summary, then stop before tagging, the test deploy and publishing.'
+        type: boolean
+        default: false
 permissions:
   contents: write
   actions: read
+  pull-requests: read
 jobs:
   release:
     name: Tag code
@@ -91,6 +96,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      # Notes come from the PRs that reached main since the previous release
+      # and their Jira tickets (.github/scripts/release-notes). If this step
+      # fails, Create tag falls back to the git log notes and a patch bump.
+      - name: Build release notes
+        id: notes
+        continue-on-error: true
+        run: |
+          prev_sha=$(git rev-list --tags --max-count=1)
+          since=$(git log -1 --format=%cI "$prev_sha")
+          until=$(git log -1 --format=%cI "$TARGET_SHA")
+          php .github/scripts/release-notes/release-notes.php \
+            --since="$since" --until="$until" --out=release.md --bump-out=bump.txt
+          {
+            echo "## Release notes"
+            echo
+            cat release.md
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
       - name: Create tag
         run: |
           git remote set-url origin "https://$gh_user:$gh_token@github.com/$gh_repo.git"
@@ -98,28 +125,50 @@ jobs:
           git config user.email "$(git log -n 1 --pretty=format:%ae)"
           latest_sha=$(git rev-list --tags --max-count=1)
           current_version=$(git describe --tags --abbrev=0)
-          if [ "$set_version" == 'iterate' ]
+          if [ "$notes_outcome" != 'success' ]
           then
-            next_version=$(echo ${current_version} | awk -F. -v OFS=. '{$NF += 1 ; print}')
-            next_version_message="Patch level change, see releases notes for more info"
+            echo "::warning::Release notes could not be built; using the git log and a patch bump."
+            echo '# CHANGELOG' > release.md
+            git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s' "$latest_sha..$TARGET_SHA" --no-merges >> release.md
+            echo patch > bump.txt
+          fi
+          bump=$(tr -d '[:space:]' < bump.txt)
+          if [ "$set_version" == 'auto' ] || [ "$set_version" == 'iterate' ]
+          then
+            if [ "$bump" == 'minor' ]
+            then
+              next_version=$(echo "$current_version" | awk -F. -v OFS=. '{$2 += 1; $3 = 0; print}')
+              next_version_message="Minor release, see release notes for more info"
+            else
+              next_version=$(echo "$current_version" | awk -F. -v OFS=. '{$NF += 1; print}')
+              next_version_message="Patch level change, see release notes for more info"
+            fi
           else
+            bump=manual
             next_version="$set_version"
-            next_version_message="New major/minor release, see releases notesfor more info"
+            next_version_message="New major/minor release, see release notes for more info"
+          fi
+          echo "Version: $next_version ($bump)" >> "$GITHUB_STEP_SUMMARY"
+          echo "next_version=$next_version" >> "$GITHUB_ENV"
+          if [ "$dry_run" == 'true' ]
+          then
+            echo "Dry run: stopping before tagging, the test deploy and publishing." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           git checkout "$TARGET_SHA"
           git tag -a "$next_version" -m "$next_version_message"
-          touch release1.txt && touch release.md && echo '# CHANGELOG' > release.md
-          git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s' "$latest_sha..$TARGET_SHA" --no-merges >> release.md
           jq -Rs '{ tag_name: "TAGNAMEZ", name: "TAGNAMEZ", body: .,draft: false, prerelease: false, generate_release_notes: false }' release.md > release1.txt
           sed "s/TAGNAMEZ/$next_version/g" release1.txt > release.txt
-          echo "next_version=$next_version" >> "$GITHUB_ENV"
         env:
           set_version: ${{ github.event.inputs.version }}
+          dry_run: ${{ inputs.dry_run }}
+          notes_outcome: ${{ steps.notes.outcome }}
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           gh_user: ${{ secrets.GH_USER }}
           gh_repo: connectci-platform/portal
 
-      - uses: ./.github/actions/dingorunner
+      - if: ${{ success() && !inputs.dry_run }}
+        uses: ./.github/actions/dingorunner
         env:
           runner: deploy
           terminus_api: ${{ secrets.TERMINUS_API }}
@@ -130,7 +179,7 @@ jobs:
           expected_sha: ${{ env.TARGET_SHA }}
 
       - name: Publish tag and release
-        if: success()
+        if: ${{ success() && !inputs.dry_run }}
         run: |
           git push origin "refs/tags/$next_version"
           description=$(cat release.txt)
