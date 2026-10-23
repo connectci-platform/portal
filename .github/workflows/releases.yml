@@ -118,6 +118,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          # The token is scoped (read:jira-work), and scoped tokens only work
+          # through api.atlassian.com with the site's cloud id.
+          JIRA_SITE: https://api.atlassian.com/ex/jira/17ceb5de-f6b5-42c3-bf98-94300671d9b6
 
       - name: Create tag
         run: |

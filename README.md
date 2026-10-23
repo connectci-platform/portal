@@ -276,7 +276,7 @@ Each release's notes are built by `.github/scripts/release-notes/release-notes.p
 - **Section** comes from the ticket type: Story is a Feature (and makes the release a minor version), Bug is a Fix, Task and Sub-task are Improvements. PRs with no ticket go under Maintenance. Use Story for something new a program can use, Bug for a fix, and Task for everything else, and write ticket titles a program would understand.
 - **Program** comes from the ticket's most recent sprint, mapped in `.github/release-programs.json`. Anything unmapped is Connect.CI.
 - **PR labels** override the ticket: `feature`, `fix`, `maintenance`, `security` (listed as "Security hardening" without the ticket title, since the repo is public) and `skip-release-notes`.
-- Jira is read with the `JIRA_EMAIL` and `JIRA_API_TOKEN` repo secrets. If Jira can't be reached, ticketed items are listed generically and the release still goes out.
+- Jira is read with the `JIRA_EMAIL` and `JIRA_API_TOKEN` repo secrets. The token is a scoped token with `read:jira-work`, so the workflow calls Jira through `https://api.atlassian.com/ex/jira/<cloud id>` (`JIRA_SITE` in `releases.yml`); a classic token would use `https://cyberteamportal.atlassian.net` instead. If Jira can't be reached, ticketed items are listed generically and the release still goes out.
 
 ## Getting Started
 
