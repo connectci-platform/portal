@@ -447,7 +447,11 @@ final class ReviewDecisionApplier {
         return;
       }
       $step->set('moderation_state', $state);
-      // Read at runtime by hook_node_update(); it is not a field.
+      // Read at runtime by hook_node_update() and by
+      // ood_software_content_moderation_notification_mail_data_alter(); it is
+      // not a field. So an app passing through ready_for_review here also
+      // sends no contrib "New Appverse App submitted" email: the reviewer is
+      // changing a decision, not a contributor submitting the app.
       // @phpstan-ignore-next-line
       $step->_ood_software_suppress_notifications = TRUE;
       $this->saveRevision($step, $log);
