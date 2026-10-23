@@ -1,0 +1,12 @@
+{
+  "D8-2878": {"summary": "Classroom Story: unable to add images when editing a story", "type": "Bug", "labels": [], "parent": null,
+    "sprints": [{"name": "OOD Hub Oct-Nov", "startDate": "2026-10-11T00:00:00Z"}]},
+  "D8-2843": {"summary": "Refinement to Alert in Event editing", "type": "Story", "labels": [], "parent": null,
+    "sprints": [{"name": "ACCESS Sept", "startDate": "2026-09-08T00:00:00Z"}]},
+  "D8-2832": {"summary": "Investigate disabling JSON:API write operations (jsonapi.settings read_only) site-wide", "type": "Task", "labels": [], "parent": null,
+    "sprints": [{"name": "ACCESS Sept", "startDate": "2026-09-08T00:00:00Z"}]},
+  "D8-2805": {"summary": "JSON:API leaks contact form recipient emails to anonymous users", "type": "Bug", "labels": ["security"], "parent": null,
+    "sprints": [{"name": "ACCESS August", "startDate": "2026-08-10T00:00:00Z"}]},
+  "D8-2930": {"summary": "Alert copy for series with registrations", "type": "Sub-task", "labels": [], "parent": "D8-2843",
+    "sprints": [{"name": "ACCESS Sept", "startDate": "2026-09-08T00:00:00Z"}]}
+}

@@ -15,11 +15,19 @@ permissions:
   actions: read
   pull-requests: write
 
+# A new push to a PR cancels that PR's in-progress run. merge_group and
+# workflow_dispatch runs key on run_id, so they are never cancelled.
+concurrency:
+  group: phpunit-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   phpunit:
-    # The full custom-module suite ALWAYS runs on every PR and merge — there is
-    # no change-based selection (a mechanism whose failure mode is "silently skip
+    # The full custom-module suite ALWAYS runs on every PR — there is no
+    # change-based selection (a mechanism whose failure mode is "silently skip
     # a test that would have caught the regression" was rejected in design).
+    # Like Cypress, it does not run in the merge queue: the PR run already
+    # passed, so the shards are skipped and phpunit-gate passes on its own.
     #
     # Sharded only for wall-clock: access_events has the bulk of the kernel tests,
     # so its kernel directory is split across the events shards; ood_software is
@@ -35,6 +43,7 @@ jobs:
     # shard_total below to match. The gate fails if any test file is in no shard
     # or in more than one.
     name: PHPUnit (${{ matrix.name }})
+    if: ${{ github.event_name != 'merge_group' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -81,16 +90,26 @@ jobs:
   phpunit-gate:
     name: PHPUnit
     needs: phpunit
-    if: ${{ always() }}
+    # !cancelled() rather than always(): still gates on failed shards, but skips
+    # when a newer push cancelled this run (see concurrency above).
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Merge Group
+        if: ${{ github.event_name == 'merge_group' }}
+        shell: bash
+        run: |
+          echo 'Let Merge Queue pass'
+
       - name: Download shard target lists
+        if: ${{ github.event_name != 'merge_group' }}
         uses: actions/download-artifact@v8.0.1
         with:
           pattern: phpunit-targets-*
           path: shards/
 
       - name: Require every test file to be in exactly one shard
+        if: ${{ github.event_name != 'merge_group' }}
         shell: bash
         run: |
           # Each shard uploaded targets.txt (the files it ran) and all.txt (every
@@ -133,7 +152,7 @@ jobs:
           echo "Every test file is in exactly one shard."
 
       - name: Require all shards to have passed
-        if: ${{ always() }}
+        if: ${{ always() && github.event_name != 'merge_group' }}
         shell: bash
         run: |
           result="${{ needs.phpunit.result }}"
