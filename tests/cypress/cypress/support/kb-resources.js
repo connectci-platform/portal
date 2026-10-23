@@ -3,9 +3,9 @@
  *
  * A resource is a `resource` webform submission. The ci_links search index has
  * `index_directly` on, so a submission is searchable as soon as the form is
- * saved: there is no cron or reindex step to wait for. A flag change is the
- * exception: it only marks the item for reindexing, which the same option then
- * processes at the end of the request.
+ * saved: there is no cron or reindex step to wait for. A flag change is
+ * indexed immediately too, in the flag request itself and after the flag
+ * counts are updated, so the page the flag link redirects to is current.
  */
 
 export const ADMIN = ["administrator@amptesting.com", "b8QW]X9h7#5n"];
@@ -72,6 +72,40 @@ export function createKbResource({
     .location("pathname")
     .should("match", /\/webform\/resource\/submissions\/\d+$/)
     .then((path) => Number(path.split("/").pop()));
+}
+
+/**
+ * Deletes the given webform submissions with drush, so a spec removes the
+ * resources it created. Pass only submission ids captured at creation. Ids are
+ * validated as positive integers before they reach the PHP snippet; undefined
+ * ids (a failed before() hook) are skipped.
+ *
+ * @param {Array<number|undefined>} sids
+ *   Submission ids returned by createKbResource().
+ *
+ * @returns {Cypress.Chainable}
+ */
+export function deleteSubmissions(sids) {
+  const ids = (sids || []).filter((sid) => sid !== undefined && sid !== null).map(Number);
+  ids.forEach((id) => {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error(`deleteSubmissions: invalid submission id ${id}`);
+    }
+  });
+  if (!ids.length) {
+    return cy.wrap(null);
+  }
+  const php =
+    'foreach (' + JSON.stringify(ids) + ' as $sid) {' +
+    '$sub = \\Drupal\\webform\\Entity\\WebformSubmission::load($sid);' +
+    'if ($sub) { $sub->delete(); }' +
+    '}' +
+    'print "done";';
+  return cy.drush("php:eval", [`'${php}'`]).then((result) => {
+    if (result.exitCode !== 0 || result.stdout.trim() !== "done") {
+      throw new Error(`deleteSubmissions failed: ${JSON.stringify(result)}`);
+    }
+  });
 }
 
 // A listed resource. The markup comes from the access_cilink module, so it is

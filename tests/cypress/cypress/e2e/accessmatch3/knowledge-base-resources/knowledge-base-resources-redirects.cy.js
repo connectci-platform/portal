@@ -11,7 +11,7 @@
     spec does not rely on what other specs or the database left behind.
 */
 
-import { ADMIN, createKbResource } from "../../../support/kb-resources";
+import { ADMIN, createKbResource, deleteSubmissions } from "../../../support/kb-resources";
 
 const RESOURCES = "/knowledge-base/resources";
 
@@ -28,6 +28,8 @@ describe("KB Resources legacy redirects", () => {
     });
     cy.drupalLogout();
   });
+
+  after(() => deleteSubmissions([sid.value]));
 
   ["/ci-links", "/resources", "/knowledge-base/ci-links"].forEach((path) => {
     it(`${path} permanently redirects to the resources listing`, () => {

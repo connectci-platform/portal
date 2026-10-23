@@ -11,20 +11,24 @@
     facets (Content Type, Skill Level, ...) are for authenticated users.
 */
 
-import { ADMIN, AUTHENTICATED, checkFirstTagFacet, createKbResource } from "../../support/kb-resources";
+import { ADMIN, AUTHENTICATED, checkFirstTagFacet, createKbResource, deleteSubmissions } from "../../support/kb-resources";
 
 const RUN = Date.now().toString();
 const RUN_ONLY = `/knowledge-base/resources?search_api_fulltext=${RUN}`;
+
+const created = [];
 
 describe("NECT KB Resources page", () => {
   before(() => {
     // Typing "Northeast" in the domain select2 matches only the "Northeast" region term.
     cy.loginUser(...ADMIN);
     ["one", "two"].forEach((n) => {
-      createKbResource({ title: `kbsmoke-${RUN}-${n}`, tags: ["xalt"], domain: "Northeast" });
+      createKbResource({ title: `kbsmoke-${RUN}-${n}`, tags: ["xalt"], domain: "Northeast" }).then((id) => { created.push(id); });
     });
     cy.drupalLogout();
   });
+
+  after(() => deleteSubmissions(created));
 
   it("shows the Topics facet and filters by its first item for an anonymous visitor", () => {
     cy.visit(RUN_ONLY);

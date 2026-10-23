@@ -34,6 +34,7 @@ import {
   AUTHENTICATED,
   SKILL,
   createKbResource,
+  deleteSubmissions,
 } from "../../../support/kb-resources";
 
 const RUN = Date.now().toString();
@@ -76,6 +77,7 @@ const ITEMS = ".view-search-ci-links .details-wrap";
 const FACET_ITEMS = "li.facet-item:not(.honey)";
 
 const sid = {};
+const manySids = [];
 
 /**
  * Runs a PHP snippet with drush and yields its stdout. Fails the test with the
@@ -152,10 +154,14 @@ describe("KB Resources page facets, copy link and sorting", () => {
     createKbResource({ title: TITLE.countTen, tags: [TAG_A] }).then((id) => { sid.countTen = id; });
     createKbResource({ title: TITLE.countTwo, tags: [TAG_A] }).then((id) => { sid.countTwo = id; });
     MANY_TAGS.forEach((tags, i) => {
-      createKbResource({ title: `kbmany-${MANY_ID}-${i + 1}`, tags });
+      createKbResource({ title: `kbmany-${MANY_ID}-${i + 1}`, tags }).then((id) => { manySids.push(id); });
     });
     cy.drupalLogout();
   });
+
+  // Remove the resources created above (and the per-user one below), by the
+  // ids captured at creation.
+  after(() => deleteSubmissions([...Object.values(sid), ...manySids]));
 
   describe("anonymous visitor", () => {
     it("sees the Topics facet and a login prompt instead of the other facets", () => {
@@ -337,7 +343,8 @@ describe("KB Resources page facets, copy link and sorting", () => {
         const sortUrl = `${RESOURCES}?search_api_fulltext=${SORT_ID}`;
         const likeCount = (title) =>
           item(title).find("details.search-ci-links > summary .linkcount").then(($count) => Number($count.text().trim()));
-        // Flag and unflag are plain links: the server flags, then redirects.
+        // Flag and unflag are plain links: the server flags, indexes, then
+        // redirects back to the page the link was rendered on.
         cy.intercept("GET", "**/flag/*/upvote/**").as("upvote");
 
         cy.visit(sortUrl);
@@ -354,7 +361,9 @@ describe("KB Resources page facets, copy link and sorting", () => {
           item(second).find(".flag-upvote a").click();
           cy.wait("@upvote").its("response.statusCode").should("eq", 302);
 
-          cy.visit(sortUrl);
+          // No further visit: the redirect lands on the sorted listing, where
+          // the new like must already be counted and sorted.
+          cy.location("search").should("eq", `?search_api_fulltext=${SORT_ID}`);
           likeCount(second).should("eq", 1);
           likeCount(first).should("eq", 0);
           item(second).find(".flag-upvote.action-unflag a").should("exist");
@@ -368,7 +377,7 @@ describe("KB Resources page facets, copy link and sorting", () => {
           item(second).find(".flag-upvote.action-unflag a").click();
           cy.wait("@upvote").its("response.statusCode").should("eq", 302);
 
-          cy.visit(sortUrl);
+          cy.location("search").should("eq", `?search_api_fulltext=${SORT_ID}`);
           likeCount(second).should("eq", 0);
           item(second).find(".flag-upvote.action-flag a").should("exist");
         });
@@ -491,7 +500,8 @@ describe("KB Resources page facets, copy link and sorting", () => {
           expect(location, "redirect back to this item").to.include(`/knowledge-base/resources?f[0]=submission_id:${sid.perUser}`);
         });
 
-        cy.visit(itemUrl());
+        // No further visit: assert on the page the redirect lands on.
+        cy.location("search").should((search) => expect(decodeURIComponent(search)).to.eq(`?f[0]=submission_id:${sid.perUser}`));
         notDenied();
         item(TITLE.perUser).find(".flag-upvote.action-unflag a").should("exist");
         likeCount().should("eq", before + 1);
@@ -501,7 +511,7 @@ describe("KB Resources page facets, copy link and sorting", () => {
         item(TITLE.perUser).find(".flag-upvote.action-unflag a").click();
         cy.wait("@upvote").its("response.statusCode").should("eq", 302);
 
-        cy.visit(itemUrl());
+        cy.location("search").should((search) => expect(decodeURIComponent(search)).to.eq(`?f[0]=submission_id:${sid.perUser}`));
         notDenied();
         item(TITLE.perUser).find(".flag-upvote.action-flag a").should("exist");
         likeCount().should("eq", before);

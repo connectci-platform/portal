@@ -4,6 +4,8 @@ const TITLE = "dummy link for testing knowledge base";
 // As an authenticated user, verify auth features for the ci link "cypress-ci-link-for-testing"
 //
 describe("Authenticated user tests a ci link", () => {
+  // No cleanup: knowledge-base-resource-unauth.cy.js and
+  // z-affinity-groups-api/ag-api.cy.js use the resource created here.
   it("verify auth features of a ci link", () => {
     // first create a dummy ci-links so can reference one of them in the AG.
     create_dummy_ci_link().then((sid) => {
@@ -23,15 +25,16 @@ describe("Authenticated user tests a ci link", () => {
       cy.get(".view-search-ci-links details .md--col-span-1 ul li:nth-of-type(2) a").contains("Not useful");
 
       // Vote feature: liking adds one like and turns the Like link into an
-      // Unlike link. The flag link is a plain link: the server flags and then
-      // redirects to the destination it was rendered with, which may be the
-      // bare listing, so wait for the flag request and reload the deep link.
+      // Unlike link. The flag link is a plain link: the server flags, indexes
+      // the item, then redirects back to the page the link was rendered on,
+      // query string included. The browser follows the redirect, so assert on
+      // the page it lands on, with no further visit: the count there must
+      // already be current.
       cy.intercept("GET", "**/flag/*/upvote/**").as("upvote");
-      const deepLink = `/knowledge-base/resources?f%5B0%5D=submission_id%3A${sid}`;
       likeCount().then((before) => {
         item().find(".flag-upvote.action-flag a").click();
         cy.wait("@upvote").its("response.statusCode").should("eq", 302);
-        cy.visit(deepLink);
+        cy.location("search").should((search) => expect(decodeURIComponent(search)).to.contain(`f[0]=submission_id:${sid}`));
         item().find(".flag-upvote.action-unflag a").should("exist");
         item().find(".flag-upvote.action-flag a").should("not.exist");
         likeCount().should("eq", before + 1);
@@ -40,7 +43,7 @@ describe("Authenticated user tests a ci link", () => {
         item().find("details.search-ci-links > summary").click();
         item().find(".flag-upvote.action-unflag a").click();
         cy.wait("@upvote").its("response.statusCode").should("eq", 302);
-        cy.visit(deepLink);
+        cy.location("search").should((search) => expect(decodeURIComponent(search)).to.contain(`f[0]=submission_id:${sid}`));
         item().find(".flag-upvote.action-flag a").should("exist");
         likeCount().should("eq", before);
       });
