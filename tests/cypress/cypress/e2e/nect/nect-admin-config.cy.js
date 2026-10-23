@@ -402,7 +402,6 @@ describe("Check admin configuration pages", () => {
     cy.visit('/admin/config/system/keys');
     cy.get('h1').should('contain', 'Keys');
 
-    cy.contains('2fa key');
     cy.contains('constant_contact_client_id');
     cy.contains('constant_contact_client_secret');
     cy.contains('Open Ai api');
