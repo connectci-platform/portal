@@ -5124,17 +5124,17 @@
         },
         {
             "name": "drupal/flag",
-            "version": "5.1.0",
+            "version": "5.1.1",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/flag.git",
-                "reference": "5.1.0"
+                "reference": "5.1.1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/flag-5.1.0.zip",
-                "reference": "5.1.0",
-                "shasum": "6f8d28652146f170ca965a235214857cf612c8c0"
+                "url": "https://ftp.drupal.org/files/projects/flag-5.1.1.zip",
+                "reference": "5.1.1",
+                "shasum": "e155d03c4820deaf240d622e989ed297be9e6429"
             },
             "require": {
                 "drupal/core": "^10.3 || ^11 || ^12"
@@ -5142,8 +5142,8 @@
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "5.1.0",
-                    "datestamp": "1788266235",
+                    "version": "5.1.1",
+                    "datestamp": "1791382196",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
