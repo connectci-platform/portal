@@ -3,13 +3,14 @@
 namespace Drupal\Tests\ood_software\Unit\Service;
 
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\node\NodeStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Query\QueryInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\key\KeyInterface;
 use Drupal\key\KeyRepositoryInterface;
+use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\UnitTestCase;
 use Drupal\ood_software\Service\AppverseReviewSeeder;
@@ -102,14 +103,18 @@ class AppverseReviewServicePollTest extends UnitTestCase {
     $query->method('execute')->willReturn($status === NULL ? [] : [self::NID => self::NID]);
 
     // The fresh copy updateNodeReviewStatus() loads and mutates.
-    $fresh = $this->createMock(NodeInterface::class);
+    // The concrete class, not the interface: InPlaceSaver sets the runtime
+    // _ood_software_suppress_notifications flag on it, which a real Node
+    // takes through ContentEntityBase::__set() and an interface mock would
+    // get as a deprecated dynamic property.
+    $fresh = $this->createMock(Node::class);
     $fresh->method('hasField')->willReturn(TRUE);
     $fresh->method('set')->willReturnCallback(function (string $field, $value) use ($fresh) {
       $this->freshSets[] = [$field, $value];
       return $fresh;
     });
 
-    $storage = $this->createMock(EntityStorageInterface::class);
+    $storage = $this->createMock(NodeStorageInterface::class);
     $storage->method('getQuery')->willReturn($query);
     $storage->method('loadMultiple')->willReturn($status === NULL ? [] : [self::NID => $this->makeRepoNode($status)]);
     $storage->method('loadUnchanged')->with(self::NID)->willReturn($fresh);
@@ -118,6 +123,7 @@ class AppverseReviewServicePollTest extends UnitTestCase {
 
     $time = $this->createMock(TimeInterface::class);
     $time->method('getRequestTime')->willReturn(self::NOW);
+    $time->method('getCurrentTime')->willReturn(self::NOW);
 
     return new AppverseReviewService(
       $http, $keys, $loggerFactory, $etm, $time,
