@@ -1,0 +1,10 @@
+{
+  "default": "Connect.CI",
+  "rules": [
+    {"pattern": "^ACCESS\\b", "program": "ACCESS"},
+    {"pattern": "^(OOD|Community Hub|HUB)\\b", "program": "OOD"},
+    {"pattern": "^(Campus )?Champions\\b", "program": "Champions"},
+    {"pattern": "^CCMNet\\b", "program": "CCMNet"},
+    {"pattern": "^(CNCT|ConnectCI|Connect\\.CI)\\b", "program": "Connect.CI"}
+  ]
+}
