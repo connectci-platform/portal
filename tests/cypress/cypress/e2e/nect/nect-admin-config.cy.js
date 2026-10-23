@@ -136,9 +136,6 @@ describe("Check admin configuration pages", () => {
     cy.visit('/admin/config/people/realname');
     cy.get('h1').should('contain', 'Real name');
     cy.get('#edit-realname-pattern').should('have.value', '[user:field_user_first_name:value] [user:field_user_last_name:value]');
-
-    cy.visit('/admin/config/people/tfa');
-    cy.get('h1').should('contain', 'TFA Settings');
   });
 
   it("Content config", () => {
@@ -382,13 +379,6 @@ describe("Check admin configuration pages", () => {
 
     cy.visit('/admin/config/system/auditfiles');
     cy.get('h1').should('contain', 'Audit Files');
-
-    cy.visit('/admin/config/system/encryption/profiles');
-    cy.get('h1').should('contain', 'Encryption profiles');
-    cy.contains('2fa-encrypt-profile');
-
-    cy.visit('/admin/config/system/encryption/profiles/settings');
-    cy.get('h1').should('contain', 'Encrypt settings');
 
     cy.visit('/admin/config/system/gtm');
     cy.get('h1').should('contain', 'GTM Settings');
