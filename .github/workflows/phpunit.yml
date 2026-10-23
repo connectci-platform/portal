@@ -103,7 +103,7 @@ jobs:
 
       - name: Download shard target lists
         if: ${{ github.event_name != 'merge_group' }}
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           pattern: phpunit-targets-*
           path: shards/
