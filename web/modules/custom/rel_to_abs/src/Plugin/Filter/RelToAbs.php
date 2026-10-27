@@ -5,6 +5,7 @@ namespace Drupal\rel_to_abs\Plugin\Filter;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Url;
 use Drupal\filter\Attribute\Filter;
 use Drupal\filter\FilterProcessResult;
 use Drupal\filter\Plugin\FilterBase;
@@ -18,6 +19,11 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * Absolute URLs are needed wherever processed text leaves the site, such as
  * email bodies and API output. Protocol-relative ("//host/...") and fragment
  * ("#anchor") URLs are left alone.
+ *
+ * Links that match a route are built with the URL generator, so they get the
+ * path alias and outbound processing, such as Domain Source moving a node link
+ * to the node's source domain. Everything else (files, srcset, unrouted
+ * paths) gets the current scheme and host.
  */
 #[Filter(
   id: "rel_to_abs",
@@ -59,8 +65,48 @@ class RelToAbs extends FilterBase implements ContainerFactoryPluginInterface {
       return $result;
     }
 
-    $result->setProcessedText(Html::transformRootRelativeUrlsToAbsolute($text, $request->getSchemeAndHttpHost()));
+    $dom = Html::load($text);
+    foreach ($dom->getElementsByTagName('a') as $link) {
+      $href = $link->getAttribute('href');
+      if (!str_starts_with($href, '/') || str_starts_with($href, '//')) {
+        continue;
+      }
+      $absolute = $this->routedAbsoluteUrl($href, $result);
+      if ($absolute !== NULL) {
+        $link->setAttribute('href', $absolute);
+      }
+    }
+
+    // Links rewritten above are already absolute, so this leaves them alone.
+    $result->setProcessedText(Html::transformRootRelativeUrlsToAbsolute(Html::serialize($dom), $request->getSchemeAndHttpHost()));
     return $result;
+  }
+
+  /**
+   * Builds an absolute URL for a root-relative path that matches a route.
+   *
+   * @param string $path
+   *   A root-relative path, optionally with a query string and fragment.
+   * @param \Drupal\filter\FilterProcessResult $result
+   *   The filter result, which receives the cacheability of the generated URL
+   *   (for example the cache tag of a node whose source domain picks the host).
+   *
+   * @return string|null
+   *   The absolute URL, or NULL when the path matches no route.
+   */
+  protected function routedAbsoluteUrl(string $path, FilterProcessResult $result): ?string {
+    try {
+      $url = Url::fromUserInput($path);
+    }
+    catch (\InvalidArgumentException) {
+      return NULL;
+    }
+    if (!$url->isRouted()) {
+      return NULL;
+    }
+    $generated = $url->setAbsolute()->toString(TRUE);
+    $result->addCacheableDependency($generated);
+    return $generated->getGeneratedUrl();
   }
 
 }
