@@ -1,5 +1,5 @@
 {
-    "_hash": "7b10deaefb3db93797b80e2ae976fc418898d9b5ca4b84aa7ef1ebbc7304e3eb",
+    "_hash": "f11e71fe67c7788db4013cd3b68d559b300265aa0c894b9e812f0ac30dad951e",
     "patches": {
         "drupal/core": [
             {
@@ -191,6 +191,18 @@
                 "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
                 "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
                 "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/email_change_verification": [
+            {
+                "package": "drupal/email_change_verification",
+                "description": "Automated Drupal 11 compatibility fixes - https://www.drupal.org/i/3430085",
+                "url": "patches/email_change_verification-d11-3430085.patch",
+                "sha256": "125635fff803d27708e345fa825acd6b5a0f4ebd4711e84aad973be7fdac1694",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

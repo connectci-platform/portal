@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "13b1bc66ceff01d739a8a22006585d77",
+    "content-hash": "c8fbfa781d722454bc94bf2a56d5ad1e",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -13187,6 +13187,68 @@
                 "source": "https://github.com/mck89/peast/tree/v1.17.7"
             },
             "time": "2026-07-21T11:56:06+00:00"
+        },
+        {
+            "name": "mglaman/composer-drupal-lenient",
+            "version": "2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mglaman/composer-drupal-lenient.git",
+                "reference": "7bfe79bfcccf1b0f3dafee7e36468dccfc2e56bb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mglaman/composer-drupal-lenient/zipball/7bfe79bfcccf1b0f3dafee7e36468dccfc2e56bb",
+                "reference": "7bfe79bfcccf1b0f3dafee7e36468dccfc2e56bb",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^2.0",
+                "php": ">=8.3"
+            },
+            "require-dev": {
+                "composer/composer": "^2.3",
+                "drupal/core": "^11 || ^12",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan": "^1.6",
+                "phpstan/phpstan-phpunit": "^1.1",
+                "phpstan/phpstan-strict-rules": "^1.2",
+                "phpunit/phpunit": "^9.5",
+                "squizlabs/php_codesniffer": "^3.6"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "ComposerDrupalLenient\\Plugin"
+            },
+            "autoload": {
+                "files": [
+                    "src/autoload.php"
+                ],
+                "psr-4": {
+                    "ComposerDrupalLenient\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Matt Glaman",
+                    "email": "nmd.matt@gmail.com"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/mglaman/composer-drupal-lenient/issues",
+                "source": "https://github.com/mglaman/composer-drupal-lenient/tree/2.0.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/mglaman",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-20T20:28:20+00:00"
         },
         {
             "name": "mtdowling/jmespath.php",

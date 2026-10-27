@@ -1,0 +1,13 @@
+diff --git a/email_change_verification.info.yml b/email_change_verification.info.yml
+index 9c82222dc446234f593259bb448206b625fbd7a2..a2313a1bea11e46cbe68304e9882d2665932c2e8 100644
+--- a/email_change_verification.info.yml
++++ b/email_change_verification.info.yml
+@@ -1,7 +1,7 @@
+ name: 'Email change verification'
+ type: module
+ description: Adds verification when a user changes their email address
+-core_version_requirement: ^9.1 || ^10
++core_version_requirement: ^9.1 || ^10 || ^11
+ package: Security
+ configure: email_change_verification.config
+ dependencies:
