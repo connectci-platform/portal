@@ -36,9 +36,6 @@
         },
         "drupal/better_exposed_filters": {
             "Autosubmit: skip the blur-driven re-submit of an unchanged text field and the stale cursor restore that scrambles typing on AJAX views": "patches/bef-autosubmit-blur-resubmit-and-stale-cursor.patch"
-        },
-        "drupal/rel_to_abs": {
-            "Already-encoded paths are encoded twice (%20 becomes %2520), breaking images with spaces in the filename - https://www.drupal.org/i/3517757": "patches/rel_to_abs-double-encoded-paths-3517757.patch"
         }
     }
 }

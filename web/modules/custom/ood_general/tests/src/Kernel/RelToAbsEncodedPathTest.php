@@ -14,10 +14,9 @@ use Drupal\KernelTests\KernelTestBase;
  *
  * CKEditor 5 saves an uploaded image as an already-encoded root-relative src
  * ("classroom%20story%20image.png"). The contrib rel_to_abs filter encoded it a
- * second time ("%2520"), so the image 404'd. The fix is a composer patch
- * (patches/rel_to_abs-double-encoded-paths-3517757.patch, drupal.org issue
- * 3517757); the patch's own functional test lives in contrib and CI does not
- * run it, so this test fails if a rel_to_abs update drops or breaks the patch.
+ * second time ("%2520"), so the image 404'd. The custom rel_to_abs module that
+ * replaced contrib (D8-2922) leaves the path as saved, and this test fails if a
+ * change to it starts re-encoding paths again.
  *
  * @group ood_general
  */
@@ -84,9 +83,9 @@ class RelToAbsEncodedPathTest extends KernelTestBase {
         '/files/100%25.jpg',
         '/files/100%25.jpg',
       ],
-      'unencoded space is encoded once' => [
+      'unencoded space is left as-is' => [
         '/files/a b.jpg',
-        '/files/a%20b.jpg',
+        '/files/a b.jpg',
       ],
       'encoded query is left as-is' => [
         '/node/1?q=a%26b',

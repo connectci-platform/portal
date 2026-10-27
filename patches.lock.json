@@ -1,5 +1,5 @@
 {
-    "_hash": "d4043e022ffbcff766a84ac36449927623d5c19c41619b524d3dce0c296a8e7d",
+    "_hash": "7b10deaefb3db93797b80e2ae976fc418898d9b5ca4b84aa7ef1ebbc7304e3eb",
     "patches": {
         "drupal/core": [
             {
@@ -203,18 +203,6 @@
                 "description": "Autosubmit: skip the blur-driven re-submit of an unchanged text field and the stale cursor restore that scrambles typing on AJAX views",
                 "url": "patches/bef-autosubmit-blur-resubmit-and-stale-cursor.patch",
                 "sha256": "72a413be57e157ab04dcee1405a1fc8bcd5753d03b65b95d36d841b01d4a602a",
-                "depth": 1,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            }
-        ],
-        "drupal/rel_to_abs": [
-            {
-                "package": "drupal/rel_to_abs",
-                "description": "Already-encoded paths are encoded twice (%20 becomes %2520), breaking images with spaces in the filename - https://www.drupal.org/i/3517757",
-                "url": "patches/rel_to_abs-double-encoded-paths-3517757.patch",
-                "sha256": "0cfba7fcb9dfe5589d7a893a81b3e74a669c37f42651214c15a696be223b6167",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
