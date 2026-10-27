@@ -15,7 +15,6 @@ module:
   access_news: 0
   access_outages: 0
   access_shortcodes: 0
-  action: 0
   actions_permissions: 0
   advanced_cors: 0
   advanced_email_validation: 0
