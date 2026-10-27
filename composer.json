@@ -196,6 +196,7 @@
         "drupal/webform_views": "^5.0.0",
         "drupal/yaml_editor": "^1.0",
         "drush/drush": "^13.6.2",
+        "mglaman/composer-drupal-lenient": "^2.0",
         "npm-asset/select2": "^4.0",
         "oit/facets_honeypot": "^1.0",
         "oomphinc/composer-installers-extender": "^2.0",
@@ -232,7 +233,8 @@
             "oomphinc/composer-installers-extender": true,
             "php-http/discovery": true,
             "phpstan/extension-installer": true,
-            "tbachert/spi": true
+            "tbachert/spi": true,
+            "mglaman/composer-drupal-lenient": true
         }
     },
     "extra": {
@@ -293,7 +295,10 @@
         "installer-types": [
             "bower-asset",
             "npm-asset"
-        ]
+        ],
+        "drupal-lenient": {
+            "allowed-list": ["drupal/email_change_verification"]
+        }
     },
     "scripts": {
         "robo": "robo --ansi",
