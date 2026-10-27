@@ -43,6 +43,8 @@ composer patches-repatch
 ```
 ## Writing Jira tickets
 
+Branch names map to Jira keys: branch `md-NNNN` is Jira ticket `D8-NNNN` (there is no `MD` project). View one with `acli jira workitem view D8-NNNN --fields '*all'`.
+
 When drafting a Jira ticket, structure the description with these sections:
 
 - **Why** — one or two sentences on the goal and who it is for. This is what makes "done" reviewable.
