@@ -71,6 +71,9 @@
           response.addEventListener('input', update);
         }
         form.querySelectorAll('input[name^="duplicate["]').forEach((r) => r.addEventListener('change', update));
+        // The server disables the button from the saved review, so after a
+        // failed send it can be stale against what the reviewer posted.
+        update();
       });
 
       once('arv-sev', '.arv-page .sev-head', context).forEach((head) => {
