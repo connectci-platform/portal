@@ -1,0 +1,18 @@
+{
+  "issues": [
+    {"key": "D8-2878", "fields": {
+      "summary": "Classroom Story: unable to add images when editing a story",
+      "issuetype": {"name": "Bug"},
+      "labels": [],
+      "customfield_10020": [{"id": 576, "name": "OOD Hub Oct-Nov", "state": "active", "startDate": "2026-10-11T00:00:00.000Z"}]
+    }},
+    {"key": "D8-2930", "fields": {
+      "summary": "Alert copy for series with registrations",
+      "issuetype": {"name": "Sub-task"},
+      "labels": ["security"],
+      "customfield_10020": null,
+      "parent": {"key": "D8-2843"}
+    }}
+  ],
+  "isLast": true
+}

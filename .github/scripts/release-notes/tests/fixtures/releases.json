@@ -1,0 +1,17 @@
+[
+ {
+  "tag_name": "6.9.0",
+  "published_at": "2026-10-28T15:00:00Z",
+  "body": "## Features\n\n- [ACCESS] Refinement to Alert in Event editing (D8-2843, #2288)\n- [OOD] Appverse hub shows pending reviews (D8-2882, #2280)\n\n## Fixes\n\n- [ACCESS] Security hardening (#2300)\n- [OOD] Classroom Story: unable to add images when editing a story (D8-2878, #2278)\n"
+ },
+ {
+  "tag_name": "6.8.35",
+  "published_at": "2026-10-24T15:00:00Z",
+  "body": "## Improvements\n\n- [Connect.CI] Allow PA Science Manager to delete projects (D8-2892, #2267)\n"
+ },
+ {
+  "tag_name": "6.8.34",
+  "published_at": "2026-10-22T22:11:01Z",
+  "body": "# CHANGELOG\n* beec8f70a - build: flip the access pin back to 3.0.x-dev\n* 2b0f2fc67 - [ACCESS] looks like a tag but is a commit\n"
+ }
+]
