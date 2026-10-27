@@ -8,7 +8,6 @@ describe("For an authenticated user tests account, interest/skills pages", () =>
     cy.contains('Pecan Pie');
     cy.contains('View');
     cy.contains('Edit');
-    cy.contains('TFA');
     cy.contains('Program');
     cy.contains('Email address');
     cy.get('#edit-mail').should('have.value', 'pecan@pie.org');

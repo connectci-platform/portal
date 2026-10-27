@@ -4,11 +4,9 @@ status: true
 dependencies:
   module:
     - access
-    - actions_permissions
 id: mcp_bot
 label: mcp-bot
 weight: 31
 is_admin: null
 permissions:
-  - 'execute node_assign_owner_action node'
   - 'use content assist api'

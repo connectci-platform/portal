@@ -15,7 +15,6 @@ module:
   access_news: 0
   access_outages: 0
   access_shortcodes: 0
-  action: 0
   actions_permissions: 0
   advanced_cors: 0
   advanced_email_validation: 0
@@ -66,7 +65,6 @@ module:
   easy_breadcrumb: 0
   editor: 0
   email_change_verification: 0
-  encrypt: 0
   entity_reference_revisions: 0
   environment_indicator: 0
   expandable_text: 0
@@ -151,7 +149,6 @@ module:
   pfdp: 0
   phpass: 0
   r4032login: 0
-  real_aes: 0
   realname: 0
   recurring_events: 0
   recurring_events_ical: 0
@@ -188,7 +185,6 @@ module:
   taxonomy_term_depth: 0
   telephone: 0
   text: 0
-  tfa: 0
   ticketing: 0
   token: 0
   token_views_filter: 0

@@ -25,7 +25,7 @@ vendor/bin/robo gh:pulldb           # Pull latest DB artifact from GitHub
 vendor/bin/robo gh:pullfiles        # Pull latest files artifact from GitHub
 vendor/bin/robo snap:create         # Create DB snapshot
 vendor/bin/robo snap:restore        # Restore DB snapshot
-vendor/bin/robo cypress <folder>    # Run Cypress E2E tests on folder: accessmatch1, accessmatch3, campuschampion, coco, crct, kyct, ondemand, accessmatch2, axe, ccmnet, connectci, greatplains, nect, pascience
+vendor/bin/robo cypress <folder>    # Run Cypress E2E tests on folder: accessmatch1, accessmatch3, campuschampions, coco, crct, kyct, ondemand, accessmatch2, axe, ccmnet, connectci, greatplains, nect, pascience
 
 # Run PHPCS on a specific module
 vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,inc,install,test,profile,theme,info,txt,md,yml docroot/modules/custom/access
@@ -42,6 +42,8 @@ composer patches-relock
 composer patches-repatch
 ```
 ## Writing Jira tickets
+
+Branch names map to Jira keys: branch `md-NNNN` is Jira ticket `D8-NNNN` (there is no `MD` project). View one with `acli jira workitem view D8-NNNN --fields '*all'`.
 
 When drafting a Jira ticket, structure the description with these sections:
 
