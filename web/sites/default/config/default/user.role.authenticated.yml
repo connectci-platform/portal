@@ -48,7 +48,6 @@ dependencies:
     - search
     - system
     - taxonomy
-    - tfa
     - webform
 _core:
   default_config_hash: dJ0L2DNSj5q6XVZAGsuVDpJTh5UeYkIPwKrUOOpr8YI
@@ -139,7 +138,6 @@ permissions:
   - 'revert access_news revisions'
   - 'revert all revisions'
   - 'search content'
-  - 'setup own tfa'
   - 'skip comment approval'
   - 'submit appverse repo'
   - 'unflag affinity_group'
