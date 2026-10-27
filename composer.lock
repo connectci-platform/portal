@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c8fbfa781d722454bc94bf2a56d5ad1e",
+    "content-hash": "561c65c786475f40069f8752b32c0a36",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -732,13 +732,12 @@
         },
         {
             "name": "connectci/campus-champions-theme",
-            "version": "dev-main",
+            "version": "dev-d8-2925",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "dacd054dfbbb94f280d4d80d78e832ab0e1e5dd0"
+                "reference": "7b649249cc14987b876ac84a694e5a70de9300d4"
             },
-            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "Apache License, Version 2.0"
@@ -754,7 +753,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-10-27T16:37:54+00:00"
+            "time": "2026-10-27T18:15:37+00:00"
         },
         {
             "name": "connectci/operations_cider",
@@ -4236,7 +4235,7 @@
                 "shasum": "96fb40cd181bce587bdffbb6388db1380e1a70a8"
             },
             "require": {
-                "drupal/core": "^9.1 || ^10"
+                "drupal/core": "^8 || ^9 || ^10 || ^11 || ^12"
             },
             "type": "drupal-module",
             "extra": {
@@ -8444,29 +8443,32 @@
         },
         {
             "name": "drupal/reroute_email",
-            "version": "2.2.1",
+            "version": "2.3.0-rc2",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/reroute_email.git",
-                "reference": "2.2.1"
+                "reference": "2.3.0-rc2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/reroute_email-2.2.1.zip",
-                "reference": "2.2.1",
-                "shasum": "4dd10cf981fb184cf075399a52dd24cfb2c2605e"
+                "url": "https://ftp.drupal.org/files/projects/reroute_email-2.3.0-rc2.zip",
+                "reference": "2.3.0-rc2",
+                "shasum": "ba990ebfcc62395c818775519ac4080a6eb2f544"
             },
             "require": {
-                "drupal/core": "^9.4 || ^10"
+                "drupal/core": "^10.2 || ^11"
+            },
+            "require-dev": {
+                "drupal/symfony_mailer": "^1.4"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.2.1",
-                    "datestamp": "1730150467",
+                    "version": "2.3.0-rc2",
+                    "datestamp": "1730150435",
                     "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
+                        "status": "not-covered",
+                        "message": "RC releases are not covered by Drupal security advisories."
                     }
                 }
             },
@@ -8476,24 +8478,24 @@
             ],
             "authors": [
                 {
-                    "name": "b-prod",
-                    "homepage": "https://www.drupal.org/user/407852"
+                    "name": "Khalid Baheyeldin",
+                    "homepage": "https://www.drupal.org/u/kbahey"
                 },
                 {
-                    "name": "bohart",
-                    "homepage": "https://www.drupal.org/user/289861"
+                    "name": "Devaraj Johnson",
+                    "homepage": "https://www.drupal.org/u/devaraj-johnson"
                 },
                 {
-                    "name": "Devaraj johnson",
-                    "homepage": "https://www.drupal.org/user/2698767"
+                    "name": "Randy Fay",
+                    "homepage": "https://www.drupal.org/u/rfay"
                 },
                 {
-                    "name": "dydave",
-                    "homepage": "https://www.drupal.org/user/467284"
+                    "name": "Bohdan Artemchuk",
+                    "homepage": "https://www.drupal.org/u/bohart"
                 },
                 {
-                    "name": "kbahey",
-                    "homepage": "https://www.drupal.org/user/4063"
+                    "name": "Pravin Gaikwad",
+                    "homepage": "https://www.drupal.org/u/rajeshreeputra"
                 },
                 {
                     "name": "rajeshreeputra",
