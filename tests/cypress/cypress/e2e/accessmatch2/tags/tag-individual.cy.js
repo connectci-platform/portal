@@ -13,6 +13,8 @@ describe("Verify the the community-outreach tag page", () => {
     checkSectionInterestedSkilled('.view-people-with-expertise-tags', 'expertise');
     checkSectionInterestedSkilled('.view-people-with-interest-tags', 'interest');
     checkSectionCILinks();
+    // Last, since it follows the link off the tag page
+    checkSectionEventsMoreLink('.view-id-recurring_events_event_instances', 'community-outreach');
 
     /////////////////////////////////////////////////////////////////////////
 
@@ -45,6 +47,40 @@ describe("Verify the the community-outreach tag page", () => {
             });
         }
       })
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+
+    // The footer link only renders when the block has results, so create an
+    // event on the tag first if it has no scheduled events.
+    function checkSectionEventsMoreLink(blockclass, tag) {
+      const expectedHref = '/events?f%5B0%5D=tags%3A' + tag;
+
+      // make sure the tag has an upcoming event so the link is rendered
+      cy.get('body').then(($body) => {
+        if ($body.text().includes('No events or trainings are currently scheduled.')) {
+          createEvents(tag);
+          cy.drupalLogout();
+          cy.visit("/tags/" + tag);
+        }
+      });
+
+      // check more button
+      cy.get(blockclass)
+        .contains('All Events with this tag')
+        .should('have.attr', 'href', expectedHref)
+        .click();
+
+      // the events page should have the tag facet applied
+      cy.location('pathname').should('eq', '/events');
+      cy.location('search').should('eq', '?f%5B0%5D=tags%3A' + tag);
+      cy.get('.views-row', { timeout: 20000 })
+        .should('have.length.gt', 0)
+        .each((row) => {
+          cy.wrap(row)
+            .find('a[href="/tags/' + tag + '"]')
+            .should('exist');
+        });
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -139,7 +175,8 @@ describe("Verify the the community-outreach tag page", () => {
 
     /////////////////////////////////////////////////////////////////////////
 
-    function createEvents() {
+    // tag is the tag's slug, e.g. community-outreach
+    function createEvents(tag) {
       // login user with the "authenticated" role
       cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
       cy.visit("/events/add");
@@ -148,6 +185,10 @@ describe("Verify the the community-outreach tag page", () => {
       cy.get("h1").contains("Create Community Event");
 
       //User filling out form title
+      cy.get(".field--name-body .ck-content").then((el) => {
+        el[0].ckeditorInstance.setData("Example event for the tag page tests.");
+      });
+      cy.get("#edit-summary-text").type("Example event summary.", { delay: 0 });
       cy.get("#edit-title-0-value").type("example-event", { delay: 0 });
 
       //Date and Time of Event
@@ -170,7 +211,7 @@ describe("Verify the the community-outreach tag page", () => {
       cy.get("#edit-field-registration-0-uri").type("https://example.com", { delay: 0 });
 
       //Event Tag
-      cy.get("#edit-field-tags-0-target-id").type("login (682)", { delay: 0 });
+      cy.get("details.tags summary").click().get("#tag-" + tag).click();
 
       //Save As Selection
       cy.get("#edit-moderation-state-0-state").select("Published");

@@ -447,7 +447,11 @@ final class ReviewDecisionApplier {
         return;
       }
       $step->set('moderation_state', $state);
-      // Read at runtime by hook_node_update(); it is not a field.
+      // Read at runtime by hook_node_update() and by
+      // ood_software_content_moderation_notification_mail_data_alter(); it is
+      // not a field. So an app passing through ready_for_review here also
+      // sends no contrib "New Appverse App submitted" email: the reviewer is
+      // changing a decision, not a contributor submitting the app.
       // @phpstan-ignore-next-line
       $step->_ood_software_suppress_notifications = TRUE;
       $this->saveRevision($step, $log);
@@ -564,7 +568,8 @@ final class ReviewDecisionApplier {
     return [
       'to' => $owner ? (string) $owner->getEmail() : '',
       // Without the reviewer's address, replies go to the site's.
-      'reply_to' => (string) ($this->reviewer($review)?->getEmail() ?: $this->configFactory->get('system.site')->get('mail')),
+      // Falls back to the Hub's address, not the active domain's (D8-2891).
+      'reply_to' => (string) ($this->reviewer($review)?->getEmail() ?: (_ood_software_mail_sender()[1] ?? $this->configFactory->get('system.site')->get('mail'))),
       'subject' => $rendered['subject'],
       'body' => $rendered['body'],
       'contributor' => $this->people($review, $repo)['contributor'],
@@ -649,8 +654,16 @@ final class ReviewDecisionApplier {
     ];
   }
 
+  /**
+   * The site name these emails are branded with (D8-2891).
+   *
+   * The Hub's own name, not the active domain's: under cron there is no
+   * request to negotiate a domain from, so ambient system.site resolves to
+   * the default domain and the subject and body read ACCESS Support.
+   */
   protected function siteName(): string {
-    return (string) $this->configFactory->get('system.site')->get('name');
+    [$name] = _ood_software_mail_sender();
+    return $name;
   }
 
   /**
@@ -660,8 +673,8 @@ final class ReviewDecisionApplier {
    */
   protected function links(NodeInterface $review, NodeInterface $repo): array {
     return [
-      'review' => Url::fromRoute('ood_software.review_page', ['node' => $review->id()], ['absolute' => TRUE])->toString(),
-      'hub' => Url::fromUserInput('/user/' . $repo->getOwnerId() . '/my-appverse', ['absolute' => TRUE])->toString(),
+      'review' => _ood_software_mail_url(Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString()),
+      'hub' => _ood_software_mail_url('/user/' . $repo->getOwnerId() . '/my-appverse'),
       'catalog' => _ood_software_repo_catalog_url($repo),
     ];
   }

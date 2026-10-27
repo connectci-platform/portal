@@ -20,6 +20,11 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * The guard test writes the dead domain.config.* name, which has no schema.
+   */
+  protected $strictConfigSchema = FALSE;
+
+  /**
    * {@inheritdoc}
    */
   protected static $modules = [
@@ -43,6 +48,12 @@ class RepoNotificationServiceTest extends KernelTestBase {
     'flag',
     // ood_software.review_seeder depends on file.repository.
     'file',
+    // _ood_software_mail_url() loads the Hub's domain record (D8-2891).
+    'domain',
+    // _ood_software_mail_sender() reads the Hub's system.site override
+    // through domain_config, whose language manager needs core's.
+    'language',
+    'domain_config',
     'ood_software',
   ];
 
@@ -67,6 +78,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
       'content_moderation',
       'workflows',
     ]);
+    // The site name is empty after installConfig(); mail bodies use it.
+    $this->config('system.site')->set('name', 'Test Site')->save();
 
     // The Repo bundle, its fields, and the appverse_editorial
     // workflow live in sites/default/config/default — not the module's
@@ -239,6 +252,43 @@ class RepoNotificationServiceTest extends KernelTestBase {
   }
 
   /**
+   * The OOD Hub's domain record, as _ood_software_mail_url() reads it.
+   *
+   * Mirrors domain.record.openondemand_cyberinfrastructure_org.yml.
+   */
+  protected function createHubDomain(): void {
+    $this->container->get('entity_type.manager')
+      ->getStorage('domain')
+      ->create([
+        'id' => 'openondemand_cyberinfrastructure_org',
+        'hostname' => 'openondemand.connectci.org',
+        'name' => 'Open OnDemand',
+        'scheme' => 'https',
+        'status' => TRUE,
+        'is_default' => FALSE,
+        'weight' => 15,
+      ])
+      ->save();
+  }
+
+  /**
+   * The Hub's system.site override, stored the way the site stores it.
+   *
+   * Domain 3.x keeps per-domain overrides in a config collection,
+   * domain.<domain id>, under the overridden name (config/default/domain/
+   * openondemand_cyberinfrastructure_org/system.site.yml), not under a
+   * domain.config.<id>.<name> key in the default collection.
+   */
+  protected function seedHubSiteOverride(): void {
+    $this->container->get('config.storage')
+      ->createCollection('domain.openondemand_cyberinfrastructure_org')
+      ->write('system.site', [
+        'name' => 'Open OnDemand Community Hub',
+        'mail' => 'info@mg.openondemand.org',
+      ]);
+  }
+
+  /**
    * Flatten a captured mail body (array of strings) for substring checks.
    *
    * @param array<string, mixed> $mail
@@ -268,6 +318,150 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertCount(1, $oodMails, 'Exactly one ood_software mail fires on ready_for_review.');
     $this->assertSame('admin@example.com', $oodMails[0]['to']);
     $this->assertStringContainsString('submitted for review', $oodMails[0]['subject']);
+  }
+
+  /**
+   * The sender is the OOD Hub, not whatever domain happens to be active.
+   *
+   * Under cron and drush there is no request to negotiate a domain from, so
+   * domain_config leaves system.site on the default domain and every Appverse
+   * mail went out branded with it (D8-2891). No active domain is set here,
+   * which is the cron case.
+   */
+  public function testMailIsSentAsTheOodHubWhateverDomainIsActive(): void {
+    // What domain_config would overlay on the OOD domain, and the unrelated
+    // ambient values a cron run actually resolves.
+    $this->seedHubSiteOverride();
+    $this->config('system.site')
+      ->set('name', 'ACCESS Support')
+      ->set('mail', 'noreply@mg.support.access-ci.org')
+      ->save();
+
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $this->assertSame(
+      'Open OnDemand Community Hub <info@mg.openondemand.org>',
+      $mails[0]['from'],
+      'The From is the OOD Hub, not the ambient default domain.',
+    );
+    $this->assertStringContainsString('[Open OnDemand Community Hub]', $mails[0]['subject']);
+    $this->assertStringNotContainsString('ACCESS Support', $mails[0]['subject']);
+    $this->assertStringNotContainsString('access-ci.org', (string) $mails[0]['from']);
+  }
+
+  /**
+   * Body links are built on the Hub's host (D8-2891).
+   *
+   * Url's 'absolute' option resolves against the current request and cron has
+   * none, so links came out on the default domain the same way the From did.
+   * _ood_software_mail_url() prefixes the Hub's own scheme and hostname from
+   * its domain record instead.
+   *
+   * A real domain entity is created here so the helper's actual path runs,
+   * rather than falling through its no-record branch.
+   */
+  public function testMailLinksAreBuiltOnTheHubHost(): void {
+    $this->createHubDomain();
+    $this->seedHubSiteOverride();
+    $this->config('system.site')
+      ->set('name', 'ACCESS Support')
+      ->set('mail', 'noreply@mg.support.access-ci.org')
+      ->save();
+
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $body = $this->mailBody($mails[0]);
+
+    $this->assertStringContainsString(
+      'https://openondemand.connectci.org/appverse/manage-repos?title=Test%20Repo',
+      $body,
+      'The queue link, filtered to the repo, is absolute on the Hub host.',
+    );
+    $this->assertStringNotContainsString('access-ci.org', $body);
+  }
+
+  /**
+   * Without the Hub's domain record, links are left as paths (D8-2891).
+   */
+  public function testMailLinksFallBackToPathsWithoutTheDomainRecord(): void {
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $body = $this->mailBody($mails[0]);
+
+    $this->assertStringContainsString('/appverse/manage-repos?title=Test%20Repo', $body);
+    $this->assertStringNotContainsString('access-ci.org', $body);
+  }
+
+  /**
+   * The pre-domain-3.x override name no longer brands the mail.
+   *
+   * The domain 2.x name, domain.config.<id>.system.site, is not read by
+   * anything now. Seeded alone, it must not stand in for the collection.
+   */
+  public function testTheOldOverrideNameDoesNotBrandTheMail(): void {
+    $this->config('domain.config.openondemand_cyberinfrastructure_org.system.site')
+      ->set('name', 'Open OnDemand Community Hub')
+      ->set('mail', 'info@mg.openondemand.org')
+      ->save();
+    $this->config('system.site')->set('name', 'ACCESS Support')->save();
+
+    $message = $this->buildOodSoftwareMail('ready_for_review', [
+      'node' => $this->createRepo((int) $this->createContributor()->id(), 'draft'),
+    ]);
+
+    $this->assertStringContainsString('[ACCESS Support]', (string) $message['subject']);
+    $this->assertArrayNotHasKey('from', $message);
+  }
+
+  /**
+   * Without the OOD override, the From is left to core rather than guessed.
+   */
+  public function testMailFallsBackToCoreWhenTheOodOverrideIsAbsent(): void {
+    $this->config('system.site')->set('name', 'Fallback Site')->save();
+
+    $admin = $this->createAdminUser('admin@example.com');
+    $contributor = $this->createContributor();
+    $node = $this->createRepo((int) $contributor->id(), 'draft');
+    $node->set('moderation_state', 'ready_for_review');
+    $node->setNewRevision(TRUE);
+    $node->save();
+
+    $mails = array_values(array_filter(
+      $this->drupalGetMails(),
+      static fn (array $m): bool => $m['module'] === 'ood_software',
+    ));
+    $this->assertCount(1, $mails);
+    $this->assertStringContainsString('[Fallback Site]', $mails[0]['subject']);
   }
 
   /**
@@ -323,8 +517,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     }
     $body = $this->mailBody($message);
     $this->assertStringContainsString('href="' . $repoUrl . '"', $body);
-    $this->assertStringContainsString('/appverse/manage-repos"', $body);
-    $this->assertStringNotContainsString($repoUrl . 'Review', $body, 'The repo URL must not run into the following word.');
+    $this->assertStringContainsString('/appverse/manage-repos?title=Test%20Repo&amp;moderation_state=All"', $body);
+    $this->assertStringNotContainsString($repoUrl . 'The repo', $body, 'The repo URL must not run into the following word.');
   }
 
   /**
@@ -491,7 +685,8 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $this->assertSame('owner@example.com', $oodMails[0]['to']);
     $this->assertStringContainsString('Your Repo is published', $oodMails[0]['subject']);
     $body = $this->mailBody($oodMails[0]);
-    $this->assertStringContainsString('/appverse/#/repo/', $body);
+    $this->assertStringContainsString('published to the Test Site catalog', $body);
+    $this->assertStringContainsString('/appverse#/repo/', $body);
   }
 
   /**
@@ -508,7 +703,7 @@ class RepoNotificationServiceTest extends KernelTestBase {
     $message = $this->buildOodSoftwareMail('published', ['node' => $node]);
 
     $body = $this->mailBody($message);
-    $this->assertMatchesRegularExpression('~href="[^"]*/appverse/#/repo/[^"]*"~', $body, 'The href attribute must point at the catalog repo path.');
+    $this->assertMatchesRegularExpression('~href="[^"]*/appverse#/repo/[^"]*"~', $body, 'The href attribute must point at the catalog repo path.');
   }
 
   /**

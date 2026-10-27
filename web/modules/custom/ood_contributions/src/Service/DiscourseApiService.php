@@ -2,6 +2,7 @@
 
 namespace Drupal\ood_contributions\Service;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
@@ -26,6 +27,13 @@ class DiscourseApiService {
   protected $logger;
 
   /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
    * The Discourse base URL.
    *
    * @var string
@@ -39,9 +47,12 @@ class DiscourseApiService {
    *   The HTTP client.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger factory.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The config factory, used to read the site timezone.
    */
-  public function __construct(ClientInterface $http_client, LoggerChannelFactoryInterface $logger_factory) {
+  public function __construct(ClientInterface $http_client, LoggerChannelFactoryInterface $logger_factory, ConfigFactoryInterface $config_factory) {
     $this->httpClient = $http_client;
+    $this->configFactory = $config_factory;
     $this->logger = $logger_factory->get('ood_contributions');
   }
 
@@ -78,6 +89,85 @@ class DiscourseApiService {
   }
 
   /**
+   * Fetches a Discourse user's activity summary.
+   *
+   * The /u/{name}.json endpoint has no user_summary key; only
+   * /u/{name}/summary.json does.
+   *
+   * @param string $username
+   *   The Discourse username.
+   *
+   * @return array<string, mixed>
+   *   A response envelope: ['error' => bool, 'data' => ..., 'message' => ...].
+   */
+  public function getUserSummary(string $username): array {
+    try {
+      $url = sprintf('%s/u/%s/summary.json', self::BASE_URL, urlencode($username));
+      $response = $this->makeRequest($url);
+
+      return [
+        'error' => FALSE,
+        'data' => $response,
+      ];
+    }
+    catch (\Exception $e) {
+      $this->logger->error('Failed to fetch Discourse user summary: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+
+      return [
+        'error' => TRUE,
+        'message' => $e->getMessage(),
+        'data' => NULL,
+      ];
+    }
+  }
+
+  /**
+   * Fetches site-wide statistics from /about.json.
+   *
+   * @return array<string, mixed>
+   *   A response envelope: ['error' => bool, 'data' => ..., 'message' => ...].
+   */
+  public function getSiteStats(): array {
+    try {
+      $response = $this->makeRequest(self::BASE_URL . '/about.json');
+
+      return [
+        'error' => FALSE,
+        'data' => $response,
+      ];
+    }
+    catch (\Exception $e) {
+      $this->logger->error('Failed to fetch Discourse site stats: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+
+      return [
+        'error' => TRUE,
+        'message' => $e->getMessage(),
+        'data' => NULL,
+      ];
+    }
+  }
+
+  /**
+   * Gets the site timezone.
+   *
+   * @return \DateTimeZone
+   *   The configured default timezone, or the PHP default as a fallback.
+   */
+  protected function getSiteTimezone(): \DateTimeZone {
+    $name = $this->configFactory->get('system.date')->get('timezone.default');
+    try {
+      return new \DateTimeZone($name ?: date_default_timezone_get());
+    }
+    catch (\Exception $e) {
+      return new \DateTimeZone('UTC');
+    }
+  }
+
+  /**
    * Fetches daily post statistics from Discourse.
    *
    * Uses the public /posts.json endpoint with pagination to aggregate
@@ -94,13 +184,16 @@ class DiscourseApiService {
   public function getDailyPostStats(string $start_date, string $end_date): array {
     try {
       $counts = [];
-      $start_dt = new \DateTime($start_date);
+      // Discourse timestamps are UTC, but the heatmap is bucketed by site
+      // (America/New_York) date, so build the window and bucket in site time.
+      $tz = $this->getSiteTimezone();
+      $start_dt = new \DateTime($start_date . ' 00:00:00', $tz);
       // A bare Y-m-d string parses to midnight (00:00:00). Without this, the
       // end-day boundary would reject every post made later than midnight on
       // $end_date (e.g. a 18:36 post is > the 00:00 end), so an incremental
       // run where start == end == today drops the whole day and records 0.
       // Extend to the end of the day so the full end date is inclusive.
-      $end_dt = new \DateTime($end_date);
+      $end_dt = new \DateTime($end_date . ' 00:00:00', $tz);
       $end_dt->setTime(23, 59, 59);
       $before_id = NULL;
       $page = 0;
@@ -133,6 +226,7 @@ class DiscourseApiService {
             continue;
           }
           $post_date = new \DateTime($post['created_at']);
+          $post_date->setTimezone($tz);
           $date_str = $post_date->format('Y-m-d');
 
           // Track the oldest post date on this page.

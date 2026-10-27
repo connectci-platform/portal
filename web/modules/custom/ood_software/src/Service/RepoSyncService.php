@@ -5,6 +5,7 @@ namespace Drupal\ood_software\Service;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\GitHubService;
@@ -23,11 +24,17 @@ class RepoSyncService {
 
   protected LoggerInterface $logger;
 
+  /**
+   * Whether saves are background writes that must not add revisions.
+   */
+  protected bool $background = FALSE;
+
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager,
     LoggerChannelFactoryInterface $loggerFactory,
     protected TimeInterface $time,
     protected GitHubService $githubService,
+    protected InPlaceSaver $inPlaceSaver,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -39,7 +46,7 @@ class RepoSyncService {
    *   GitHub repo URL (e.g., https://github.com/owner/name).
    * @param string|null $appverseYmlText
    *   The raw text of appverse.yml at repo root, or NULL if absent.
-   * @param array $repoMetadata
+   * @param array<string, mixed> $repoMetadata
    *   Metadata from GitHubService (organization name, description, default branch, etc.).
    *
    * @return \Drupal\node\NodeInterface
@@ -52,6 +59,47 @@ class RepoSyncService {
       return $this->applyDeclared($repo, $repoUrl, $appverseYmlText, $repoMetadata);
     }
     return $this->applyInferred($repo, $repoUrl, $repoMetadata);
+  }
+
+  /**
+   * Resolve the Repo for a cron pass, writing in place.
+   *
+   * Same work as resolveRepo(), but every save rewrites the revision it loaded
+   * instead of adding one, so a scheduled sync neither floods the revision
+   * table nor buries a pending forward revision of a published repo.
+   *
+   * @param string $repoUrl
+   *   GitHub repo URL.
+   * @param string|null $appverseYmlText
+   *   The raw text of appverse.yml at repo root, or NULL if absent.
+   * @param array<string, mixed> $repoMetadata
+   *   Metadata from GitHubService.
+   *
+   * @return \Drupal\node\NodeInterface
+   *   The Repo node.
+   */
+  public function resolveRepoInBackground(string $repoUrl, ?string $appverseYmlText, array $repoMetadata): NodeInterface {
+    $this->background = TRUE;
+    try {
+      return $this->resolveRepo($repoUrl, $appverseYmlText, $repoMetadata);
+    }
+    finally {
+      $this->background = FALSE;
+    }
+  }
+
+  /**
+   * Save a node the sync wrote.
+   *
+   * Background syncs save in place; attended ones (the add form, Resync) are
+   * editorial and make a revision as before.
+   */
+  protected function persist(NodeInterface $node): void {
+    if ($this->background) {
+      $this->inPlaceSaver->save($node);
+      return;
+    }
+    $node->save();
   }
 
   /**
@@ -83,6 +131,15 @@ class RepoSyncService {
 
   /**
    * Apply appverse.yml-derived metadata to a Repo node.
+   *
+   * @param \Drupal\node\NodeInterface|null $existing
+   *   The existing Repo, or NULL to create one.
+   * @param string $repoUrl
+   *   GitHub repo URL.
+   * @param string $appverseYmlText
+   *   The raw text of appverse.yml.
+   * @param array<string, mixed> $repoMetadata
+   *   Metadata from GitHubService.
    */
   protected function applyDeclared(?NodeInterface $existing, string $repoUrl, string $appverseYmlText, array $repoMetadata): NodeInterface {
     try {
@@ -98,7 +155,7 @@ class RepoSyncService {
         sprintf('appverse.yml: parse error — %s. Fix: validate YAML syntax at https://www.yamllint.com/', $this->sanitizeError($e->getMessage())),
       ]);
       $node->set('field_repo_last_synced', $this->time->getCurrentTime());
-      $node->save();
+      $this->persist($node);
       $this->logger->warning('Repo sync failed for @repo: malformed appverse.yml.', ['@repo' => $repoUrl]);
       return $node;
     }
@@ -111,7 +168,7 @@ class RepoSyncService {
         'appverse.yml: top-level must be a YAML mapping. Fix: ensure the file starts with `key: value` pairs, not a list or scalar.',
       ]);
       $node->set('field_repo_last_synced', $this->time->getCurrentTime());
-      $node->save();
+      $this->persist($node);
       return $node;
     }
 
@@ -125,7 +182,7 @@ class RepoSyncService {
         sprintf('appverse.yml: appverse.min_version = "%s" but this catalog supports up to "1.0". Fix: upgrade the catalog or lower min_version.', $minVersion),
       ]);
       $node->set('field_repo_last_synced', $this->time->getCurrentTime());
-      $node->save();
+      $this->persist($node);
       return $node;
     }
 
@@ -224,7 +281,7 @@ class RepoSyncService {
       ]);
     }
 
-    $node->save();
+    $this->persist($node);
     return $node;
   }
 
@@ -243,13 +300,13 @@ class RepoSyncService {
    *
    * @param \Drupal\node\NodeInterface $repo
    *   The parent Repo node (already saved).
-   * @param array $parsedRootYml
+   * @param array<string, mixed> $parsedRootYml
    *   The full parsed root appverse.yml.
    * @param array<string, array{manifestYml: ?string, appverseYml: ?string}> $subpathFiles
    *   Per-subpath manifest.yml + appverse.yml text, keyed by path.
    * @param string $repoUrl
    *   The Repo's repo URL.
-   * @param array $repoMetadata
+   * @param array<string, mixed> $repoMetadata
    *   Metadata from GitHubService (used to thread the repo owner down to
    *   applyDeclaredApp so per-app organization terms resolve from the
    *   GitHub owner rather than the per-app maintainer.name).
@@ -342,7 +399,7 @@ class RepoSyncService {
             '@repo' => $repoUrl,
           ]);
           $memberApp->set('moderation_state', 'archived');
-          $memberApp->save();
+          $this->persist($memberApp);
         }
       }
     }
@@ -376,15 +433,15 @@ class RepoSyncService {
    *
    * @param \Drupal\node\NodeInterface $repo
    *   The Repo node returned by resolveRepo() for this URL (already saved).
-   * @param array $parsedRootYml
+   * @param array<string, mixed> $parsedRootYml
    *   The full parsed root appverse.yml mapping.
-   * @param array $rootFiles
+   * @param array<string, mixed> $rootFiles
    *   Root manifest/appverse/readme text, in the same {manifestYml,
    *   appverseYml, readme} shape applyDeclaredApp expects for a subpath.
    *   Pass [] when none were fetched.
    * @param string $repoUrl
    *   Canonical GitHub repo URL.
-   * @param array $repoMetadata
+   * @param array<string, mixed> $repoMetadata
    *   Metadata from GitHubService (used for the organization term, etc.).
    *
    * @return \Drupal\node\NodeInterface
@@ -441,6 +498,10 @@ class RepoSyncService {
     else {
       $appNode = $this->entityTypeManager->getStorage('node')->create([
         'type' => 'appverse_app',
+        // Appverse lives on the Open OnDemand site. Domain 3.x only defaults
+        // this field on entity forms, and a sync run from drush or cron would
+        // otherwise get whichever domain happens to be active there.
+        'field_domain_access' => [SiteTools::DOMAIN_OPENONDEMAND],
         'field_appverse_github_url' => ['uri' => $repoUrl],
         'field_appverse_app_subpath' => '',
         // New apps land in 'draft' (mirrors resolveAppNode + createBlankRepo).
@@ -516,13 +577,13 @@ class RepoSyncService {
    *   The Repo node returned by resolveRepo() for this URL.
    * @param string $repoUrl
    *   Canonical GitHub repo URL.
-   * @param array $rootManifest
+   * @param array<string, mixed> $rootManifest
    *   Parsed root manifest.yml. Required: name. Optional: description, role,
    *   subcategory, license, licenseLink. Optional convenience: '_app_type_ids'
    *   (int[]) — the caller's resolved term IDs from
    *   GitHubService::getAppTypeIds(), since this method can't reach the
    *   GitHubService itself.
-   * @param array $repoMetadata
+   * @param array<string, mixed> $repoMetadata
    *   {name, description, organization, stars, lastCommittedDate, readme,
    *   licenseLink}. 'organization' is the raw GitHub owner login string;
    *   this method resolves it to a term ID via resolveOrganizationTerm().
@@ -541,7 +602,11 @@ class RepoSyncService {
       'field_appverse_repo' => $repo->id(),
     ]);
     $isNew = !$existing;
-    $app = $existing ? reset($existing) : Node::create(['type' => 'appverse_app']);
+    // Pinned to Open OnDemand for the same reason as applyDeclaredSingleApp().
+    $app = $existing ? reset($existing) : Node::create([
+      'type' => 'appverse_app',
+      'field_domain_access' => [SiteTools::DOMAIN_OPENONDEMAND],
+    ]);
 
     $title = $rootManifest['name']
       ?? ($repoMetadata['name'] ?? NULL)
@@ -596,7 +661,7 @@ class RepoSyncService {
       $app->set('moderation_state', 'draft');
     }
 
-    $app->save();
+    $this->persist($app);
     return $app;
   }
 
@@ -625,6 +690,8 @@ class RepoSyncService {
     }
     return $nodeStorage->create([
       'type' => 'appverse_app',
+      // Pinned to Open OnDemand for the same reason as applyDeclaredSingleApp().
+      'field_domain_access' => [SiteTools::DOMAIN_OPENONDEMAND],
       'title' => $subpath,
       'field_appverse_github_url' => ['uri' => $repoUrl],
       'field_appverse_app_subpath' => $subpath,
@@ -649,22 +716,22 @@ class RepoSyncService {
    *   The parent Repo/Repo node.
    * @param string $subpath
    *   The app's subpath within the repo ('' for a root single-app).
-   * @param array $files
+   * @param array<string, mixed> $files
    *   {manifestYml, appverseYml, readme} text for this subpath.
    * @param string $repoUrl
    *   Canonical GitHub repo URL.
-   * @param array $repoMetadata
+   * @param array<string, mixed> $repoMetadata
    *   Metadata from GitHubService (organization term, etc.).
-   * @param array|null $entry
+   * @param array<string, mixed>|null $entry
    *   The root-inline apps[] entry for this app (or the synthesized entry on
    *   the single-app path). Wins over the per-subpath appverse.yml.
-   * @param array|null $rootMaintainer
+   * @param array<string, mixed>|null $rootMaintainer
    *   The top-level `maintainer` mapping from the root appverse.yml, passed
    *   only by the multi-app applyDeclaredApps() path. When the app declares
    *   no `maintainer` of its own, the WHOLE root maintainer mapping is
    *   inherited; an app that declares its own maintainer always overrides.
    *   NULL (the single-app path / no repo maintainer) disables inheritance.
-   * @param array|null $sharedImplementationTags
+   * @param array<int|string, mixed>|null $sharedImplementationTags
    *   The root-level `shared_implementation_tags` list, passed only by the
    *   multi-app applyDeclaredApps() path. Each member app's effective
    *   implementation tags are the UNION of its own declared
@@ -895,7 +962,7 @@ class RepoSyncService {
         'App at @repo / @path rejected: missing required fields: @missing',
         ['@repo' => $repoUrl, '@path' => $subpath, '@missing' => implode(', ', $missing)]
       );
-      $app->save();
+      $this->persist($app);
       return;
     }
 
@@ -953,7 +1020,7 @@ class RepoSyncService {
       $app->set('field_appverse_readme', NULL);
     }
 
-    $app->save();
+    $this->persist($app);
   }
 
   /**
@@ -965,7 +1032,7 @@ class RepoSyncService {
    * @param string $subpath
    *   The apps[].path the error refers to. Used in the missing-key message
    *   so the editor knows which app row to edit.
-   * @param array $info
+   * @param array<string, mixed> $info
    *   The result of GitHubService::resolveSoftwareForApp() — used to pull
    *   the suggestion on fuzzy-match miss.
    */
@@ -1081,6 +1148,13 @@ class RepoSyncService {
 
   /**
    * Apply minimal repo-derived metadata to a Repo node when appverse.yml is absent.
+   *
+   * @param \Drupal\node\NodeInterface|null $existing
+   *   The existing Repo, or NULL to create one.
+   * @param string $repoUrl
+   *   GitHub repo URL.
+   * @param array<string, mixed> $repoMetadata
+   *   Metadata from GitHubService.
    */
   protected function applyInferred(?NodeInterface $existing, string $repoUrl, array $repoMetadata): NodeInterface {
     $node = $existing ?? $this->createBlankRepo($repoUrl);
@@ -1133,7 +1207,7 @@ class RepoSyncService {
       ]);
     }
 
-    $node->save();
+    $this->persist($node);
     return $node;
   }
 

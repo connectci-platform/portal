@@ -1,0 +1,41 @@
+name: (M) Program summary
+on:
+  workflow_dispatch:
+    inputs:
+      program:
+        description: 'Program to summarize'
+        type: choice
+        options:
+          - ACCESS
+          - OOD
+          - Champions
+          - CCMNet
+          - Connect.CI
+      from:
+        description: 'First day, YYYY-MM-DD'
+        required: true
+      to:
+        description: 'Last day, YYYY-MM-DD'
+        required: true
+permissions:
+  contents: read
+jobs:
+  summary:
+    name: Program summary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Summarize releases
+        run: |
+          php .github/scripts/release-notes/program-summary.php \
+            --program="$PROGRAM" --from="$FROM" --to="$TO" --out=program-summary.md
+          cat program-summary.md >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROGRAM: ${{ inputs.program }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: program-summary
+          path: program-summary.md

@@ -191,6 +191,11 @@ function ood_contributions_schema() {
         'default' => 0,
         'description' => 'Total number of solutions provided.',
       ],
+      'last_posted_at' => [
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Unix timestamp of the most recent Discourse post, if any.',
+      ],
     ],
     'primary key' => ['id'],
     'indexes' => [
@@ -331,3 +336,18 @@ function ood_contributions_update_10002() {
   }
 }
 
+/**
+ * Add last_posted_at column to ood_disc_contrib table.
+ */
+function ood_contributions_update_10003() {
+  $schema = \Drupal::database()->schema();
+  $table = 'ood_disc_contrib';
+
+  if ($schema->tableExists($table) && !$schema->fieldExists($table, 'last_posted_at')) {
+    $schema->addField($table, 'last_posted_at', [
+      'type' => 'int',
+      'not null' => FALSE,
+      'description' => 'Unix timestamp of the most recent Discourse post, if any.',
+    ]);
+  }
+}

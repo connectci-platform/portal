@@ -4,8 +4,12 @@
     Page Title,
     Header text,
     Form Functionality
+    The "My Events" page (/events/mine) listing and search for the events created here
 
 */
+
+// The exposed "Search My Events" title filter on /events/mine
+const MY_EVENTS_SEARCH = '[data-drupal-selector="edit-title"]';
 
 describe("Authenticated user tests the Events Form without Affinity Group", () => {
   it("Should test Events Form for authenticated user", () => {
@@ -147,5 +151,74 @@ describe("Authenticated user tests the Events Form without Affinity Group", () =
         from: 'noreply@mg.support.access-ci.org',
       });
     });
+  });
+
+  it("Should list the created events on My Events and filter them by title", () => {
+    // login as the user who created the events above
+    cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
+    cy.visit("/events/mine");
+
+    // Event instances may lag indexing after save, so retry until the row shows up
+    cy.get("h1").should("exist");
+    cy.contains("a", "cypress-example-event", { timeout: 15000 })
+      .should("have.attr", "href")
+      .and("match", /^\/events\//);
+
+    // A search with no matches leaves the view empty. The view defines no
+    // empty-state text, so assert that no event rows remain.
+    cy.get(MY_EVENTS_SEARCH).should("have.attr", "placeholder", "Search My Events");
+    cy.searchAndWait(MY_EVENTS_SEARCH, "Random string");
+    cy.contains("cypress-example-event").should("not.exist");
+    cy.get("table tbody tr").should("not.exist");
+
+    // Searching by title shows the event again
+    cy.clearSearchAndWait(MY_EVENTS_SEARCH);
+    cy.searchAndWait(MY_EVENTS_SEARCH, "example");
+    cy.contains("a", "cypress-example-event", { timeout: 15000 })
+      .should("have.attr", "href")
+      .and("match", /^\/events\//);
+  });
+
+  it("Should show an empty My Events page for a user who has created no events", () => {
+    // authenticated@amptesting.com only views events in the other specs
+    cy.loginAs("authenticated@amptesting.com", "6%l7iF}6(4tI");
+    cy.visit("/events/mine");
+
+    cy.get(MY_EVENTS_SEARCH).should("exist");
+    cy.contains("cypress-example-event").should("not.exist");
+    cy.contains("cypress anonymous test event").should("not.exist");
+    cy.get("table tbody tr").should("not.exist");
+  });
+
+  it("Should flag a missing Event Type on the field", () => {
+    cy.loginAs("administrator@amptesting.com", "b8QW]X9h7#5n");
+    cy.visit("/events/add");
+
+    // Skip the browser's own required-field checks so the server-side
+    // validation is what gets exercised. (events.js preselects a Recur Type,
+    // so only Event Type is left empty here.)
+    cy.get("#eventseries-default-add-form").invoke("attr", "novalidate", "novalidate");
+    cy.get("#edit-title-0-value").type("cypress missing event type", { delay: 0 });
+    cy.get("#edit-submit").click();
+
+    // Summary at the top names the field.
+    cy.get(".messages--error").should("contain", "Event Type field is required.");
+
+    // The group is marked on the field and points at its inline error.
+    const fieldset = "#edit-field-event-type--wrapper";
+    cy.get(fieldset)
+      .should("have.attr", "role", "radiogroup")
+      .and("have.attr", "aria-required", "true")
+      .and("have.attr", "aria-invalid", "true")
+      .and("not.have.attr", "required");
+    cy.get(fieldset).find('input[type="radio"]').each(($radio) => {
+      cy.wrap($radio).should("have.attr", "aria-invalid", "true");
+    });
+    cy.get(fieldset)
+      .invoke("attr", "aria-describedby")
+      .then((describedBy) => {
+        const errorId = describedBy.split(" ").find((id) => id.endsWith("--error"));
+        cy.get(`${fieldset} [id="${errorId}"]`).should("have.text", "Event Type field is required.");
+      });
   });
 });

@@ -2,6 +2,8 @@
 
 namespace Drupal\ood_contributions\Service;
 
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -15,6 +17,24 @@ class DiscourseStatsService {
    * UUID of the Discourse contribution graph block.
    */
   const BLOCK_UUID = '61be2908-7646-484a-9877-f60266521aef';
+
+  /**
+   * Days before the latest stored date that every run re-fetches.
+   *
+   * Today's count grows through the day, and recent days can gain posts
+   * after being stored, so each run re-counts a trailing window.
+   */
+  const REFETCH_DAYS = 2;
+
+  /**
+   * Minimum posts_30_days reported by Discourse before a stall is judged.
+   */
+  const STALL_MIN_POSTS = 5;
+
+  /**
+   * Stored/Discourse ratio below which the daily counts are considered stalled.
+   */
+  const STALL_MIN_RATIO = 0.25;
 
   /**
    * The database connection.
@@ -45,6 +65,20 @@ class DiscourseStatsService {
   protected $logger;
 
   /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * Constructs a DiscourseStatsService object.
    *
    * @param \Drupal\Core\Database\Connection $database
@@ -55,8 +89,14 @@ class DiscourseStatsService {
    *   The entity type manager.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger factory.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The config factory, used to read the site timezone.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    */
-  public function __construct(Connection $database, DiscourseApiService $discourse_api, EntityTypeManagerInterface $entity_type_manager, LoggerChannelFactoryInterface $logger_factory) {
+  public function __construct(Connection $database, DiscourseApiService $discourse_api, EntityTypeManagerInterface $entity_type_manager, LoggerChannelFactoryInterface $logger_factory, ConfigFactoryInterface $config_factory, TimeInterface $time) {
+    $this->configFactory = $config_factory;
+    $this->time = $time;
     $this->database = $database;
     $this->discourseApi = $discourse_api;
     $this->entityTypeManager = $entity_type_manager;
@@ -64,37 +104,97 @@ class DiscourseStatsService {
   }
 
   /**
+   * Checks that a string is a real YYYY-MM-DD calendar date.
+   *
+   * @param string $date
+   *   The candidate date.
+   *
+   * @return bool
+   *   TRUE if the string is strictly YYYY-MM-DD and exists on the calendar.
+   */
+  public static function isValidDate(string $date): bool {
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m)) {
+      return FALSE;
+    }
+    return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+  }
+
+  /**
+   * Gets the site timezone.
+   *
+   * @return \DateTimeZone
+   *   The configured default timezone, or the PHP default as a fallback.
+   */
+  protected function getSiteTimezone(): \DateTimeZone {
+    $name = $this->configFactory->get('system.date')->get('timezone.default');
+    try {
+      return new \DateTimeZone($name ?: date_default_timezone_get());
+    }
+    catch (\Exception $e) {
+      return new \DateTimeZone('UTC');
+    }
+  }
+
+  /**
+   * Gets the current time in the site timezone.
+   *
+   * @return \DateTimeImmutable
+   *   Now, in site time.
+   */
+  protected function now(): \DateTimeImmutable {
+    return (new \DateTimeImmutable('@' . $this->time->getRequestTime()))
+      ->setTimezone($this->getSiteTimezone());
+  }
+
+  /**
    * Updates daily post statistics.
    *
-   * Fetches 365 days on first run, then only fetches from last known date.
+   * Fetches 365 days on first run. After that every run re-fetches from
+   * REFETCH_DAYS before the latest stored date through today, so today and
+   * recent days are re-counted. Storing uses merge(), so this is idempotent.
    *
-   * @return array
+   * @param string|null $since
+   *   Optional YYYY-MM-DD start date that overrides the computed start.
+   *
+   * @return array{success: bool, message: string}
    *   Array with 'success' boolean and 'message' string.
    */
-  public function updateDailyPostStats(): array {
+  public function updateDailyPostStats(?string $since = NULL): array {
     try {
-      // Determine date range to fetch
-      $last_date = $this->getLatestPostDate();
-      $end_date = date('Y-m-d');
+      $now = $this->now();
+      $end_date = $now->format('Y-m-d');
 
-      if ($last_date) {
-        // Fetch from the day after the last known date
-        $start_date = date('Y-m-d', strtotime($last_date . ' +1 day'));
+      if ($since !== NULL) {
+        if (!self::isValidDate($since)) {
+          throw new \InvalidArgumentException('The start date must be a valid date in YYYY-MM-DD format.');
+        }
+        $start_date = $since;
+        $this->logger->info('Fetching Discourse stats from @start to @end (explicit start)', [
+          '@start' => $start_date,
+          '@end' => $end_date,
+        ]);
+      }
+      elseif ($last_date = $this->getLatestPostDate()) {
+        // Re-fetch a trailing window, not just the day after the last row.
+        // Otherwise a day written at 00:30 is never updated again.
+        $start_date = (new \DateTimeImmutable($last_date . ' 00:00:00', $this->getSiteTimezone()))
+          ->modify('-' . self::REFETCH_DAYS . ' days')
+          ->format('Y-m-d');
         $this->logger->info('Fetching Discourse stats from @start to @end', [
           '@start' => $start_date,
           '@end' => $end_date,
         ]);
       }
       else {
-        // First run: fetch last 365 days
-        $start_date = date('Y-m-d', strtotime('-365 days'));
+        // First run: fetch last 365 days.
+        $start_date = $now->modify('-365 days')->format('Y-m-d');
         $this->logger->info('First run: Fetching Discourse stats for last 365 days (from @start to @end)', [
           '@start' => $start_date,
           '@end' => $end_date,
         ]);
       }
 
-      // Don't fetch if we're already up to date
+      // A start date in the future has nothing to fetch.
       if ($start_date > $end_date) {
         return [
           'success' => TRUE,
@@ -102,14 +202,15 @@ class DiscourseStatsService {
         ];
       }
 
-      // Fetch data from Discourse API
+      // Fetch data from Discourse API. Nothing is stored on failure, so the
+      // cursor (latest stored date) cannot advance.
       $result = $this->discourseApi->getDailyPostStats($start_date, $end_date);
 
       if ($result['error']) {
         throw new \Exception($result['message']);
       }
 
-      // Process and store the data
+      // Process and store the data.
       $data = $result['data'];
       $stored_count = $this->storeDailyStats($data);
 
@@ -128,6 +229,59 @@ class DiscourseStatsService {
         'message' => $e->getMessage(),
       ];
     }
+  }
+
+  /**
+   * Checks whether the stored daily counts have stalled.
+   *
+   * Compares Discourse's own 30-day post count (/about.json) with the sum of
+   * the stored daily counts over the same window.
+   *
+   * Baseline: anonymous /posts.json sees only about 55-60% of what
+   * about.json counts (Oct 2026: 7d 6/11, 30d 48/82), because about.json
+   * includes posts that anonymous users cannot see. A healthy sync therefore
+   * sits near 0.6, so the 0.25 threshold leaves wide margin. Do not raise it
+   * toward 1.0 or this will alert constantly.
+   *
+   * Why not a plain "no posts in N days" check: it cannot tell a stall from
+   * a quiet week, while comparing against Discourse's own count can.
+   *
+   * @return string|null
+   *   An alert message, or NULL when everything looks fine (or when there is
+   *   too little activity, or the comparison could not be made).
+   */
+  public function checkStall(): ?string {
+    $result = $this->discourseApi->getSiteStats();
+    if (!empty($result['error'])) {
+      $this->logger->warning('Discourse stall check skipped: could not fetch /about.json.');
+      return NULL;
+    }
+
+    $discourse = $result['data']['about']['stats']['posts_30_days'] ?? NULL;
+    if (!is_numeric($discourse)) {
+      $this->logger->warning('Discourse stall check skipped: posts_30_days missing from /about.json.');
+      return NULL;
+    }
+    $discourse = (int) $discourse;
+    if ($discourse < self::STALL_MIN_POSTS) {
+      return NULL;
+    }
+
+    $end = $this->now();
+    $start = $end->modify('-30 days');
+    $stored = (int) array_sum(array_column(
+      $this->getDailyStats($start->format('Y-m-d'), $end->format('Y-m-d')),
+      'post_count'
+    ));
+
+    if ($stored === 0) {
+      return sprintf('Discourse reports %d posts in the last 30 days, but the stored daily counts total 0. The daily post sync appears to be stalled.', $discourse);
+    }
+    $ratio = $stored / $discourse;
+    if ($ratio < self::STALL_MIN_RATIO) {
+      return sprintf('Discourse reports %d posts in the last 30 days, but the stored daily counts total only %d (%d%%, expected about 55-60%%). The daily post sync appears to be stalled.', $discourse, $stored, (int) round($ratio * 100));
+    }
+    return NULL;
   }
 
   /**
@@ -154,13 +308,13 @@ class DiscourseStatsService {
         continue;
       }
 
-      // Convert timestamp to date
+      // Convert timestamp to date.
       $date = date('Y-m-d', strtotime($entry['x']));
       $post_count = (int) $entry['y'];
 
-      // Use UPSERT to handle duplicates
+      // Use UPSERT to handle duplicates.
       $this->database->merge('ood_disc_daily_posts')
-        ->key(['post_date' => $date])
+        ->key('post_date', $date)
         ->fields([
           'post_count' => $post_count,
           'last_updated' => time(),

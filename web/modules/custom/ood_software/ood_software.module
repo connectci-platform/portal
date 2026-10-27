@@ -11,19 +11,31 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\access_misc\Plugin\Util\SiteTools;
 use Drupal\Component\Serialization\Yaml;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Component\Utility\Xss;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\DecisionEmail;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
+
+/**
+ * The domain Appverse belongs to: the Open OnDemand Community Hub.
+ *
+ * Its system.site override (the domain.<id> config collection that domain 3.x
+ * keeps per-domain overrides in) names the Hub and its address, which
+ * Appverse mail is sent as whatever domain happens to be active (D8-2891).
+ */
+const OOD_SOFTWARE_HUB_DOMAIN = 'openondemand_cyberinfrastructure_org';
 
 /**
  * Implements hook_theme().
@@ -38,6 +50,7 @@ function ood_software_theme(): array {
         'empty_message' => NULL,
         'scrollable' => TRUE,
         'block_class' => $block_class,
+        'shuffle' => FALSE,
       ],
       'template' => 'people-grid-block',
     ];
@@ -50,6 +63,7 @@ function ood_software_theme(): array {
     'ag_coordinators_block' => $people_grid('ag-coordinators-block'),
     'good_conference_committee_block' => $people_grid('good-committee-block'),
     'tips_tricks_calls_block' => $people_grid('tips-tricks-block'),
+    'app_reviewers_block' => $people_grid('app-reviewers-block'),
     'appverse_hub' => [
       'variables' => ['hub' => []],
       'template' => 'appverse-hub',
@@ -1196,8 +1210,9 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
  * A repo awaiting review keeps its moderation state until a reviewer moves
  * it: a contributor cannot change it while it is ready_for_review, from the
  * edit form or a JSON:API PATCH (appverse-planning#41). The edit form's own
- * alter drops Draft from the widget, but JSON:API is writable on this site
- * and checks field access, not the form. The hub's Withdraw sets the state in
+ * alter drops Draft from the widget, but API writes check field access, not
+ * the form. JSON:API is read-only (D8-2832); this guard stays as defense in
+ * depth for any other write path. The hub's Withdraw sets the state in
  * code, so this does not stop it.
  *
  * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface>|null $items
@@ -1291,6 +1306,22 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
   }
 
   return $access;
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+function ood_software_node_presave(NodeInterface $node): void {
+  // The field's add_current_domain setting only runs through the form widget.
+  // RepoSyncService creates apps programmatically, often from cron or a queue
+  // where there is no current domain, so they were saved with no domain at all
+  // and never showed on the OOD site (D8-2888). Fill an empty value only; an
+  // app an editor assigned elsewhere keeps exactly what they chose.
+  if ($node->bundle() === 'appverse_app'
+    && $node->hasField('field_domain_access')
+    && $node->get('field_domain_access')->isEmpty()) {
+    $node->set('field_domain_access', [SiteTools::DOMAIN_OPENONDEMAND]);
+  }
 }
 
 /**
@@ -1479,12 +1510,102 @@ function _ood_software_previous_moderation_state(NodeInterface $node): ?string {
  * contrib config; Repo-bundle transitions notify via our
  * RepoNotificationService (see ood_software_node_update).
  *
+ * Also suppress it for any node saved with the runtime flag
+ * _ood_software_suppress_notifications, such as an app the repair command
+ * moves to ready_for_review. Every recipient the contrib module collects
+ * (author, roles, ad hoc addresses, user fields) is in $data['to'], and it
+ * sends nothing, not even to the site address, when that list is empty.
+ *
  * @param array<string, mixed> $data
  */
 function ood_software_content_moderation_notification_mail_data_alter(EntityInterface $entity, array &$data): void {
-  if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'appverse_repo') {
+  if ($entity->getEntityTypeId() !== 'node') {
+    return;
+  }
+  if ($entity->bundle() === 'appverse_repo' || !empty($entity->_ood_software_suppress_notifications)) {
     $data['to'] = [];
   }
+}
+
+/**
+ * The name and address Appverse mail is sent as (D8-2891).
+ *
+ * The OOD Hub's own system.site override, read directly rather than through
+ * the active domain: under cron and drush there is no request to negotiate
+ * from, so the active domain is the default one and the overlay would give
+ * another site's branding.
+ *
+ * domain 3.x (D8-2770) stores each domain's overrides in a config collection,
+ * domain.<domain id>, under the overridden name: here domain.openondemand_
+ * cyberinfrastructure_org / system.site, synced from config/default/domain/
+ * <domain id>/system.site.yml. domain_config's getOverride() reads exactly
+ * that, without consulting the active domain. The domain 2.x name,
+ * domain.config.<domain id>.system.site, is not read by anything any more.
+ *
+ * Falls back to the resolved system.site when the OOD override is absent,
+ * which is what a site without this domain, or without domain_config, gets.
+ *
+ * @return array{0: string, 1: string|null}
+ *   The site name, and the address, or NULL to leave the From to core.
+ */
+function _ood_software_mail_sender(): array {
+  $name = '';
+  $mail = NULL;
+  if (\Drupal::hasService('domain.config_factory_override')) {
+    $ood = \Drupal::service('domain.config_factory_override')
+      ->getOverride(OOD_SOFTWARE_HUB_DOMAIN, 'system.site');
+    $name = (string) ($ood->get('name') ?? '');
+    $mail = $ood->get('mail');
+  }
+  if ($name !== '' && !empty($mail)) {
+    return [$name, (string) $mail];
+  }
+  $site = \Drupal::config('system.site');
+  return [(string) ($site->get('name') ?? ''), NULL];
+}
+
+/**
+ * An absolute Appverse mail link on the OOD Hub (D8-2891).
+ *
+ * Appverse is an Open OnDemand Community Hub feature, so these links always
+ * belong on the Hub whatever domain is active. Url's 'absolute' option
+ * resolves against the current request, and cron has none, so links came out
+ * on the default domain (support.access-ci.org) the same way the From did.
+ *
+ * The Hub's base is read off its domain record, which carries its own scheme
+ * and hostname and needs no request. Note that passing 'base_url' as a Url
+ * option is not enough: UnroutedUrlAssembler ignores it entirely, so an
+ * unrouted path would silently keep the request's host.
+ *
+ * @param string $path
+ *   A root-relative path, starting with /.
+ *
+ * @return string
+ *   The absolute URL, or the path unchanged when the domain record is absent,
+ *   which is what a site without this domain gets.
+ */
+function _ood_software_mail_url(string $path): string {
+  // domain_source's outbound path processor sets absolute on routes carrying a
+  // content entity whose field_domain_source differs from the active domain.
+  // No Appverse bundle has that field today, but if one gains it, toString()
+  // would already return an absolute URL and prefixing would double the host.
+  if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+    return $path;
+  }
+  try {
+    $domain = \Drupal::entityTypeManager()
+      ->getStorage('domain')
+      ->load(OOD_SOFTWARE_HUB_DOMAIN);
+  }
+  catch (\Exception $e) {
+    $domain = NULL;
+  }
+  if (!$domain instanceof \Drupal\domain\DomainInterface) {
+    return $path;
+  }
+  // Scheme and hostname come off the record, with no request involved. This
+  // is what Domain::getRawPath() returns, which DomainInterface lacks.
+  return rtrim($domain->getScheme() . $domain->getHostname(), '/') . $path;
 }
 
 /**
@@ -1493,18 +1614,27 @@ function ood_software_content_moderation_notification_mail_data_alter(EntityInte
  * Renders moderation transition emails for appverse_repo nodes.
  * Dispatched by RepoNotificationService from ood_software_node_update.
  *
- * The From and site_name come from \Drupal::config('system.site'), which
- * domain_config overlays with per-domain values at runtime — so a
- * transition fired under the OOD domain context uses OOD's overrides;
- * other domains fall back gracefully. We do NOT set $message['from']
- * explicitly — MailManager handles that from system.site.mail.
+ * Appverse is an Open OnDemand Community Hub feature, so these mails carry
+ * the OOD Hub's name and address whatever domain is active (D8-2891).
+ *
+ * domain_config overlays system.site per domain, which is right under a
+ * browser request on the OOD domain and wrong everywhere else: cron and drush
+ * have no request to negotiate from, so the active domain falls back to the
+ * default (support.access-ci.org) and every cron-sent Appverse mail went out
+ * branded ACCESS Support. Under domain 3.x, setActiveDomain() would switch the
+ * system.site override, but these mails read the OOD override directly from
+ * its domain.<domain id> config collection instead, so they neither depend on
+ * nor disturb the active domain (see _ood_software_mail_sender()).
  *
  * @param array<string, mixed> $message
  * @param array<string, mixed> $params
  */
 function ood_software_mail(string $key, array &$message, array $params): void {
-  $site = \Drupal::config('system.site');
-  $site_name = $site->get('name');
+  [$site_name, $site_mail] = _ood_software_mail_sender();
+  if ($site_mail !== NULL) {
+    $message['from'] = $site_name !== '' ? $site_name . ' <' . $site_mail . '>' : $site_mail;
+    $message['headers']['From'] = $message['from'];
+  }
   $node = $params['node'] ?? NULL;
   if (!$node instanceof NodeInterface) {
     return;
@@ -1518,7 +1648,6 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       $repo = $node->hasField('field_repo_url') && !$node->get('field_repo_url')->isEmpty()
         ? ($node->get('field_repo_url')->first()->getValue()['uri'] ?? '')
         : '';
-      $admin_queue = \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString();
       $message['subject'] = t('[@site] Repo submitted for review: @title', [
         '@site' => $site_name,
         '@title' => $title,
@@ -1533,7 +1662,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         // attribute and escapes it for the visible link text.
         $message['body'][] = t('<p>Repository: <a href=":repo">:repo</a></p>', [':repo' => $repo]);
       }
-      $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [':url' => $admin_queue]);
+      $message['body'][] = _ood_software_review_link($node);
       break;
 
     // The reviewers' emails from the canvas (appverse-planning#47).
@@ -1551,18 +1680,18 @@ function ood_software_mail(string $key, array &$message, array $params): void {
           '@title' => $title,
           '@site' => $site_name,
         ]);
-      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [':url' => _ood_software_review_url($node)]);
+      $message['body'][] = _ood_software_review_link($node);
       break;
 
     case 'review_run_ready':
       $message['subject'] = t('[@site] AI report ready: @title', ['@site' => $site_name, '@title' => $title]);
       $message['body'][] = t('<p>The AI report for "@title" is ready to check.</p>', ['@title' => $title]);
       $review = $params['review'] ?? NULL;
-      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [
-        ':url' => $review instanceof NodeInterface
-          ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $review->id()], ['absolute' => TRUE])->toString()
-          : _ood_software_review_url($node),
-      ]);
+      $message['body'][] = $review instanceof NodeInterface
+        ? t('<p>The review: <a href=":url">:url</a></p>', [
+          ':url' => _ood_software_mail_url(\Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $review->id()])->toString()),
+        ])
+        : _ood_software_review_link($node);
       break;
 
     case 'review_run_failed':
@@ -1574,15 +1703,13 @@ function ood_software_mail(string $key, array &$message, array $params): void {
           ':url' => sprintf('https://github.com/%s/actions/runs/%d', \Drupal\ood_software\Service\AppverseReviewService::REVIEW_REPO, (int) $params['run_id']),
         ]);
       }
-      $message['body'][] = t('<p>The repo in the review queue: <a href=":url">:url</a></p>', [
-        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString(),
-      ]);
+      $message['body'][] = _ood_software_review_link($node);
       break;
 
     case 'review_assigned':
       $message['subject'] = t('[@site] You are assigned to review: @title', ['@site' => $site_name, '@title' => $title]);
       $message['body'][] = t('<p>You are assigned to review "@title".</p>', ['@title' => $title]);
-      $message['body'][] = t('<p>The review: <a href=":url">:url</a></p>', [':url' => _ood_software_review_url($node)]);
+      $message['body'][] = _ood_software_review_link($node);
       break;
 
     case 'review_update':
@@ -1591,9 +1718,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         '@title' => $title,
         '@tag' => (string) ($params['tag'] ?? ''),
       ]);
-      $message['body'][] = t('<p>Review queue: <a href=":url">:url</a></p>', [
-        ':url' => \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString(),
-      ]);
+      $message['body'][] = _ood_software_review_link($node);
       break;
 
     case 'needs_adjustment':
@@ -1620,7 +1745,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
         }
       }
       $hub_link = $node->getOwnerId()
-        ? \Drupal\Core\Url::fromUserInput('/user/' . $node->getOwnerId() . '/my-appverse', ['absolute' => TRUE])->toString()
+        ? _ood_software_mail_url('/user/' . $node->getOwnerId() . '/my-appverse')
         : '';
       $message['subject'] = t('[@site] Changes requested on your Repo: @title', [
         '@site' => $site_name,
@@ -1673,10 +1798,17 @@ function ood_software_mail(string $key, array &$message, array $params): void {
 /**
  * The review page for a repo: its newest review, or the queue before one.
  *
- * /appverse/review/{repo id} goes to the repo's newest review, and is a 404
- * while it has none.
+ * /appverse/review/{repo id} goes to the repo's newest review at click time,
+ * and is a 404 while it has none. Before a review exists, the link is the
+ * review queue (view my_appverse) filtered to the repo by its title exposed
+ * filter, which matches on "contains", and by every moderation state, so the
+ * repo shows whatever state it is in by the time the link is clicked.
+ *
+ * @return array{url: string, review: bool}
+ *   The absolute mail URL, and whether it is the repo's review (TRUE) or the
+ *   filtered queue (FALSE).
  */
-function _ood_software_review_url(NodeInterface $repo): string {
+function _ood_software_review_target(NodeInterface $repo): array {
   $hasReview = isset(\Drupal::service('entity_field.manager')->getFieldMap()['node']['field_arv_repo'])
     && (bool) \Drupal::entityQuery('node')
     ->accessCheck(FALSE)
@@ -1684,9 +1816,25 @@ function _ood_software_review_url(NodeInterface $repo): string {
     ->condition('field_arv_repo', $repo->id())
     ->count()
     ->execute();
-  return $hasReview
-    ? \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $repo->id()], ['absolute' => TRUE])->toString()
-    : \Drupal\Core\Url::fromUserInput('/appverse/manage-repos', ['absolute' => TRUE])->toString();
+  return [
+    'url' => $hasReview
+      ? _ood_software_mail_url(\Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $repo->id()])->toString())
+      : _ood_software_mail_url('/appverse/manage-repos?' . UrlHelper::buildQuery(['title' => (string) $repo->label(), 'moderation_state' => 'All'])),
+    'review' => $hasReview,
+  ];
+}
+
+/**
+ * The mail paragraph linking to a repo's review, labeled for where it goes.
+ *
+ * Review nodes exist only once a run's results are imported, so at
+ * submission the link is almost always the queue, and is not called a review.
+ */
+function _ood_software_review_link(NodeInterface $repo): TranslatableMarkup {
+  $target = _ood_software_review_target($repo);
+  return $target['review']
+    ? t('<p>The review: <a href=":url">:url</a></p>', [':url' => $target['url']])
+    : t('<p>The repo in the review queue: <a href=":url">:url</a></p>', [':url' => $target['url']]);
 }
 
 /**
@@ -1713,8 +1861,9 @@ function _ood_software_repo_catalog_url(NodeInterface $node): string {
   if ($slug === '') {
     $slug = (string) $node->id();
   }
-  return \Drupal\Core\Url::fromUserInput('/appverse/#/repo/' . $slug, ['absolute' => TRUE])
-    ->toString();
+  // No slash before the fragment: Url::fromUserInput() used to normalise it
+  // away, and the hub's own links are /appverse#/repo/<slug>.
+  return _ood_software_mail_url('/appverse#/repo/' . $slug);
 }
 
 /**
@@ -1742,7 +1891,6 @@ function ood_software_metatags_alter(array &$metatags, array &$context): void {
 
   if ($logo_url) {
     $metatags['og_image'] = $logo_url;
-    $metatags['og_image_url'] = $logo_url;
   }
 }
 

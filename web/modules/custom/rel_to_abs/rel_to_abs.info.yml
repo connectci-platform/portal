@@ -1,0 +1,7 @@
+name: 'Relative to Absolute URLs'
+type: module
+description: 'Text format filter that converts root-relative URLs to absolute URLs. Replaces the drupal/rel_to_abs contrib project (no Drupal 11 release); keeps its machine name and filter id so existing text formats need no config changes.'
+core_version_requirement: ^10.3 || ^11
+package: Custom
+dependencies:
+  - drupal:filter

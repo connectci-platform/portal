@@ -75,6 +75,7 @@ class AffinityGroupCoordinatorsBlock extends BlockBase implements ContainerFacto
     return [
       '#theme' => 'ag_coordinators_block',
       '#items' => $coordinators,
+      '#shuffle' => TRUE,
       '#cache' => [
         'max-age' => 3600,
       ],

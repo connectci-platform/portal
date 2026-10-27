@@ -143,8 +143,8 @@ describe('Queued event notices send with the ccmnet domain identity (D8-2835)', 
       // block is only placed in the aspTheme/ood themes
       // (block.block.asptheme_eventinstancesidebar.yml /
       // block.block.ood_eventinstancesidebar.yml) — ccmnet_org runs the
-      // "nect" theme (domain_theme_switch.settings.yml:
-      // ccmnet_org_site: nect), which has no such block, so there is no
+      // "nect" theme (config/default/domain/ccmnet_org/system.theme.yml:
+      // default: nect), which has no such block, so there is no
       // UI path to register on a ccmnet event page. The registration UI
       // itself is not what D8-2835 is about, so create the Registrant
       // directly, the same way sibling specs manipulate event/registrant

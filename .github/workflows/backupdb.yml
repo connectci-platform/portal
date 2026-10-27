@@ -54,15 +54,13 @@ jobs:
           # name + organization, so they are no longer created bare here.
           ddev drush en amp_dev
           ddev drush pmu amp_dev
-          ddev drush pmu symfony_mailer
-          ddev drush en symfony_mailer
           ddev drush cr
           ddev export-db --gzip --file=site.sql.gz
         env:
           gh_token: ${{ secrets.GH_TOKEN_REPO }}
 
       - name: 'Upload Backup Artifact'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: amp-daily-backup
           path: site.sql.gz

@@ -4,6 +4,8 @@
  * @file
  */
 
+use Drupal\ood_contributions\Plugin\CronManager;
+
 
 /**
  * Create the Contributor Wall page node with layout builder sections.
@@ -533,6 +535,10 @@ function _ood_contributions_create_badge_terms() {
       'name' => 'Tips & Tricks',
       'description' => 'Presented or assisted with the monthly Tips &amp; Tricks Call, where the community shares best practices of all things Open OnDemand.<br><br>See: <a href="https://openondemand.connectci.org/events">Upcoming Events</a>',
     ],
+    [
+      'name' => 'Appverse App Reviewer',
+      'description' => 'Reviews apps submitted to the Appverse, helping keep the quality of the Appverse high.<br><br>See: <a href="https://openondemand.connectci.org/appverse">The Appverse</a>',
+    ],
   ];
 
   $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
@@ -557,3 +563,187 @@ function _ood_contributions_create_badge_terms() {
   }
 }
 
+/**
+ * Add the Appverse App Reviewers section to the Contributor Wall.
+ *
+ * Creates the "Appverse App Reviewer" badge term and places a title plus the
+ * app_reviewers_block directly after the Appverse contributors block. Never
+ * throws: if the section can't be placed, it returns a message instead.
+ */
+function ood_contributions_deploy_10002_app_reviewers() {
+  // 1. The badge term (idempotent).
+  _ood_contributions_create_badge_terms();
+
+  // 2. The Contributor Wall node (same lookup as 10000).
+  $nodes = \Drupal::entityTypeManager()
+    ->getStorage('node')
+    ->loadByProperties(['title' => 'Contributor Wall', 'type' => 'page']);
+  $node = reset($nodes);
+  if (!$node || !$node->hasField('layout_builder__layout')) {
+    return t('Contributor Wall page not found; created the badge term only. Place the "Appverse App Reviewers" blocks manually.');
+  }
+
+  // 3. Find the Appverse anchor and detect an existing reviewers block by
+  // plugin id, not by weight or section delta.
+  $anchor_section = NULL;
+  $anchor_uuid = NULL;
+  $anchor_region = NULL;
+  $sections = $node->get('layout_builder__layout')->getSections();
+  foreach ($sections as $section) {
+    foreach ($section->getComponents() as $component) {
+      $plugin_id = $component->getPluginId();
+      if ($plugin_id === 'app_reviewers_block') {
+        return t('The App Reviewers block is already on the Contributor Wall, skipping.');
+      }
+      if ($plugin_id === 'appverse_contributors_block' && $anchor_uuid === NULL) {
+        $anchor_section = $section;
+        $anchor_uuid = $component->getUuid();
+        $anchor_region = $component->getRegion();
+      }
+    }
+  }
+
+  if ($anchor_section === NULL || $anchor_uuid === NULL || $anchor_region === NULL) {
+    \Drupal::logger('ood_contributions')->warning('Could not place the App Reviewers section: the appverse_contributors_block component was not found on the Contributor Wall (node @nid).', ['@nid' => $node->id()]);
+    return t('Could not find the Appverse contributors block on the Contributor Wall. Place the "Appverse App Reviewers" title and block manually.');
+  }
+
+  try {
+    $component_styles = [
+      'layout_builder_styles_style' => [
+        '__div_h_full' => 0,
+        'accordion_wrapper' => 0,
+        'bg_light_teal' => 0,
+        'mb_10' => 0,
+        'mb_3' => 0,
+        'mb_5' => 0,
+        'md_teal_box' => 0,
+        'page_title' => 0,
+        'pb_4' => 0,
+        'pe_3' => 0,
+        'pt_4' => 0,
+        'tags' => 0,
+      ],
+    ];
+
+    // 4. Non-reusable inline title block (same pattern as 10000).
+    $title_block = \Drupal\block_content\Entity\BlockContent::create([
+      'type' => 'basic',
+      'info' => 'TITLE :: Appverse App Reviewers',
+      'reusable' => FALSE,
+      'body' => [
+        'value' => '<div class="cw-title position-relative my-4"><h2>Appverse App Reviewers</h2><p><a class="btn btn-sm btn-primary py-2" href="/appverse"><span>Visit the Appverse</span></a></p></div>',
+        'summary' => '',
+        'format' => 'full_html',
+      ],
+    ]);
+    $title_block->save();
+
+    $uuid_service = \Drupal::service('uuid');
+    $title_component = new \Drupal\layout_builder\SectionComponent(
+      $uuid_service->generate(),
+      $anchor_region,
+      [
+        'id' => 'inline_block:basic',
+        'label' => 'TITLE :: Appverse App Reviewers',
+        'label_display' => 0,
+        'provider' => 'layout_builder',
+        'view_mode' => 'full',
+        'block_id' => $title_block->id(),
+        'block_revision_id' => $title_block->getRevisionId(),
+        'block_serialized' => NULL,
+        'context_mapping' => [],
+      ],
+      $component_styles
+    );
+    $reviewers_component = new \Drupal\layout_builder\SectionComponent(
+      $uuid_service->generate(),
+      $anchor_region,
+      [
+        'id' => 'app_reviewers_block',
+        'label' => 'Appverse App Reviewers',
+        'label_display' => 0,
+        'provider' => 'ood_software',
+        'context_mapping' => [],
+      ],
+      $component_styles
+    );
+
+    // Inserting re-weights the components that follow.
+    $anchor_section->insertAfterComponent($anchor_uuid, $title_component);
+    $anchor_section->insertAfterComponent($title_component->getUuid(), $reviewers_component);
+
+    // 5. Save with a revision log message.
+    $node->setNewRevision(TRUE);
+    $node->setRevisionLogMessage('Added the Appverse App Reviewers section.');
+    $node->save();
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('ood_contributions')->warning('Could not place the App Reviewers section: @message', ['@message' => $e->getMessage()]);
+    return t('Could not place the App Reviewers section (@message). Place the "Appverse App Reviewers" title and block manually.', ['@message' => $e->getMessage()]);
+  }
+
+  return t('Added the Appverse App Reviewers section to the Contributor Wall (node @nid).', ['@nid' => $node->id()]);
+}
+
+
+/**
+ * Backfill the Discourse daily post heatmap in site (New York) time.
+ *
+ * Re-buckets the whole heatmap year. Never throws, so a Discourse outage
+ * cannot fail the deploy.
+ */
+function ood_contributions_deploy_10003_discourse_backfill() {
+  $manual = 'Run manually: drush ood:discourse-stats --since=2025-10-01';
+  try {
+    $service = \Drupal::service('ood_contributions.discourse_stats');
+    $result = $service->updateDailyPostStats('2025-10-01');
+    if (empty($result['success'])) {
+      return t('Discourse backfill failed (@message). @manual', [
+        '@message' => $result['message'] ?? 'unknown error',
+        '@manual' => $manual,
+      ]);
+    }
+    $service->updateBlock();
+    return t('Discourse daily stats backfilled: @message', ['@message' => $result['message']]);
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('ood_contributions')->error('Discourse backfill deploy hook failed: @message', [
+      '@message' => $e->getMessage(),
+    ]);
+    return t('Discourse backfill failed (@message). @manual', [
+      '@message' => $e->getMessage(),
+      '@manual' => $manual,
+    ]);
+  }
+}
+
+/**
+ * Fill the Discourse persona stats and last_posted_at.
+ *
+ * Never throws, so a Discourse outage cannot fail the deploy.
+ */
+function ood_contributions_deploy_10004_discourse_contrib() {
+  $manual = 'Run manually: drush ood:discourse-contrib';
+  try {
+    $summary = CronManager::discourseStoreContrib();
+    \Drupal::service('cache_tags.invalidator')->invalidateTags(['ood_disc_contrib']);
+    if (!empty($summary['failed'])) {
+      return t('Discourse contributions updated for @updated users, but @failed failed. @manual', [
+        '@updated' => $summary['updated'],
+        '@failed' => $summary['failed'],
+        '@manual' => $manual,
+      ]);
+    }
+    return t('Discourse contributions updated for @updated users.', ['@updated' => $summary['updated']]);
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('ood_contributions')->error('Discourse contrib deploy hook failed: @message', [
+      '@message' => $e->getMessage(),
+    ]);
+    return t('Discourse contributions update failed (@message). @manual', [
+      '@message' => $e->getMessage(),
+      '@manual' => $manual,
+    ]);
+  }
+}
