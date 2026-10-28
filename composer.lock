@@ -734,7 +734,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "7b649249cc14987b876ac84a694e5a70de9300d4"
+                "reference": "f94142d81813cd1e26131fbd1a0a7aceb0703070"
             },
             "type": "drupal-theme",
             "license": [
