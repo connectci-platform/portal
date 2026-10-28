@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\Core\Form\FormState;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\ood_software\Form\AppverseHubRequestChangesForm;
 use Drupal\Core\Test\AssertMailTrait;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
@@ -257,6 +259,114 @@ class ReviewDecisionSendTest extends KernelTestBase {
     $this->assertTrue($controller->adminWithoutReviewAccess($reviewer, $legacy)->isAllowed());
     $this->assertTrue($controller->adminWithoutReviewAccess($reviewer, $reviewed)->isForbidden());
     $this->assertFalse($controller->adminWithoutReviewAccess($this->owner, $legacy)->isAllowed());
+  }
+
+  /**
+   * Sends a published node for review, leaving a pending revision (D8-2882).
+   */
+  protected function sendPending(NodeInterface $node): void {
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    $latest = $storage->loadRevision($storage->getLatestRevisionId($node->id()));
+    $this->assertInstanceOf(NodeInterface::class, $latest);
+    $latest->set('moderation_state', 'ready_for_review');
+    $latest->setNewRevision(TRUE);
+    // The submission itself is not under test: keep its mail and dispatch out.
+    // @phpstan-ignore-next-line
+    $latest->_ood_software_suppress_notifications = TRUE;
+    $latest->save();
+    $this->assertTrue($this->hasPending($node), 'Precondition: a review is pending.');
+  }
+
+  /**
+   * Whether a node is live with a review waiting on top.
+   */
+  protected function hasPending(NodeInterface $node): bool {
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    $storage->resetCache([$node->id()]);
+    $fresh = $storage->load($node->id());
+    $this->assertInstanceOf(NodeInterface::class, $fresh);
+    return \Drupal::service('content_moderation.moderation_information')->hasPendingRevision($fresh)
+      && _ood_software_has_pending_review($fresh);
+  }
+
+  /**
+   * Accepting publishes the pending revision of a live repo and app.
+   *
+   * The repo and app stay "published" by default revision while the review
+   * waits on top; the decision has to make that revision the live one or the
+   * repo shows "Published, review pending" and stays queued forever
+   * (D8-2882).
+   */
+  public function testAcceptPublishesPendingReviewOnLiveRepoAndApp(): void {
+    \Drupal::moduleHandler()->loadInclude('ood_software', 'module');
+    $repo = $this->makeRepo('published');
+    $app = $this->makeApp($repo, 'published');
+    $this->sendPending($repo);
+    $this->sendPending($app);
+    $review = $this->makeReview($repo, ['accept' => $app]);
+
+    $this->assertNull($this->applier()->send($review, 'Thanks.'));
+
+    foreach ([$repo, $app] as $node) {
+      $fresh = $this->reload($node);
+      $this->assertSame('published', $fresh->get('moderation_state')->value, $node->bundle());
+      $this->assertTrue($fresh->isPublished());
+      $this->assertFalse($this->hasPending($node), $node->bundle() . ' must not stay pending.');
+      $this->assertState('published', $node);
+    }
+    $this->assertCount(1, $this->mails(), 'Still one decision email.');
+  }
+
+  /**
+   * Request changes and decline resolve a live repo's pending review.
+   *
+   * @dataProvider sentBackCases
+   */
+  public function testSentBackResolvesPendingReviewOnLiveRepo(string $decision, string $state): void {
+    \Drupal::moduleHandler()->loadInclude('ood_software', 'module');
+    $repo = $this->makeRepo('published');
+    $app = $this->makeApp($repo, 'published');
+    $this->sendPending($repo);
+    $review = $this->makeReview($repo, [$decision => $app]);
+
+    $this->assertNull($this->applier()->send($review, 'No.'));
+
+    $this->assertState($state, $repo);
+    $this->assertSame($state, $this->reload($repo)->get('moderation_state')->value);
+    $this->assertFalse($this->reload($repo)->isPublished());
+    $this->assertFalse($this->hasPending($repo), 'The pending review is resolved, not stuck.');
+  }
+
+  /**
+   * Decision => the repo's resulting state.
+   *
+   * @return array<string, array<int, string>>
+   */
+  public static function sentBackCases(): array {
+    return [
+      'request changes' => ['request_changes', 'needs_adjustment'],
+      'reject' => ['reject', 'declined'],
+    ];
+  }
+
+  /**
+   * The hub's request-changes form resolves a live repo's pending review.
+   */
+  public function testRequestChangesFormResolvesPendingReview(): void {
+    \Drupal::moduleHandler()->loadInclude('ood_software', 'module');
+    $repo = $this->makeRepo('published');
+    $this->sendPending($repo);
+
+    $form = AppverseHubRequestChangesForm::create(\Drupal::getContainer());
+    $state = new FormState();
+    $state->setValue('comment', 'Please fix.');
+    $built = [];
+    $form->buildForm($built, $state, $this->reload($repo));
+    $form->submitForm($built, $state);
+
+    $this->assertSame('needs_adjustment', $this->reload($repo)->get('moderation_state')->value);
+    $this->assertFalse($this->hasPending($repo), 'The pending review is resolved, not stuck.');
+    $this->assertState('needs_adjustment', $repo);
   }
 
   /**
