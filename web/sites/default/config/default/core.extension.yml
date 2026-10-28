@@ -159,6 +159,7 @@ module:
   redis: 0
   rel_to_abs: 0
   reroute_email: 0
+  reroute_email_symfony_mailer: 0
   rest: 0
   restui: 0
   role_delegation: 0
