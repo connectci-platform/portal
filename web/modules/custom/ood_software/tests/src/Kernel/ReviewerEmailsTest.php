@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\Core\Test\AssertMailTrait;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
@@ -34,7 +35,7 @@ class ReviewerEmailsTest extends KernelTestBase {
   protected static $modules = [
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias', 'file',
-    'content_moderation', 'workflows', 'key', 'flag', 'ood_software',
+    'content_moderation', 'workflows', 'key', 'flag', 'ood_software', 'dblog',
   ];
 
   /**
@@ -53,6 +54,11 @@ class ReviewerEmailsTest extends KernelTestBase {
   protected UserInterface $owner;
 
   /**
+   * A Site Developer who is not a reviewer.
+   */
+  protected UserInterface $developer;
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
@@ -63,6 +69,7 @@ class ReviewerEmailsTest extends KernelTestBase {
     $this->installEntitySchema('path_alias');
     $this->installSchema('node', ['node_access']);
     $this->installSchema('user', ['users_data']);
+    $this->installSchema('dblog', ['watchdog']);
     $this->installConfig(['system', 'filter', 'user', 'node', 'content_moderation', 'workflows']);
     $this->importProdConfig([
       'node.type.appverse_repo',
@@ -85,11 +92,15 @@ class ReviewerEmailsTest extends KernelTestBase {
 
     Role::create(['id' => 'appverse_pm', 'label' => 'Appverse PM'])
       ->grantPermission('administer appverse content')->save();
+    Role::create(['id' => 'site_developer', 'label' => 'Site Developer'])->save();
     // User 1 bypasses access checks, so take that id first.
     $this->createUser([], 'admin');
     $this->alice = $this->makeUser('alice', TRUE);
     $this->bob = $this->makeUser('bob', TRUE);
     $this->owner = $this->makeUser('owner', FALSE);
+    $this->developer = $this->makeUser('dev', FALSE);
+    $this->developer->addRole('site_developer');
+    $this->developer->save();
     $this->notifier()->setOptedOut($this->bob, TRUE);
   }
 
@@ -102,13 +113,59 @@ class ReviewerEmailsTest extends KernelTestBase {
   }
 
   /**
-   * A resubmission reaches the assigned reviewer even with the emails off.
+   * A resubmission goes only to the assigned reviewer, even with the emails
+   * off, and tells them it is theirs.
    */
-  public function testResubmittedReachesTheAssignee(): void {
+  public function testResubmittedGoesOnlyToTheAssignee(): void {
     $repo = $this->makeRepo('ready_for_review', ['field_repo_assigned_reviewer' => $this->bob->id()]);
     $this->notifier()->notifyTransition($repo, 'needs_adjustment');
-    $this->assertSame(['alice@example.com', 'bob@example.com'], $this->recipients('resubmitted'));
+    $this->assertSame(['bob@example.com'], $this->recipients('resubmitted'));
     $this->assertSame([], $this->recipients('ready_for_review'), 'not sent as a new submission');
+    $this->assertStringContainsString("You're the assigned reviewer.", $this->mailBody('resubmitted'));
+  }
+
+  /**
+   * With nobody assigned, a resubmission reaches the reviewers who want it.
+   */
+  public function testResubmittedUnassignedGoesToReviewers(): void {
+    $this->notifier()->notifyTransition($this->makeRepo('ready_for_review'), 'needs_adjustment');
+    $this->assertSame(['alice@example.com'], $this->recipients('resubmitted'));
+    $this->assertStringNotContainsString('assigned reviewer', $this->mailBody('resubmitted'));
+  }
+
+  /**
+   * A submission to a repo that already has an assignee goes only to them.
+   */
+  public function testSubmittedGoesOnlyToAnAssignee(): void {
+    $repo = $this->makeRepo('ready_for_review', ['field_repo_assigned_reviewer' => $this->bob->id()]);
+    $this->notifier()->notifyTransition($repo, 'draft');
+    $this->assertSame(['bob@example.com'], $this->recipients('ready_for_review'));
+  }
+
+  /**
+   * A blocked assignee, or one who is no longer a reviewer, does not own the
+   * repo: its emails go to the reviewers as if nobody were assigned.
+   */
+  public function testAssigneeWhoCannotReviewFallsBackToReviewers(): void {
+    $blocked = $this->makeUser('blocked', TRUE);
+    $blocked->block()->save();
+    $former = $this->makeUser('former', FALSE);
+    // Administrators also hold the reviewer permission, but only a reviewer
+    // can be assigned, so only a reviewer owns the repo.
+    Role::create(['id' => 'administrator', 'label' => 'Administrator'])
+      ->grantPermission('administer appverse content')->save();
+    $admin = $this->makeUser('siteadmin', FALSE);
+    $admin->addRole('administrator');
+    $admin->save();
+    foreach ([$blocked, $former, $admin] as $assignee) {
+      \Drupal::state()->set('system.test_mail_collector', []);
+      $repo = $this->makeRepo('ready_for_review', ['field_repo_assigned_reviewer' => $assignee->id()]);
+      $this->notifier()->notifyTransition($repo, 'needs_adjustment');
+      // The fallback is every reviewer who wants the emails, which includes
+      // the administrator: they hold the permission, they just do not own.
+      $this->assertSame(['alice@example.com', 'siteadmin@example.com'], $this->recipients('resubmitted'), $assignee->getAccountName());
+      $this->assertStringNotContainsString('assigned reviewer', $this->mailBody('resubmitted'), $assignee->getAccountName());
+    }
   }
 
   /**
@@ -149,19 +206,60 @@ class ReviewerEmailsTest extends KernelTestBase {
     $update->invoke($service, $repo, 'error', 4242, 'importing the review failed: no sha');
     $update->invoke($service, $repo, 'error', 4242, 'importing the review failed: no sha');
 
-    $this->assertSame(['alice@example.com', 'bob@example.com'], $this->recipients('review_run_failed'));
+    // Started by cron with nobody assigned: only the Site Developers.
+    $this->assertSame(['dev@example.com'], $this->recipients('review_run_failed'));
     $mail = array_values(array_filter($this->getMails(), fn ($m) => $m['key'] === 'review_run_failed'))[0];
     $this->assertStringContainsString('failed: importing the review failed: no sha.', $mail['body']);
     $this->assertStringContainsString('actions/runs/4242', $mail['body']);
   }
 
   /**
-   * An update reaches the reviewers who want it and the assignee.
+   * A failure reaches who started the run, the assignee and the Site
+   * Developers, and no other reviewer.
+   */
+  public function testRunFailedGoesToStarterAssigneeAndDevelopers(): void {
+    $carol = $this->makeUser('carol', TRUE);
+    $repo = $this->makeRepo('ready_for_review', [
+      'field_review_dispatched_by' => $this->alice->id(),
+      'field_repo_assigned_reviewer' => $carol->id(),
+    ]);
+    $this->notifier()->notifyRunFailed($repo, 'the run concluded with failure', 7);
+    $this->assertSame(['alice@example.com', 'carol@example.com', 'dev@example.com'], $this->recipients('review_run_failed'));
+  }
+
+  /**
+   * A failure skips an assignee who is no longer a reviewer.
+   */
+  public function testRunFailedSkipsAFormerReviewerAssignee(): void {
+    $former = $this->makeUser('former', FALSE);
+    $repo = $this->makeRepo('ready_for_review', ['field_repo_assigned_reviewer' => $former->id()]);
+    $this->notifier()->notifyRunFailed($repo, 'the run concluded with failure', 7);
+    $this->assertSame(['dev@example.com'], $this->recipients('review_run_failed'));
+  }
+
+  /**
+   * A failure nobody can be told about is logged rather than dropped.
+   */
+  public function testRunFailedWithNoRecipientIsLogged(): void {
+    $this->developer->block()->save();
+    $repo = $this->makeRepo('ready_for_review');
+    $this->notifier()->notifyRunFailed($repo, 'the run concluded with failure', 7);
+    $this->assertSame([], $this->recipients('review_run_failed'));
+    $logged = \Drupal::database()->select('watchdog', 'w')
+      ->fields('w', ['message'])
+      ->condition('type', 'ood_software')
+      ->condition('severity', RfcLogLevel::WARNING)
+      ->execute()->fetchCol();
+    $this->assertNotEmpty(array_filter($logged, fn ($m) => str_contains($m, 'failed AI report')), 'A warning names the failed AI report.');
+  }
+
+  /**
+   * An update goes only to the assigned reviewer.
    */
   public function testUpdateSubmitted(): void {
     $repo = $this->makeRepo('published', ['field_repo_assigned_reviewer' => $this->bob->id()]);
     $this->notifier()->notifyUpdateSubmitted($repo, 'v2.0');
-    $this->assertSame(['alice@example.com', 'bob@example.com'], $this->recipients('review_update'));
+    $this->assertSame(['bob@example.com'], $this->recipients('review_update'));
     $this->assertStringContainsString('(v2.0) is being reviewed', $this->getMails()[0]['body']);
   }
 
@@ -247,6 +345,15 @@ class ReviewerEmailsTest extends KernelTestBase {
     $notifier = \Drupal::service('ood_software.repo_notifier');
     assert($notifier instanceof RepoNotificationService);
     return $notifier;
+  }
+
+  /**
+   * The body of the first email sent with this key, line wrapping undone.
+   */
+  protected function mailBody(string $key): string {
+    $mails = array_values(array_filter($this->getMails(), fn ($m) => $m['key'] === $key));
+    $this->assertNotEmpty($mails, "No $key email sent.");
+    return (string) preg_replace('/\s+/', ' ', (string) $mails[0]['body']);
   }
 
   /**

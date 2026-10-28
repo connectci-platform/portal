@@ -41,9 +41,12 @@ use Psr\Log\LoggerInterface;
  *
  * The reviewers' emails from the canvas (appverse-planning#47): the AI report
  * ready or failed, a reviewer assigned, an update submitted by a release, and
- * a repo resubmitted. A reviewer can turn off the submitted, resubmitted and
- * update emails on their profile (SUBMITTED_OPT_OUT); the others are about
- * their own work and always go.
+ * a repo resubmitted. Once a repo has an assigned reviewer who can still
+ * review, the submitted, resubmitted and update emails go to that reviewer
+ * alone (D8-2929); otherwise to every reviewer, less those who turned them
+ * off on their profile (SUBMITTED_OPT_OUT). A failed report goes to whoever
+ * started the run, the assigned reviewer and the Site Developers. The others
+ * are about the recipient's own work and always go.
  */
 class RepoNotificationService {
 
@@ -53,6 +56,11 @@ class RepoNotificationService {
    * User data key: set to 1 when a reviewer stops the submitted emails.
    */
   const SUBMITTED_OPT_OUT = 'no_submitted_emails';
+
+  /**
+   * The role whose members hear about failed AI reports.
+   */
+  const SITE_DEVELOPER_ROLE = 'site_developer';
 
   protected LoggerInterface $logger;
 
@@ -93,7 +101,7 @@ class RepoNotificationService {
       $this->notifyResubmitted($node);
     }
     elseif ($newState === 'ready_for_review') {
-      $this->sendToAdmins($node, 'ready_for_review', $extras, TRUE);
+      $this->sendToUsers($this->reviewersFor($node), 'ready_for_review', $node, $extras);
     }
     elseif ($newState === 'needs_adjustment') {
       $this->sendToOwner($node, 'needs_adjustment', $extras);
@@ -110,10 +118,8 @@ class RepoNotificationService {
    * so no transition into ready_for_review sends the usual email.
    */
   public function notifyResubmitted(NodeInterface $repo): void {
-    // The assigned reviewer hears of it even with the submitted emails off:
-    // it is their review.
-    $this->sendToUsers(array_merge($this->admins(TRUE), array_filter([$this->assignee($repo)])), 'resubmitted', $repo, [
-      'assignee' => $this->assignee($repo)?->getDisplayName(),
+    $this->sendToUsers($this->reviewersFor($repo), 'resubmitted', $repo, [
+      'to_assignee' => $this->owningReviewer($repo) !== NULL,
     ]);
   }
 
@@ -126,14 +132,24 @@ class RepoNotificationService {
   }
 
   /**
-   * The AI report failed: the admins and whoever started the run, with the
-   * reason, since an import failure otherwise shows only in the cron log.
+   * The AI report failed: whoever started the run, the assigned reviewer and
+   * the Site Developers, with the reason, since an import failure otherwise
+   * shows only in the cron log. Other reviewers see it on the card.
    */
   public function notifyRunFailed(NodeInterface $repo, string $reason, int $runId): void {
-    $this->sendToUsers(array_merge($this->admins(FALSE), array_filter([$this->starter($repo)])), 'review_run_failed', $repo, [
+    $sent = $this->sendToUsers(array_merge(array_filter([$this->starter($repo), $this->owningReviewer($repo)]), $this->siteDevelopers()), 'review_run_failed', $repo, [
       'reason' => $reason,
       'run_id' => $runId,
     ]);
+    if ($sent === 0) {
+      // A cron-started run on an unassigned repo reaches only the Site
+      // Developers; with none active, say so where someone can find it.
+      $this->logger->warning('Nobody was emailed about the failed AI report for @title (run @run): no starter, assigned reviewer or active Site Developer. Reason: @reason', [
+        '@title' => $repo->label(),
+        '@run' => $runId,
+        '@reason' => $reason,
+      ]);
+    }
   }
 
   /**
@@ -147,11 +163,10 @@ class RepoNotificationService {
   }
 
   /**
-   * A release started a re-review of a live repo: the admins and the
-   * assigned reviewer.
+   * A release started a re-review of a live repo.
    */
   public function notifyUpdateSubmitted(NodeInterface $repo, string $tag): void {
-    $this->sendToUsers(array_merge($this->admins(TRUE), array_filter([$this->assignee($repo)])), 'review_update', $repo, ['tag' => $tag]);
+    $this->sendToUsers($this->reviewersFor($repo), 'review_update', $repo, ['tag' => $tag]);
   }
 
   /**
@@ -182,6 +197,47 @@ class RepoNotificationService {
   }
 
   /**
+   * The assigned reviewer, if they can still review: active, with a role the
+   * assign action accepts. A blocked or former reviewer owns nothing, so
+   * their repos' emails go to everyone, as if nobody were assigned. The
+   * permission alone is not enough: administrators hold it too, and an
+   * administrator who stopped reviewing would otherwise keep every email.
+   */
+  protected function owningReviewer(NodeInterface $repo): ?UserInterface {
+    $user = $this->assignee($repo);
+    return $user && $user->isActive() && array_intersect($user->getRoles(), ReviewAssignment::ROLES) ? $user : NULL;
+  }
+
+  /**
+   * Who hears about a repo's submissions: its owning reviewer alone, whatever
+   * their opt-out (it is their own work), or else every reviewer who has not
+   * opted out.
+   *
+   * @return array<int, \Drupal\user\UserInterface>
+   *   The users.
+   */
+  protected function reviewersFor(NodeInterface $repo): array {
+    $owner = $this->owningReviewer($repo);
+    return $owner ? [$owner] : $this->admins(TRUE);
+  }
+
+  /**
+   * The active users with the Site Developer role.
+   *
+   * @return array<int, \Drupal\user\UserInterface>
+   *   The users.
+   */
+  protected function siteDevelopers(): array {
+    $storage = $this->entityTypeManager->getStorage('user');
+    $uids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('status', 1)
+      ->condition('roles', self::SITE_DEVELOPER_ROLE)
+      ->execute();
+    return array_values(array_filter($storage->loadMultiple($uids), fn ($user) => $user instanceof UserInterface));
+  }
+
+  /**
    * The reviewer who started the repo's last run, if a reviewer did.
    *
    * A contributor's send for review records them as the starter too, but the
@@ -205,8 +261,11 @@ class RepoNotificationService {
    *   The repo the email is about.
    * @param array<string, mixed> $extras
    *   Params for hook_mail.
+   *
+   * @return int
+   *   How many were sent.
    */
-  protected function sendToUsers(array $users, string $key, NodeInterface $repo, array $extras): void {
+  protected function sendToUsers(array $users, string $key, NodeInterface $repo, array $extras): int {
     $seen = [];
     foreach ($users as $user) {
       if (isset($seen[$user->id()]) || !$user->isActive() || !$user->getEmail()) {
@@ -215,6 +274,7 @@ class RepoNotificationService {
       $seen[$user->id()] = TRUE;
       $this->dispatch($key, $user->getEmail(), $user->getPreferredLangcode(), $repo, $extras);
     }
+    return count($seen);
   }
 
   /**
@@ -235,23 +295,13 @@ class RepoNotificationService {
   }
 
   /**
-   * Email every user with 'administer appverse content' permission.
-   *
-   * Query users by the roles that grant the permission, rather than loading
-   * every active user and filtering in PHP. On a site with tens of thousands
-   * of accounts the load-all-and-filter approach loaded every active user
-   * into memory on each ready_for_review transition, so the synchronous
-   * send-for-review request timed out ("did not respond in time"). Resolving
-   * the granting roles first keeps this bounded to the handful of reviewers.
-   *
-   * @param array<string, mixed> $extras
-   */
-  protected function sendToAdmins(NodeInterface $node, string $key, array $extras, bool $optional = FALSE): void {
-    $this->sendToUsers($this->admins($optional), $key, $node, $extras);
-  }
-
-  /**
    * The active reviewers, without those who opted out when $optional.
+   *
+   * Queries users by the roles that grant 'administer appverse content'
+   * rather than loading every active user and filtering in PHP. On a site
+   * with tens of thousands of accounts that loaded every active user into
+   * memory on each ready_for_review transition, so the synchronous
+   * send-for-review request timed out ("did not respond in time").
    *
    * @return array<int, \Drupal\user\UserInterface>
    *   The users.
