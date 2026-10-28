@@ -17,10 +17,13 @@
 
 {# One category row: its rating and one-line summary, then its findings,
    read-only (rule, severity, summary, evidence; no reviewer notes). #}
-{% macro summary_row(block, page, level_class) %}
+{# The id matches the reviewer page's block ids (block-<app id>-<category>, or
+   block-<category> for the repository's), so one link from the catalog's
+   chips works on either page (D8-2928). #}
+{% macro summary_row(block, page, level_class, scope) %}
   {% set n = 0 %}
   {% for group in block.groups %}{% set n = n + group.count %}{% endfor %}
-  <div class="summary-row">
+  <div class="summary-row" id="block-{{ scope ? scope ~ '-' : '' }}{{ block.key }}">
     <dt>{{ block.title }}</dt>
     <dd>
       <div class="summary-row-head">
@@ -120,7 +123,7 @@
       </div>
       <dl class="summary-rows">
         {% for key, block in app.blocks %}
-          {{ m.summary_row(block, page, level_class) }}
+          {{ m.summary_row(block, page, level_class, app.app_id) }}
         {% endfor %}
       </dl>
     </section>
