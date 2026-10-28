@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "623050623a9e32cb48059795f5354e9f",
+    "content-hash": "fa47990d6893829c458f082ad65e8e0b",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -730,7 +730,7 @@
         },
         {
             "name": "connectci/campus-champions-theme",
-            "version": "dev-d8-2925",
+            "version": "dev-d8-2921",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
