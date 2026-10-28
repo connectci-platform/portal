@@ -42,6 +42,9 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias',
     'content_moderation', 'workflows', 'key', 'flag', 'views', 'file', 'ood_software',
+    // page_admin's exposed form is Better Exposed Filters with Select2, and
+    // Views has no fallback for a missing exposed-form plugin.
+    'better_exposed_filters', 'select2',
   ];
 
   /**
@@ -63,12 +66,13 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
       'node.type.appverse_repo',
       'node.type.appverse_app',
       'workflows.workflow.appverse_editorial',
-      // The view's shared "Member apps" reverse relationship
-      // (reverse__node__field_appverse_repo) needs this field's storage to
-      // resolve its base table; page_admin inherits it from the default
-      // display.
+      // The Software used filter lists the software member apps implement,
+      // so building the exposed form reads these tables.
+      'node.type.appverse_software',
       'field.storage.node.field_appverse_repo',
       'field.field.node.appverse_app.field_appverse_repo',
+      'field.storage.node.field_appverse_software_implemen',
+      'field.field.node.appverse_app.field_appverse_software_implemen',
     ]);
     $this->importViewConfigRaw('views.view.my_appverse');
 

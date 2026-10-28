@@ -97,10 +97,13 @@ final class ReviewSignals {
   /**
    * The per-app review object for the cache, or NULL without a verdict.
    *
-   * Each axis links into the public review page: the app's section for
-   * portability and documentation, the repository section for upkeep. The
-   * page carries matching ids (`app-<app id>`, `maintenance`). The HTML
-   * report it used to link to is no longer imported (appverse-planning#42).
+   * Each axis links to its own block of the review page: the app's
+   * portability, documentation and security blocks, and the repository's
+   * upkeep block, or the app's section for an app scored on its own upkeep,
+   * which has no block of its own. Both versions of the page carry these ids
+   * (`block-<app id>-<category>`, `block-maintenance`, `app-<app id>`;
+   * D8-2928). The HTML report it used to link to is no longer imported
+   * (appverse-planning#42).
    *
    * @param array<string, mixed> $review
    *   reviewed_at (int), sha, url (the review page), upkeep
@@ -119,7 +122,9 @@ final class ReviewSignals {
     }
     $url = (string) ($review['url'] ?? '');
     $appId = trim((string) ($verdict['app_id'] ?? ''), '/');
-    $appSection = 'app-' . ($appId === '' ? 'root' : $appId);
+    $scope = $appId === '' ? 'root' : $appId;
+    $appSection = 'app-' . $scope;
+    $block = fn (string $key): string => "block-$scope-$key";
     $axis = function (array $a, string $section) use ($url): array {
       return [
         'level' => $a['level'] ?? NULL,
@@ -138,16 +143,16 @@ final class ReviewSignals {
     // review page lists, so the two always agree.
     $out['security'] = [
       'count' => (int) ($verdict['security'] ?? 0) + (int) ($review['repo_security'] ?? 0),
-      'anchor' => $url !== '' ? $url . '#' . $appSection : '',
+      'anchor' => $url !== '' ? $url . '#' . $block('security') : '',
     ];
     foreach (self::AXES as $name) {
-      $out[$name] = $axis($verdict['axes'][$name] ?? [], $appSection);
+      $out[$name] = $axis($verdict['axes'][$name] ?? [], $block($name));
     }
     // A monorepo app's own upkeep when the review scored it, linked to the
     // app's section; otherwise the repo's (appverse-planning#58).
     $out['upkeep'] = !empty($verdict['upkeep']['level'])
       ? $axis($verdict['upkeep'], $appSection)
-      : $axis($review['upkeep'] ?? [], 'maintenance');
+      : $axis($review['upkeep'] ?? [], 'block-maintenance');
     return $out;
   }
 }

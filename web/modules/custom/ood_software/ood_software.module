@@ -499,6 +499,45 @@ function _ood_software_repo_has_review(NodeInterface $repo): bool {
 }
 
 /**
+ * Implements hook_form_FORM_ID_alter() for views_exposed_form.
+ *
+ * Manage Repos' moderation filter is a multi-select with a default, so there
+ * is no "- Any -" to pick, and clearing every state probably brings the
+ * default queue back. A link to every state, keeping the other filters,
+ * gives a way out; "All" is the value the hub's emails already use
+ * (D8-2927).
+ *
+ * @param array<string, mixed> $form
+ */
+function ood_software_form_views_exposed_form_alter(array &$form, FormStateInterface $form_state): void {
+  $view = $form_state->getStorage()['view'] ?? NULL;
+  if (!$view instanceof \Drupal\views\ViewExecutable || $view->id() !== 'my_appverse'
+    || $view->current_display !== 'page_admin' || !isset($form['moderation_state'])) {
+    return;
+  }
+  // Every state, keeping whatever else the reviewer filtered on.
+  $query = ['moderation_state' => 'All'] + array_diff_key($view->getExposedInput(), ['moderation_state' => TRUE, 'page' => TRUE]);
+  $link = [
+    '#type' => 'link',
+    '#title' => t('Show all states'),
+    '#url' => $view->getUrl()->setOption('query', $query),
+    '#attributes' => ['class' => ['appverse-hub-all-states']],
+  ];
+  // The filter and its link share one wrapper, so the link sits under the
+  // box in the same grid cell. An element #description is not used: the
+  // site theme's exposed-form template does not print it.
+  $position = array_search('moderation_state', array_keys($form), TRUE);
+  $group = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['appverse-hub-moderation']],
+    'moderation_state' => $form['moderation_state'],
+    'moderation_state_all' => $link,
+  ];
+  unset($form['moderation_state']);
+  $form = array_slice($form, 0, (int) $position, TRUE) + ['moderation_group' => $group] + array_slice($form, (int) $position, NULL, TRUE);
+}
+
+/**
  * Implements hook_form_FORM_ID_alter() for user_form.
  *
  * A reviewer can stop the submitted, resubmitted and update emails sent to
@@ -520,8 +559,8 @@ function ood_software_form_user_form_alter(array &$form, FormStateInterface $for
     '#weight' => 5,
     'ood_software_submitted_emails' => [
       '#type' => 'checkbox',
-      '#title' => t('Email me when a repo is submitted, resubmitted or updated for review'),
-      '#description' => t('Emails about your own reviews, such as being assigned one or your AI report being ready, are sent either way.'),
+      '#title' => t('Email me when a repo with no assigned reviewer is submitted, resubmitted or updated for review'),
+      '#description' => t('Emails about repos assigned to you, and about your own reviews such as your AI report being ready, are sent either way.'),
       '#default_value' => !$notifier->optedOut($account),
     ],
   ];
@@ -1668,12 +1707,12 @@ function ood_software_mail(string $key, array &$message, array $params): void {
     // The reviewers' emails from the canvas (appverse-planning#47).
     case 'resubmitted':
       $message['subject'] = t('[@site] Repo resubmitted for review: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = !empty($params['assignee'])
-        ? t('<p>@owner resubmitted "@title" for review on @site. @assignee is the assigned reviewer.</p>', [
+      // Sent to the assigned reviewer alone when there is one (D8-2929).
+      $message['body'][] = !empty($params['to_assignee'])
+        ? t("<p>@owner resubmitted \"@title\" for review on @site. You're the assigned reviewer.</p>", [
           '@owner' => $node->getOwner()->getDisplayName(),
           '@title' => $title,
           '@site' => $site_name,
-          '@assignee' => $params['assignee'],
         ])
         : t('<p>@owner resubmitted "@title" for review on @site.</p>', [
           '@owner' => $node->getOwner()->getDisplayName(),
@@ -2858,35 +2897,6 @@ function ood_software_views_pre_render(\Drupal\views\ViewExecutable $view): void
     return;
   }
   $view->element['#attached']['library'][] = 'ood_software/appverse_hub';
-
-  // Collapse relationship-multiplied rows. The admin "Software used" exposed
-  // filter joins each repo to its member apps (reverse relationship), so a
-  // monorepo's row is returned once per member app. The SQL DISTINCT can't
-  // collapse it because the relationship's id column is in the SELECT, and the
-  // filter must stay (it constrains which repos match). De-duplicate the
-  // result set here, keeping the first row per repo node.
-  if (!empty($view->result)) {
-    $seen = [];
-    $deduped = [];
-    foreach ($view->result as $row) {
-      // ResultRow::$_entity is declared non-null, but relationship rows that
-      // did not resolve an entity leave it unset at runtime — keep the guard.
-      // @phpstan-ignore-next-line empty.property (row may have no _entity at runtime)
-      if (empty($row->_entity)) {
-        $deduped[] = $row;
-        continue;
-      }
-      $id = $row->_entity->id();
-      if (isset($seen[$id])) {
-        continue;
-      }
-      $seen[$id] = TRUE;
-      $deduped[] = $row;
-    }
-    if (count($deduped) !== count($view->result)) {
-      $view->result = array_values($deduped);
-    }
-  }
 }
 
 /**
@@ -2921,20 +2931,12 @@ function ood_software_preprocess_views_view(array &$variables): void {
 /**
  * Implements hook_views_data_alter().
  *
- * Adds the manage-repos "Assigned" filter (assigned to me / unassigned).
- *
- * And the manage-repos "Software used" exposed filter gets the wrong filter
- * plugin from core's field-storage discovery: its target_id is an integer
- * column, so it is typed as a numeric filter. Override it to entity_reference
- * so it renders as an autocomplete bound to appverse_software titles.
+ * Adds the manage-repos filters that are not a single field on the repo:
+ * "Assigned", "Software used", "Search" and "AI report".
  *
  * @param array<string, mixed> $data
  */
 function ood_software_views_data_alter(array &$data): void {
-  if (isset($data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter'])) {
-    $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['id'] = 'entity_reference';
-    $data['node__field_appverse_software_implemen']['field_appverse_software_implemen_target_id']['filter']['entity_type'] = 'node';
-  }
   // The manage-repos "Assigned" filter: assigned to me / unassigned
   // (appverse-planning#33; the AssignedReviewer filter plugin).
   $data['node_field_data']['ood_assigned_reviewer'] = [
@@ -2942,6 +2944,30 @@ function ood_software_views_data_alter(array &$data): void {
     'help' => t('Repos assigned to the current user, or to no one.'),
     'real field' => 'nid',
     'filter' => ['id' => 'ood_software_assigned_reviewer'],
+  ];
+  // The manage-repos "Software used" filter: repos with a member app
+  // implementing the software (D8-2927; the RepoSoftwareUsed filter plugin).
+  $data['node_field_data']['ood_repo_software_used'] = [
+    'title' => t('Software used by a member app'),
+    'help' => t('Repos with at least one app implementing the chosen software.'),
+    'real field' => 'nid',
+    'filter' => ['id' => 'ood_software_repo_software_used'],
+  ];
+  // The manage-repos "Search": title or GitHub URL (D8-2927; the RepoSearch
+  // filter plugin).
+  $data['node_field_data']['ood_repo_search'] = [
+    'title' => t('Repo title or GitHub URL'),
+    'help' => t('Repos whose title or repository URL contains the text.'),
+    'real field' => 'nid',
+    'filter' => ['id' => 'ood_software_repo_search'],
+  ];
+  // The manage-repos "AI report" filter: the latest run's state (D8-2927; the
+  // AiReportState filter plugin).
+  $data['node_field_data']['ood_ai_report'] = [
+    'title' => t('AI report state'),
+    'help' => t('The state of the repo\'s latest AI report, as its hub card shows it.'),
+    'real field' => 'nid',
+    'filter' => ['id' => 'ood_software_ai_report_state'],
   ];
 }
 
