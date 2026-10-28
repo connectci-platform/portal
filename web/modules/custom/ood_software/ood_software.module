@@ -559,8 +559,8 @@ function ood_software_form_user_form_alter(array &$form, FormStateInterface $for
     '#weight' => 5,
     'ood_software_submitted_emails' => [
       '#type' => 'checkbox',
-      '#title' => t('Email me when a repo is submitted, resubmitted or updated for review'),
-      '#description' => t('Emails about your own reviews, such as being assigned one or your AI report being ready, are sent either way.'),
+      '#title' => t('Email me when a repo with no assigned reviewer is submitted, resubmitted or updated for review'),
+      '#description' => t('Emails about repos assigned to you, and about your own reviews such as your AI report being ready, are sent either way.'),
       '#default_value' => !$notifier->optedOut($account),
     ],
   ];
@@ -1707,12 +1707,12 @@ function ood_software_mail(string $key, array &$message, array $params): void {
     // The reviewers' emails from the canvas (appverse-planning#47).
     case 'resubmitted':
       $message['subject'] = t('[@site] Repo resubmitted for review: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = !empty($params['assignee'])
-        ? t('<p>@owner resubmitted "@title" for review on @site. @assignee is the assigned reviewer.</p>', [
+      // Sent to the assigned reviewer alone when there is one (D8-2929).
+      $message['body'][] = !empty($params['to_assignee'])
+        ? t("<p>@owner resubmitted \"@title\" for review on @site. You're the assigned reviewer.</p>", [
           '@owner' => $node->getOwner()->getDisplayName(),
           '@title' => $title,
           '@site' => $site_name,
-          '@assignee' => $params['assignee'],
         ])
         : t('<p>@owner resubmitted "@title" for review on @site.</p>', [
           '@owner' => $node->getOwner()->getDisplayName(),
