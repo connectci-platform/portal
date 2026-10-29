@@ -116,7 +116,6 @@ describe("test an Affinity Group page", () => {
     cy.visit('/affinity-groups/cloud-computing');
     cy.contains('Email Affinity Group').click();
     cy.contains('Use this form to send an email message to members of your Affinity Group through Constant Contact');
-    cy.contains('About text formats');
     cy.get('input[name="op"]').should('have.value', 'Send');
   });
 

@@ -8,8 +8,6 @@ global-styling-and-scripts:
     'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap': { type: external }
     css/style.css: {}
   js:
-    'https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js': { type: external, minified: true }
-    'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js': { type: external, minified: true }
     'https://cdn.jsdelivr.net/picturefill/2.3.1/picturefill.min.js': { type: external, minified: true }
     js/main.js: {}
     js/global.js: {}
@@ -21,4 +19,7 @@ js-header:
   header: true
   js:
     'https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js': { type: external, minified: true }
+    'https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js': { type: external, minified: true }
+    'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js': { type: external, minified: true }
+    js/bootstrap-jquery.js: {}
     'https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js': { type: external, minified: true }
