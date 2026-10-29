@@ -173,8 +173,7 @@ access:
     users: {  }
     permissions: {  }
   delete_any:
-    roles:
-      - masquerade
+    roles: {  }
     users: {  }
     permissions: {  }
   purge_any:

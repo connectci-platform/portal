@@ -20,7 +20,6 @@ roles:
   researcher: '0'
   authenticated: '0'
   representative: '0'
-  masquerade: '0'
   regional_expert: '0'
   campuschampionsadmin: '0'
   exportpeople: '0'

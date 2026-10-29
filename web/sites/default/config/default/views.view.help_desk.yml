@@ -5,8 +5,6 @@ dependencies:
   config:
     - system.menu.main
     - user.role.administrator
-    - user.role.ra
-    - user.role.sc
     - webform.webform.issue
   module:
     - user
@@ -516,8 +514,6 @@ display:
         type: role
         options:
           role:
-            sc: sc
-            ra: ra
             administrator: administrator
       cache:
         type: tag

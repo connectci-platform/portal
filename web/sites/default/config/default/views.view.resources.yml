@@ -689,7 +689,6 @@ display:
               ra: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
             placeholder: Search
           is_grouped: false
           group_info:
@@ -2914,7 +2913,6 @@ display:
               researcher: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
               regional_expert: '0'
               campuschampionsadmin: '0'
               exportpeople: '0'
@@ -2991,7 +2989,6 @@ display:
               researcher: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
               regional_expert: '0'
               campuschampionsadmin: '0'
               exportpeople: '0'
@@ -4732,7 +4729,6 @@ display:
               researcher: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
               regional_expert: '0'
               campuschampionsadmin: '0'
               exportpeople: '0'
@@ -4809,7 +4805,6 @@ display:
               researcher: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
               regional_expert: '0'
               campuschampionsadmin: '0'
               exportpeople: '0'
@@ -5961,7 +5956,6 @@ display:
               lt: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
               regional_expert: '0'
               campuschampionsadmin: '0'
               exportpeople: '0'
@@ -6024,7 +6018,6 @@ display:
               ra: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:

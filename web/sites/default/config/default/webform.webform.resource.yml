@@ -105,7 +105,6 @@ elements: |-
       - administrator
       - affinity_group_leader
       - match_pm
-      - ra
   private:
     '#type': checkbox
     '#title': Private
@@ -266,7 +265,6 @@ access:
     roles:
       - administrator
       - match_pm
-      - ra
       - kb_pm
     users: {  }
     permissions: {  }
@@ -274,9 +272,6 @@ access:
     roles:
       - administrator
       - match_pm
-      - sc
-      - lt
-      - ra
       - kb_pm
     users: {  }
     permissions: {  }
