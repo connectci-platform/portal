@@ -4,7 +4,6 @@
  * Local development override configuration feature for DDEV.
  */
 
-use Drupal\Component\Assertion\Handle;
 
 $settings['hash_salt'] = $_ENV['DRUPAL_HASH_SALT'];
 
@@ -43,8 +42,6 @@ $settings['update_free_access'] = TRUE;
  *
  * @see https://wiki.php.net/rfc/expectations
  */
-assert_options(ASSERT_ACTIVE, TRUE);
-Handle::register();
 
 /**
  * Disable the render cache (this includes the page cache).
