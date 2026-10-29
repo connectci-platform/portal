@@ -384,7 +384,6 @@ display:
               anonymous: '0'
               administrator: '0'
               representative: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -584,7 +583,6 @@ display:
               anonymous: '0'
               administrator: '0'
               representative: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -906,7 +904,6 @@ display:
               anonymous: '0'
               administrator: '0'
               representative: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:

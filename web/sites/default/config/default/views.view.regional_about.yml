@@ -8,8 +8,6 @@ dependencies:
     - node.type.regional_about
     - taxonomy.vocabulary.region
     - user.role.administrator
-    - user.role.ra
-    - user.role.sc
   content:
     - 'taxonomy_term:region:23abe5b9-fa92-4ba6-8b69-cf01f50a7ad9'
     - 'taxonomy_term:region:48875fb1-4788-4512-89b7-c04a3696d2ca'
@@ -833,8 +831,6 @@ display:
         type: role
         options:
           role:
-            sc: sc
-            ra: ra
             administrator: administrator
       empty: {  }
       arguments:
