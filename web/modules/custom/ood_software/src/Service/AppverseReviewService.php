@@ -90,12 +90,12 @@ class AppverseReviewService implements DestructableInterface {
    * The workflow's model input: "qwen" runs on the on-prem gateway, "sonnet"
    * or "opus" on the Anthropic API.
    *
-   * The default where the ood_software.review_model setting names none (see
-   * reviewModel()). Sonnet until Qwen is benchmarked: the first Qwen review
-   * through the portal (appverse-review run 36917068688) failed the
-   * feedback-floor and key checks on a repo Sonnet had passed the same day.
+   * The default where the ood_software.review_model setting names none, or
+   * names a model the workflow does not accept (see reviewModel()). The
+   * on-prem model, as the workflow's own default is: a review goes to the
+   * Anthropic API only when a setting chooses it.
    */
-  const DEFAULT_MODEL = 'sonnet';
+  const DEFAULT_MODEL = 'qwen';
 
   /**
    * The model inputs the review workflow accepts.
