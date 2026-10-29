@@ -145,6 +145,36 @@ if (isset($env)) {
   }
 }
 
+// Access token clients (D8-2933) for every environment except live, whose
+// registry is the access.token_exchange config in the live split. Each other
+// environment registers only its own origin, against audiences no production
+// service accepts: a developer's local agent, and a reserved .invalid name for
+// XDMoD. This is a setting rather than a $config override because it must
+// replace the stored registry, not merge into it: a database cloned from live
+// carries live's. An environment still mints nothing until it has its own
+// agent and xdmod keys and an explicit issuer for its own host.
+if (!empty($env) && $env !== 'live') {
+  $token_origins = $env === 'local'
+    ? ['https://accessmatch.ddev.site', 'https://chat.accessmatch.ddev.site']
+    : ['https://' . $env . '-' . (getenv('PANTHEON_SITE_NAME') ?: 'accessmatch') . '.pantheonsite.io'];
+  $settings['access_token_clients'] = [
+    'access-qa-bot' => [
+      'type' => 'browser',
+      'audience' => 'http://localhost:8000',
+      'origins' => array_map(
+        fn(string $origin) => ['origin' => $origin, 'scopes' => ['agent:read', 'agent:write']],
+        $token_origins
+      ),
+    ],
+    'access-assistant' => [
+      'type' => 'confidential',
+      'audience' => 'https://xdmod.dev.invalid',
+      'scopes' => ['xdmod:read'],
+      'subject_clients' => ['access-qa-bot'],
+    ],
+  ];
+}
+
 $settings['config_sync_directory'] = 'sites/default/config/default';
 
 // Load Google OAuth client_secret from private key file instead of config.

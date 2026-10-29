@@ -4,17 +4,16 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "13b1bc66ceff01d739a8a22006585d77",
+    "content-hash": "905bb63111feca603727ac048b68fd77",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
-            "version": "3.0.x-dev",
+            "version": "dev-d8-2933",
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/drupal_seamless_cilogon.git",
-                "reference": "e56d45f1bca7c117b381014b615ae6c221204694"
+                "reference": "1eded595ce274b397102b773d724886741a4f428"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0-or-later"
@@ -24,7 +23,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-10-19T01:23:11+00:00"
+            "time": "2026-10-29T19:32:31+00:00"
         },
         {
             "name": "access/infrastructure_news",
@@ -675,18 +674,17 @@
         },
         {
             "name": "connectci/access",
-            "version": "3.0.x-dev",
+            "version": "dev-d8-2933",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "bacad4aef97460f858c5cb669f6ab5f41179e1e7"
+                "reference": "7afbd9c40dada51628a41c7e5e1510fa604e7528"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -702,7 +700,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-27T17:22:25+00:00"
+            "time": "2026-10-29T19:32:31+00:00"
         },
         {
             "name": "connectci/asp-theme",
