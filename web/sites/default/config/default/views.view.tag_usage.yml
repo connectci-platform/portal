@@ -260,7 +260,8 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.permissions
-      tags: {  }
+      tags:
+        - flag.flag.skill
   least_used:
     id: least_used
     display_title: LeastUsed
@@ -298,7 +299,8 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.permissions
-      tags: {  }
+      tags:
+        - flag.flag.skill
   top_used:
     id: top_used
     display_title: TopUsed
@@ -321,4 +323,5 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.permissions
-      tags: {  }
+      tags:
+        - flag.flag.skill

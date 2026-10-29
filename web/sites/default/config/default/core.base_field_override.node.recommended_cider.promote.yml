@@ -1,0 +1,22 @@
+uuid: 13934dd4-17cc-4acb-a4b7-543dfaf091e9
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.recommended_cider
+id: node.recommended_cider.promote
+field_name: promote
+entity_type: node
+bundle: recommended_cider
+label: 'Promoted to front page'
+description: ''
+required: false
+translatable: true
+default_value:
+  -
+    value: 1
+default_value_callback: ''
+settings:
+  on_label: 'On'
+  off_label: 'Off'
+field_type: boolean

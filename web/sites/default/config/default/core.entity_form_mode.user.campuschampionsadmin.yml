@@ -6,6 +6,6 @@ dependencies:
     - user
 id: user.campuschampionsadmin
 label: CampusChampionsAdmin
-description: ''
+description: null
 targetEntityType: user
 cache: true

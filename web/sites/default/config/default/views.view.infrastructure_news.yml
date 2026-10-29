@@ -417,6 +417,7 @@ display:
         type: mini
         options:
           offset: 0
+          pagination_heading_level: h4
           items_per_page: 25
           total_pages: null
           id: 0
@@ -431,7 +432,6 @@ display:
             items_per_page_options_all_label: '- All -'
             offset: false
             offset_label: Offset
-          pagination_heading_level: h4
       exposed_form:
         type: basic
         options:
@@ -629,6 +629,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
         options:
@@ -735,9 +736,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -780,9 +778,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
             min_placeholder: ''
             max_placeholder: ''
             placeholder: ''
@@ -827,9 +822,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
