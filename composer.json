@@ -81,9 +81,9 @@
         "drupal/config_filter": "2.7.0",
         "drupal/config_split": "^2.0",
         "drupal/content_moderation_notifications": "^3.4",
-        "drupal/core-composer-scaffold": "^10.6.1",
-        "drupal/core-project-message": "^10.6.1",
-        "drupal/core-recommended": "^10.6.1",
+        "drupal/core-composer-scaffold": "^11.4.0",
+        "drupal/core-project-message": "^11.4.0",
+        "drupal/core-recommended": "^11.4.0",
         "drupal/crawler_rate_limit": "^3.0@beta",
         "drupal/csv_serialization": "^4.0",
         "drupal/ctools": "^4.1.0",
@@ -207,7 +207,7 @@
     "require-dev": {
         "connectci/amp_dev": "dev-main",
         "doctrine/instantiator": "~2.0.0",
-        "drupal/core-dev": "^10.6.1",
+        "drupal/core-dev": "^11.4.0",
         "drupal/devel": "^5.4",
         "drupal/examples": "^4.0",
         "drupal/upgrade_status": "^4.0",
@@ -230,11 +230,12 @@
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "drupal/core-composer-scaffold": true,
             "drupal/core-project-message": true,
+            "mglaman/composer-drupal-lenient": true,
             "oomphinc/composer-installers-extender": true,
             "php-http/discovery": true,
             "phpstan/extension-installer": true,
-            "tbachert/spi": true,
-            "mglaman/composer-drupal-lenient": true
+            "symfony/runtime": true,
+            "tbachert/spi": true
         }
     },
     "extra": {

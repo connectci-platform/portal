@@ -1,9 +1,8 @@
 {
     "patches": {
         "drupal/core": {
-            "ModuleHandler skips all hook implementations when invoked before the module files have been loaded": "patches/3207813-73.patch",
             "More link is missing in pager...": "patches/3381979-views-some-pager-more-link.patch",
-            "big_pipe.js' checkMutation() does not check if node exists before using it": "https://www.drupal.org/files/issues/2024-01-21/drupal-big_pipe_does_not_check_before_using_node_object-3416141.patch"
+            "big_pipe.js' checkMutation() does not check if node exists before using it - https://www.drupal.org/i/3416141": "patches/big_pipe-checkmutation-null-node-3416141.patch"
         },
         "drupal/facets": {
             "Creating requests causes failures on Drupal 10.3": "https://www.drupal.org/files/issues/2024-08-07/3466281-2--for-2.0.8.patch",
