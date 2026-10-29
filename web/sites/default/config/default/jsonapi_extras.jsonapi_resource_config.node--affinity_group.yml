@@ -1,0 +1,105 @@
+uuid: 6413313a-f5ee-4dad-b013-3c20e8741d56
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - node
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: node--affinity_group
+disabled: false
+path: node/affinity_group
+resourceType: node--affinity_group
+resourceFields:
+  field_ag_private_users:
+    disabled: true
+    fieldName: field_ag_private_users
+    publicName: field_ag_private_users
+    enhancer:
+      id: ''
+  field_coordinator:
+    disabled: true
+    fieldName: field_coordinator
+    publicName: field_coordinator
+    enhancer:
+      id: ''
+  field_ext_email_list:
+    disabled: true
+    fieldName: field_ext_email_list
+    publicName: field_ext_email_list
+    enhancer:
+      id: ''
+  field_use_ext_email_list:
+    disabled: true
+    fieldName: field_use_ext_email_list
+    publicName: field_use_ext_email_list
+    enhancer:
+      id: ''
+  field_list_id:
+    disabled: true
+    fieldName: field_list_id
+    publicName: field_list_id
+    enhancer:
+      id: ''
+  field_mailing_list:
+    disabled: true
+    fieldName: field_mailing_list
+    publicName: field_mailing_list
+    enhancer:
+      id: ''
+  field_ag_private:
+    disabled: true
+    fieldName: field_ag_private
+    publicName: field_ag_private
+    enhancer:
+      id: ''
+  field_domain_access:
+    disabled: true
+    fieldName: field_domain_access
+    publicName: field_domain_access
+    enhancer:
+      id: ''
+  field_domain_all_affiliates:
+    disabled: true
+    fieldName: field_domain_all_affiliates
+    publicName: field_domain_all_affiliates
+    enhancer:
+      id: ''
+  field_domain_source:
+    disabled: true
+    fieldName: field_domain_source
+    publicName: field_domain_source
+    enhancer:
+      id: ''
+  field_metatag:
+    disabled: true
+    fieldName: field_metatag
+    publicName: field_metatag
+    enhancer:
+      id: ''
+  field_persona_source:
+    disabled: true
+    fieldName: field_persona_source
+    publicName: field_persona_source
+    enhancer:
+      id: ''
+  revision_log:
+    disabled: true
+    fieldName: revision_log
+    publicName: revision_log
+    enhancer:
+      id: ''
+  revision_uid:
+    disabled: true
+    fieldName: revision_uid
+    publicName: revision_uid
+    enhancer:
+      id: ''
+  uid:
+    disabled: true
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''

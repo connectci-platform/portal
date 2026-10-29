@@ -1,0 +1,27 @@
+uuid: 0fc7b081-659b-4cdb-a56c-3be5e9361b53
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - taxonomy
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: taxonomy_term--appverse_organization
+disabled: false
+path: taxonomy_term/appverse_organization
+resourceType: taxonomy_term--appverse_organization
+resourceFields:
+  revision_user:
+    disabled: true
+    fieldName: revision_user
+    publicName: revision_user
+    enhancer:
+      id: ''
+  revision_log_message:
+    disabled: true
+    fieldName: revision_log_message
+    publicName: revision_log_message
+    enhancer:
+      id: ''
