@@ -44,8 +44,8 @@ $settings['ood_software.review_full_environments'] = ['md-2788'];
 // "sonnet" / "opus" (the Anthropic API). Read by
 // AppverseReviewService::reviewModel(). A plain string applies everywhere,
 // live included; ['env' => 'model'] sets it per environment, with unlisted
-// environments on sonnet. Qwen everywhere for now, while most reviews are
-// test runs of test repos (appverse-planning#27).
+// environments on qwen. Reviews stay on the on-prem model unless this
+// chooses a Claude model.
 $settings['ood_software.review_model'] = 'qwen';
 
 // Send mail to the null transport everywhere except live, so non-live
