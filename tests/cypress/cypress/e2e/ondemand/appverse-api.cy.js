@@ -248,6 +248,87 @@ describe("Appverse JSON:API", () => {
     });
   });
 
+  describe("Appverse allowlist (D8-2831)", () => {
+    // The call the appverse frontend makes for the list/detail views.
+    const frontendUrl = '/jsonapi/node/appverse_app?filter[status]=1'
+      + '&include=field_appverse_app_type,field_add_implementation_tags,field_appverse_organization,field_license'
+      + '&fields[node--appverse_app]=title,body,field_appverse_github_url,field_appverse_readme,field_appverse_lastupdated,field_appverse_stars,flag_count,drupal_internal__nid,path,field_appverse_software_implemen,field_appverse_repo,field_appverse_app_type,field_add_implementation_tags,field_appverse_organization,field_appverse_maintainer_name,field_license'
+      + '&fields[taxonomy_term--appverse_app_type]=name'
+      + '&fields[taxonomy_term--appverse_organization]=name'
+      + '&fields[taxonomy_term--appverse_license]=name';
+
+    // Relationship field => resource type that must appear in `included`.
+    const includeMap = {
+      field_appverse_app_type: 'taxonomy_term--appverse_app_type',
+      field_add_implementation_tags: 'taxonomy_term--appverse_implementation_tags',
+      field_appverse_organization: 'taxonomy_term--appverse_organization',
+      field_license: 'taxonomy_term--appverse_license',
+    };
+
+    const hasRelated = (app, field) => {
+      const data = app.relationships && app.relationships[field] && app.relationships[field].data;
+      return Array.isArray(data) ? data.length > 0 : !!data;
+    };
+
+    beforeEach(() => {
+      cy.clearCookies();
+    });
+
+    it("frontend list call includes related taxonomy terms", () => {
+      cy.request({
+        url: frontendUrl,
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body.data).to.be.an('array');
+        const included = response.body.included || [];
+
+        // A missing allowlist entry silently drops included data, so assert
+        // each type whenever some app actually references it.
+        Object.entries(includeMap).forEach(([field, type]) => {
+          if (response.body.data.some((app) => hasRelated(app, field))) {
+            expect(
+              included.some((item) => item.type === type),
+              `included contains ${type}`
+            ).to.eq(true);
+          } else {
+            cy.log(`No app has ${field} populated; skipping ${type}`);
+          }
+        });
+      });
+    });
+
+    it("appverse_app items expose the taxonomy relationships", () => {
+      cy.request({
+        url: '/jsonapi/node/appverse_app',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        if (response.body.data.length === 0) {
+          cy.log('No appverse_app data available');
+          return;
+        }
+        Object.keys(includeMap).forEach((field) => {
+          expect(response.body.data[0].relationships).to.have.property(field);
+        });
+      });
+    });
+
+    it("GET /jsonapi/flagging/appverse_apps returns a data array", () => {
+      cy.request({
+        url: '/jsonapi/flagging/appverse_apps',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+      });
+    });
+  });
+
   describe("Session Token", () => {
     it("Returns a valid CSRF token", () => {
       cy.request('/session/token').then((response) => {
