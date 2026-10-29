@@ -82,6 +82,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
       'field.storage.node.field_repo_url',
       'field.field.node.appverse_repo.field_repo_url',
       // body is a base-table field; attach it to appverse_app.
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       // appverse_app fields written by applyDeclaredApp.
       'field.storage.node.field_appverse_repo',
@@ -246,7 +247,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
   /**
    * Validation status of an app.
    */
-  protected function status(Node $app): string {
+  protected function validationStatus(Node $app): string {
     return (string) $app->get('field_appverse_app_validation_st')->value;
   }
 
@@ -303,7 +304,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
     sort($expected);
 
     self::assertSame($expected, $this->appTagTids($app), 'Effective tags must be app tags UNION shared tags. Errors: ' . $this->errors($app));
-    self::assertSame('valid', $this->status($app), 'Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
   }
 
   /**
@@ -343,7 +344,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
 
     $expected = [$this->tidByName('appverse_implementation_tags', 'containerized')];
     self::assertSame($expected, $this->appTagTids($app), 'An app with no tags must get the shared ones. Errors: ' . $this->errors($app));
-    self::assertSame('valid', $this->status($app), 'Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
   }
 
   /**
@@ -391,7 +392,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
     self::assertSame($expected, $actual, 'Duplicated tag must appear exactly once. Errors: ' . $this->errors($app));
     // Exactly two refs (no third duplicate of containerized).
     self::assertCount(2, $app->get('field_add_implementation_tags')->getValue());
-    self::assertSame('valid', $this->status($app), 'Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
   }
 
   /**
@@ -439,7 +440,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
     $app = $this->loadApp($repo, 'jup');
 
     // Drop-and-flag: the app stays valid despite the unresolved tag.
-    self::assertSame('valid', $this->status($app), 'An unresolved implementation tag must drop-and-flag, not reject. Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'An unresolved implementation tag must drop-and-flag, not reject. Errors: ' . $this->errors($app));
     // The valid one still resolves and is written.
     self::assertSame(
       [$this->tidByName('appverse_implementation_tags', 'jupyter')],
@@ -492,7 +493,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
     $app = $this->loadApp($repo, 'jup');
 
     // Stay listed: the unknown tag does not delist an otherwise-valid app.
-    self::assertSame('valid', $this->status($app), 'An unresolved implementation tag must not reject the app. Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'An unresolved implementation tag must not reject the app. Errors: ' . $this->errors($app));
     // Keep the valid: only the resolved term is written, the bogus one dropped.
     self::assertSame(
       [$this->tidByName('appverse_implementation_tags', 'gpu-enabled')],
@@ -546,7 +547,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
       [$this->tidByName('appverse_implementation_tags', 'jupyter')],
       $this->appTagTids($created)
     );
-    self::assertSame('valid', $this->status($created), 'Single-app must not be rejected by ignored shared tags. Errors: ' . $this->errors($created));
+    self::assertSame('valid', $this->validationStatus($created), 'Single-app must not be rejected by ignored shared tags. Errors: ' . $this->errors($created));
     self::assertStringNotContainsString('bogus-tag', $this->errors($created));
   }
 

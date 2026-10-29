@@ -182,7 +182,11 @@ $settings['config_exclude_modules'] = [
   'recaptcha_v3',
 ];
 
-ini_set('max_execution_time', 360);
+// Web requests only: CLI is unlimited by default, and a single drush batch
+// process (e.g. updatedb on a major upgrade) can run well past 360 seconds.
+if (PHP_SAPI !== 'cli') {
+  ini_set('max_execution_time', 360);
+}
 
 // Configure Redis.
 if (defined(

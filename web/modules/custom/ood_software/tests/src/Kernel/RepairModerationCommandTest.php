@@ -115,6 +115,7 @@ class RepairModerationCommandTest extends KernelTestBase {
     $this->installEntitySchema('path_alias');
     $this->installSchema('node', ['node_access']);
     $this->installSchema('user', ['users_data']);
+    $this->installSchema('flag', ['flag_counts']);
     $this->installConfig(['system', 'filter', 'user', 'node', 'content_moderation', 'workflows']);
     $this->importProdConfig([
       'node.type.appverse_repo',
