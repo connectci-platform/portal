@@ -1,5 +1,5 @@
 <?php
-function VIEWSOVERRIDE_cron() {
+function viewsoverride_cron() {
   \Drupal::logger('cron_files_delete')->notice('cron_files_delete ran');
   // get all files ids
   $fids = Drupal::entityQuery('file')
@@ -20,7 +20,7 @@ function VIEWSOVERRIDE_cron() {
 use Drupal\views\ViewExecutable;
 use Drupal\views\Plugin\views\query\QueryPluginBase;
 
-function VIEWSOVERRIDE_views_query_alter(ViewExecutable $view, QueryPluginBase $query) {
+function viewsoverride_views_query_alter(ViewExecutable $view, QueryPluginBase $query) {
   // make sure we're altering the correct view
   if ($view->storage->get('id') === 'projects' && strpos($view->current_display, "projects_tag_") === 0) {
     // foreach top level condition group
