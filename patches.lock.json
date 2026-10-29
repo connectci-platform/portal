@@ -1,5 +1,5 @@
 {
-    "_hash": "357395189b3600ab66aeff9d4c2e690fe3040dbd1b8790b946a1324317223f93",
+    "_hash": "4e31747f202a0770586006bef02d1436435d07d63d2ed9fb6118deb5a79b026a",
     "patches": {
         "drupal/core": [
             {
@@ -145,6 +145,16 @@
                 "description": "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report",
                 "url": "patches/recurring_events-quiet-instance-status-message.patch",
                 "sha256": "be6911876d93b83352f8c995325f54f2bb396429d28b76b10006ffbfd1fba825",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "D11: use IN operator for array value in registrations views query alter",
+                "url": "patches/recurring_events-views-query-alter-array-operator.patch",
+                "sha256": "a273a79c90929014ae20547d049b850f66042ddccfefdd68e325a3a3d1bfb304",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

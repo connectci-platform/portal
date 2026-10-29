@@ -1,0 +1,21 @@
+Use the IN operator for the array value in the registrations view query alter.
+
+recurring_events_views_views_query_alter() adds a raw Views where condition
+whose value is a one-element array but whose operator is "=". Drupal 11 throws
+an InvalidQueryException ("Calling Condition::condition() without an array
+compatible operator is not supported"), so /events/{eventinstance}/registrations
+returns a 500. Use "IN" so the array value is valid.
+
+Report upstream and drop this patch once fixed there.
+
+--- a/modules/recurring_events_views/recurring_events_views.module
++++ b/modules/recurring_events_views/recurring_events_views.module
+@@ -102,7 +102,7 @@
+           $query->where[1]['conditions'][] = [
+             'field' => $field,
+             'value' => $value,
+-            'operator' => '=',
++            'operator' => 'IN',
+           ];
+         }
+       }

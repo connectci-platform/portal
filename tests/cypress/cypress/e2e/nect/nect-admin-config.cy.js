@@ -74,7 +74,7 @@ describe("Check admin configuration pages", () => {
     cy.contains('Institution');
     cy.contains('Contact settings');
 
-    cy.visit('/admin/config/people/accounts/display');
+    cy.visit('/admin/config/people/accounts/display/default');
     cy.get('h1').should('contain', 'Manage display');
 
     cy.contains('Ask.CI Username');
@@ -356,9 +356,6 @@ describe("Check admin configuration pages", () => {
 
     cy.visit('/admin/config/services/rest');
     cy.get('h1').should('contain', 'REST resources');
-
-    cy.visit('/admin/config/services/rss-publishing');
-    cy.get('h1').should('contain', 'RSS publishing');
 
     cy.visit('/admin/config/services/linkset');
     cy.get('h1').should('contain', 'Menu Linkset Settings');
