@@ -1,22 +1,12 @@
 {
-    "_hash": "f11e71fe67c7788db4013cd3b68d559b300265aa0c894b9e812f0ac30dad951e",
+    "_hash": "357395189b3600ab66aeff9d4c2e690fe3040dbd1b8790b946a1324317223f93",
     "patches": {
         "drupal/core": [
             {
                 "package": "drupal/core",
-                "description": "ModuleHandler skips all hook implementations when invoked before the module files have been loaded",
-                "url": "patches/3207813-73.patch",
-                "sha256": "2690ffa6ee2f1500e36dc53f98fcb6810b1c4a6707bbef3717c73de1dec8ca44",
-                "depth": 2,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            },
-            {
-                "package": "drupal/core",
                 "description": "More link is missing in pager...",
                 "url": "patches/3381979-views-some-pager-more-link.patch",
-                "sha256": "5726c3fe5ecc0efa4a00859d3bb29e221be660bc5594488513fa95063ae5fb82",
+                "sha256": "78eef4395e4104958881a41b7632359a557acf6f74008e6a5728876c82465814",
                 "depth": 2,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
@@ -24,9 +14,9 @@
             },
             {
                 "package": "drupal/core",
-                "description": "big_pipe.js' checkMutation() does not check if node exists before using it",
-                "url": "https://www.drupal.org/files/issues/2024-01-21/drupal-big_pipe_does_not_check_before_using_node_object-3416141.patch",
-                "sha256": "8b48a26d8914a44436012a2eb70e22f19f48f8a57759d729f229b3091a684b8a",
+                "description": "big_pipe.js' checkMutation() does not check if node exists before using it - https://www.drupal.org/i/3416141",
+                "url": "patches/big_pipe-checkmutation-null-node-3416141.patch",
+                "sha256": "a8d2df0c17df9460ac81ea33fab505ae4ae02727abf3e7a972a10d7388aa6a57",
                 "depth": 2,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
