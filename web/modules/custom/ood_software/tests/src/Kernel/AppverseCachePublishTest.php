@@ -133,6 +133,7 @@ class AppverseCachePublishTest extends KernelTestBase {
       'field.field.node.appverse_software.field_appverse_software_website',
       'field.storage.node.field_appverse_software_doc',
       'field.field.node.appverse_software.field_appverse_software_doc',
+      'field.storage.node.body',
       'field.field.node.appverse_software.body',
       // buildAppData reads these app fields unguarded (->uri / ->value).
       'field.storage.node.field_appverse_github_url',

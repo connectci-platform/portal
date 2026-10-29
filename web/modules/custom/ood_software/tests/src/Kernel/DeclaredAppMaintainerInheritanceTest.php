@@ -82,6 +82,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
       'field.storage.node.field_repo_url',
       'field.field.node.appverse_repo.field_repo_url',
       // body is a base-table field; attach it to appverse_app.
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       // appverse_app fields written by applyDeclaredApp.
       'field.storage.node.field_appverse_repo',
@@ -190,7 +191,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
   /**
    * Validation status of an app.
    */
-  protected function status(Node $app): string {
+  protected function validationStatus(Node $app): string {
     return (string) $app->get('field_appverse_app_validation_st')->value;
   }
 
@@ -245,7 +246,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
 
     // Inherited the repo maintainer name; valid (not rejected for missing
     // maintainer.name / maintainer.support_url).
-    self::assertSame('valid', $this->status($app), 'App should be valid via inherited maintainer. Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'App should be valid via inherited maintainer. Errors: ' . $this->errors($app));
     self::assertSame('Repo Team', (string) $app->get('field_appverse_maintainer_name')->value);
   }
 
@@ -289,7 +290,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
 
     $app = $this->loadApp($repo, 'jup');
 
-    self::assertSame('valid', $this->status($app), 'Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
     self::assertSame(
       'App Owner',
       (string) $app->get('field_appverse_maintainer_name')->value,
@@ -347,7 +348,7 @@ class DeclaredAppMaintainerInheritanceTest extends KernelTestBase {
     // Missing support_url therefore trips the rejected-on-missing path —
     // proving the whole-block-only rule (had we merged sub-fields, the repo's
     // support_url would satisfy the requirement and the app would be valid).
-    self::assertSame('rejected', $this->status($app));
+    self::assertSame('rejected', $this->validationStatus($app));
   }
 
   /**
