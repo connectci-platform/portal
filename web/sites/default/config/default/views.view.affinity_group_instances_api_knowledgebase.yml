@@ -594,7 +594,8 @@ display:
         - url
         - 'user.node_grants:view'
         - user.permissions
-      tags: {  }
+      tags:
+        - flag.flag.upvote
   rest_export_1:
     id: rest_export_1
     display_title: 'REST export'
@@ -658,4 +659,5 @@ display:
         - url
         - 'user.node_grants:view'
         - user.permissions
-      tags: {  }
+      tags:
+        - flag.flag.upvote

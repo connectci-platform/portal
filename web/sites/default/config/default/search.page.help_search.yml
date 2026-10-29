@@ -1,0 +1,14 @@
+uuid: 084eb17b-a8ee-432d-9ade-54d1a55a31ff
+langcode: en
+status: true
+dependencies:
+  module:
+    - search_help
+_core:
+  default_config_hash: 3RtOcijLVSktZYOSAfTWAQQAg8DaOaQGYDVdlR2CdVI
+id: help_search
+label: Help
+path: help
+weight: 0
+plugin: help_search
+configuration: {  }

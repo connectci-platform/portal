@@ -363,6 +363,7 @@ display:
           empty_table: true
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:
@@ -371,7 +372,7 @@ display:
       show_admin_links: false
       display_extenders: {  }
     cache_metadata:
-      max-age: 0
+      max-age: -1
       contexts:
         - 'languages:language_content'
         - 'languages:language_interface'
@@ -379,7 +380,10 @@ display:
         - url.query_args
         - 'user.node_grants:view'
         - user.permissions
-      tags: {  }
+      tags:
+        - 'config:field.storage.node.field_access_org_name'
+        - 'config:field.storage.node.field_cider_short_name'
+        - 'config:field.storage.node.field_rp_display_name'
   page_1:
     id: page_1
     display_title: Page
@@ -389,7 +393,7 @@ display:
       display_extenders: {  }
       path: rp-resources/manage
     cache_metadata:
-      max-age: 0
+      max-age: -1
       contexts:
         - 'languages:language_content'
         - 'languages:language_interface'
@@ -397,4 +401,7 @@ display:
         - url.query_args
         - 'user.node_grants:view'
         - user.permissions
-      tags: {  }
+      tags:
+        - 'config:field.storage.node.field_access_org_name'
+        - 'config:field.storage.node.field_cider_short_name'
+        - 'config:field.storage.node.field_rp_display_name'

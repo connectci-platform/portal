@@ -415,6 +415,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:
@@ -452,6 +453,8 @@ display:
       tags:
         - 'config:field.storage.node.field_access_org_name'
         - 'config:field.storage.node.field_cider_detail_view_url'
+        - 'config:field.storage.node.field_cider_short_name'
+        - 'config:field.storage.node.field_rp_display_name'
   page_1:
     id: page_1
     display_title: Page
@@ -470,3 +473,5 @@ display:
       tags:
         - 'config:field.storage.node.field_access_org_name'
         - 'config:field.storage.node.field_cider_detail_view_url'
+        - 'config:field.storage.node.field_cider_short_name'
+        - 'config:field.storage.node.field_rp_display_name'

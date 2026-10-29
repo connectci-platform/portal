@@ -708,6 +708,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:
@@ -770,6 +771,7 @@ display:
         - user.roles
       tags:
         - 'config:field.storage.user.field_region'
+        - flag.flag.interested_in_project
   data_export_1:
     id: data_export_1
     display_title: 'Data export'
@@ -814,6 +816,7 @@ display:
         - user.roles
       tags:
         - 'config:field.storage.user.field_region'
+        - flag.flag.interested_in_project
   page_1:
     id: page_1
     display_title: Page
@@ -838,3 +841,4 @@ display:
         - user.roles
       tags:
         - 'config:field.storage.user.field_region'
+        - flag.flag.interested_in_project
