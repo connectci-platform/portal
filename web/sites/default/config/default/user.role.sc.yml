@@ -1,35 +1,9 @@
 uuid: e45b90ad-5dd5-4901-a9ec-0c2e71af361d
 langcode: en
 status: true
-dependencies:
-  config:
-    - filter.format.basic_html
-    - filter.format.full_html
-    - filter.format.restricted_html
-    - node.type.blog_post
-    - node.type.blog_post_region_
-  module:
-    - contact
-    - file
-    - filter
-    - help
-    - node
-    - role_delegation
+dependencies: {  }
 id: sc
 label: 'steering committee'
 weight: 13
 is_admin: null
-permissions:
-  - 'access help pages'
-  - 'access user contact forms'
-  - 'assign professional_mentor role'
-  - 'assign regional_expert role'
-  - 'assign representative role'
-  - 'create blog_post content'
-  - 'create blog_post_region_ content'
-  - 'delete own blog_post content'
-  - 'delete own blog_post_region_ content'
-  - 'delete own files'
-  - 'use text format basic_html'
-  - 'use text format full_html'
-  - 'use text format restricted_html'
+permissions: {  }

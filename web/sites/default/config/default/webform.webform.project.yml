@@ -30,21 +30,12 @@ elements: |-
     '#help': 'Approve the user to fill out the rest of the project submission'
     '#access_create_roles':
       - administrator
-      - sc
-      - lt
-      - ra
       - pascience_manager
     '#access_update_roles':
       - administrator
-      - sc
-      - lt
-      - ra
       - pascience_manager
     '#access_view_roles':
       - administrator
-      - sc
-      - lt
-      - ra
       - pascience_manager
   received_sent:
     '#type': hidden
@@ -56,21 +47,12 @@ elements: |-
     '#help': 'Approve the project to be displayed on the Projects page and project carousel'
     '#access_create_roles':
       - administrator
-      - sc
-      - lt
-      - ra
       - pascience_manager
     '#access_update_roles':
       - administrator
-      - sc
-      - lt
-      - ra
       - pascience_manager
     '#access_view_roles':
       - administrator
-      - sc
-      - lt
-      - ra
       - pascience_manager
   accept_and_publish_sent:
     '#type': hidden
@@ -785,9 +767,6 @@ access:
     permissions: {  }
   update_any:
     roles:
-      - sc
-      - lt
-      - ra
       - careers_sc
       - pascience_manager
     users: {  }
