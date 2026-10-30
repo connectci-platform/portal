@@ -21,6 +21,7 @@ module:
   recaptcha_v3: 0
 theme: {  }
 complete_list:
+  - access.token_exchange
   - access_affinitygroup.settings
   - autoban.autoban.denied
   - autoban.autoban.honeypot_urls
