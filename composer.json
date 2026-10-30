@@ -200,6 +200,7 @@
         "npm-asset/select2": "^4.0",
         "oit/facets_honeypot": "^1.0",
         "oomphinc/composer-installers-extender": "^2.0",
+        "pantheon-systems/drupal-integrations": "^11",
         "pantheon-systems/quicksilver-pushback": "^2",
         "politsin/jquery-ui-touch-punch": "^1.0",
         "swagger-api/swagger-ui": "^3.52"
@@ -240,6 +241,9 @@
     },
     "extra": {
         "drupal-scaffold": {
+            "allowed-packages": [
+                "pantheon-systems/drupal-integrations"
+            ],
             "locations": {
                 "web-root": "web/"
             },

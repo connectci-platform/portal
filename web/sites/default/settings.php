@@ -76,6 +76,24 @@ foreach ($additionalSettingsFiles as $settingsFile) {
   }
 }
 
+/**
+ * Reroute email for non-production environments.
+ *
+ * On dev, test, and multidev environments, all emails are rerouted to prevent
+ * accidental emails to real users during testing.
+ *
+ * Note: This does not affect local DDEV or CI environments which use mailpit,
+ * as PANTHEON_ENVIRONMENT is only set on Pantheon servers.
+ */
+if (isset($_ENV['PANTHEON_ENVIRONMENT']) &&
+    $_ENV['PANTHEON_ENVIRONMENT'] !== 'live' &&
+    $_ENV['PANTHEON_ENVIRONMENT'] !== 'local') {
+  $config['reroute_email.settings']['enable'] = TRUE;
+  $config['reroute_email.settings']['address'] = 'andrew@elytra.net';
+  $config['reroute_email.settings']['description'] = TRUE;
+  $config['reroute_email.settings']['message'] = TRUE;
+}
+
 if (defined('PANTHEON_ENVIRONMENT')) {
   $env = PANTHEON_ENVIRONMENT;
 }
