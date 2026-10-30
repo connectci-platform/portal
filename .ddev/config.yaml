@@ -6,6 +6,7 @@ webserver_type: nginx-fpm
 xdebug_enabled: false
 additional_hostnames:
   - accessmatch
+  - chat.accessmatch
   - campuschampions
   - ccmnet
   - coco
