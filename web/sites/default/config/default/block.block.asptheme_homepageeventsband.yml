@@ -10,7 +10,7 @@ dependencies:
 id: asptheme_homepageeventsband
 theme: aspTheme
 region: below_content
-weight: 0
+weight: -46
 provider: null
 plugin: access_homepage_events_band
 settings:

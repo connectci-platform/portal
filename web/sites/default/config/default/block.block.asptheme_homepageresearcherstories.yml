@@ -10,7 +10,7 @@ dependencies:
 id: asptheme_homepageresearcherstories
 theme: aspTheme
 region: below_content
-weight: 1
+weight: -45
 provider: null
 plugin: access_homepage_researcher_stories
 settings:
