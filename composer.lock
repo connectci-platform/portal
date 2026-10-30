@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "aafbb0ea200811a898961324773facca",
+    "content-hash": "13b1bc66ceff01d739a8a22006585d77",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -675,17 +675,18 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-md-2899",
+            "version": "3.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "bb47aa46922949c5fe81b144887ff1025e17cab0"
+                "reference": "ce8da4ea09e2aed20b302d913633c1d3f73d1eda"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -701,16 +702,17 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-29T17:54:46+00:00"
+            "time": "2026-10-30T20:57:47+00:00"
         },
         {
             "name": "connectci/asp-theme",
-            "version": "dev-d8-2899",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "83b62df20dbe19a02f3f6b2758a74671933f8925"
+                "reference": "d5e268eca7c5d3289798c45064e16ceb4759e757"
             },
+            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "MIT"
@@ -726,7 +728,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-10-29T17:35:26+00:00"
+            "time": "2026-10-30T20:58:01+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
