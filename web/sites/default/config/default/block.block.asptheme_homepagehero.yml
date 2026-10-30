@@ -18,6 +18,7 @@ settings:
   label: 'Homepage hero (How can we help?)'
   label_display: '0'
   provider: access_misc
+  assistant_url: 'https://qa.access-ci.org/'
 visibility:
   request_path:
     id: request_path
