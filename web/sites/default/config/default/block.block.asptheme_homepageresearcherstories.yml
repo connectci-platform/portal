@@ -1,0 +1,25 @@
+uuid: 40e3ae6f-f99b-46f2-b407-a970e312fa40
+langcode: en
+status: true
+dependencies:
+  module:
+    - access_misc
+    - system
+  theme:
+    - aspTheme
+id: asptheme_homepageresearcherstories
+theme: aspTheme
+region: below_content
+weight: 1
+provider: null
+plugin: access_homepage_researcher_stories
+settings:
+  id: access_homepage_researcher_stories
+  label: 'Homepage researcher stories'
+  label_display: '0'
+  provider: access_misc
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /support-home
