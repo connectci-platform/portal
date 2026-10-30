@@ -1,0 +1,25 @@
+uuid: 1c39f549-dccb-4c3c-a052-2d7c8e46bc8c
+langcode: en
+status: true
+dependencies:
+  module:
+    - access_misc
+    - system
+  theme:
+    - aspTheme
+id: asptheme_homepageeventsband
+theme: aspTheme
+region: below_content
+weight: 0
+provider: null
+plugin: access_homepage_events_band
+settings:
+  id: access_homepage_events_band
+  label: 'Homepage events band (Training & events)'
+  label_display: '0'
+  provider: access_misc
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /support-home
