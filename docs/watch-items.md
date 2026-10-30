@@ -50,3 +50,30 @@ When an item is resolved, delete it from this file.
   menu visibility still works.
 - **Last checked:** 2026-10-14 — issue status is Needs review (`8`); latest release is
   2.0.1. Not triggered.
+
+## email_change_verification — waiting on a Drupal 11 release (or deprecation)
+
+- **Current:** `drupal/email_change_verification` 1.0.0 (`composer.json`: `^1.0@beta`),
+  whose `.info.yml` and composer metadata only declare `^9.1 || ^10`. We carry
+  `patches/email_change_verification-d11-3430085.patch` (from MR !7 on issue #3430085,
+  which only adds `|| ^11` to `core_version_requirement`) and allow the package in
+  `extra.drupal-lenient.allowed-list` via `mglaman/composer-drupal-lenient` so composer
+  will install it alongside Drupal 11 core. A PHPStan deprecation scan of the module
+  came back clean on 2026-10-27.
+- **Trigger:** either (a) a tagged release whose core compatibility includes `^11`, or
+  (b) the module is deprecated / marked unsupported in favor of Email Confirmer (see
+  issue #3337087, "Deprecate in favour of Email Confirmer?").
+- **Check:** `curl -s https://updates.drupal.org/release-history/email_change_verification/current`
+  and read the `<version>` / `<core_compatibility>` tags. For the deprecation question,
+  read issue #3337087 and the project page
+  https://www.drupal.org/project/email_change_verification for a status change.
+- **Action:** (a) update to the new release, remove the patch from
+  `composer.patches.json`, delete the patch file, remove
+  `drupal/email_change_verification` from `extra.drupal-lenient.allowed-list` (and drop
+  `mglaman/composer-drupal-lenient` if the list is then empty), then run
+  `composer patches-relock` and `composer patches-repatch`. (b) draft a Jira ticket to
+  migrate to `drupal/email_confirmer` + `email_confirmer_user`: port the subject, body,
+  message, and 8-hour timeout from `email_change_verification.config`, and decide how to
+  handle pending `mail_change` values at cutover.
+- **Last checked:** 2026-10-27 — latest release is 1.0.0 (`^9.1 || ^10`); MR !7 (D11)
+  open and unmerged; issue #3337087 open. Not triggered.

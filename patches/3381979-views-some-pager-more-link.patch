@@ -1,6 +1,8 @@
+diff --git a/core/modules/views/src/Plugin/views/pager/Some.php b/core/modules/views/src/Plugin/views/pager/Some.php
+index b85c011..33f6c57 100644
 --- a/core/modules/views/src/Plugin/views/pager/Some.php
 +++ b/core/modules/views/src/Plugin/views/pager/Some.php
-@@ -19,6 +19,13 @@
+@@ -19,6 +19,13 @@ use Drupal\views\Attribute\ViewsPager;
  )]
  class Some extends PagerPluginBase {
  
@@ -11,10 +13,10 @@
 +   */
 +  protected int $originalNumberOfItems = 0;
 +
-   public function summaryTitle() {
-     if (!empty($this->options['offset'])) {
-       return $this->formatPlural($this->options['items_per_page'], '@count item, skip @skip', '@count items, skip @skip', ['@count' => $this->options['items_per_page'], '@skip' => $this->options['offset']]);
-@@ -74,7 +81,16 @@
+   /**
+    * {@inheritdoc}
+    */
+@@ -95,7 +102,16 @@ class Some extends PagerPluginBase {
     * {@inheritdoc}
     */
    public function postExecute(&$result): void {

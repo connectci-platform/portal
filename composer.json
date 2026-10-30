@@ -62,10 +62,10 @@
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "1.0.x-dev",
         "composer/installers": "^2.3.0",
-        "connectci/access": "3.0.x-dev",
-        "connectci/asp-theme": "dev-main",
-        "connectci/campus-champions-theme": "main-dev",
-        "connectci/operations_cider": "dev-main",
+        "connectci/access": "d8-2921-dev",
+        "connectci/asp-theme": "dev-d8-2921",
+        "connectci/campus-champions-theme": "d8-2921-dev",
+        "connectci/operations_cider": "dev-d8-2921",
         "connectci/webform_submission_search_api": "main-dev",
         "cweagans/composer-patches": "^2.0",
         "drupal/access_by_ref": "^4.0.0",
@@ -81,9 +81,9 @@
         "drupal/config_filter": "2.7.0",
         "drupal/config_split": "^2.0",
         "drupal/content_moderation_notifications": "^3.4",
-        "drupal/core-composer-scaffold": "^10.6.1",
-        "drupal/core-project-message": "^10.6.1",
-        "drupal/core-recommended": "^10.6.1",
+        "drupal/core-composer-scaffold": "^11.4.0",
+        "drupal/core-project-message": "^11.4.0",
+        "drupal/core-recommended": "^11.4.0",
         "drupal/crawler_rate_limit": "^3.0@beta",
         "drupal/csv_serialization": "^4.0",
         "drupal/ctools": "^4.1.0",
@@ -157,7 +157,7 @@
         "drupal/recurring_events": "^3.0.0",
         "drupal/redirect": "^1.8",
         "drupal/redis": "^1.8",
-        "drupal/reroute_email": "^2.2",
+        "drupal/reroute_email": "^2.3-RC",
         "drupal/restui": "^1.20",
         "drupal/role_delegation": "^1.1",
         "drupal/search_api": "^1.31",
@@ -196,9 +196,11 @@
         "drupal/webform_views": "^5.0.0",
         "drupal/yaml_editor": "^1.0",
         "drush/drush": "^13.6.2",
+        "mglaman/composer-drupal-lenient": "^2.0",
         "npm-asset/select2": "^4.0",
         "oit/facets_honeypot": "^1.0",
         "oomphinc/composer-installers-extender": "^2.0",
+        "pantheon-systems/drupal-integrations": "^11",
         "pantheon-systems/quicksilver-pushback": "^2",
         "politsin/jquery-ui-touch-punch": "^1.0",
         "swagger-api/swagger-ui": "^3.52"
@@ -206,7 +208,7 @@
     "require-dev": {
         "connectci/amp_dev": "dev-main",
         "doctrine/instantiator": "~2.0.0",
-        "drupal/core-dev": "^10.6.1",
+        "drupal/core-dev": "^11.4.0",
         "drupal/devel": "^5.4",
         "drupal/examples": "^4.0",
         "drupal/upgrade_status": "^4.0",
@@ -229,14 +231,19 @@
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "drupal/core-composer-scaffold": true,
             "drupal/core-project-message": true,
+            "mglaman/composer-drupal-lenient": true,
             "oomphinc/composer-installers-extender": true,
             "php-http/discovery": true,
             "phpstan/extension-installer": true,
+            "symfony/runtime": true,
             "tbachert/spi": true
         }
     },
     "extra": {
         "drupal-scaffold": {
+            "allowed-packages": [
+                "pantheon-systems/drupal-integrations"
+            ],
             "locations": {
                 "web-root": "web/"
             },
@@ -293,7 +300,10 @@
         "installer-types": [
             "bower-asset",
             "npm-asset"
-        ]
+        ],
+        "drupal-lenient": {
+            "allowed-list": ["drupal/email_change_verification"]
+        }
     },
     "scripts": {
         "robo": "robo --ansi",

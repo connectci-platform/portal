@@ -139,6 +139,7 @@ class BackgroundRepoSyncTest extends KernelTestBase {
       'field.storage.node.field_repo_readme',
       'field.field.node.appverse_repo.field_repo_readme',
       // appverse_app fields written by applyDeclaredApp().
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       'field.storage.node.field_appverse_repo',
       'field.field.node.appverse_app.field_appverse_repo',

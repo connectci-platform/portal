@@ -2346,13 +2346,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
-              student: '0'
-              mentor: '0'
-              researcher: '0'
-              representative: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -2698,6 +2691,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:
@@ -2824,16 +2818,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -3055,16 +3039,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -3284,16 +3258,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -3513,16 +3477,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -3742,16 +3696,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -22635,16 +22579,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
             placeholder: ''
           is_grouped: false
           group_info:

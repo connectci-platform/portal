@@ -1,22 +1,12 @@
 {
-    "_hash": "7b10deaefb3db93797b80e2ae976fc418898d9b5ca4b84aa7ef1ebbc7304e3eb",
+    "_hash": "4e31747f202a0770586006bef02d1436435d07d63d2ed9fb6118deb5a79b026a",
     "patches": {
         "drupal/core": [
             {
                 "package": "drupal/core",
-                "description": "ModuleHandler skips all hook implementations when invoked before the module files have been loaded",
-                "url": "patches/3207813-73.patch",
-                "sha256": "2690ffa6ee2f1500e36dc53f98fcb6810b1c4a6707bbef3717c73de1dec8ca44",
-                "depth": 2,
-                "extra": {
-                    "provenance": "patches-file:composer.patches.json"
-                }
-            },
-            {
-                "package": "drupal/core",
                 "description": "More link is missing in pager...",
                 "url": "patches/3381979-views-some-pager-more-link.patch",
-                "sha256": "5726c3fe5ecc0efa4a00859d3bb29e221be660bc5594488513fa95063ae5fb82",
+                "sha256": "78eef4395e4104958881a41b7632359a557acf6f74008e6a5728876c82465814",
                 "depth": 2,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
@@ -24,9 +14,9 @@
             },
             {
                 "package": "drupal/core",
-                "description": "big_pipe.js' checkMutation() does not check if node exists before using it",
-                "url": "https://www.drupal.org/files/issues/2024-01-21/drupal-big_pipe_does_not_check_before_using_node_object-3416141.patch",
-                "sha256": "8b48a26d8914a44436012a2eb70e22f19f48f8a57759d729f229b3091a684b8a",
+                "description": "big_pipe.js' checkMutation() does not check if node exists before using it - https://www.drupal.org/i/3416141",
+                "url": "patches/big_pipe-checkmutation-null-node-3416141.patch",
+                "sha256": "a8d2df0c17df9460ac81ea33fab505ae4ae02727abf3e7a972a10d7388aa6a57",
                 "depth": 2,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
@@ -159,6 +149,16 @@
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
                 }
+            },
+            {
+                "package": "drupal/recurring_events",
+                "description": "D11: use IN operator for array value in registrations views query alter",
+                "url": "patches/recurring_events-views-query-alter-array-operator.patch",
+                "sha256": "a273a79c90929014ae20547d049b850f66042ddccfefdd68e325a3a3d1bfb304",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
             }
         ],
         "drupal/multiple_registration": [
@@ -191,6 +191,18 @@
                 "description": "Long domain machine names exceed the 32 char sitemap ID limit and break generation",
                 "url": "patches/domain_simple_sitemap-sitemap-id-max-length.patch",
                 "sha256": "2a3693e1f37c53e4ea6657557db2dc109d1e0e6586f1b4b20bbe21ffc8cd0f8c",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
+        "drupal/email_change_verification": [
+            {
+                "package": "drupal/email_change_verification",
+                "description": "Automated Drupal 11 compatibility fixes - https://www.drupal.org/i/3430085",
+                "url": "patches/email_change_verification-d11-3430085.patch",
+                "sha256": "125635fff803d27708e345fa825acd6b5a0f4ebd4711e84aad973be7fdac1694",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

@@ -1,0 +1,22 @@
+uuid: 9ac3665e-9a52-48ef-93b5-9ac84b663a3f
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.appverse_review
+id: node.appverse_review.promote
+field_name: promote
+entity_type: node
+bundle: appverse_review
+label: 'Promoted to front page'
+description: ''
+required: false
+translatable: true
+default_value:
+  -
+    value: 1
+default_value_callback: ''
+settings:
+  on_label: 'On'
+  off_label: 'Off'
+field_type: boolean

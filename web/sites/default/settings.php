@@ -76,6 +76,24 @@ foreach ($additionalSettingsFiles as $settingsFile) {
   }
 }
 
+/**
+ * Reroute email for non-production environments.
+ *
+ * On dev, test, and multidev environments, all emails are rerouted to prevent
+ * accidental emails to real users during testing.
+ *
+ * Note: This does not affect local DDEV or CI environments which use mailpit,
+ * as PANTHEON_ENVIRONMENT is only set on Pantheon servers.
+ */
+if (isset($_ENV['PANTHEON_ENVIRONMENT']) &&
+    $_ENV['PANTHEON_ENVIRONMENT'] !== 'live' &&
+    $_ENV['PANTHEON_ENVIRONMENT'] !== 'local') {
+  $config['reroute_email.settings']['enable'] = TRUE;
+  $config['reroute_email.settings']['address'] = 'andrew@elytra.net';
+  $config['reroute_email.settings']['description'] = TRUE;
+  $config['reroute_email.settings']['message'] = TRUE;
+}
+
 if (defined('PANTHEON_ENVIRONMENT')) {
   $env = PANTHEON_ENVIRONMENT;
 }
@@ -182,7 +200,11 @@ $settings['config_exclude_modules'] = [
   'recaptcha_v3',
 ];
 
-ini_set('max_execution_time', 360);
+// Web requests only: CLI is unlimited by default, and a single drush batch
+// process (e.g. updatedb on a major upgrade) can run well past 360 seconds.
+if (PHP_SAPI !== 'cli') {
+  ini_set('max_execution_time', 360);
+}
 
 // Configure Redis.
 if (defined(

@@ -356,6 +356,7 @@ display:
           empty_table: true
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:
@@ -389,7 +390,8 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.skill
   block_1:
     id: block_1
     display_title: Skills
@@ -408,7 +410,8 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.skill
   block_2:
     id: block_2
     display_title: Interests
@@ -650,7 +653,8 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_1:
     id: page_1
     display_title: Page
@@ -671,4 +675,5 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.skill

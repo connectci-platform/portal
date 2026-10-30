@@ -4,13 +4,13 @@ status: true
 dependencies:
   config:
     - field.storage.node.field_affinity_group_node
-    - field.storage.node.field_choose_where_to_share_this
     - field.storage.node.field_published_date
     - field.storage.node.field_tags
     - node.type.access_news
   module:
     - datetime
     - node
+    - options
     - taxonomy
     - user
 id: tagged_news_block
@@ -481,6 +481,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:

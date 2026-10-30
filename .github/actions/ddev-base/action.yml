@@ -87,7 +87,15 @@ runs:
         AMP_UID: ${{ inputs.amp_uid }}
       run: |
         # Drupal import database.
-        vendor/bin/robo did
+        vendor/bin/robo did 2>&1 | tee /tmp/robo-did.log
+        # robo's _exec() does not stop on failure, and drush still reports
+        # "Finished performing updates" when its batch subprocess dies, so a
+        # fatal would otherwise leave a half-deployed site and a green step.
+        if grep -q "PHP Fatal error" /tmp/robo-did.log; then
+          echo "::error::PHP fatal error during database import/deploy:"
+          grep "PHP Fatal error" /tmp/robo-did.log
+          exit 1
+        fi
 
     - name: Verify Twig theme-debug is OFF in CI
       shell: bash
