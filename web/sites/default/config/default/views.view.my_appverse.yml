@@ -5,11 +5,13 @@ dependencies:
   config:
     - node.type.appverse_repo
     - taxonomy.vocabulary.appverse_organization
+    - workflows.workflow.appverse_editorial
   module:
+    - better_exposed_filters
     - content_moderation
     - node
-    - options
     - ood_software
+    - options
     - taxonomy
     - user
 id: my_appverse
@@ -172,6 +174,21 @@ display:
             field_identifier: ''
           exposed: false
           granularity: second
+        nid:
+          id: nid
+          table: node_field_data
+          field: nid
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: node
+          entity_field: nid
+          plugin_id: standard
+          order: ASC
+          expose:
+            label: ''
+            field_identifier: ''
+          exposed: false
       arguments: {  }
       filters:
         type:
@@ -238,17 +255,7 @@ display:
           distinct: true
           replica: false
           query_tags: {  }
-      relationships:
-        reverse__node__field_appverse_repo:
-          id: reverse__node__field_appverse_repo
-          table: node_field_data
-          field: reverse__node__field_appverse_repo
-          relationship: none
-          group_type: group
-          admin_label: 'Member apps'
-          entity_type: node
-          plugin_id: entity_reverse
-          required: false
+      relationships: {  }
       css_class: ''
       use_ajax: false
       group_by: false
@@ -300,6 +307,111 @@ display:
             offset: false
             offset_label: Offset
           quantity: 9
+      exposed_form:
+        type: bef
+        options:
+          submit_button: Apply
+          reset_button: true
+          reset_button_label: Reset
+          exposed_sorts_label: 'Sort by'
+          expose_sort_order: true
+          sort_asc_label: Asc
+          sort_desc_label: Desc
+          text_input_required: 'Select any filter and click on Apply to see results'
+          text_input_required_format: basic_html
+          bef:
+            general:
+              autosubmit: false
+              autosubmit_exclude_textfield: false
+              autosubmit_textfield_delay: 500
+              autosubmit_textfield_minimum_length: 3
+              autosubmit_hide: false
+              input_required: false
+              allow_secondary: false
+              secondary_label: 'Advanced options'
+              secondary_open: false
+              reset_button_always_show: false
+            filter:
+              ood_repo_search:
+                plugin_id: default
+                advanced:
+                  placeholder_text: ''
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              moderation_state:
+                plugin_id: bef_select2
+                advanced:
+                  sort_options: false
+                  placeholder_text: '- Any -'
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              ood_ai_report:
+                plugin_id: bef_select2
+                advanced:
+                  sort_options: false
+                  placeholder_text: '- Any -'
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              ood_assigned_reviewer:
+                plugin_id: bef_select2
+                advanced:
+                  sort_options: false
+                  placeholder_text: '- Any -'
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              field_repo_organization_target_id:
+                plugin_id: bef_select2
+                advanced:
+                  sort_options: false
+                  placeholder_text: '- Any -'
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              ood_repo_software_used:
+                plugin_id: bef_select2
+                advanced:
+                  sort_options: false
+                  placeholder_text: '- Any -'
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              field_repo_validation_st_value:
+                plugin_id: bef_select2
+                advanced:
+                  sort_options: false
+                  placeholder_text: '- Any -'
+                  rewrite:
+                    filter_rewrite_values: ''
+                    filter_rewrite_values_key: false
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
+              uid:
+                plugin_id: default
+                advanced:
+                  placeholder_text: ''
+                  collapsible: false
+                  collapsible_disable_automatic_open: false
+                  is_secondary: false
       access:
         type: perm
         options:
@@ -357,26 +469,25 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-        title:
-          id: title
+        ood_repo_search:
+          id: ood_repo_search
           table: node_field_data
-          field: title
+          field: ood_repo_search
           relationship: none
           group_type: group
           admin_label: ''
           entity_type: node
-          entity_field: title
-          plugin_id: string
+          plugin_id: ood_software_repo_search
           operator: contains
           value: ''
           group: 1
           exposed: true
           expose:
-            operator_id: title_op
-            label: 'Title contains'
+            operator_id: ood_repo_search_op
+            label: Search
             description: ''
             use_operator: false
-            operator: title_op
+            operator: ood_repo_search_op
             operator_limit_selection: false
             operator_list: {  }
             identifier: title
@@ -387,6 +498,7 @@ display:
               authenticated: authenticated
               anonymous: '0'
               administrator: '0'
+            placeholder: ''
           is_grouped: false
           group_info:
             label: ''
@@ -443,73 +555,31 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-        uid:
-          id: uid
+        ood_ai_report:
+          id: ood_ai_report
           table: node_field_data
-          field: uid
+          field: ood_ai_report
           relationship: none
           group_type: group
           admin_label: ''
           entity_type: node
-          entity_field: uid
-          plugin_id: user_name
+          plugin_id: ood_software_ai_report_state
           operator: in
           value: {  }
           group: 1
           exposed: true
           expose:
-            operator_id: uid_op
-            label: Contributor
+            operator_id: ood_ai_report_op
+            label: 'AI report'
             description: ''
             use_operator: false
-            operator: uid_op
+            operator: ood_ai_report_op
             operator_limit_selection: false
             operator_list: {  }
-            identifier: contributor
+            identifier: ai_report
             required: false
             remember: false
-            multiple: false
-            remember_roles:
-              authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
-            reduce: false
-          is_grouped: false
-          group_info:
-            label: ''
-            description: ''
-            identifier: ''
-            optional: true
-            widget: select
-            multiple: false
-            remember: false
-            default_group: All
-            default_group_multiple: {  }
-            group_items: {  }
-        field_repo_validation_st_value:
-          id: field_repo_validation_st_value
-          table: node__field_repo_validation_st
-          field: field_repo_validation_st_value
-          relationship: none
-          group_type: group
-          admin_label: ''
-          plugin_id: list_field
-          operator: or
-          value: {  }
-          group: 1
-          exposed: true
-          expose:
-            operator_id: field_repo_validation_st_value_op
-            label: 'Validation status'
-            description: ''
-            use_operator: false
-            operator: field_repo_validation_st_value_op
-            operator_limit_selection: false
-            operator_list: {  }
-            identifier: validation_status
-            required: false
-            remember: false
-            multiple: false
+            multiple: true
             remember_roles:
               authenticated: authenticated
               anonymous: '0'
@@ -611,28 +681,29 @@ display:
             group_items: {  }
           reduce_duplicates: false
           vid: appverse_organization
-          type: textfield
+          type: select
           hierarchy: false
           limit: true
           error_message: true
-        field_appverse_software_implemen_target_id:
-          id: field_appverse_software_implemen_target_id
-          table: node__field_appverse_software_implemen
-          field: field_appverse_software_implemen_target_id
-          relationship: reverse__node__field_appverse_repo
+        ood_repo_software_used:
+          id: ood_repo_software_used
+          table: node_field_data
+          field: ood_repo_software_used
+          relationship: none
           group_type: group
           admin_label: ''
-          plugin_id: entity_reference
-          operator: or
+          entity_type: node
+          plugin_id: ood_software_repo_software_used
+          operator: in
           value: {  }
           group: 1
           exposed: true
           expose:
-            operator_id: field_appverse_software_implemen_target_id_op
+            operator_id: ood_repo_software_used_op
             label: 'Software used'
             description: ''
             use_operator: false
-            operator: field_appverse_software_implemen_target_id_op
+            operator: ood_repo_software_used_op
             operator_limit_selection: false
             operator_list: {  }
             identifier: software
@@ -656,16 +727,90 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          sub_handler: 'default:node'
-          widget: autocomplete
-          sub_handler_settings:
-            target_bundles:
-              appverse_software: appverse_software
-            sort:
-              field: title
-              direction: ASC
-            auto_create: false
-            auto_create_bundle: ''
+        field_repo_validation_st_value:
+          id: field_repo_validation_st_value
+          table: node__field_repo_validation_st
+          field: field_repo_validation_st_value
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: list_field
+          operator: or
+          value: {  }
+          group: 1
+          exposed: true
+          expose:
+            operator_id: field_repo_validation_st_value_op
+            label: 'Validation status'
+            description: ''
+            use_operator: false
+            operator: field_repo_validation_st_value_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: validation_status
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+              anonymous: '0'
+              administrator: '0'
+            reduce: false
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
+        uid:
+          id: uid
+          table: node_field_data
+          field: uid
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: node
+          entity_field: uid
+          plugin_id: user_name
+          operator: in
+          value: {  }
+          group: 1
+          exposed: true
+          expose:
+            operator_id: uid_op
+            label: Contributor
+            description: ''
+            use_operator: false
+            operator: uid_op
+            operator_limit_selection: false
+            operator_list: {  }
+            identifier: contributor
+            required: false
+            remember: false
+            multiple: false
+            remember_roles:
+              authenticated: authenticated
+              anonymous: '0'
+              administrator: '0'
+            reduce: false
+          is_grouped: false
+          group_info:
+            label: ''
+            description: ''
+            identifier: ''
+            optional: true
+            widget: select
+            multiple: false
+            remember: false
+            default_group: All
+            default_group_multiple: {  }
+            group_items: {  }
       filter_groups:
         operator: AND
         groups:
@@ -675,22 +820,13 @@ display:
         access: false
         title: false
         pager: false
+        exposed_form: false
         relationships: false
         filters: false
         filter_groups: false
         header: false
         path: false
-      relationships:
-        reverse__node__field_appverse_repo:
-          id: reverse__node__field_appverse_repo
-          table: node_field_data
-          field: reverse__node__field_appverse_repo
-          relationship: none
-          group_type: group
-          admin_label: 'Member apps'
-          entity_type: node
-          plugin_id: entity_reverse
-          required: false
+      relationships: {  }
       header:
         area_text_custom:
           id: area_text_custom
@@ -712,9 +848,13 @@ display:
         - 'languages:language_interface'
         - url
         - url.query_args
+        - user
         - 'user.node_grants:view'
         - user.permissions
-      tags: {  }
+      tags:
+        - 'config:workflow_list'
+        - node_list
+        - user_list
   page_user:
     id: page_user
     display_title: 'My Appverse (user)'

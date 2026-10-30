@@ -12,7 +12,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/drupal_seamless_cilogon.git",
-                "reference": "e56d45f1bca7c117b381014b615ae6c221204694"
+                "reference": "d6c4288e560c381909d58952cb2492d2ac4eea7c"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -24,7 +24,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-10-19T01:23:11+00:00"
+            "time": "2026-10-30T20:32:43+00:00"
         },
         {
             "name": "access/infrastructure_news",
@@ -2370,26 +2370,29 @@
         },
         {
             "name": "drupal/captcha",
-            "version": "2.0.10",
+            "version": "2.0.11",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/captcha.git",
-                "reference": "2.0.10"
+                "reference": "2.0.11"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/captcha-2.0.10.zip",
-                "reference": "2.0.10",
-                "shasum": "f1052ffe99ec2f8246f7da75e467b281fc2d804a"
+                "url": "https://ftp.drupal.org/files/projects/captcha-2.0.11.zip",
+                "reference": "2.0.11",
+                "shasum": "566bd0d80ceb667e2df56f2442840c85378df39c"
             },
             "require": {
                 "drupal/core": "^9.5 || ^10 || ^11"
             },
+            "require-dev": {
+                "drupal/crowdsec": "^1"
+            },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.0.10",
-                    "datestamp": "1772046216",
+                    "version": "2.0.11",
+                    "datestamp": "1793215346",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -4874,17 +4877,17 @@
         },
         {
             "name": "drupal/field_permissions",
-            "version": "1.5.0",
+            "version": "1.6.0",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/field_permissions.git",
-                "reference": "8.x-1.5"
+                "reference": "8.x-1.6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/field_permissions-8.x-1.5.zip",
-                "reference": "8.x-1.5",
-                "shasum": "f8bf0c89dc795e1c4eee44a1c692a142dbeeaca8"
+                "url": "https://ftp.drupal.org/files/projects/field_permissions-8.x-1.6.zip",
+                "reference": "8.x-1.6",
+                "shasum": "7ae3733593b4ffaee5430a528d2ee8a4256abfe5"
             },
             "require": {
                 "drupal/core": "^9.5 || ^10 || ^11"
@@ -4892,8 +4895,8 @@
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "8.x-1.5",
-                    "datestamp": "1768131948",
+                    "version": "8.x-1.6",
+                    "datestamp": "1793215525",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -16151,16 +16154,16 @@
         },
         {
             "name": "symfony/mime",
-            "version": "v6.4.46",
+            "version": "v6.4.49",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/mime.git",
-                "reference": "e700a9819829e1395ae95b508c6355053b5644fe"
+                "reference": "371f182b3174ef1b6d33b641f1295e7f88292557"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/mime/zipball/e700a9819829e1395ae95b508c6355053b5644fe",
-                "reference": "e700a9819829e1395ae95b508c6355053b5644fe",
+                "url": "https://api.github.com/repos/symfony/mime/zipball/371f182b3174ef1b6d33b641f1295e7f88292557",
+                "reference": "371f182b3174ef1b6d33b641f1295e7f88292557",
                 "shasum": ""
             },
             "require": {
@@ -16216,7 +16219,7 @@
                 "mime-type"
             ],
             "support": {
-                "source": "https://github.com/symfony/mime/tree/v6.4.46"
+                "source": "https://github.com/symfony/mime/tree/v6.4.49"
             },
             "funding": [
                 {
@@ -16236,7 +16239,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-04T10:11:03+00:00"
+            "time": "2026-10-28T17:57:40+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",

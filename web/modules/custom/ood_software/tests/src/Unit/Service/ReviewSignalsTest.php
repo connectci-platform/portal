@@ -97,9 +97,9 @@ class ReviewSignalsTest extends UnitTestCase {
     $this->assertSame(['count', 'anchor'], array_keys($out['security']), 'security is a count, never a level (schema 1.2)');
     $this->assertSame('a52c443', $out['sha7']);
     $this->assertTrue($out['outOfDate']);
-    $this->assertSame(['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '/appverse/review/12334#app-jupyter_example'], $out['documentation']);
-    $this->assertSame('/appverse/review/12334#app-jupyter_example', $out['portability']['anchor'], 'both app axes go to the app section');
-    $this->assertSame('/appverse/review/12334#maintenance', $out['upkeep']['anchor']);
+    $this->assertSame(['level' => 'needs_attention', 'summary' => 'No install section', 'anchor' => '/appverse/review/12334#block-jupyter_example-documentation'], $out['documentation']);
+    $this->assertSame('/appverse/review/12334#block-jupyter_example-portability', $out['portability']['anchor'], 'each axis goes to its own block of the app');
+    $this->assertSame('/appverse/review/12334#block-maintenance', $out['upkeep']['anchor']);
     $this->assertSame('some_notes', $out['upkeep']['level']);
     $this->assertStringNotContainsString('Some notes', json_encode($out), 'display words stay out of the cache');
   }
@@ -112,14 +112,14 @@ class ReviewSignalsTest extends UnitTestCase {
   }
 
   /**
-   * A single-app repo's verdict has no app id; its section is app-root, as
+   * A single-app repo's verdict has no app id; its blocks are scoped root, as
    * on the review page.
    *
    * @covers ::shape
    */
   public function testASingleAppLinksToTheRootSection(): void {
     $out = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/appverse/review/7', 'upkeep' => []], $this->verdict(5, '', []), NULL);
-    $this->assertSame('/appverse/review/7#app-root', $out['documentation']['anchor']);
+    $this->assertSame('/appverse/review/7#block-root-documentation', $out['documentation']['anchor']);
   }
 
   /**
@@ -135,7 +135,8 @@ class ReviewSignalsTest extends UnitTestCase {
 
   /**
    * A monorepo app's own upkeep, when the review scored it, replaces the
-   * repo's and links to the app's section (appverse-planning#58).
+   * repo's and links to the app's section, since the page has no per-app
+   * upkeep block (appverse-planning#58).
    *
    * @covers ::shape
    */
@@ -147,19 +148,19 @@ class ReviewSignalsTest extends UnitTestCase {
 
     // Without its own, the app shows the repo's.
     $out = ReviewSignals::shape($review, $this->verdict(5, 'apps/busy') + ['upkeep' => NULL], NULL);
-    $this->assertSame(['level' => 'solid', 'summary' => 'Active repo', 'anchor' => '/appverse/review/9#maintenance'], $out['upkeep']);
+    $this->assertSame(['level' => 'solid', 'summary' => 'Active repo', 'anchor' => '/appverse/review/9#block-maintenance'], $out['upkeep']);
   }
 
   /**
    * The security count is the app's findings plus the repo-level ones, which
-   * apply to every app, and links to the app's section.
+   * apply to every app, and links to the app's security block.
    *
    * @covers ::shape
    */
   public function testSecurityCountAddsRepoLevelFindings(): void {
     $verdict = $this->verdict(5, 'apps/notebook') + ['security' => 2];
     $out = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/appverse/review/9', 'repo_security' => 1, 'upkeep' => []], $verdict, NULL);
-    $this->assertSame(['count' => 3, 'anchor' => '/appverse/review/9#app-apps/notebook'], $out['security']);
+    $this->assertSame(['count' => 3, 'anchor' => '/appverse/review/9#block-apps/notebook-security'], $out['security']);
 
     $none = ReviewSignals::shape(['reviewed_at' => 1, 'sha' => 'abc', 'url' => '/r', 'upkeep' => []], $this->verdict(5, 'x'), NULL);
     $this->assertSame(0, $none['security']['count'], 'no findings, a zero the card shows as "No findings"');

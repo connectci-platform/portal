@@ -132,7 +132,8 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $this->assertSame(AppverseReviewService::correlationId(self::NID, self::NOW), $inputs['correlation_id']);
     // Not a live environment in a unit test, so the dispatch is a dry-run.
     $this->assertSame('dry-run', $inputs['review_aspects']);
-    $this->assertSame('sonnet', $inputs['model']);
+    // No setting: the on-prem model, never the Anthropic API.
+    $this->assertSame('qwen', $inputs['model']);
 
     $this->assertContains(['field_review_dispatched_at', self::NOW], $this->freshSets);
     $this->assertContains(['field_review_status', 'pending'], $this->freshSets);
@@ -142,20 +143,20 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
   /**
    * The dispatch sends the model the ood_software.review_model setting names
    * for this environment; a value the workflow does not accept falls back to
-   * sonnet rather than failing every dispatch.
+   * the on-prem qwen rather than failing every dispatch.
    *
    * @covers ::dispatchForNode
    * @covers ::reviewModel
    */
   public function testDispatchSendsTheConfiguredModel(): void {
     try {
-      new Settings(['ood_software.review_model' => 'qwen']);
+      new Settings(['ood_software.review_model' => 'opus']);
       $this->assertTrue($this->makeService(204)->dispatchForNode($this->makeRepoNode()));
-      $this->assertSame('qwen', $this->postOptions['json']['inputs']['model']);
+      $this->assertSame('opus', $this->postOptions['json']['inputs']['model']);
 
       new Settings(['ood_software.review_model' => 'gpt-9']);
       $this->assertTrue($this->makeService(204)->dispatchForNode($this->makeRepoNode()));
-      $this->assertSame('sonnet', $this->postOptions['json']['inputs']['model']);
+      $this->assertSame('qwen', $this->postOptions['json']['inputs']['model']);
     }
     finally {
       new Settings([]);
