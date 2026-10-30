@@ -679,7 +679,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "3ebd2aa7e07550c69200315bf7ee8c334a50142c"
+                "reference": "ce8da4ea09e2aed20b302d913633c1d3f73d1eda"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
@@ -702,7 +702,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-10-30T20:32:24+00:00"
+            "time": "2026-10-30T20:57:47+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -710,7 +710,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "7ec548f0a264e1a7d7554babb159b9730b181143"
+                "reference": "d5e268eca7c5d3289798c45064e16ceb4759e757"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -728,7 +728,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-10-13T20:25:51+00:00"
+            "time": "2026-10-30T20:58:01+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",

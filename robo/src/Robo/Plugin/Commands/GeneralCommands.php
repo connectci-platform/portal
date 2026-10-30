@@ -221,6 +221,24 @@ GITHUB_TOKEN=$token'>.env");
   }
 
   /**
+   * Grab log.
+   *
+   * @command log:all
+   * @description Grab all logs.
+   */
+  public function logall() {
+    $git_root = shell_exec("git rev-parse --show-toplevel");
+    $git_root = trim(preg_replace('/\s+/', ' ', $git_root));
+    $LOGPATH = $git_root . '/backups/logs/';
+    $SITE = 'accessmatch';
+    $ENV = 'live';
+
+    $this->_exec('mkdir -p ' . escapeshellarg($LOGPATH));
+    $this->_exec('rm -fR ' . escapeshellarg($LOGPATH) . '*');
+    $this->_exec('terminus rsync ' . escapeshellarg("$SITE.$ENV:logs/") . ' ' . escapeshellarg($LOGPATH));
+  }
+
+  /**
    * Create Snapshot.
    *
    * @command snap:create
