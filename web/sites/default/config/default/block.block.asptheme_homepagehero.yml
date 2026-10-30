@@ -1,0 +1,26 @@
+uuid: 8cceb808-655e-4b48-965a-a0ea87ac5652
+langcode: en
+status: true
+dependencies:
+  module:
+    - access_misc
+    - system
+  theme:
+    - aspTheme
+id: asptheme_homepagehero
+theme: aspTheme
+region: cta
+weight: -40
+provider: null
+plugin: access_homepage_hero
+settings:
+  id: access_homepage_hero
+  label: 'Homepage hero (How can we help?)'
+  label_display: '0'
+  provider: access_misc
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /welcome-access-homepage-20
+
