@@ -2580,7 +2580,7 @@ display:
           exclude: false
           alter:
             alter_text: true
-            text: '<a class="homepage-ann" href="{{ view_node }}"><span class="homepage-ann__date">{{ field_published_date }}</span>{{ title__value }}<small class="homepage-ann__excerpt">{{ body }}</small></a>'
+            text: '<span class="homepage-ann__date">{{ field_published_date }}</span><a class="homepage-ann__title" href="{{ view_node }}">{{ title__value }}</a><small class="homepage-ann__excerpt">{{ body }}</small>'
             make_link: false
             path: ''
             absolute: false
@@ -2800,7 +2800,7 @@ display:
         type: default
         options:
           grouping: {  }
-          row_class: ''
+          row_class: homepage-ann
           default_row_class: false
       row:
         type: fields

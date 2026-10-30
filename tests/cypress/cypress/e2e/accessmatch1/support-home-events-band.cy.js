@@ -21,7 +21,8 @@ describe("Support homepage events band", () => {
         "/announcements",
       );
 
-      cy.get("a.homepage-ann").should("have.length.within", 1, 3);
+      cy.get(".homepage-ann").should("have.length.within", 1, 3);
+      cy.get(".homepage-ann").first().find("a").should("have.length", 1);
     });
   });
 });
