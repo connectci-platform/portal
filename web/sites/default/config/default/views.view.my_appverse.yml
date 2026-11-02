@@ -513,7 +513,7 @@ display:
         moderation_state:
           id: moderation_state
           table: node_field_data
-          field: moderation_state
+          field: ood_moderation_state
           relationship: none
           group_type: group
           admin_label: ''

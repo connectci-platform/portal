@@ -192,8 +192,8 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
         // that reduces to the filter's value, which is also the default
         // selection: Manage Repos defaults to its review queue, "Needs
         // attention" (appverse-planning#60, D8-2931).
-        // Matched by class: ood_software_views_data_alter() puts a subclass
-        // on every node view's moderation_state, under its own plugin id.
+        // Matched by class, so core's filter and the ood_moderation_state
+        // subclass Manage Repos uses are both trimmed.
         if ($filter instanceof ModerationStateFilter
           && isset($form[$filter->options['expose']['identifier']]['#options'])) {
           $key = $filter->options['expose']['identifier'];
@@ -3154,11 +3154,19 @@ function ood_software_preprocess_views_view(array &$variables): void {
  * @param array<string, mixed> $data
  */
 function ood_software_views_data_alter(array &$data): void {
-  // Core's moderation state filter, plus the opt-in "Needs attention" option
-  // Manage Repos defaults to (D8-2931). It behaves as core's in every view
-  // that does not turn the option on.
+  // Core's moderation state filter plus the "Needs attention" option Manage
+  // Repos defaults to (D8-2931), as its own entry rather than a swap of
+  // core's, so no other view's filter changes plugin or gains a dependency on
+  // this module.
   if (isset($data['node_field_data']['moderation_state']['filter'])) {
-    $data['node_field_data']['moderation_state']['filter']['id'] = 'ood_software_moderation_state';
+    $data['node_field_data']['ood_moderation_state'] = [
+      'title' => t('Moderation state (with Needs attention)'),
+      'help' => t('The moderation state, plus a "Needs attention" option for repos waiting on a reviewer.'),
+      'filter' => [
+        'id' => 'ood_software_moderation_state',
+        'real field' => 'moderation_state',
+      ] + $data['node_field_data']['moderation_state']['filter'],
+    ];
   }
   // The manage-repos "Assigned" filter: assigned to me / unassigned
   // (appverse-planning#33; the AssignedReviewer filter plugin).

@@ -13,9 +13,10 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Core's moderation state filter, plus an optional "Needs attention" option.
  *
- * The views data alter in ood_software.module puts this plugin on every
- * node view's moderation_state filter, so it must behave exactly like core's
- * unless a view turns its needs_attention option on and the value includes
+ * Offered as its own views data entry, node_field_data.ood_moderation_state
+ * (see ood_software_views_data_alter()), so only views that pick it use it;
+ * core's moderation_state filter is untouched. It behaves exactly like core's
+ * unless its needs_attention option is on and the value includes
  * "needs_attention" (D8-2931). Manage Repos does, as its default queue.
  *
  * A repo needs attention when, reading the default revision's state as core's

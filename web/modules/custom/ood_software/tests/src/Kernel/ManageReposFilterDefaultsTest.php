@@ -229,6 +229,12 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
     $this->assertSame('ood_software_moderation_state', $moderationFilter->getPluginId());
     $this->assertSame(['needs_attention' => 'needs_attention'], $moderationFilter->value, 'Needs attention is the default.');
     $this->assertTrue((bool) $moderationFilter->options['needs_attention']);
+    // Core's moderation_state filter is left alone, so other views keep their
+    // plugin and gain no dependency on ood_software.
+    $nodeData = $this->container->get('views.views_data')->get('node_field_data');
+    $this->assertSame('moderation_state_filter', $nodeData['moderation_state']['filter']['id']);
+    $this->assertSame('ood_software_moderation_state', $nodeData['ood_moderation_state']['filter']['id']);
+    $this->assertSame('moderation_state', $moderationFilter->realField);
 
     $this->assertArrayHasKey('uid', $view->filter, 'The new Contributor (uid) filter must exist on page_admin.');
     $contributorFilter = $view->filter['uid'];
