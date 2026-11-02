@@ -90,6 +90,20 @@ ood_software.app_send_for_review:
     _csrf_token: 'TRUE'
     _method: POST
 
+ood_software.repo_review_status:
+  path: '/appverse/repo/{node}/review-status'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::reviewStatus'
+    _title: 'Review status'
+  methods: [GET]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::reviewerRepoAccess'
+    node: \d+
+
 # --- Admin-only transitions ---
 
 ood_software.review_page:

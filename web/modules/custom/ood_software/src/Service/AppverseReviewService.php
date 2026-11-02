@@ -632,6 +632,21 @@ class AppverseReviewService implements DestructableInterface {
   }
 
   /**
+   * The nid of the repo's newest review, whoever may view it.
+   */
+  public function latestReviewId(NodeInterface $repo): ?int {
+    $nids = $this->entityTypeManager->getStorage('node')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_review')
+      ->condition('field_arv_repo', $repo->id())
+      ->sort('created', 'DESC')
+      ->sort('nid', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    return $nids ? (int) reset($nids) : NULL;
+  }
+
+  /**
    * Check if the node was dispatched within the debounce window.
    */
   protected function isWithinDebounce(NodeInterface $node): bool {

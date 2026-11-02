@@ -4,11 +4,14 @@ namespace Drupal\ood_software\Controller;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\UrlHelper;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Drupal\content_moderation\ContentModerationState;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
 use Drupal\Core\Access\AccessResult;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -19,6 +22,7 @@ use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Service\RepoNotificationService;
+use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Plugin\GitHubService;
 
@@ -40,6 +44,7 @@ final class AppverseHubController extends ControllerBase {
     protected AppverseReviewService $reviewService,
     protected ReviewAssignment $reviewAssignment,
     protected RepoNotificationService $notifier,
+    protected RepoProgress $repoProgress,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -53,6 +58,7 @@ final class AppverseHubController extends ControllerBase {
       $container->get('ood_software.review_dispatcher'),
       $container->get('ood_software.review_assignment'),
       $container->get('ood_software.repo_notifier'),
+      $container->get('ood_software.repo_progress'),
     );
   }
 
@@ -718,6 +724,56 @@ final class AppverseHubController extends ControllerBase {
     return AccessResult::allowedIfHasPermission($account, 'administer appverse content')
       ->cachePerUser()
       ->addCacheableDependency($node);
+  }
+
+  /**
+   * Access callback for the review-status endpoint: reviewers, repos only.
+   */
+  public function reviewerRepoAccess(AccountInterface $account, NodeInterface $node): AccessResult {
+    if ($node->bundle() !== 'appverse_repo') {
+      return AccessResult::forbidden('Not a repo.')->addCacheableDependency($node);
+    }
+    return $this->adminOnlyAccess($account, $node);
+  }
+
+  /**
+   * Where a repo's AI report run stands, as JSON for the page's poller.
+   *
+   * Reviewers only. With ?check=github the run is first checked against
+   * GitHub (throttled and locked in the service), so a page that is open
+   * learns of a finished run without waiting for cron.
+   */
+  public function reviewStatus(NodeInterface $node, Request $request): JsonResponse {
+    if ($request->query->get('check') === 'github') {
+      $this->reviewService->pollRepo($node);
+    }
+    $latest = $this->reviewService->latestRevision($node);
+    $reviewId = $this->reviewService->latestReviewId($node);
+    $reviewUrl = $reviewId !== NULL
+      ? Url::fromRoute('ood_software.review_page', ['node' => $reviewId])->toString()
+      : NULL;
+
+    $stepLabel = '';
+    foreach ($this->repoProgress->steps($latest)['reviewer'] as $step) {
+      if ($step['step'] === 'AI report') {
+        $stepLabel = (string) $step['label'];
+        break;
+      }
+    }
+
+    $status = $latest->hasField('field_review_status') && !$latest->get('field_review_status')->isEmpty()
+      ? (string) $latest->get('field_review_status')->value
+      : NULL;
+    $response = new JsonResponse([
+      'in_flight' => $this->reviewService->isRunInFlight($latest),
+      'status' => $status,
+      'latest_review' => $reviewId,
+      'latest_review_url' => $reviewUrl,
+      'step_label' => $stepLabel,
+      'review_url' => $reviewUrl,
+    ]);
+    $response->headers->set('Cache-Control', 'no-store');
+    return $response;
   }
 
   /**

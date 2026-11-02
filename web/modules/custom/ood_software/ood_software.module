@@ -2331,8 +2331,9 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
 
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
   // Run AI report: on every repo an admin can see, whatever its moderation
-  // state, except while a run is already pending or in progress (the
-  // progress line's AI report step says so). The action does not move the
+  // state, except while a run is in flight (the progress line's AI report
+  // step says so). In flight is the shared rule: a pending status older than
+  // the stale timeout is not a run in progress. The action does not move the
   // app's editorial state.
   //
   // "Start review" read as starting the human review, which is the next step
@@ -2340,7 +2341,8 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   // reviews (appverse-planning#49).
   $runReviewAction = NULL;
   $runReviewActionMenu = NULL;
-  if ($isAdmin && !in_array($reviewStatus, ['pending', 'in_progress'], TRUE)) {
+  $dispatcher = \Drupal::service('ood_software.review_dispatcher');
+  if ($isAdmin && !$dispatcher->isRunInFlight($dispatcher->latestRevision($repo))) {
     // "Rerun report", not "Rerun AI report": the pair with the Actions toggle
     // beside it has to fit a 12.5rem column, and the longer wording wrapped
     // that card onto a second row. "Run AI report" (no prior run) is short
