@@ -572,6 +572,12 @@ header:has(> .appverse-hub-add-repo) {
 /* Discovery-tag row: full-width, wraps freely below the header grid. */
 /* The review progress line (appverse-planning#31); its own styles are in
    appverse-progress.css. */
+.appverse-hub-card [hidden] {
+  /* The live-status poller reveals these (D8-2931); a component's own display
+     value must not win over the hidden attribute. */
+  display: none !important;
+}
+
 .appverse-hub-card__progress {
   margin: 0.5rem 0 0.25rem;
   max-width: 44rem;

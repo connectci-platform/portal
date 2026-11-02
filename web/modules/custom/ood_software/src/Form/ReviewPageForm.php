@@ -218,6 +218,7 @@ final class ReviewPageForm extends FormBase {
     if ($reviewerView && $repo instanceof NodeInterface) {
       if ($rerun['in_flight']) {
         // Read by the review-status poller (D8-2931).
+        $form['#attached']['library'][] = 'ood_software/review_status';
         $form['#attached']['drupalSettings']['oodReviewStatus'] = [
           'url' => Url::fromRoute('ood_software.repo_review_status', ['node' => $repo->id()], ['query' => ['check' => 'github']])->toString(),
           'review' => (int) $node->id(),

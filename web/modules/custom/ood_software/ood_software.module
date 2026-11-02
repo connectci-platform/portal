@@ -2369,6 +2369,25 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
     );
   }
 
+  // While a run is in flight the action above is withheld, but the card's
+  // poller reveals one when the run finishes (D8-2931). It is built here, and
+  // rendered hidden, only for the reviewers the poller serves. A report is
+  // coming, so the label is the rerun one.
+  $inFlight = $isAdmin && $dispatcher->isRunInFlight($dispatcher->latestRevision($repo));
+  $runReviewActionHidden = NULL;
+  if ($inFlight) {
+    $label = t('Rerun report');
+    if (!$dispatcher->fullReviewsEnabled()) {
+      $label = t('@label (dry-run on this environment)', ['@label' => $label]);
+    }
+    $runReviewActionHidden = _ood_software_hub_action_form(
+      'appverse/repo/' . $repo->id() . '/run-review',
+      (string) $label,
+      'bi-play-circle-fill',
+      'success'
+    );
+  }
+
   // The newest review node for this repo, if the viewer may see it.
   $reviewUrl = NULL;
   $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($repo);
@@ -2380,6 +2399,8 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
     'review_url' => $reviewUrl,
     'run_review_action' => $runReviewAction,
     'run_review_action_menu' => $runReviewActionMenu,
+    'run_review_action_hidden' => $runReviewActionHidden,
+    'in_flight' => $inFlight,
   ];
 }
 
@@ -2726,7 +2747,7 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
   if ($review['review_url'] !== NULL) {
     $primaryAction = [
       '#type' => 'inline_template',
-      '#template' => '<a href="{{ href }}" class="appverse-hub-card__action-btn" aria-label="{{ label }}">'
+      '#template' => '<a href="{{ href }}" class="appverse-hub-card__action-btn" aria-label="{{ label }}" data-review-link>'
         . '<i class="bi bi-clipboard-check" aria-hidden="true"></i> {{ text }}</a>',
       '#context' => [
         'href' => $review['review_url'],

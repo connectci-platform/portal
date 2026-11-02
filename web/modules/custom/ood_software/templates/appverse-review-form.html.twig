@@ -413,6 +413,7 @@
         {% endif %}
         {% if is_reviewer and page.run_status %}
           <div class="arv-run-status" data-review-run-status role="status" aria-live="polite">{% if page.run_status.in_flight %}{{ page.run_status.label }}{% endif %}</div>
+          <div><a href="#" data-review-new hidden>{{ 'New report ready, open it'|t }}</a></div>
         {% endif %}
         {% if page.history and page.history.total > 1 %}
           <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>

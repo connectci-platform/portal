@@ -13,7 +13,11 @@
 #}
 {# The id is the anchor a card action returns to (see
    _ood_software_hub_action_form()), so the reviewer lands on this card. #}
-<article id="appverse-repo-{{ hub.repo_id }}" class="appverse-hub-card state-{{ hub.moderation_state }}">
+{# An in-flight card is patched in place by the review-status poller when the
+   report finishes (D8-2931): the chip is the step label, the link opens the
+   review, and the hidden form is the rerun action. #}
+{% if hub.review.in_flight %}{{ attach_library('ood_software/review_status') }}{% endif %}
+<article id="appverse-repo-{{ hub.repo_id }}" class="appverse-hub-card state-{{ hub.moderation_state }}"{% if hub.review.in_flight %} data-review-status-url="/appverse/repo/{{ hub.repo_id }}/review-status"{% endif %}>
   {# Header is a CSS grid with shared column tracks so fields line up across
      cards: title | submitted | github | owner | status | actions.
      Status sits in its own column next to the actions so it always lines up.
@@ -147,7 +151,12 @@
      (appverse-planning#55). Contributors keep their sentence, which says what
      to do next when it is their turn. #}
   <div class="appverse-hub-card__progress">
-    <span class="badge badge-{{ hub.progress_chip.modifier }} appverse-hub-card__progress-chip">{{ hub.progress_chip.label }}</span>
+    <span class="badge badge-{{ hub.progress_chip.modifier }} appverse-hub-card__progress-chip"{% if hub.review.in_flight %} data-review-step{% endif %}>{{ hub.progress_chip.label }}</span>
+    {% if hub.review.in_flight %}
+      {# Hidden until the run finishes; the link is the review once there is one. #}
+      {% if not hub.review.review_url %}<a href="#" class="appverse-hub-card__action-btn" data-review-link hidden>{{ 'Open review'|t }}</a>{% endif %}
+      <div data-review-run hidden>{{ hub.review.run_review_action_hidden }}</div>
+    {% endif %}
     {% if hub.progress_sentence %}
       <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
     {% endif %}
