@@ -6,6 +6,7 @@ namespace Drupal\ood_software\Breadcrumb;
 
 use Drupal\Core\Breadcrumb\Breadcrumb;
 use Drupal\Core\Breadcrumb\BreadcrumbBuilderInterface;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -37,7 +38,11 @@ class ReviewPageBreadcrumbBuilder implements BreadcrumbBuilderInterface {
   /**
    * {@inheritdoc}
    */
-  public function applies(RouteMatchInterface $route_match): bool {
+  public function applies(RouteMatchInterface $route_match, ?CacheableMetadata $cacheable_metadata = NULL): bool {
+    // The answer depends on the route, and the breadcrumb block is cached
+    // through it. Without this, the block's cache varies by route on every
+    // page but this one, and Drupal warns about the conflicting redirect.
+    $cacheable_metadata?->addCacheContexts(['route']);
     return $route_match->getRouteName() === 'ood_software.review_page';
   }
 

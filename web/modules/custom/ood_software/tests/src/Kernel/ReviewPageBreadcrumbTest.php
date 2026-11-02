@@ -6,6 +6,7 @@ namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\Core\Breadcrumb\Breadcrumb;
 use Drupal\Core\Breadcrumb\BreadcrumbBuilderInterface;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\ood_software\Breadcrumb\ReviewPageBreadcrumbBuilder;
@@ -140,6 +141,24 @@ class ReviewPageBreadcrumbTest extends KernelTestBase {
     $breadcrumb = $builder->build($match);
     $this->container->get('request_stack')->pop();
     return $breadcrumb;
+  }
+
+  /**
+   * Whether the builder applies is varied by route, on every route.
+   *
+   * easy_breadcrumb varies the breadcrumb block by route on other pages. If
+   * this builder claimed the review page without saying so, the block's cache
+   * would vary by route everywhere but here, and Drupal warns about the
+   * conflicting cache redirect on the review page.
+   */
+  public function testAppliesVariesByRoute(): void {
+    $builder = $this->container->get('ood_software.review_page_breadcrumb');
+    foreach (['ood_software.review_page' => TRUE, 'entity.node.canonical' => FALSE] as $routeName => $expected) {
+      $metadata = new CacheableMetadata();
+      $match = new RouteMatch($routeName, new Route('/x'));
+      $this->assertSame($expected, $builder->applies($match, $metadata));
+      $this->assertContains('route', $metadata->getCacheContexts(), $routeName);
+    }
   }
 
   /**
