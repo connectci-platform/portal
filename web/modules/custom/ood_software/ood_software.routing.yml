@@ -159,6 +159,21 @@ ood_software.repo_assign_me:
     _csrf_token: 'TRUE'
     _method: POST
 
+ood_software.repo_assign:
+  path: '/appverse/repo/{node}/assign'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::assignReviewer'
+    _title: 'Assign reviewer'
+  methods: [POST]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::reviewerRepoAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
 ood_software.repo_run_review:
   path: '/appverse/repo/{node}/run-review'
   defaults:

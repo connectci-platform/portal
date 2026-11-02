@@ -587,6 +587,22 @@ header:has(> .appverse-hub-add-repo) {
   font-size: 0.8rem;
   color: #545860;
 }
+.appverse-hub-card__assign {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+}
+.appverse-hub-card__assign-select {
+  max-width: 14rem;
+  font-size: 0.8rem;
+}
+.appverse-hub-card__assign-status {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: #545860;
+}
+.appverse-hub-card__assign-status:empty {
+  display: none;
+}
 .appverse-hub-card__progress-sentence {
   margin: 0 0 0.35rem;
   font-size: 0.875rem;

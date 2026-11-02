@@ -78,4 +78,26 @@ describe('Appverse live report status', () => {
       .and('have.attr', 'href').and('match', new RegExp(`/appverse/review/${reviewNid}$`));
     cy.window().its('__noReload').should('eq', true);
   });
+
+  it('assigns another reviewer from the card in place', () => {
+    const cmd = `ddev drush php:script ${SEED_SCRIPT} -- 'Review Nav Assign' ready_for_review 0 draft pm2`;
+    cy.exec(cmd, { timeout: 90000 }).then((res) => {
+      const match = (res.stdout || '').match(/^APPVERSE_SEED_RESULT:(\{.*\})\s*$/m);
+      expect(match, `seed output: ${res.stdout} ${res.stderr}`).to.not.equal(null);
+      const seeded = JSON.parse(match[1]);
+
+      cy.visit('/appverse/manage-repos?title=Review+Nav+Assign&moderation_state=All');
+      cy.url().then((before) => {
+        cy.window().then((win) => { win.__noReload = true; });
+        cy.get(`#appverse-repo-${seeded.nid}`).as('card');
+        cy.get('@card').find('[data-hub-assignee]').should('contain.text', 'Unassigned');
+        cy.get('@card').find('select[data-hub-assign-select]').select(String(seeded.pm2_uid));
+        cy.get('@card').find('[data-hub-assignee]').should('contain.text', 'appverse_pm_two');
+        cy.get('@card').find('[data-hub-assign-status]').should('contain.text', 'appverse_pm_two');
+        cy.get('@card').find('select[data-hub-assign-select]').should('have.value', String(seeded.pm2_uid));
+        cy.url().should('eq', before);
+        cy.window().its('__noReload').should('eq', true);
+      });
+    });
+  });
 });

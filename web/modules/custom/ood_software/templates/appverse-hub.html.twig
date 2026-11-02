@@ -17,6 +17,7 @@
    report finishes (D8-2931): the chip is the step label, the link opens the
    review, and the hidden form is the rerun action. #}
 {% if hub.review.in_flight %}{{ attach_library('ood_software/review_status') }}{% endif %}
+{% if hub.actions.assign %}{{ attach_library('ood_software/hub_assign') }}{% endif %}
 <article id="appverse-repo-{{ hub.repo_id }}" class="appverse-hub-card state-{{ hub.moderation_state }}"{% if hub.review.in_flight %} data-review-status-url="/appverse/repo/{{ hub.repo_id }}/review-status"{% endif %}>
   {# Header is a CSS grid with shared column tracks so fields line up across
      cards: title | submitted | github | owner | status | actions.
@@ -126,7 +127,6 @@
             {% endif %}
             {% if hub.actions.resync %}{{ hub.actions.resync }}{% endif %}
             {% if hub.actions.withdraw %}{{ hub.actions.withdraw }}{% endif %}
-            {% if hub.actions.assign %}{{ hub.actions.assign }}{% endif %}
             {% if hub.actions.request_changes %}
               <a class="dropdown-item" href="{{ hub.actions.request_changes.url }}">
                 <i class="bi bi-chat-left-text" aria-hidden="true"></i> {{ 'Request changes'|t }}
@@ -163,8 +163,12 @@
     {% if hub.assignee is not null %}
       <p class="appverse-hub-card__assignee">
         <i class="bi bi-person" aria-hidden="true"></i>
-        {{ 'Reviewer:'|t }} {{ hub.assignee ?: 'Unassigned'|t }}
+        {{ 'Reviewer:'|t }} <span data-hub-assignee>{{ hub.assignee ?: 'Unassigned'|t }}</span>
       </p>
+      {% if hub.actions.assign %}
+        {{ hub.actions.assign }}
+        <p class="appverse-hub-card__assign-status" data-hub-assign-status role="status" aria-live="polite"></p>
+      {% endif %}
     {% endif %}
   </div>
 

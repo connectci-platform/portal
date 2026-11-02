@@ -2478,12 +2478,12 @@ function _ood_software_hub_confirm_link(string $internalPath, string $label, str
 }
 
 /**
- * Builds a hub card action that submits by POST with a CSRF token.
+ * The URL a hub card POST action submits to, with its CSRF token.
  *
- * @return array<string, mixed>
- *   A render array for the action.
+ * @param string $internalPath
+ *   The route path without the leading slash, e.g. appverse/repo/1/assign.
  */
-function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = '', bool $inMenu = FALSE): array {
+function _ood_software_hub_action_url(string $internalPath): string {
   $token = \Drupal::service('csrf_token')->get($internalPath);
   // Back to the same list after the action: its filters (the query string)
   // and, for a repo action, that repo's card (#appverse-repo-N), where the
@@ -2497,7 +2497,17 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
   if (preg_match('#^appverse/repo/(\d+)/#', $internalPath, $m)) {
     $dest .= '#appverse-repo-' . $m[1];
   }
-  $action = '/' . $internalPath . '?token=' . $token . '&destination=' . urlencode($dest);
+  return '/' . $internalPath . '?token=' . $token . '&destination=' . urlencode($dest);
+}
+
+/**
+ * Builds a hub card action that submits by POST with a CSRF token.
+ *
+ * @return array<string, mixed>
+ *   A render array for the action.
+ */
+function _ood_software_hub_action_form(string $internalPath, string $label, string $icon, string $variant = '', bool $inMenu = FALSE): array {
+  $action = _ood_software_hub_action_url($internalPath);
   return [
     '#type' => 'inline_template',
     // In the menu the form is the item: a bare <button class="dropdown-item">
@@ -2524,6 +2534,56 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
     // render-cached for these viewers anyway. (If render caching were ever
     // wanted, place just the token behind a #lazy_builder, or use the Form API,
     // which auto-placeholders CSRF tokens.)
+    '#cache' => ['max-age' => 0],
+  ];
+}
+
+/**
+ * Builds the card's reviewer picker.
+ *
+ * A form that posts the chosen uid to the assign route, so it works without
+ * JavaScript; js/appverse-hub-assign.js submits it in place instead. Lists
+ * "Unassigned", then the current user as "Me" when they are a reviewer, then
+ * the other reviewers.
+ *
+ * @return array<string, mixed>
+ *   A render array.
+ */
+function _ood_software_hub_assign_picker(\Drupal\node\NodeInterface $repo): array {
+  $assignment = \Drupal::service('ood_software.review_assignment');
+  $assignee = $assignment->assignee($repo);
+  $assigneeUid = $assignee ? (int) $assignee->id() : NULL;
+  $me = (int) \Drupal::currentUser()->id();
+  $reviewers = $assignment->reviewers();
+  $options = [['value' => '', 'label' => (string) t('Unassigned')]];
+  if (isset($reviewers[$me])) {
+    $options[] = ['value' => (string) $me, 'label' => (string) t('Me')];
+  }
+  foreach ($reviewers as $uid => $name) {
+    if ($uid !== $me) {
+      $options[] = ['value' => (string) $uid, 'label' => $name];
+    }
+  }
+  foreach ($options as &$option) {
+    $option['selected'] = $option['value'] === (string) ($assigneeUid ?? '');
+  }
+  unset($option);
+  return [
+    '#type' => 'inline_template',
+    '#template' => '<form method="post" action="{{ action }}" class="appverse-hub-card__assign" data-hub-assign>'
+      . '<label class="appverse-hub-card__assign-label" for="appverse-assign-{{ id }}">{{ "Assign reviewer"|t }}</label> '
+      . '<select name="uid" id="appverse-assign-{{ id }}" class="appverse-hub-card__assign-select" data-hub-assign-select>'
+      . '{% for o in options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}'
+      . '</select>'
+      . '<noscript> <button type="submit" class="appverse-hub-card__action-btn">{{ "Assign"|t }}</button></noscript>'
+      . '</form>',
+    '#context' => [
+      'action' => _ood_software_hub_action_url('appverse/repo/' . $repo->id() . '/assign'),
+      'id' => $repo->id(),
+      'options' => $options,
+    ],
+    // The CSRF token is minted here, so this must not be cached; see
+    // _ood_software_hub_action_form().
     '#cache' => ['max-age' => 0],
   ];
 }
@@ -2600,21 +2660,9 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   }
   if ($isAdmin) {
     $actions['delete'] = ['url' => '/appverse/repo/' . $id . '/delete?destination=' . $dest];
-    // Assign to me / Unassign me (appverse-planning#33); the review page
-    // assigns anyone.
-    $assignee = \Drupal::service('ood_software.review_assignment')->assignee($repo);
-    $mine = $assignee && (int) $assignee->id() === (int) \Drupal::currentUser()->id();
-    $actions['assign'] = _ood_software_hub_action_form(
-      'appverse/repo/' . $id . '/assign-me',
-      (string) match (TRUE) {
-        $mine => t('Unassign me'),
-        $assignee !== NULL => t('Assign to me (now @name)', ['@name' => $assignee->getDisplayName()]),
-        default => t('Assign to me'),
-      },
-      $mine ? 'bi-person-dash' : 'bi-person-plus',
-      '',
-      $inMenu
-    );
+    // A reviewer select in place of the Assign to me toggle (D8-2931); the
+    // assign-me route stays for existing links.
+    $actions['assign'] = _ood_software_hub_assign_picker($repo);
   }
   return $actions;
 }
