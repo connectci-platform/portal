@@ -3,8 +3,8 @@
  * All and Clear links under the Manage Repos filter boxes (D8-2931).
  *
  * The links are rendered next to a multi-select, named by data-select-all and
- * data-select-clear. Select2 redraws its chips on a jQuery change event, so
- * the script fires one after changing the options. The moderation All link
+ * data-select-clear. Select2 redraws its chips on a change event, so the
+ * script fires one after changing the options. The moderation All link
  * keeps an href to ?moderation_state=All, so it still works without this
  * script; the other links stay hidden until it runs.
  */
@@ -41,11 +41,8 @@
       const pickable = option.value !== '' && option.value !== 'All' && !skip.includes(option.value);
       option.selected = selected && pickable;
     });
+    // jQuery handlers (Select2's) receive a native event too.
     select.dispatchEvent(new Event('change', { bubbles: true }));
-    // Select2 listens for jQuery events, which a native event does not reach.
-    if (window.jQuery) {
-      window.jQuery(select).trigger('change');
-    }
   }
 
   Drupal.behaviors.appverseHubFilters = {

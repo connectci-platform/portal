@@ -557,6 +557,8 @@ function ood_software_form_views_exposed_form_alter(array &$form, FormStateInter
     $form['moderation_state']['#default_value'] = $states;
     // The request's own "All" would otherwise beat the default and leave the
     // box showing no chips (D8-2930).
+    // This now applies IN(every appverse_editorial state) rather than
+    // skipping the filter, as "All" does without this form.
     $user_input = $form_state->getUserInput();
     $user_input['moderation_state'] = $states;
     $form_state->setUserInput($user_input);
@@ -569,8 +571,9 @@ function ood_software_form_views_exposed_form_alter(array &$form, FormStateInter
     '#type' => 'container',
     '#attributes' => ['class' => ['appverse-hub-moderation']],
     'moderation_state' => $form['moderation_state'],
-    'moderation_state_all' => _ood_software_select_all_link('moderation_state', $view->getUrl()->setOption('query', $query), t('Select every state. Needs attention is not added, since it overlaps them.'), ['needs_attention']),
-    'moderation_state_clear' => _ood_software_select_clear_link('moderation_state'),
+    // All only, no Clear: an emptied box applies as no input, which brings
+    // the Needs attention default queue back.
+    'moderation_state_links' => _ood_software_select_links('moderation_state', FALSE, $view->getUrl()->setOption('query', $query), t('Select every state. Needs attention is not added, since it overlaps them.'), ['needs_attention']),
   ];
   // The filter and its links share one wrapper, so they sit under the box in
   // the same grid cell. An element #description is not used: the site
@@ -602,8 +605,7 @@ function ood_software_form_views_exposed_form_alter(array &$form, FormStateInter
       '#type' => 'container',
       '#attributes' => ['class' => ['appverse-hub-filter']],
       $name => $form[$name],
-      $name . '_all' => _ood_software_select_all_link($name, NULL, $titles[$filterId] ?? NULL),
-      $name . '_clear' => _ood_software_select_clear_link($name),
+      $name . '_links' => _ood_software_select_links($name, TRUE, NULL, $titles[$filterId] ?? NULL),
     ];
     unset($form[$name]);
     $form = array_slice($form, 0, (int) $position, TRUE) + [$name . '_group' => $wrapper] + array_slice($form, (int) $position, NULL, TRUE);
@@ -611,23 +613,25 @@ function ood_software_form_views_exposed_form_alter(array &$form, FormStateInter
 }
 
 /**
- * A link that selects every option of a filter's box.
+ * The All (and optionally Clear) links under a filter's multi-select.
  *
  * @param string $name
  *   The exposed filter identifier.
+ * @param bool $clear
+ *   Whether to add a Clear link after All.
  * @param \Drupal\Core\Url|null $url
- *   A no-JavaScript fallback; without one the link is hidden until the script
- *   runs.
+ *   The All link's no-JavaScript fallback; without one the links are hidden
+ *   until the script runs.
  * @param string|\Drupal\Core\StringTranslation\TranslatableMarkup|null $title
- *   An optional tooltip.
+ *   An optional tooltip for the All link.
  * @param string[] $skip
- *   Option values the link leaves unselected.
+ *   Option values All leaves unselected.
  *
  * @return array<string, mixed>
  *   The render array.
  */
-function _ood_software_select_all_link(string $name, ?Url $url, $title = NULL, array $skip = []): array {
-  $link = [
+function _ood_software_select_links(string $name, bool $clear, ?Url $url, $title = NULL, array $skip = []): array {
+  $all = [
     '#type' => 'link',
     '#title' => t('All'),
     '#url' => $url ?? Url::fromRoute('<none>', [], ['fragment' => '']),
@@ -635,39 +639,34 @@ function _ood_software_select_all_link(string $name, ?Url $url, $title = NULL, a
       'class' => ['appverse-hub-select-all'],
       'data-select-all' => $name,
     ],
-    '#prefix' => '<span class="appverse-hub-select-links">',
   ];
   if ($title) {
-    $link['#attributes']['title'] = $title;
+    $all['#attributes']['title'] = $title;
   }
   if ($skip) {
-    $link['#attributes']['data-select-skip'] = implode(',', $skip);
+    $all['#attributes']['data-select-skip'] = implode(',', $skip);
   }
-  if (!$url) {
-    $link['#prefix'] = '<span class="appverse-hub-select-links" hidden>';
-  }
-  return $link;
-}
-
-/**
- * The Clear link that follows a select-all link, closing its wrapper.
- *
- * @return array<string, mixed>
- *   The render array.
- */
-function _ood_software_select_clear_link(string $name): array {
-  return [
-    '#type' => 'link',
-    '#title' => t('Clear'),
-    '#url' => Url::fromRoute('<none>', [], ['fragment' => '']),
-    '#attributes' => [
-      'class' => ['appverse-hub-select-clear'],
-      'data-select-clear' => $name,
-      'hidden' => TRUE,
-    ],
-    '#prefix' => '<span class="appverse-hub-select-sep" hidden> · </span>',
-    '#suffix' => '</span>',
+  $links = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['appverse-hub-select-links']],
+    'all' => $all,
   ];
+  if (!$url) {
+    $links['#attributes']['hidden'] = TRUE;
+  }
+  if ($clear) {
+    $links['clear'] = [
+      '#type' => 'link',
+      '#title' => t('Clear'),
+      '#url' => Url::fromRoute('<none>', [], ['fragment' => '']),
+      '#attributes' => [
+        'class' => ['appverse-hub-select-clear'],
+        'data-select-clear' => $name,
+      ],
+      '#prefix' => '<span class="appverse-hub-select-sep" aria-hidden="true"> · </span>',
+    ];
+  }
+  return $links;
 }
 
 /**

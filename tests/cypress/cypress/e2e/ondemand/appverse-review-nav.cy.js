@@ -124,7 +124,7 @@ describe('Appverse hub filters and review header', () => {
     });
   });
 
-  it('selects every state from the All link and clears from Clear', () => {
+  it('selects every state from the All link, with no Clear', () => {
     cy.visit('/appverse/manage-repos');
     cy.get('#edit-moderation-state').find('option:selected').should('have.length', 1);
     cy.get('[data-select-all="moderation_state"]').click();
@@ -132,8 +132,7 @@ describe('Appverse hub filters and review header', () => {
       expect(selected.length).to.be.greaterThan(1);
       expect([...selected].map((o) => o.value)).not.to.include('needs_attention');
     });
-    cy.get('[data-select-clear="moderation_state"]').click();
-    cy.get('#edit-moderation-state').find('option:selected').should('have.length', 0);
+    cy.get('[data-select-clear="moderation_state"]').should('not.exist');
   });
 
   it('limits the hub to the chosen items per page', () => {

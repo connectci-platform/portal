@@ -782,10 +782,11 @@ class ManageReposFiltersTest extends KernelTestBase {
    */
   public function testAllLinkReplacesShowAllStates(): void {
     $group = $this->exposedForm()['moderation_group'];
-    $this->assertArrayHasKey('moderation_state_all', $group);
-    $this->assertContains('appverse-hub-select-all', $group['moderation_state_all']['#attributes']['class']);
-    $this->assertSame('moderation_state', $group['moderation_state_all']['#attributes']['data-select-all']);
-    $this->assertSame('All', (string) $group['moderation_state_all']['#title']);
+    $all = $group['moderation_state_links']['all'];
+    $this->assertArrayNotHasKey('clear', $group['moderation_state_links']);
+    $this->assertContains('appverse-hub-select-all', $all['#attributes']['class']);
+    $this->assertSame('moderation_state', $all['#attributes']['data-select-all']);
+    $this->assertSame('All', (string) $all['#title']);
     $html = (string) \Drupal::service('renderer')->renderInIsolation($group);
     $this->assertStringNotContainsString('Show all states', $html);
   }
@@ -806,7 +807,8 @@ class ManageReposFiltersTest extends KernelTestBase {
     }
     $this->assertStringNotContainsString('data-select-all="assigned"', $html);
     $this->assertStringContainsString('title="Selecting every report status', $html);
-    $this->assertStringContainsString('data-select-clear="moderation_state"', $html);
+    // Clearing the moderation box would bring the default queue back.
+    $this->assertStringNotContainsString('data-select-clear="moderation_state"', $html);
   }
 
   /**
