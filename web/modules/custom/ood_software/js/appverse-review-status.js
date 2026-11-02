@@ -98,8 +98,13 @@
             if (data.latest_review === settings.review) {
               reveal(rerun);
             }
-            else if (fresh && data.latest_review_url) {
-              // A newer report landed, so this review is superseded.
+            else if (
+              fresh &&
+              data.status === 'complete' &&
+              data.latest_review_url &&
+              data.latest_review !== settings.latestAtLoad
+            ) {
+              // The run produced a report newer than any at page load.
               fresh.href = data.latest_review_url;
               reveal(fresh);
             }

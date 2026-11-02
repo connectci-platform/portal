@@ -236,7 +236,26 @@ class ReviewRerunTest extends KernelTestBase {
     $settings = $form['#attached']['drupalSettings']['oodReviewStatus'];
     $this->assertTrue($settings['inFlight']);
     $this->assertSame((int) $review->id(), $settings['review']);
+    $this->assertSame((int) $review->id(), $settings['latestAtLoad']);
     $this->assertSame('/appverse/repo/' . $repo->id() . '/review-status?check=github', $settings['url']);
+  }
+
+  /**
+   * A superseded review's poller knows the newest review at page load.
+   *
+   * Without it, a failed run would offer "New report ready" pointing at a
+   * report that already existed when the page loaded.
+   */
+  public function testSupersededReviewCarriesLatestAtLoad(): void {
+    $repo = $this->repoInFlight();
+    $older = $this->makeReview($repo);
+    $newer = $this->makeReview($repo);
+    $state = $this->pageForm()->rerunState($older, $repo);
+    $this->assertFalse($state['eligible']);
+    $this->assertSame((int) $newer->id(), $state['latest_review']);
+    $settings = $this->buildPage($older)['#attached']['drupalSettings']['oodReviewStatus'];
+    $this->assertSame((int) $older->id(), $settings['review']);
+    $this->assertSame((int) $newer->id(), $settings['latestAtLoad']);
   }
 
   /**

@@ -222,6 +222,9 @@ final class ReviewPageForm extends FormBase {
         $form['#attached']['drupalSettings']['oodReviewStatus'] = [
           'url' => Url::fromRoute('ood_software.repo_review_status', ['node' => $repo->id()], ['query' => ['check' => 'github']])->toString(),
           'review' => (int) $node->id(),
+          // The poller offers "New report ready" only for a review newer than
+          // this one, so a failed run never points at a report already here.
+          'latestAtLoad' => $rerun['latest_review'],
           'inFlight' => TRUE,
         ];
       }
@@ -753,10 +756,11 @@ final class ReviewPageForm extends FormBase {
   /**
    * Whether this review can be rerun, and the repo's run state.
    *
-   * @return array{eligible: bool, show: bool, in_flight: bool, status: ?string, max_age: int}
+   * @return array{eligible: bool, show: bool, in_flight: bool, status: ?string, max_age: int, latest_review: ?int}
    *   Eligible when this is the repo's newest review and it is undecided.
    *   Show adds that no run is in flight. Max age is the seconds until an
    *   in-flight run times out (Cache::PERMANENT when none is in flight).
+   *   Latest review is the repo's newest review nid right now.
    */
   public function rerunState(NodeInterface $review, ?NodeInterface $repo): array {
     $state = [
@@ -765,6 +769,7 @@ final class ReviewPageForm extends FormBase {
       'in_flight' => FALSE,
       'status' => NULL,
       'max_age' => Cache::PERMANENT,
+      'latest_review' => NULL,
     ];
     if ($repo === NULL) {
       return $state;
@@ -778,7 +783,8 @@ final class ReviewPageForm extends FormBase {
       $age = $this->time->getCurrentTime() - (int) $latest->get('field_review_dispatched_at')->value;
       $state['max_age'] = max(1, AppverseReviewService::STALE_TIMEOUT_SECONDS - $age);
     }
-    $state['eligible'] = $this->reviews->latestReviewId($repo) === (int) $review->id()
+    $state['latest_review'] = $this->reviews->latestReviewId($repo);
+    $state['eligible'] = $state['latest_review'] === (int) $review->id()
       && !ReleaseWatcher::isDecided($review);
     $state['show'] = $state['eligible'] && !$state['in_flight'];
     return $state;
