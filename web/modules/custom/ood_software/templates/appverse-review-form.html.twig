@@ -388,6 +388,14 @@
          has had (appverse-planning#53). #}
       <div class="prev-reviews review-history">
         {% if is_reviewer %}<div><a href="{{ page.public_url }}">{{ 'Public view'|t }}</a></div>{% endif %}
+        {# Reviewer only. The link is rendered hidden while a run is in flight,
+           and the status line is the poller's target (D8-2931). #}
+        {% if is_reviewer and page.rerun %}
+          <div><a href="{{ page.rerun.url }}" data-review-rerun{% if not page.rerun.show %} hidden{% endif %}>{{ 'Rerun report'|t }}</a></div>
+        {% endif %}
+        {% if is_reviewer and page.run_status %}
+          <div class="arv-run-status" data-review-run-status role="status" aria-live="polite">{% if page.run_status.in_flight %}{{ page.run_status.label }}{% endif %}</div>
+        {% endif %}
         {% if page.history and page.history.total > 1 %}
           <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
           {% if page.history.is_rerun %}

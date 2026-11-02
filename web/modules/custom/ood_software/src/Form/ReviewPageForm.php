@@ -4,6 +4,7 @@ namespace Drupal\ood_software\Form;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\Xss;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\DependencyInjection\ClassResolverInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -24,6 +25,7 @@ use Drupal\ood_software\Service\ReviewDecisionApplier;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
+use Drupal\ood_software\Service\ReleaseWatcher;
 use Drupal\ood_software\Service\ReviewSignals;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
@@ -207,6 +209,22 @@ final class ReviewPageForm extends FormBase {
       // act on. What the page should say is where things end up, and that
       // lives next to the assessment and the decision instead.
     }
+    // Rerun report and the run status line are the reviewer's alone, so a
+    // contributor's or visitor's page carries neither, nor any polling.
+    $rerun = $this->rerunState($node, $repo instanceof NodeInterface ? $repo : NULL);
+    if ($reviewerView && $repo instanceof NodeInterface) {
+      if ($rerun['in_flight']) {
+        // Read by the review-status poller (D8-2931).
+        $form['#attached']['drupalSettings']['oodReviewStatus'] = [
+          'url' => Url::fromRoute('ood_software.repo_review_status', ['node' => $repo->id()], ['query' => ['check' => 'github']])->toString(),
+          'review' => (int) $node->id(),
+          'inFlight' => TRUE,
+        ];
+      }
+    }
+    else {
+      unset($form['#page']['rerun'], $form['#page']['run_status']);
+    }
     $form['#tree'] = TRUE;
     // The page differs by permission, by whether the viewer owns the repo,
     // and by ?view=public; a cached copy must never cross those lines.
@@ -214,6 +232,12 @@ final class ReviewPageForm extends FormBase {
     // node_list: the history bar and the superseded banner depend on the
     // repo's other reviews, so a newly seeded review must invalidate this one.
     $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : [], ['node_list']);
+    if ($reviewerView) {
+      // The in-flight state ends by itself when the stale timeout passes, with
+      // no save to invalidate the tags above. Bound the page's life so the
+      // Rerun button comes back without a cache clear.
+      $form['#cache']['max-age'] = $rerun['max_age'];
+    }
 
     if (!$reviewerView) {
       return $form;
@@ -723,6 +747,34 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * Whether this review can be rerun, and the repo's run state.
+   *
+   * @return array{eligible: bool, show: bool, in_flight: bool, status: ?string, max_age: int}
+   *   Eligible when this is the repo's newest review and it is undecided.
+   *   Show adds that no run is in flight. Max age is the seconds until an
+   *   in-flight run times out (Cache::PERMANENT when none is in flight).
+   */
+  public function rerunState(NodeInterface $review, ?NodeInterface $repo): array {
+    $state = ['eligible' => FALSE, 'show' => FALSE, 'in_flight' => FALSE, 'status' => NULL, 'max_age' => Cache::PERMANENT];
+    if ($repo === NULL) {
+      return $state;
+    }
+    $latest = $this->reviews->latestRevision($repo);
+    $state['in_flight'] = $this->reviews->isRunInFlight($latest);
+    if ($latest->hasField('field_review_status') && !$latest->get('field_review_status')->isEmpty()) {
+      $state['status'] = (string) $latest->get('field_review_status')->value;
+    }
+    if ($state['in_flight']) {
+      $age = $this->time->getCurrentTime() - (int) $latest->get('field_review_dispatched_at')->value;
+      $state['max_age'] = max(1, AppverseReviewService::STALE_TIMEOUT_SECONDS - $age);
+    }
+    $state['eligible'] = $this->reviews->latestReviewId($repo) === (int) $review->id()
+      && !ReleaseWatcher::isDecided($review);
+    $state['show'] = $state['eligible'] && !$state['in_flight'];
+    return $state;
+  }
+
+  /**
    * Everything the template needs, as plain arrays.
    *
    * @return array<mixed>
@@ -739,6 +791,7 @@ final class ReviewPageForm extends FormBase {
       ? (string) ($repo->get('field_repo_url')->first()->getValue()['uri'] ?? '') : '';
     $this->linkSha = $sha;
 
+    $rerun = $this->rerunState($node, $repo);
     $previous = $this->previousReviews($node, $repo);
     $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
 
@@ -921,6 +974,14 @@ final class ReviewPageForm extends FormBase {
       'response' => $sent !== NULL ? $sent['response'] : (string) ($node->get('field_arv_contributor_response')->value ?? ''),
       'assessment' => (string) ($node->get('field_arv_assessment')->value ?? ''),
       'notes' => $notes,
+      'rerun' => $rerun['eligible'] ? [
+        'url' => Url::fromRoute('ood_software.review_rerun_confirm', ['node' => $node->id()])->toString(),
+        'show' => $rerun['show'],
+      ] : NULL,
+      'run_status' => [
+        'in_flight' => $rerun['in_flight'],
+        'label' => $rerun['in_flight'] ? ($rerun['status'] === 'in_progress' ? (string) $this->t('AI report running') : (string) $this->t('AI report queued')) : '',
+      ],
       'edit_url' => Url::fromRoute('entity.node.edit_form', ['node' => $node->id()])->toString(),
       'full_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()])->toString(),
       'public_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()], ['query' => ['view' => self::MODE_PUBLIC]])->toString(),

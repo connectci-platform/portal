@@ -106,6 +106,19 @@ ood_software.repo_review_status:
 
 # --- Admin-only transitions ---
 
+ood_software.review_rerun_confirm:
+  path: '/appverse/review/{node}/rerun'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewRerunConfirmForm'
+    _title: 'Rerun the AI report'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    node: \d+
+
 ood_software.review_page:
   path: '/appverse/review/{node}'
   defaults:

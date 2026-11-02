@@ -852,6 +852,7 @@ final class AppverseHubController extends ControllerBase {
           $allowedPrefixes = [
             '/user/',
             '/appverse/manage-repos',
+            '/appverse/review',
           ];
           foreach ($allowedPrefixes as $prefix) {
             if ($destination === $prefix || str_starts_with($destination, $prefix . '/') || str_starts_with($destination, $prefix . '?') || str_starts_with($destination, $prefix . '#')) {
