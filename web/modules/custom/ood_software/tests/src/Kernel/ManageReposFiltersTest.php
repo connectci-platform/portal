@@ -17,6 +17,7 @@ use Drupal\views\Plugin\views\filter\InOperator;
 use Drupal\views\ResultRow;
 use Drupal\views\ViewExecutable;
 use Drupal\views\Views;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Covers the my_appverse:page_admin filters reworked in D8-2927.
@@ -76,6 +77,14 @@ class ManageReposFiltersTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_review_status',
       'field.storage.node.field_review_recommendation',
       'field.field.node.appverse_repo.field_review_recommendation',
+      // The Needs attention option reads each repo's newest review.
+      'node.type.appverse_review',
+      'field.storage.node.field_arv_repo',
+      'field.field.node.appverse_review.field_arv_repo',
+      'field.storage.node.field_arv_decision_sent_at',
+      'field.field.node.appverse_review.field_arv_decision_sent_at',
+      'field.storage.node.field_arv_withdrawn_at',
+      'field.field.node.appverse_review.field_arv_withdrawn_at',
     ]);
     $this->importViewConfigRaw('views.view.my_appverse');
 
@@ -116,16 +125,37 @@ class ManageReposFiltersTest extends KernelTestBase {
    * A member app of the repo, implementing the given software.
    *
    * @param int[] $softwareNids
+   * @param array<string, mixed> $values
+   *   Extra values, such as a moderation_state.
    */
-  private function makeApp(NodeInterface $repo, array $softwareNids = []): NodeInterface {
+  private function makeApp(NodeInterface $repo, array $softwareNids = [], array $values = []): NodeInterface {
     $app = Node::create([
       'type' => 'appverse_app',
       'title' => $repo->label() . ' app ' . random_int(1, 99999),
       'field_appverse_repo' => $repo->id(),
       'field_appverse_software_implemen' => $softwareNids,
-    ]);
+    ] + $values);
     $app->save();
     return $app;
+  }
+
+  /**
+   * A review of the repo: undecided (unpublished, no timestamps) by default.
+   *
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo reviewed.
+   * @param array<string, mixed> $values
+   *   Values overriding the defaults.
+   */
+  private function makeReview(NodeInterface $repo, array $values = []): NodeInterface {
+    $review = Node::create($values + [
+      'type' => 'appverse_review',
+      'title' => 'Review of ' . $repo->label(),
+      'status' => 0,
+      'field_arv_repo' => $repo->id(),
+    ]);
+    $review->save();
+    return $review;
   }
 
   private function makeSoftware(string $title): NodeInterface {
@@ -408,6 +438,212 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
+   * Runs page_admin with the given moderation_state value, sorted nids.
+   *
+   * @param string|string[] $state
+   *   One state key, "All", or a list of keys.
+   *
+   * @return int[]
+   *   The repo nids, ascending.
+   */
+  private function runModeration(string|array $state): array {
+    $nids = $this->runPageAdmin(['moderation_state' => $state]);
+    sort($nids);
+    return $nids;
+  }
+
+  /**
+   * A repo awaiting review needs attention before any report exists.
+   */
+  public function testNeedsAttentionIncludesReadyForReviewWithNoReview(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $this->makeRepo('Published', 'published');
+    $this->assertSame([(int) $ready->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A live repo whose newest report is undecided needs attention.
+   */
+  public function testNeedsAttentionIncludesPublishedWithUndecidedNewestReview(): void {
+    $repo = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($repo);
+    $this->assertSame([(int) $repo->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A live repo with a resubmitted member app needs attention, listed once.
+   */
+  public function testNeedsAttentionIncludesPublishedWithMemberAppReadyForReview(): void {
+    $repo = $this->makeRepo('Live resubmitted', 'published');
+    $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
+    $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
+    $quiet = $this->makeRepo('Live quiet', 'published');
+    $this->makeApp($quiet, [], ['moderation_state' => 'published']);
+    // Listed once although two of its apps match.
+    $this->assertSame([(int) $repo->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * Only the newest review counts, by created then nid.
+   */
+  public function testNeedsAttentionExcludesPublishedWhoseNewestReviewIsDecidedEvenIfOlderIsNot(): void {
+    $repo = $this->makeRepo('Decided last round', 'published');
+    $this->makeReview($repo, ['created' => 1700000000]);
+    $this->makeReview($repo, ['created' => 1700000100, 'field_arv_decision_sent_at' => 1700000200]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+
+    // Same created time: the higher nid is the newer, as latestReviewFor()
+    // orders them.
+    $tied = $this->makeRepo('Tied reviews', 'published');
+    $this->makeReview($tied, ['created' => 1700000000]);
+    $this->makeReview($tied, ['created' => 1700000000, 'field_arv_decision_sent_at' => 1700000200]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A published review from before D8-2788 counts as decided.
+   */
+  public function testNeedsAttentionExcludesLegacyPublishedReviewWithoutTimestamp(): void {
+    $repo = $this->makeRepo('Legacy decided', 'published');
+    $this->makeReview($repo, ['status' => 1]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A sent-back repo whose decision went out no longer needs attention.
+   */
+  public function testNeedsAttentionExcludesNeedsAdjustmentWithDecisionSent(): void {
+    $sent = $this->makeRepo('Sent back', 'needs_adjustment');
+    $this->makeReview($sent, ['field_arv_decision_sent_at' => 1700000200]);
+    $pending = $this->makeRepo('Sent back, report undecided', 'needs_adjustment');
+    $this->makeReview($pending);
+    $this->assertSame([(int) $pending->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A withdrawn newest review is decided.
+   */
+  public function testNeedsAttentionExcludesWithdrawnNewestReview(): void {
+    $repo = $this->makeRepo('Withdrawn', 'published');
+    $this->makeReview($repo, ['field_arv_withdrawn_at' => 1700000200]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * Draft and archived repos are left out of the review branch.
+   */
+  public function testNeedsAttentionExcludesDraftWithUndecidedAdminRun(): void {
+    $draft = $this->makeRepo('Draft', 'draft');
+    $this->makeReview($draft);
+    $archived = $this->makeRepo('Archived', 'archived');
+    $this->makeReview($archived);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * Neither Needs attention nor its union with a state returns an app.
+   */
+  public function testNeedsAttentionNeverReturnsNonRepoNodes(): void {
+    $repo = $this->makeRepo('Repo', 'draft');
+    $app = $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+
+    $alone = $this->runModeration(['needs_attention']);
+    $this->assertNotContains((int) $app->id(), $alone);
+    // The draft repo is in because of its ready app, not the app itself.
+    $this->assertSame([(int) $repo->id(), (int) $ready->id()], $alone);
+
+    $withState = $this->runModeration(['needs_attention', 'appverse_editorial-ready_for_review']);
+    $this->assertNotContains((int) $app->id(), $withState);
+    $this->assertSame([(int) $repo->id(), (int) $ready->id()], $withState);
+  }
+
+  /**
+   * Needs attention plus a state returns both sets.
+   */
+  public function testNeedsAttentionPlusDraftIsTheUnion(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $draft = $this->makeRepo('Draft', 'draft');
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+    $this->makeRepo('Live quiet', 'published');
+    $this->makeRepo('Archived', 'archived');
+
+    $this->assertSame([(int) $ready->id(), (int) $live->id()], $this->runModeration(['needs_attention']));
+    $this->assertSame([(int) $draft->id()], $this->runModeration(['appverse_editorial-draft']));
+    $this->assertSame(
+      [(int) $ready->id(), (int) $draft->id(), (int) $live->id()],
+      $this->runModeration(['needs_attention', 'appverse_editorial-draft']),
+    );
+  }
+
+  /**
+   * The hub emails' "All" link still means every state.
+   */
+  public function testAllReturnsEveryState(): void {
+    $expected = [];
+    foreach (['draft', 'ready_for_review', 'needs_adjustment', 'published', 'archived', 'declined'] as $state) {
+      $expected[] = (int) $this->makeRepo(ucfirst($state), $state)->id();
+    }
+    $this->assertSame($expected, $this->runModeration('All'));
+  }
+
+  /**
+   * Explicit states, as in older email links, filter to exactly those.
+   */
+  public function testExplicitStatesDoNotAddNeedsAttention(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+    $this->assertSame([(int) $ready->id()], $this->runModeration(['appverse_editorial-ready_for_review']));
+  }
+
+  /**
+   * Both read the default revision's state, so a forward draft is in neither.
+   */
+  public function testNeedsAttentionAgreesWithReadyForReviewOnForwardDraft(): void {
+    $repo = $this->makeRepo('Live with a forward draft', 'published');
+    $repo->set('moderation_state', 'ready_for_review');
+    $repo->save();
+    // The forward revision is not the default one.
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    $storage->resetCache();
+    $default = $storage->load($repo->id());
+    $this->assertInstanceOf(NodeInterface::class, $default);
+    $this->assertSame('published', $default->get('moderation_state')->value);
+
+    $this->assertSame([], $this->runModeration(['appverse_editorial-ready_for_review']));
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A page load with no moderation_state key gets Needs attention.
+   */
+  public function testDefaultIsNeedsAttentionOnRealGet(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+    $this->makeRepo('Sent back', 'needs_adjustment');
+    $this->makeRepo('Draft', 'draft');
+    $this->makeRepo('Live quiet', 'published');
+
+    // A real page load: no moderation_state key in the query at all.
+    $request = Request::create('/appverse/manage-repos');
+    $request->setSession(\Drupal::request()->getSession());
+    \Drupal::requestStack()->push($request);
+    try {
+      $view = $this->getPageAdminView();
+      $view->execute();
+      $nids = $this->resultNids($view);
+    }
+    finally {
+      \Drupal::requestStack()->pop();
+    }
+    sort($nids);
+    $this->assertSame([(int) $ready->id(), (int) $live->id()], $nids);
+  }
+
+  /**
    * Builds the display's exposed form and returns its render array.
    *
    * @return array<string, mixed>
@@ -444,7 +680,9 @@ class ManageReposFiltersTest extends KernelTestBase {
       $keys[] = (string) $key;
     });
     $this->assertNotEmpty($keys);
-    foreach ($keys as $key) {
+    $this->assertSame('needs_attention', $keys[0], 'Needs attention comes first.');
+    $this->assertSame('Needs attention (any state)', (string) $form['moderation_state']['#options']['needs_attention']);
+    foreach (array_slice($keys, 1) as $key) {
       $this->assertStringStartsWith('appverse_editorial-', $key);
     }
   }

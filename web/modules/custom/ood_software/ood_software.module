@@ -22,7 +22,9 @@ use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Component\Utility\Xss;
+use Drupal\content_moderation\Plugin\views\filter\ModerationStateFilter;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Plugin\views\filter\ModerationStateNeedsAttention;
 use Drupal\ood_software\Service\DecisionEmail;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
@@ -187,10 +189,11 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
         // Keep only the states of the workflows the view's own bundles use.
         // Done here rather than with the filter's "reduce" option, because
         // that reduces to the filter's value, which is also the default
-        // selection: this display defaults to the review queue
-        // (ready_for_review + needs_adjustment) and must keep doing so
-        // (appverse-planning#60).
-        if ($filter->getPluginId() === 'moderation_state_filter'
+        // selection: Manage Repos defaults to its review queue, "Needs
+        // attention" (appverse-planning#60, D8-2931).
+        // Matched by class: ood_software_views_data_alter() puts a subclass
+        // on every node view's moderation_state, under its own plugin id.
+        if ($filter instanceof ModerationStateFilter
           && isset($form[$filter->options['expose']['identifier']]['#options'])) {
           $key = $filter->options['expose']['identifier'];
           $workflows = _ood_software_view_workflows($view);
@@ -201,6 +204,12 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
             // nothing in it goes too.
             $kept = [];
             foreach ($form[$key]['#options'] as $group => $states) {
+              // "Needs attention" has no workflow prefix and stays, first
+              // (D8-2931).
+              if ($group === ModerationStateNeedsAttention::NEEDS_ATTENTION) {
+                $kept[$group] = $states;
+                continue;
+              }
               if (!is_array($states)) {
                 $states = [$group => $states];
               }
@@ -217,6 +226,22 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
               }
             }
             $form[$key]['#options'] = $kept;
+          }
+          // A #description is not printed by the site theme's exposed form,
+          // so the option explains itself in a help mark beside the box.
+          if (isset($form[$key]['#options'][ModerationStateNeedsAttention::NEEDS_ATTENTION])) {
+            $help = (string) t('Needs attention covers repos awaiting review, a resubmitted app, or an undecided report on a live or sent-back repo.');
+            $form[$key]['#field_suffix'] = [
+              '#type' => 'html_tag',
+              '#tag' => 'span',
+              '#value' => '?',
+              '#attributes' => [
+                'class' => ['appverse-hub-help'],
+                'title' => $help,
+                'aria-label' => $help,
+                'role' => 'img',
+              ],
+            ];
           }
         }
         if ($filter->getPluginId() !== 'date') {
@@ -3003,11 +3028,18 @@ function ood_software_preprocess_views_view(array &$variables): void {
  * Implements hook_views_data_alter().
  *
  * Adds the manage-repos filters that are not a single field on the repo:
- * "Assigned", "Software used", "Search" and "AI report".
+ * "Assigned", "Software used", "Search" and "AI report", and swaps in the
+ * moderation state filter that offers "Needs attention".
  *
  * @param array<string, mixed> $data
  */
 function ood_software_views_data_alter(array &$data): void {
+  // Core's moderation state filter, plus the opt-in "Needs attention" option
+  // Manage Repos defaults to (D8-2931). It behaves as core's in every view
+  // that does not turn the option on.
+  if (isset($data['node_field_data']['moderation_state']['filter'])) {
+    $data['node_field_data']['moderation_state']['filter']['id'] = 'ood_software_moderation_state';
+  }
   // The manage-repos "Assigned" filter: assigned to me / unassigned
   // (appverse-planning#33; the AssignedReviewer filter plugin).
   $data['node_field_data']['ood_assigned_reviewer'] = [
