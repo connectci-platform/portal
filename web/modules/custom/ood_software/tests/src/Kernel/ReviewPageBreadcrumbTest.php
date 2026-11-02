@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\Core\Breadcrumb\Breadcrumb;
+use Drupal\Core\Breadcrumb\BreadcrumbBuilderInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\ood_software\Breadcrumb\ReviewPageBreadcrumbBuilder;
 use Drupal\Core\Routing\RouteMatch;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
@@ -13,6 +17,8 @@ use Drupal\ood_software\Form\ReviewPageForm;
 use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -37,7 +43,7 @@ class ReviewPageBreadcrumbTest extends KernelTestBase {
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias', 'file',
     'content_moderation', 'workflows', 'key', 'flag',
-    'entity_reference_revisions', 'paragraphs', 'ood_software',
+    'entity_reference_revisions', 'paragraphs', 'easy_breadcrumb', 'ood_software',
   ];
 
   /**
@@ -118,12 +124,12 @@ class ReviewPageBreadcrumbTest extends KernelTestBase {
    *
    * @param \Drupal\node\NodeInterface $review
    *   The review.
-   * @param \Drupal\user\UserInterface $user
+   * @param \Drupal\Core\Session\AccountInterface $user
    *   Who views it.
    * @param array<string, string> $query
    *   Query arguments of the request.
    */
-  protected function crumb(NodeInterface $review, UserInterface $user, array $query = []): Breadcrumb {
+  protected function crumb(NodeInterface $review, AccountInterface $user, array $query = []): Breadcrumb {
     $this->setCurrentUser($user);
     $request = Request::create('/appverse/review/' . $review->id(), 'GET', $query);
     $request->setSession(new Session(new MockArraySessionStorage()));
@@ -156,14 +162,74 @@ class ReviewPageBreadcrumbTest extends KernelTestBase {
   }
 
   /**
-   * A reviewer previewing the public view gets the visitor crumb.
+   * The public summary keeps easy_breadcrumb's trail, for any visitor.
    */
-  public function testReviewerPreviewingPublicViewGetsMyAppverseCrumb(): void {
-    $crumb = $this->crumb($this->makeReview(), $this->reviewer, ['view' => 'public']);
-    $this->assertSame('My Appverse', (string) $crumb->getLinks()[1]->getText());
+  public function testPublicModeKeepsEasyBreadcrumbTrail(): void {
+    $review = $this->makeReview();
+    $anonymous = User::getAnonymousUser();
+    foreach ([[$anonymous, []], [$this->reviewer, ['view' => 'public']]] as [$user, $query]) {
+      $crumb = $this->crumb($review, $user, $query);
+      $expected = $this->easyTrail($review, $user, $query);
+      $this->assertSame($expected, array_map(static fn ($l) => (string) $l->getText(), $crumb->getLinks()));
+      $this->assertContains('user', $crumb->getCacheContexts());
+      $this->assertContains('user.permissions', $crumb->getCacheContexts());
+      $this->assertContains('url.query_args:view', $crumb->getCacheContexts());
+    }
+  }
+
+  /**
+   * Public mode returns what the delegate builds, not this builder's trail.
+   */
+  public function testPublicModeReturnsDelegateTrail(): void {
+    $stub = new class() implements BreadcrumbBuilderInterface {
+
+      /**
+       * {@inheritdoc}
+       */
+      public function applies(RouteMatchInterface $route_match) {
+        return TRUE;
+      }
+
+      /**
+       * {@inheritdoc}
+       */
+      public function build(RouteMatchInterface $route_match) {
+        return (new Breadcrumb())->addLink(Link::createFromRoute('Delegated', '<front>'));
+      }
+
+    };
+    $builder = new ReviewPageBreadcrumbBuilder($this->container->get('current_user'), $this->container->get('entity_type.manager'), $this->container->get('request_stack'), $stub);
+    $review = $this->makeReview();
+    $this->setCurrentUser(User::getAnonymousUser());
+    $match = new RouteMatch('ood_software.review_page', new Route('/appverse/review/{node}'), ['node' => $review], ['node' => $review->id()]);
+    $crumb = $builder->build($match);
+    $this->assertSame(['Delegated'], array_map(static fn ($l) => (string) $l->getText(), $crumb->getLinks()));
     $this->assertContains('url.query_args:view', $crumb->getCacheContexts());
-    $this->assertContains('user.permissions', $crumb->getCacheContexts());
-    $this->assertContains('user', $crumb->getCacheContexts());
+  }
+
+  /**
+   * Link texts easy_breadcrumb builds for the review page.
+   *
+   * @param \Drupal\node\NodeInterface $review
+   *   The review.
+   * @param \Drupal\Core\Session\AccountInterface $user
+   *   Who views it.
+   * @param array<string, string> $query
+   *   Query arguments of the request.
+   *
+   * @return string[]
+   *   The link texts.
+   */
+  protected function easyTrail(NodeInterface $review, AccountInterface $user, array $query): array {
+    $this->setCurrentUser($user);
+    $request = Request::create('/appverse/review/' . $review->id(), 'GET', $query);
+    $request->setSession(new Session(new MockArraySessionStorage()));
+    $this->container->get('request_stack')->push($request);
+    $match = new RouteMatch('ood_software.review_page', new Route('/appverse/review/{node}'), ['node' => Node::load($review->id())], ['node' => $review->id()]);
+    $easy = $this->container->get('easy_breadcrumb.breadcrumb');
+    $links = $easy->build($match)->getLinks();
+    $this->container->get('request_stack')->pop();
+    return array_map(static fn ($l) => (string) $l->getText(), $links);
   }
 
   /**

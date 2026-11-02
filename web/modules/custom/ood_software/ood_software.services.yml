@@ -33,7 +33,7 @@ services:
 
   ood_software.review_page_breadcrumb:
     class: Drupal\ood_software\Breadcrumb\ReviewPageBreadcrumbBuilder
-    arguments: ['@current_user', '@entity_type.manager', '@request_stack']
+    arguments: ['@current_user', '@entity_type.manager', '@request_stack', '@?easy_breadcrumb.breadcrumb']
     tags:
       # Above easy_breadcrumb (1003), which applies to every route and would
       # otherwise print its path-derived trail here.
