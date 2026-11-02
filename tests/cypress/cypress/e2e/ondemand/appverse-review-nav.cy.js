@@ -4,13 +4,15 @@
  * A reviewer who opens the review page (or the Manage Repos hub) while an AI
  * report is running sees it finish in place, with no reload:
  *  - the review page's status line goes "AI report queued" -> "AI report
- *    finished" and the Rerun link appears;
- *  - the hub card's step label updates and its hidden Run AI report form is
- *    revealed.
+ *    finished" and the Rerun link appears, or, when the run produced a newer
+ *    review, a "New report ready" link to it; a failed run offers neither;
+ *  - the hub card's step label updates, its review link points at the review
+ *    the run produced, and its hidden Run AI report form is revealed.
  *
- * Fixtures come from fixtures/scripts/appverse-seed.php (a repo with one
- * review) and appverse-review-status.php (sets the run status). cy.clock() is
- * installed before cy.visit() so the page's 30 second poll can be ticked.
+ * Fixtures come from fixtures/scripts/appverse-seed.php (a repo, optionally
+ * with one review) and appverse-review-status.php (sets the run status and
+ * can land a new review, as a finished run does). cy.clock() is installed
+ * before cy.visit() so the page's 30 second poll can be ticked.
  */
 
 const ADMIN_EMAIL = 'administrator@amptesting.com';
@@ -18,8 +20,8 @@ const ADMIN_PASS = 'b8QW]X9h7#5n';
 const SEED_SCRIPT = '/var/www/html/tests/cypress/cypress/fixtures/scripts/appverse-seed.php';
 const STATUS_SCRIPT = '/var/www/html/tests/cypress/cypress/fixtures/scripts/appverse-review-status.php';
 
-function seedRepoWithReview(title) {
-  const cmd = `ddev drush php:script ${SEED_SCRIPT} -- '${title}' ready_for_review 0 draft review`;
+function seedRepo(title, extras = '') {
+  const cmd = `ddev drush php:script ${SEED_SCRIPT} -- '${title}' ready_for_review 0 draft ${extras}`.trim();
   return cy.exec(cmd, { timeout: 90000 }).then((res) => {
     const match = (res.stdout || '').match(/^APPVERSE_SEED_RESULT:(\{.*\})\s*$/m);
     expect(match, `seed output: ${res.stdout} ${res.stderr}`).to.not.equal(null);
@@ -32,6 +34,18 @@ function setRunStatus(nid, status) {
     .its('stdout').should('contain', 'APPVERSE_REVIEW_STATUS:ok');
 }
 
+// Lands a new review for the repo, as a finished run does, and sets the run
+// status. Yields the new review's nid.
+function landReview(nid, status) {
+  return cy.exec(`ddev drush php:script ${STATUS_SCRIPT} -- ${nid} ${status} new-review`, { timeout: 60000 })
+    .then((res) => {
+      expect(res.stdout).to.contain('APPVERSE_REVIEW_STATUS:ok');
+      const match = res.stdout.match(/^APPVERSE_NEW_REVIEW:(\d+)\s*$/m);
+      expect(match, `status output: ${res.stdout}`).to.not.equal(null);
+      return Number(match[1]);
+    });
+}
+
 describe('Appverse live report status', () => {
   let repoNid;
   let reviewNid;
@@ -39,44 +53,109 @@ describe('Appverse live report status', () => {
   beforeEach(() => {
     cy.clearCookies();
     cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
-    seedRepoWithReview('Review Nav Live Status').then((seeded) => {
-      repoNid = seeded.nid;
-      reviewNid = seeded.review_nid;
-      setRunStatus(repoNid, 'pending');
+  });
+
+  describe('on a repo that has a review', () => {
+    beforeEach(() => {
+      seedRepo('Review Nav Live Status', 'review').then((seeded) => {
+        repoNid = seeded.nid;
+        reviewNid = seeded.review_nid;
+        setRunStatus(repoNid, 'pending');
+      });
+    });
+
+    it('finishes the status line on the review page without a reload', () => {
+      cy.clock();
+      cy.visit(`/appverse/review/${reviewNid}`);
+      cy.get('[data-review-run-status]').should('contain.text', 'AI report queued');
+      cy.get('[data-review-rerun]').should('not.be.visible');
+
+      setRunStatus(repoNid, 'complete');
+      // The page must not reload: a marker set on window survives only if so.
+      cy.window().then((win) => { win.__noReload = true; });
+      cy.tick(30000);
+
+      cy.get('[data-review-run-status]').should('contain.text', 'AI report finished');
+      cy.get('[data-review-rerun]').should('be.visible');
+      cy.get('[data-review-new]').should('not.be.visible');
+      cy.window().its('__noReload').should('eq', true);
+    });
+
+    it('offers the new report when the run lands one', () => {
+      cy.clock();
+      cy.visit(`/appverse/review/${reviewNid}`);
+      cy.get('[data-review-new]').should('not.be.visible');
+
+      cy.window().then((win) => { win.__noReload = true; });
+      landReview(repoNid, 'complete').then((newNid) => {
+        expect(newNid).to.be.greaterThan(reviewNid);
+        cy.tick(30000);
+        cy.get('[data-review-run-status]').should('contain.text', 'AI report finished');
+        cy.get('[data-review-new]').should('be.visible')
+          .and('have.attr', 'href').and('match', new RegExp(`/appverse/review/${newNid}$`));
+        // This review is superseded now, so it offers no rerun of its own.
+        cy.get('[data-review-rerun]').should('not.be.visible');
+      });
+      cy.window().its('__noReload').should('eq', true);
+    });
+
+    it('offers no new report on a superseded review when the run fails', () => {
+      // A newer review already exists when the older one is opened, so the
+      // poller must not mistake it for the run's result.
+      landReview(repoNid, 'pending').then(() => {
+        cy.clock();
+        cy.visit(`/appverse/review/${reviewNid}`);
+        cy.get('[data-review-run-status]').should('contain.text', 'AI report queued');
+
+        setRunStatus(repoNid, 'error');
+        cy.tick(30000);
+
+        cy.get('[data-review-run-status]').should('contain.text', 'AI report failed');
+        cy.get('[data-review-new]').should('not.be.visible');
+      });
+    });
+
+    it('points an in-flight hub card at the review the run lands', () => {
+      cy.clock();
+      cy.visit('/appverse/manage-repos?title=Review+Nav+Live+Status&moderation_state=All');
+      cy.get(`#appverse-repo-${repoNid}`).as('card');
+      cy.get('@card').should('have.attr', 'data-review-status-url');
+      cy.get('@card').find('[data-review-run]').should('not.be.visible');
+      cy.get('@card').find('[data-review-link]')
+        .should('have.attr', 'href').and('match', new RegExp(`/appverse/review/${reviewNid}$`));
+      cy.get('@card').find('[data-review-step]').invoke('text').should('not.contain', 'Ready');
+
+      cy.window().then((win) => { win.__noReload = true; });
+      landReview(repoNid, 'complete').then((newNid) => {
+        cy.tick(30000);
+        cy.get('@card').find('[data-review-step]').should('contain.text', 'Ready');
+        cy.get('@card').find('[data-review-run]').should('be.visible');
+        cy.get('@card').find('[data-review-link]').should('be.visible')
+          .and('have.attr', 'href').and('match', new RegExp(`/appverse/review/${newNid}$`));
+      });
+      cy.window().its('__noReload').should('eq', true);
     });
   });
 
-  it('finishes the status line on the review page without a reload', () => {
-    cy.clock();
-    cy.visit(`/appverse/review/${reviewNid}`);
-    cy.get('[data-review-run-status]').should('contain.text', 'AI report queued');
-    cy.get('[data-review-rerun]').should('not.be.visible');
+  it('gives a first submission\'s card its review link when the report lands', () => {
+    seedRepo('Review Nav First Run').then((seeded) => {
+      setRunStatus(seeded.nid, 'pending');
+      cy.clock();
+      cy.visit('/appverse/manage-repos?title=Review+Nav+First+Run&moderation_state=All');
+      cy.get(`#appverse-repo-${seeded.nid}`).as('card');
+      cy.get('@card').find('[data-review-link]').should('not.be.visible');
+      cy.get('@card').find('[data-review-step]').invoke('text').should('not.contain', 'Ready');
 
-    setRunStatus(repoNid, 'complete');
-    // The page must not reload: a marker set on window survives only if so.
-    cy.window().then((win) => { win.__noReload = true; });
-    cy.tick(30000);
-
-    cy.get('[data-review-run-status]').should('contain.text', 'AI report finished');
-    cy.get('[data-review-rerun]').should('be.visible');
-    cy.window().its('__noReload').should('eq', true);
-  });
-
-  it('flips an in-flight hub card in place', () => {
-    cy.clock();
-    cy.visit(`/appverse/manage-repos?title=Review+Nav+Live+Status&moderation_state=All`);
-    cy.get(`#appverse-repo-${repoNid}`).as('card');
-    cy.get('@card').should('have.attr', 'data-review-status-url');
-    cy.get('@card').find('[data-review-run]').should('not.be.visible');
-
-    setRunStatus(repoNid, 'complete');
-    cy.window().then((win) => { win.__noReload = true; });
-    cy.tick(30000);
-
-    cy.get('@card').find('[data-review-run]').should('be.visible');
-    cy.get('@card').find('[data-review-link]').should('be.visible')
-      .and('have.attr', 'href').and('match', new RegExp(`/appverse/review/${reviewNid}$`));
-    cy.window().its('__noReload').should('eq', true);
+      cy.window().then((win) => { win.__noReload = true; });
+      landReview(seeded.nid, 'complete').then((newNid) => {
+        cy.tick(30000);
+        cy.get('@card').find('[data-review-step]').should('contain.text', 'Ready');
+        cy.get('@card').find('[data-review-link]').should('be.visible')
+          .and('have.attr', 'href').and('match', new RegExp(`/appverse/review/${newNid}$`));
+        cy.get('@card').find('[data-review-run]').should('be.visible');
+      });
+      cy.window().its('__noReload').should('eq', true);
+    });
   });
 
   it('assigns another reviewer from the card in place', () => {
@@ -144,7 +223,7 @@ describe('Appverse hub filters and review header', () => {
   });
 
   it('shows the breadcrumb, View repo and the model on a review', () => {
-    seedRepoWithReview('Review Nav Header').then((seeded) => {
+    seedRepo('Review Nav Header', 'review').then((seeded) => {
       cy.visit(`/appverse/review/${seeded.review_nid}`);
       cy.get('.breadcrumb, nav[aria-label*="readcrumb"]').contains('a', 'Manage Repos');
       cy.contains('a.btn', 'View repo');

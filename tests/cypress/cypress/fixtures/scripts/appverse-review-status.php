@@ -14,6 +14,8 @@
  * Positional arguments after "--":
  *   1. nid: The appverse_repo node id.
  *   2. status: pending, in_progress, complete or error.
+ *   3. Optional "new-review": first create a new appverse_review for the
+ *      repo, as a finished run does, and print APPVERSE_NEW_REVIEW:<nid>.
  *
  * pending and in_progress also stamp the dispatch time with now, which is
  * what makes the run count as in flight. Refuses to run outside DDEV.
@@ -29,8 +31,9 @@ if (getenv('IS_DDEV_PROJECT') !== 'true') {
 $extra = $extra ?? [];
 $nid = (string) ($extra[0] ?? '');
 $status = (string) ($extra[1] ?? '');
-if (!preg_match('/^\d+$/', $nid) || !in_array($status, ['pending', 'in_progress', 'complete', 'error'], TRUE)) {
-  fwrite(STDERR, "appverse-review-status: usage: <nid> <pending|in_progress|complete|error>\n");
+$newReview = ($extra[2] ?? '') === 'new-review';
+if (!preg_match('/^\d+$/', $nid) || !in_array($status, ['pending', 'in_progress', 'complete', 'error'], TRUE) || (isset($extra[2]) && !$newReview)) {
+  fwrite(STDERR, "appverse-review-status: usage: <nid> <pending|in_progress|complete|error> [new-review]\n");
   exit(1);
 }
 
@@ -38,6 +41,19 @@ $repo = Node::load((int) $nid);
 if (!$repo || $repo->bundle() !== 'appverse_repo') {
   fwrite(STDERR, "appverse-review-status: node $nid is not an appverse_repo.\n");
   exit(1);
+}
+
+if ($newReview) {
+  $review = Node::create([
+    'type' => 'appverse_review',
+    'title' => 'Review: ' . $repo->label(),
+    'uid' => $repo->getOwnerId(),
+    'status' => 0,
+    'field_arv_repo' => $repo->id(),
+    'field_arv_run_meta' => json_encode(['model' => 'ccs/Qwen/Qwen3.6-35B-A3B-FP8']),
+  ]);
+  $review->save();
+  echo 'APPVERSE_NEW_REVIEW:' . $review->id() . "\n";
 }
 
 \Drupal::service('ood_software.in_place_saver')->updateRevisions($repo, function ($revision) use ($status): void {
