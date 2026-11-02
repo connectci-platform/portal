@@ -381,6 +381,23 @@
           {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
           {% if page.model %} · <span title="{{ page.model_full }}">{{ page.model }}</span>{% endif %}
         </div>
+        {# Go to the repo and its apps. Past three apps they collapse into one
+           dropdown, as the hub card's Actions menu is built. #}
+        {% if page.repo_link or page.app_links %}
+          <div class="arv-go-links">
+            {% if page.repo_link %}<a class="btn" href="{{ page.repo_link.url }}">{{ page.repo_link.label }}</a>{% endif %}
+            {% if page.app_links|length > 3 %}
+              <div class="dropdown arv-go-menu">
+                <button class="btn dropdown-toggle" type="button" id="arv-apps-{{ page.nid }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ 'Apps'|t }}</button>
+                <div class="dropdown-menu" aria-labelledby="arv-apps-{{ page.nid }}">
+                  {% for app in page.app_links %}<a class="dropdown-item" href="{{ app.url }}">{{ app.label }}</a>{% endfor %}
+                </div>
+              </div>
+            {% else %}
+              {% for app in page.app_links %}<a class="btn" href="{{ app.url }}"{% if page.app_links|length > 1 %} title="{{ app.label }}"{% endif %}>{{ page.app_links|length > 1 ? 'View app: @app'|t({'@app': app.label}) : 'View app'|t }}</a>{% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
       </div>
       {# The header keeps the position and the rerun note; the reviews
          themselves are listed below it, one line each, rather than as a

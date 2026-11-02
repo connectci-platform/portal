@@ -79,6 +79,8 @@ class ReviewRerunTest extends KernelTestBase {
       'paragraphs.paragraphs_type.review_verdict',
       'paragraphs.paragraphs_type.review_finding',
       'paragraphs.paragraphs_type.review_note',
+      'field.storage.node.field_appverse_repo',
+      'field.field.node.appverse_app.field_appverse_repo',
     ];
     $dir = DRUPAL_ROOT . '/sites/default/config/default';
     foreach (['storage.node.field_arv_', 'field.node.appverse_review.', 'storage.node.field_review_', 'field.node.appverse_repo.field_review_', 'storage.node.field_repo_url', 'field.node.appverse_repo.field_repo_url', 'storage.paragraph.field_rv', 'field.paragraph.review_'] as $pattern) {

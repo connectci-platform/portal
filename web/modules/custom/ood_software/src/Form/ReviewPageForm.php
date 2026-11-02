@@ -18,6 +18,7 @@ use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
 use Drupal\ood_software\Service\DuplicateCheck;
 use Drupal\ood_software\Service\FindingOverride;
+use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Service\ReviewDecision;
@@ -114,6 +115,7 @@ final class ReviewPageForm extends FormBase {
     protected AppverseReviewService $reviews,
     protected ClassResolverInterface $classResolver,
     protected ReviewDecisionApplier $applier,
+    protected RepoMemberApps $memberApps,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -127,6 +129,7 @@ final class ReviewPageForm extends FormBase {
       $container->get('ood_software.review_dispatcher'),
       $container->get('class_resolver'),
       $container->get('ood_software.review_decision_applier'),
+      $container->get('ood_software.repo_member_apps'),
     );
   }
 
@@ -792,6 +795,22 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * Links to the repo's member apps, published or not.
+   *
+   * @return list<array{url: string, label: string}>
+   *   The apps' canonical URLs, titled by the app.
+   */
+  protected function appLinks(NodeInterface $repo): array {
+    $ids = $this->memberApps->queryMemberAppIds($repo);
+    sort($ids);
+    $links = [];
+    foreach ($this->entityTypeManager->getStorage('node')->loadMultiple($ids) as $app) {
+      $links[] = ['url' => $app->toUrl()->toString(), 'label' => (string) $app->label()];
+    }
+    return $links;
+  }
+
+  /**
    * Everything the template needs, as plain arrays.
    *
    * @return array<mixed>
@@ -1002,6 +1021,11 @@ final class ReviewPageForm extends FormBase {
         'in_flight' => $rerun['in_flight'],
         'label' => $rerun['in_flight'] ? ($rerun['status'] === 'in_progress' ? (string) $this->t('AI report running') : (string) $this->t('AI report queued')) : '',
       ],
+      'repo_link' => $repo ? [
+        'url' => $repo->toUrl()->toString(),
+        'label' => (string) $this->t('View repo'),
+      ] : NULL,
+      'app_links' => $repo ? $this->appLinks($repo) : [],
       'edit_url' => Url::fromRoute('entity.node.edit_form', ['node' => $node->id()])->toString(),
       'full_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()])->toString(),
       'public_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()], ['query' => ['view' => self::MODE_PUBLIC]])->toString(),

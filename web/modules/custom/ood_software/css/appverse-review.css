@@ -1682,3 +1682,26 @@
   /* The theme sets quotes in italics; the mail has no theme. */
   font-style: normal;
 }
+
+/* Header buttons to the repo and its apps (D8-2931). */
+.arv-page .arv-go-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.arv-page .arv-go-menu {
+  position: relative;
+}
+.arv-page .arv-go-menu .dropdown-menu {
+  font-size: 0.8125rem;
+  min-width: 11rem;
+}
+/* Some themes hide every Bootstrap dropdown until hover; open it whenever
+   Bootstrap marks it open, as the hub card's menu does. */
+.arv-page .arv-go-menu .dropdown-menu.show {
+  display: block;
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+}
