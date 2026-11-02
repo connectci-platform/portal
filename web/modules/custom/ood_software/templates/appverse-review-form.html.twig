@@ -379,6 +379,7 @@
         <div class="overview-line overview-line--sub">
           {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
           {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
+          {% if page.model %} · <span title="{{ page.model_full }}">{{ page.model }}</span>{% endif %}
         </div>
       </div>
       {# The header keeps the position and the rerun note; the reviews

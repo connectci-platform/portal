@@ -775,6 +775,23 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * The model that wrote a review, from its run metadata.
+   *
+   * @return array{label: string, full: string}|null
+   *   The label is the last path segment of the model id, and full is the id
+   *   as stored. NULL when no model is recorded.
+   */
+  public static function modelLabel(?string $runMetaJson): ?array {
+    $meta = json_decode((string) $runMetaJson, TRUE);
+    $model = is_array($meta) && isset($meta['model']) && is_string($meta['model']) ? $meta['model'] : '';
+    if ($model === '') {
+      return NULL;
+    }
+    $segments = explode('/', $model);
+    return ['label' => end($segments), 'full' => $model];
+  }
+
+  /**
    * Everything the template needs, as plain arrays.
    *
    * @return array<mixed>
@@ -784,6 +801,7 @@ final class ReviewPageForm extends FormBase {
     $repo = $repo instanceof NodeInterface ? $repo : NULL;
     $sha = (string) ($node->get('field_arv_sha')->value ?? '');
     $reviewedAt = (int) ($node->get('field_arv_reviewed_at')->value ?? 0);
+    $model = self::modelLabel((string) ($node->get('field_arv_run_meta')->value ?? ''));
     $state = (string) ($node->get('moderation_state')->value ?? 'draft');
 
     // Evidence links point at the repo on GitHub at the reviewed commit.
@@ -917,6 +935,8 @@ final class ReviewPageForm extends FormBase {
         default => str_replace('_', ' ', (string) ($node->get('field_arv_repo_shape')->value ?? '')),
       },
       'reviewed_at' => $reviewedAt ? $this->formatDate($reviewedAt, 'date') : '',
+      'model' => $model['label'] ?? '',
+      'model_full' => $model['full'] ?? '',
       'tool_version' => (string) ($node->get('field_arv_tool_version')->value ?? ''),
       'state' => $state,
       'state_label' => self::STATE_LABELS[$state] ?? ucfirst($state),
