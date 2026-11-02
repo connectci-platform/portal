@@ -541,21 +541,70 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
-   * Neither Needs attention nor its union with a state returns an app.
+   * Runs page_admin without its bundle filter, sorted nids.
+   *
+   * Page_admin only lists appverse_repo nodes, which would hide a leak from
+   * the moderation filter itself; without that filter, whatever the
+   * moderation filter lets through comes back.
+   *
+   * @param string[] $state
+   *   The moderation_state value.
+   *
+   * @return int[]
+   *   The nids, ascending.
+   */
+  private function runModerationWithoutBundleFilter(array $state): array {
+    $view = $this->getPageAdminView();
+    $view->removeHandler('page_admin', 'filter', 'type');
+    /** @var array<string, mixed> $input */
+    $input = ['moderation_state' => $state];
+    $view->setExposedInput($input);
+    $view->execute();
+    $this->assertArrayNotHasKey('type', $view->filter, 'The bundle filter is gone.');
+    $nids = $this->resultNids($view);
+    sort($nids);
+    return $nids;
+  }
+
+  /**
+   * The Needs attention branch never returns an app or other node.
+   *
+   * Run without page_admin's bundle filter, so only the moderation filter
+   * stands between a ready_for_review app and the result.
    */
   public function testNeedsAttentionNeverReturnsNonRepoNodes(): void {
     $repo = $this->makeRepo('Repo', 'draft');
     $app = $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
     $ready = $this->makeRepo('Ready', 'ready_for_review');
 
-    $alone = $this->runModeration(['needs_attention']);
-    $this->assertNotContains((int) $app->id(), $alone);
     // The draft repo is in because of its ready app, not the app itself.
+    $alone = $this->runModerationWithoutBundleFilter(['needs_attention']);
+    $this->assertNotContains((int) $app->id(), $alone);
     $this->assertSame([(int) $repo->id(), (int) $ready->id()], $alone);
 
-    $withState = $this->runModeration(['needs_attention', 'appverse_editorial-ready_for_review']);
-    $this->assertNotContains((int) $app->id(), $withState);
-    $this->assertSame([(int) $repo->id(), (int) $ready->id()], $withState);
+    // ORed with a state the app is not in, the app still stays out.
+    $withDraft = $this->runModerationWithoutBundleFilter(['needs_attention', 'appverse_editorial-draft']);
+    $this->assertNotContains((int) $app->id(), $withDraft);
+    $this->assertSame([(int) $repo->id(), (int) $ready->id()], $withDraft);
+
+    // Core's own Ready for review condition matches the app too, since
+    // appverse_app is a bundle of the workflow (page_admin's bundle filter
+    // removes it there). Needs attention adds nothing beyond its repos: the
+    // union is exactly core's set plus the Needs attention repos.
+    $coreReady = $this->runModerationWithoutBundleFilter(['appverse_editorial-ready_for_review']);
+    $this->assertSame([(int) $app->id(), (int) $ready->id()], $coreReady);
+    $union = array_values(array_unique(array_merge($coreReady, $alone)));
+    sort($union);
+    $this->assertSame(
+      $union,
+      $this->runModerationWithoutBundleFilter(['needs_attention', 'appverse_editorial-ready_for_review']),
+    );
+
+    // With the bundle filter in place, as on the page, no app either way.
+    $this->assertSame(
+      [(int) $repo->id(), (int) $ready->id()],
+      $this->runModeration(['needs_attention', 'appverse_editorial-ready_for_review']),
+    );
   }
 
   /**
@@ -596,6 +645,22 @@ class ManageReposFiltersTest extends KernelTestBase {
     $live = $this->makeRepo('Live with a report', 'published');
     $this->makeReview($live);
     $this->assertSame([(int) $ready->id()], $this->runModeration(['appverse_editorial-ready_for_review']));
+  }
+
+  /**
+   * The legacy email link's two states filter to exactly those states.
+   */
+  public function testLegacyTwoStateLinkDoesNotAddNeedsAttention(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $sent = $this->makeRepo('Sent back, decision sent', 'needs_adjustment');
+    $this->makeReview($sent, ['field_arv_decision_sent_at' => 1700000200]);
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+
+    $nids = $this->runModeration(['appverse_editorial-ready_for_review', 'appverse_editorial-needs_adjustment']);
+    $this->assertContains((int) $sent->id(), $nids, 'A sent-back repo is in by its state, decided or not.');
+    $this->assertNotContains((int) $live->id(), $nids, 'Needs attention is not silently added.');
+    $this->assertSame([(int) $ready->id(), (int) $sent->id()], $nids);
   }
 
   /**
