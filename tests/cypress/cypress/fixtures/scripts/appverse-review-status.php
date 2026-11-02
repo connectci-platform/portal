@@ -13,7 +13,7 @@
  *
  * Positional arguments after "--":
  *   1. nid: The appverse_repo node id.
- *   2. status: pending, in_progress, complete or failed.
+ *   2. status: pending, in_progress, complete or error.
  *
  * pending and in_progress also stamp the dispatch time with now, which is
  * what makes the run count as in flight. Refuses to run outside DDEV.
@@ -29,8 +29,8 @@ if (getenv('IS_DDEV_PROJECT') !== 'true') {
 $extra = $extra ?? [];
 $nid = (string) ($extra[0] ?? '');
 $status = (string) ($extra[1] ?? '');
-if (!preg_match('/^\d+$/', $nid) || !in_array($status, ['pending', 'in_progress', 'complete', 'failed'], TRUE)) {
-  fwrite(STDERR, "appverse-review-status: usage: <nid> <pending|in_progress|complete|failed>\n");
+if (!preg_match('/^\d+$/', $nid) || !in_array($status, ['pending', 'in_progress', 'complete', 'error'], TRUE)) {
+  fwrite(STDERR, "appverse-review-status: usage: <nid> <pending|in_progress|complete|error>\n");
   exit(1);
 }
 

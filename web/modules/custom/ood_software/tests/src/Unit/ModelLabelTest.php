@@ -17,6 +17,8 @@ class ModelLabelTest extends UnitTestCase {
   /**
    * Checks the label and full id for each run metadata case.
    *
+   * @param string|null $runMetaJson
+   *   The run metadata JSON, or NULL when none is recorded.
    * @param array{label: string, full: string}|null $expected
    *   The expected label and full id, or NULL when no model is recorded.
    *

@@ -180,6 +180,26 @@ class AssignReviewerTest extends KernelTestBase {
   }
 
   /**
+   * A repo assigned to a non-reviewer still shows that user as selected.
+   */
+  public function testPickerKeepsANonReviewerAssigneeSelected(): void {
+    \Drupal::moduleHandler()->loadInclude('ood_software', 'module');
+    $repo = $this->repo($this->outsider);
+    $build = _ood_software_hub_assign_picker($repo);
+    $options = $build['#context']['options'];
+    $uid = (string) $this->outsider->id();
+    $selected = array_values(array_filter($options, fn (array $o): bool => $o['selected']));
+    $this->assertCount(1, $selected);
+    $this->assertSame($uid, $selected[0]['value']);
+    $this->assertSame('outsider', $selected[0]['label']);
+    // A current reviewer is still the only selected option when assigned.
+    $build = _ood_software_hub_assign_picker($this->repo($this->bob));
+    $selected = array_values(array_filter($build['#context']['options'], fn (array $o): bool => $o['selected']));
+    $this->assertCount(1, $selected);
+    $this->assertSame((string) $this->bob->id(), $selected[0]['value']);
+  }
+
+  /**
    * An empty uid unassigns.
    */
   public function testUnassignedClears(): void {

@@ -602,7 +602,10 @@ final class AppverseHubController extends ControllerBase {
       // should now show.
       $current = $this->reviewAssignment->assignee($this->entityTypeManager()->getStorage('node')->loadUnchanged($node->id()) ?? $node);
       $message = (string) ($current
-        ? $this->t('@name is now assigned to @title.', ['@name' => $current->getDisplayName(), '@title' => $node->label()])
+        ? $this->t('@name is now assigned to @title.', [
+          '@name' => $current->getDisplayName(),
+          '@title' => $node->label(),
+        ])
         : $this->t('@title is now unassigned.', ['@title' => $node->label()]));
     }
     else {

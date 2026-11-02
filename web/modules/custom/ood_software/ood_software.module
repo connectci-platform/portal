@@ -2474,7 +2474,8 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $runReviewAction = NULL;
   $runReviewActionMenu = NULL;
   $dispatcher = \Drupal::service('ood_software.review_dispatcher');
-  if ($isAdmin && !$dispatcher->isRunInFlight($dispatcher->latestRevision($repo))) {
+  $inFlight = $isAdmin && $dispatcher->isRunInFlight($dispatcher->latestRevision($repo));
+  if ($isAdmin && !$inFlight) {
     // "Rerun report", not "Rerun AI report": the pair with the Actions toggle
     // beside it has to fit a 12.5rem column, and the longer wording wrapped
     // that card onto a second row. "Run AI report" (no prior run) is short
@@ -2505,7 +2506,6 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   // poller reveals one when the run finishes (D8-2931). It is built here, and
   // rendered hidden, only for the reviewers the poller serves. A report is
   // coming, so the label is the rerun one.
-  $inFlight = $isAdmin && $dispatcher->isRunInFlight($dispatcher->latestRevision($repo));
   $runReviewActionHidden = NULL;
   if ($inFlight) {
     $label = t('Rerun report');
@@ -2681,7 +2681,7 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
  * @return array<string, mixed>
  *   A render array.
  */
-function _ood_software_hub_assign_picker(\Drupal\node\NodeInterface $repo): array {
+function _ood_software_hub_assign_picker(NodeInterface $repo): array {
   $assignment = \Drupal::service('ood_software.review_assignment');
   $assignee = $assignment->assignee($repo);
   $assigneeUid = $assignee ? (int) $assignee->id() : NULL;
@@ -2696,19 +2696,32 @@ function _ood_software_hub_assign_picker(\Drupal\node\NodeInterface $repo): arra
       $options[] = ['value' => (string) $uid, 'label' => $name];
     }
   }
+  // An assignee who is no longer a reviewer (lost the role, or blocked) still
+  // has to show as the selected option, or the select would read "Unassigned"
+  // beside the "Reviewer: X" text and choosing Unassigned would fire no change.
+  if ($assigneeUid !== NULL && !isset($reviewers[$assigneeUid])) {
+    $options[] = ['value' => (string) $assigneeUid, 'label' => $assignee->getDisplayName()];
+  }
   foreach ($options as &$option) {
     $option['selected'] = $option['value'] === (string) ($assigneeUid ?? '');
   }
   unset($option);
+  $template = implode('', [
+    '<form method="post" action="{{ action }}" class="appverse-hub-card__assign" data-hub-assign>',
+    '<label class="appverse-hub-card__assign-label" for="appverse-assign-{{ id }}">',
+    '{{ "Assign reviewer"|t }}</label> ',
+    '<select name="uid" id="appverse-assign-{{ id }}" class="appverse-hub-card__assign-select"',
+    ' data-hub-assign-select>',
+    '{% for o in options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>',
+    '{{ o.label }}</option>{% endfor %}',
+    '</select>',
+    '<noscript> <button type="submit" class="appverse-hub-card__action-btn">{{ "Assign"|t }}</button>',
+    '</noscript>',
+    '</form>',
+  ]);
   return [
     '#type' => 'inline_template',
-    '#template' => '<form method="post" action="{{ action }}" class="appverse-hub-card__assign" data-hub-assign>'
-      . '<label class="appverse-hub-card__assign-label" for="appverse-assign-{{ id }}">{{ "Assign reviewer"|t }}</label> '
-      . '<select name="uid" id="appverse-assign-{{ id }}" class="appverse-hub-card__assign-select" data-hub-assign-select>'
-      . '{% for o in options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}'
-      . '</select>'
-      . '<noscript> <button type="submit" class="appverse-hub-card__action-btn">{{ "Assign"|t }}</button></noscript>'
-      . '</form>',
+    '#template' => $template,
     '#context' => [
       'action' => _ood_software_hub_action_url('appverse/repo/' . $repo->id() . '/assign'),
       'id' => $repo->id(),

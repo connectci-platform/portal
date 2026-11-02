@@ -778,7 +778,7 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
-   * "All" replaces the old "Show all states" link.
+   * The "All" chip replaces the old "Show all states" link.
    */
   public function testAllLinkReplacesShowAllStates(): void {
     $group = $this->exposedForm()['moderation_group'];
@@ -812,7 +812,7 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
-   * ?moderation_state=All shows a chip for every state, not Needs attention.
+   * The All value shows a chip for every state, not Needs attention.
    */
   public function testAllRendersEveryStateChip(): void {
     $view = Views::getView('my_appverse');
@@ -840,13 +840,16 @@ class ManageReposFiltersTest extends KernelTestBase {
   /**
    * Within a state, repos are ordered by title, then nid.
    */
-  public function testWithinAStateOrderedByTitleThenNid(): void {
+  public function testWithinStateOrderedByTitleThenNid(): void {
     $b = $this->makeRepo('b');
     $a1 = $this->makeRepo('a');
     $a2 = $this->makeRepo('a');
     $this->assertSame([(int) $a1->id(), (int) $a2->id(), (int) $b->id()], $this->runPageAdmin(['moderation_state' => ['appverse_editorial-ready_for_review']]));
   }
 
+  /**
+   * The items-per-page control offers 10, 20, 50, 100 and defaults to 20.
+   */
   public function testItemsPerPageOptions(): void {
     $element = $this->exposedForm()['items_per_page'];
     $options = array_map('strval', array_keys($element['#options']));
@@ -854,12 +857,16 @@ class ManageReposFiltersTest extends KernelTestBase {
     $this->assertSame('20', (string) $element['#default_value']);
   }
 
+  /**
+   * Choosing fifty per page returns up to fifty rows.
+   */
   public function testItemsPerPageFiftyReturnsUpToFifty(): void {
     for ($i = 0; $i < 55; $i++) {
       $this->makeRepo(sprintf('Repo %02d', $i));
     }
     $view = $this->getPageAdminView();
-    $view->setRequest(Request::create('/appverse/manage-repos', 'GET', ['moderation_state' => 'All', 'items_per_page' => 50]));
+    $query = ['moderation_state' => 'All', 'items_per_page' => 50];
+    $view->setRequest(Request::create('/appverse/manage-repos', 'GET', $query));
     $view->setExposedInput(['moderation_state' => 'All', 'items_per_page' => 50]);
     $view->execute();
     $this->assertCount(50, $view->result);

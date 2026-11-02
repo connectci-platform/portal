@@ -759,7 +759,13 @@ final class ReviewPageForm extends FormBase {
    *   in-flight run times out (Cache::PERMANENT when none is in flight).
    */
   public function rerunState(NodeInterface $review, ?NodeInterface $repo): array {
-    $state = ['eligible' => FALSE, 'show' => FALSE, 'in_flight' => FALSE, 'status' => NULL, 'max_age' => Cache::PERMANENT];
+    $state = [
+      'eligible' => FALSE,
+      'show' => FALSE,
+      'in_flight' => FALSE,
+      'status' => NULL,
+      'max_age' => Cache::PERMANENT,
+    ];
     if ($repo === NULL) {
       return $state;
     }

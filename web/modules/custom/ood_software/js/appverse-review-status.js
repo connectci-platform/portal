@@ -45,7 +45,15 @@
       }
       pending = true;
       fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-        .then((response) => (response.ok ? response.json() : null))
+        .then((response) => {
+          // Signed out, no longer allowed, or the repo is gone: nothing useful
+          // will come back, so stop. 5xx and network errors keep retrying.
+          if (response.status === 401 || response.status === 403 || response.status === 404) {
+            stop();
+            return null;
+          }
+          return response.ok ? response.json() : null;
+        })
         .then((data) => {
           if (!data) {
             return;

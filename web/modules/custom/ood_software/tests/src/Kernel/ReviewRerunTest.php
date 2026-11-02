@@ -83,7 +83,17 @@ class ReviewRerunTest extends KernelTestBase {
       'field.field.node.appverse_app.field_appverse_repo',
     ];
     $dir = DRUPAL_ROOT . '/sites/default/config/default';
-    foreach (['storage.node.field_arv_', 'field.node.appverse_review.', 'storage.node.field_review_', 'field.node.appverse_repo.field_review_', 'storage.node.field_repo_url', 'field.node.appverse_repo.field_repo_url', 'storage.paragraph.field_rv', 'field.paragraph.review_'] as $pattern) {
+    $patterns = [
+      'storage.node.field_arv_',
+      'field.node.appverse_review.',
+      'storage.node.field_review_',
+      'field.node.appverse_repo.field_review_',
+      'storage.node.field_repo_url',
+      'field.node.appverse_repo.field_repo_url',
+      'storage.paragraph.field_rv',
+      'field.paragraph.review_',
+    ];
+    foreach ($patterns as $pattern) {
       foreach (glob($dir . '/field.' . $pattern . '*.yml') as $file) {
         $names[] = basename($file, '.yml');
       }
@@ -139,6 +149,8 @@ class ReviewRerunTest extends KernelTestBase {
   /**
    * Sets fields on the repo's latest revision in place.
    *
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo.
    * @param array<string, mixed> $values
    *   Field values by name.
    */
@@ -187,6 +199,9 @@ class ReviewRerunTest extends KernelTestBase {
     return ReviewPageForm::create($this->container);
   }
 
+  /**
+   * The Rerun button shows on the newest undecided review when idle.
+   */
   public function testShownOnNewestUndecidedReviewWhenIdle(): void {
     $repo = $this->repoIdle();
     $review = $this->makeReview($repo);
@@ -202,6 +217,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertArrayNotHasKey('oodReviewStatus', $form['#attached']['drupalSettings'] ?? []);
   }
 
+  /**
+   * The Rerun button is hidden while a run is in flight.
+   */
   public function testHiddenWhileRunInFlight(): void {
     $repo = $this->repoInFlight();
     $review = $this->makeReview($repo);
@@ -221,6 +239,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertSame('/appverse/repo/' . $repo->id() . '/review-status?check=github', $settings['url']);
   }
 
+  /**
+   * The running status label shows while a run is in flight.
+   */
   public function testRunningStatusLabel(): void {
     $repo = $this->repoInFlight();
     $review = $this->makeReview($repo);
@@ -229,6 +250,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertSame('AI report running', $form['#page']['run_status']['label']);
   }
 
+  /**
+   * The Rerun button shows when the pending run is stale.
+   */
   public function testShownWhenPendingIsStale(): void {
     $repo = $this->repoInFlight();
     $review = $this->makeReview($repo);
@@ -239,6 +263,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertSame(Cache::PERMANENT, $state['max_age']);
   }
 
+  /**
+   * The Rerun button is hidden on a superseded review.
+   */
   public function testHiddenOnSupersededReview(): void {
     $repo = $this->repoIdle();
     $old = $this->makeReview($repo);
@@ -249,6 +276,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertEmpty($this->buildPage($old)['#page']['rerun']);
   }
 
+  /**
+   * The Rerun button is hidden on a decided review.
+   */
   public function testHiddenOnDecidedReview(): void {
     $repo = $this->repoIdle();
     $review = $this->makeReview($repo);
@@ -262,6 +292,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertFalse($this->pageForm()->rerunState(Node::load($published->id()), $repo)['eligible']);
   }
 
+  /**
+   * The markup carries the hooks the settings poller needs.
+   */
   public function testRenderedMarkupCarriesTheHooksTheSettingsPollerNeeds(): void {
     $repo = $this->repoIdle();
     $review = $this->makeReview($repo);
@@ -279,6 +312,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertStringContainsString('AI report queued', $html);
   }
 
+  /**
+   * The Rerun button is hidden in the contributor view.
+   */
   public function testHiddenForContributorView(): void {
     $repo = $this->repoInFlight();
     $review = $this->makeReview($repo);
@@ -289,6 +325,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertArrayNotHasKey('run_status', $form['#page']);
   }
 
+  /**
+   * The contributor view attaches no polling.
+   */
   public function testContributorViewAttachesNoPolling(): void {
     $repo = $this->repoInFlight();
     $review = $this->makeReview($repo);
@@ -299,6 +338,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertArrayNotHasKey('max-age', $form['#cache']);
   }
 
+  /**
+   * The cache max-age is bounded by the stale timeout.
+   */
   public function testMaxAgeBoundedByStaleTimeout(): void {
     $repo = $this->repoInFlight();
     $review = $this->makeReview($repo);
@@ -321,6 +363,9 @@ class ReviewRerunTest extends KernelTestBase {
     return $this->container->get('http_kernel')->handle($request);
   }
 
+  /**
+   * A local destination returns to the review after a rerun.
+   */
   public function testRunReviewWithLocalDestinationReturnsToReview(): void {
     $repo = $this->repoIdle();
     $review = $this->makeReview($repo);
@@ -330,6 +375,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertNotEmpty($this->dispatcher->sent);
   }
 
+  /**
+   * An external destination is ignored after a rerun.
+   */
   public function testRunReviewIgnoresExternalDestination(): void {
     $repo = $this->repoIdle();
     $response = $this->postRunReview($repo, 'https://evil.example/');
@@ -340,6 +388,9 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertStringNotContainsString('evil.example', (string) $response->headers->get('Location'));
   }
 
+  /**
+   * The confirm form is uncacheable and limited to reviews.
+   */
   public function testConfirmFormIsUncacheableAndReviewOnly(): void {
     $repo = $this->repoIdle();
     $review = $this->makeReview($repo);
