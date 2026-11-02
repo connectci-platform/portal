@@ -101,3 +101,55 @@ describe('Appverse live report status', () => {
     });
   });
 });
+
+describe('Appverse hub filters and review header', () => {
+  beforeEach(() => {
+    cy.clearCookies();
+    cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
+  });
+
+  it('shows every state chip for All and keeps them on Apply (D8-2930)', () => {
+    cy.visit('/appverse/manage-repos?moderation_state=All');
+    cy.get('#edit-moderation-state').find('option').then((options) => {
+      const states = [...options].filter((o) => o.value.startsWith('appverse_editorial-')).length;
+      expect(states).to.be.greaterThan(1);
+      cy.get('#edit-moderation-state').find('option:selected').should('have.length', states);
+      cy.get('.views-exposed-form .select2-selection__choice').filter(':visible').should('have.length.at.least', states);
+      cy.get('.views-exposed-form input[type=submit]').first().click();
+      cy.url().then((url) => {
+        const count = (url.match(/moderation_state(%5B%5D|\[\])=appverse_editorial-/g) || []).length;
+        expect(count).to.equal(states);
+        expect(url).not.to.contain('needs_attention');
+      });
+    });
+  });
+
+  it('selects every state from the All link and clears from Clear', () => {
+    cy.visit('/appverse/manage-repos');
+    cy.get('#edit-moderation-state').find('option:selected').should('have.length', 1);
+    cy.get('[data-select-all="moderation_state"]').click();
+    cy.get('#edit-moderation-state').find('option:selected').then((selected) => {
+      expect(selected.length).to.be.greaterThan(1);
+      expect([...selected].map((o) => o.value)).not.to.include('needs_attention');
+    });
+    cy.get('[data-select-clear="moderation_state"]').click();
+    cy.get('#edit-moderation-state').find('option:selected').should('have.length', 0);
+  });
+
+  it('limits the hub to the chosen items per page', () => {
+    cy.visit('/appverse/manage-repos?moderation_state=All');
+    cy.get('select[name="items_per_page"]').select('10');
+    cy.get('.views-exposed-form input[type=submit]').first().click();
+    cy.url().should('contain', 'items_per_page=10');
+    cy.get('.appverse-hub-card').should('have.length.at.most', 10);
+  });
+
+  it('shows the breadcrumb, View repo and the model on a review', () => {
+    seedRepoWithReview('Review Nav Header').then((seeded) => {
+      cy.visit(`/appverse/review/${seeded.review_nid}`);
+      cy.get('.breadcrumb, nav[aria-label*="readcrumb"]').contains('a', 'Manage Repos');
+      cy.contains('a.btn', 'View repo');
+      cy.contains('.overview-line--sub', 'Qwen3.6-35B-A3B-FP8');
+    });
+  });
+});

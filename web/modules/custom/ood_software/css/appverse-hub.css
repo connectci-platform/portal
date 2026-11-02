@@ -265,10 +265,14 @@ header:has(> .appverse-hub-add-repo) {
   min-width: 2rem;
   font-size: 1rem;
 }
-.views-exposed-form[data-drupal-selector*="my-appverse"] .appverse-hub-all-states {
+.views-exposed-form[data-drupal-selector*="my-appverse"] .appverse-hub-select-links {
   display: inline-block;
   margin-top: 0.25rem;
   font-size: 0.8rem;
+}
+.views-exposed-form[data-drupal-selector*="my-appverse"] .appverse-hub-select-links[hidden],
+.views-exposed-form[data-drupal-selector*="my-appverse"] .appverse-hub-select-links [hidden] {
+  display: none;
 }
 
 /* Action row (Apply + Reset) — keep buttons inline, right-aligned. */

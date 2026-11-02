@@ -753,24 +753,119 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
-   * The link is in the rendered form, and keeps the other filters' values.
+   * The All link is in the rendered form, and keeps the other filters' values.
    *
    * Asserted on rendered HTML: an element description set on the form array
-   * is not printed by every theme's exposed-form template.
+   * is not printed by every theme's exposed-form template. Its href is the
+   * no-JavaScript fallback; with JavaScript the same link selects every chip.
    */
-  public function testShowAllStatesLinkRendersAndKeepsFilters(): void {
+  public function testAllLinkRendersAndKeepsFilters(): void {
     $view = Views::getView('my_appverse');
     $view->setDisplay('page_admin');
     $view->setExposedInput(['title' => 'tillicum', 'assigned' => 'none']);
     $view->build();
     $html = (string) \Drupal::service('renderer')->renderInIsolation($view->exposed_widgets);
 
-    $this->assertMatchesRegularExpression('#<a [^>]*href="([^"]*)"[^>]*>Show all states</a>#', $html);
-    preg_match('#<a [^>]*href="([^"]*)"[^>]*>Show all states</a>#', $html, $m);
-    parse_str((string) parse_url(html_entity_decode($m[1]), PHP_URL_QUERY), $query);
+    $pattern = '#<a [^>]*class="[^"]*appverse-hub-select-all[^"]*"[^>]*>#';
+    $this->assertMatchesRegularExpression($pattern, $html);
+    preg_match($pattern, $html, $m);
+    $this->assertStringContainsString('data-select-all="moderation_state"', $m[0]);
+    preg_match('#href="([^"]*)"#', $m[0], $h);
+    parse_str((string) parse_url(html_entity_decode($h[1]), PHP_URL_QUERY), $query);
     $this->assertSame('All', $query['moderation_state'] ?? NULL);
     $this->assertSame('tillicum', $query['title'] ?? NULL);
     $this->assertSame('none', $query['assigned'] ?? NULL);
+  }
+
+  /**
+   * "All" replaces the old "Show all states" link.
+   */
+  public function testAllLinkReplacesShowAllStates(): void {
+    $group = $this->exposedForm()['moderation_group'];
+    $this->assertArrayHasKey('moderation_state_all', $group);
+    $this->assertContains('appverse-hub-select-all', $group['moderation_state_all']['#attributes']['class']);
+    $this->assertSame('moderation_state', $group['moderation_state_all']['#attributes']['data-select-all']);
+    $this->assertSame('All', (string) $group['moderation_state_all']['#title']);
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($group);
+    $this->assertStringNotContainsString('Show all states', $html);
+  }
+
+  /**
+   * The other multi-select filters get All and Clear links.
+   */
+  public function testOtherFiltersHaveAllAndClearLinks(): void {
+    $view = Views::getView('my_appverse');
+    $view->setDisplay('page_admin');
+    $view->build();
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($view->exposed_widgets);
+    // The form keys are the exposed identifiers. Assigned reviewer and
+    // Software used are single selects here, so they get no links.
+    foreach (['ai_report'] as $name) {
+      $this->assertStringContainsString('data-select-all="' . $name . '"', $html, "$name has All");
+      $this->assertStringContainsString('data-select-clear="' . $name . '"', $html, "$name has Clear");
+    }
+    $this->assertStringNotContainsString('data-select-all="assigned"', $html);
+    $this->assertStringContainsString('title="Selecting every report status', $html);
+    $this->assertStringContainsString('data-select-clear="moderation_state"', $html);
+  }
+
+  /**
+   * ?moderation_state=All shows a chip for every state, not Needs attention.
+   */
+  public function testAllRendersEveryStateChip(): void {
+    $view = Views::getView('my_appverse');
+    $view->setDisplay('page_admin');
+    $view->setExposedInput(['moderation_state' => 'All']);
+    $view->build();
+    $element = $view->exposed_widgets['moderation_group']['moderation_state'];
+    $keys = [];
+    array_walk_recursive($element['#options'], static function ($label, $key) use (&$keys): void {
+      $keys[] = (string) $key;
+    });
+    $states = array_values(array_filter($keys, static fn (string $k) => str_starts_with($k, 'appverse_editorial-')));
+    $this->assertNotEmpty($states);
+    $default = array_map('strval', array_values((array) $element['#default_value']));
+    $this->assertEqualsCanonicalizing($states, $default);
+    $this->assertNotContains('needs_attention', $default);
+
+    // The rendered options are what the reviewer sees: the "All" in the
+    // request must not beat the default and leave the box empty (D8-2930).
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($view->exposed_widgets);
+    $this->assertSame(count($states), preg_match_all('#<option value="appverse_editorial-[^"]*"[^>]* selected="selected"#', $html));
+    $this->assertDoesNotMatchRegularExpression('#<option value="needs_attention"[^>]* selected#', $html);
+  }
+
+  /**
+   * Within a state, repos are ordered by title, then nid.
+   */
+  public function testWithinAStateOrderedByTitleThenNid(): void {
+    $b = $this->makeRepo('b');
+    $a1 = $this->makeRepo('a');
+    $a2 = $this->makeRepo('a');
+    $this->assertSame([(int) $a1->id(), (int) $a2->id(), (int) $b->id()], $this->runPageAdmin(['moderation_state' => ['appverse_editorial-ready_for_review']]));
+  }
+
+  public function testItemsPerPageOptions(): void {
+    $element = $this->exposedForm()['items_per_page'];
+    $options = array_map('strval', array_keys($element['#options']));
+    $this->assertSame(['10', '20', '50', '100'], $options);
+    $this->assertSame('20', (string) $element['#default_value']);
+  }
+
+  public function testItemsPerPageFiftyReturnsUpToFifty(): void {
+    for ($i = 0; $i < 55; $i++) {
+      $this->makeRepo(sprintf('Repo %02d', $i));
+    }
+    $view = $this->getPageAdminView();
+    $view->setRequest(Request::create('/appverse/manage-repos', 'GET', ['moderation_state' => 'All', 'items_per_page' => 50]));
+    $view->setExposedInput(['moderation_state' => 'All', 'items_per_page' => 50]);
+    $view->execute();
+    $this->assertCount(50, $view->result);
+
+    $view = $this->getPageAdminView();
+    $view->setExposedInput(['moderation_state' => 'All']);
+    $view->execute();
+    $this->assertCount(20, $view->result, 'Twenty by default.');
   }
 
   /**
