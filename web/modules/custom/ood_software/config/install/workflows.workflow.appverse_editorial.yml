@@ -25,7 +25,7 @@ type_settings:
       label: 'Needs Adjustment'
       weight: 7
       published: false
-      default_revision: true
+      default_revision: false
     published:
       label: Published
       weight: 0

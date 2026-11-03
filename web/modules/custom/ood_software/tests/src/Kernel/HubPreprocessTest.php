@@ -427,13 +427,10 @@ class HubPreprocessTest extends KernelTestBase {
     );
   }
 
-  public function testAppSentForReviewUnderPublishedRepoIsNotQueued(): void {
-    // A published repo is deliberately left alone: ready_for_review is
-    // unpublished, so moving it would pull a live app out of the catalog.
-    // The consequence is that an app submitted under an already-published repo
-    // does NOT reach the reviewer queue, which filters repos on their own
-    // state. Pinned here so the trade-off is visible and deliberate rather
-    // than rediscovered as a bug (see D8-2882).
+  public function testAppSentForReviewUnderPublishedRepoStaysLive(): void {
+    // D8-2882 replaced the old "not queued" pin: the repo gets a pending
+    // ready_for_review revision, and the default stays published and in the
+    // catalog. Queue visibility is covered in PendingReviewTest.
     $repo = $this->makeRepo(['moderation_state' => 'published']);
     $app = $this->makeApp($repo, ['moderation_state' => 'draft']);
 
@@ -444,10 +441,13 @@ class HubPreprocessTest extends KernelTestBase {
     $storage = $this->container->get('entity_type.manager')->getStorage('node');
     $fresh = $storage->loadUnchanged($repo->id());
     $this->assertSame('published', $fresh->get('moderation_state')->value);
+    $this->assertTrue($fresh->isPublished(), 'The repo must stay live in the catalog while its app is under review.');
     $this->assertTrue(
-      $fresh->isPublished(),
-      'The repo must stay live in the catalog while its app is under review.'
+      $this->container->get('content_moderation.moderation_information')->hasPendingRevision($fresh),
+      'The submission waits as a pending ready_for_review revision.'
     );
+    $latest = $storage->loadRevision($storage->getLatestRevisionId($repo->id()));
+    $this->assertSame('ready_for_review', $latest->get('moderation_state')->value);
   }
 
   public function testNonAdminGetsNoAdminActions(): void {

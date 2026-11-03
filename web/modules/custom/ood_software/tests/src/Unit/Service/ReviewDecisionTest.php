@@ -152,8 +152,8 @@ class ReviewDecisionTest extends UnitTestCase {
     $this->assertStringContainsString('not published yet', $withSuggestions);
     $this->assertStringContainsString('use Publish on this review', $withSuggestions, 'and says what is left to do.');
 
-    $this->assertStringContainsString('come down', $say(['a' => 'request_changes'], TRUE), 'A live repo leaves the catalog.');
-    $this->assertStringNotContainsString('come down', $say(['a' => 'request_changes'], FALSE), 'One that was never live does not.');
+    $this->assertStringContainsString('stays live as it is', $say(['a' => 'request_changes'], TRUE), 'A live repo stays in the catalog.');
+    $this->assertStringNotContainsString('stays live', $say(['a' => 'request_changes'], FALSE), 'One that was never live has nothing to keep.');
     $this->assertStringContainsString('Ada can read the review and re-submit', $say(['a' => 'request_changes'], FALSE));
     $this->assertStringContainsString('Review: never published', $say(['a' => 'reject'], FALSE));
 

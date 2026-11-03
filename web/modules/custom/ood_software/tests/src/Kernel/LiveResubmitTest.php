@@ -51,6 +51,13 @@ class LiveResubmitTest extends KernelTestBase {
   protected array $dispatched = [];
 
   /**
+   * Repos the node-update hook handed to the dispatcher's onTransition().
+   *
+   * @var array<int, int|string|null>
+   */
+  protected array $transitions = [];
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
@@ -98,6 +105,79 @@ class LiveResubmitTest extends KernelTestBase {
     $this->assertState('published', $accepted);
     $this->assertState('ready_for_review', $sentBack);
     $this->assertCount(1, array_filter($this->getMails(), fn ($m) => $m['key'] === 'resubmitted' && $m['to'] === 'reviewer@example.com'), 'The reviewers are told.');
+  }
+
+  /**
+   * A live repo whose own update was sent back re-submits that update.
+   *
+   * The repo stays published on its live revision; the forward revision
+   * (needs_adjustment, with the author's edit) goes back to ready_for_review.
+   * The run starts once and the reviewers are told once: the save is silent
+   * because resubmitLive() does both itself.
+   *
+   * @dataProvider heldBackStates
+   */
+  public function testResubmitLiveRepoWithItsOwnUpdateSentBack(string $heldBack): void {
+    $repo = $this->makeRepo('published');
+    $liveRevision = $repo->getRevisionId();
+    $latest = $this->latest($repo);
+    $latest->set('title', 'Edited by the author');
+    $latest->set('moderation_state', $heldBack);
+    $latest->setNewRevision(TRUE);
+    // @phpstan-ignore-next-line
+    $latest->_ood_software_suppress_notifications = TRUE;
+    $latest->save();
+    $this->assertSame($heldBack, _ood_software_pending_state($this->fresh($repo)), 'Precondition.');
+    $hub = _ood_software_hub_repo_actions($this->fresh($repo), FALSE, 'published', TRUE, FALSE, TRUE);
+    $this->assertNotEmpty($hub['send_for_review'], 'The hub offers Re-submit.');
+
+    $this->controller(TRUE)->sendForReview($this->fresh($repo));
+
+    $fresh = $this->fresh($repo);
+    $this->assertTrue($fresh->isPublished(), 'Still live.');
+    $this->assertEquals($liveRevision, $fresh->getRevisionId(), 'On the same live revision.');
+    $this->assertState('ready_for_review', $repo);
+    $this->assertSame('Edited by the author', $this->latest($repo)->label(), 'The author\'s edit is kept.');
+    $this->assertSame([$repo->id()], $this->dispatched, 'One run.');
+    $this->assertSame([], $this->transitions, 'The save did not start a second one.');
+    $this->assertCount(1, array_filter($this->getMails(), fn ($m) => $m['to'] === 'reviewer@example.com'), 'The reviewers are told once.');
+    $this->assertCount(1, array_filter($this->getMails(), fn ($m) => $m['key'] === 'resubmitted'));
+  }
+
+  /**
+   * A live app whose update was sent back is re-submitted and stays live.
+   *
+   * It counts as sent back, and moves from its newest revision (D8-2882).
+   */
+  public function testResubmitLiveAppWhoseUpdateWasSentBack(): void {
+    $repo = $this->makeRepo('published');
+    $app = $this->makeApp($repo, 'published');
+    $latest = $this->latest($app);
+    $latest->set('title', 'App edited by the author');
+    $latest->set('moderation_state', 'needs_adjustment');
+    $latest->setNewRevision(TRUE);
+    // @phpstan-ignore-next-line
+    $latest->_ood_software_suppress_notifications = TRUE;
+    $latest->save();
+    $this->assertSame(1, $this->container->get('ood_software.repo_member_apps')->sentBackCount($this->fresh($repo)));
+
+    $this->controller(TRUE)->sendForReview($this->fresh($repo));
+
+    $this->assertTrue($this->fresh($app)->isPublished());
+    $this->assertState('ready_for_review', $app);
+    $this->assertSame('App edited by the author', $this->latest($app)->label());
+    $this->assertSame([$repo->id()], $this->dispatched);
+    $this->assertState('published', $repo);
+  }
+
+  /**
+   * The states a live repo's update can be held back in.
+   *
+   * @return array<string, array<int, string>>
+   *   State per case.
+   */
+  public static function heldBackStates(): array {
+    return ['sent back' => ['needs_adjustment'], 'declined' => ['declined']];
   }
 
   /**
@@ -209,6 +289,9 @@ class LiveResubmitTest extends KernelTestBase {
       }
       return $ok;
     });
+    $reviews->method('onTransition')->willReturnCallback(function (NodeInterface $node): void {
+      $this->transitions[] = $node->id();
+    });
     $this->container->set('ood_software.review_dispatcher', $reviews);
     return AppverseHubController::create($this->container);
   }
@@ -221,6 +304,25 @@ class LiveResubmitTest extends KernelTestBase {
   protected function liveMonorepo(): array {
     $repo = $this->makeRepo('published');
     return [$repo, $this->makeApp($repo, 'published'), $this->makeApp($repo, 'needs_adjustment')];
+  }
+
+  /**
+   * The newest revision of a node.
+   */
+  protected function latest(NodeInterface $node): NodeInterface {
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    $latest = $storage->loadRevision($storage->getLatestRevisionId($node->id()));
+    $this->assertInstanceOf(NodeInterface::class, $latest);
+    return $latest;
+  }
+
+  /**
+   * A node loaded fresh (the default revision).
+   */
+  protected function fresh(NodeInterface $node): NodeInterface {
+    $fresh = \Drupal::entityTypeManager()->getStorage('node')->loadUnchanged($node->id());
+    $this->assertInstanceOf(NodeInterface::class, $fresh);
+    return $fresh;
   }
 
   /**
