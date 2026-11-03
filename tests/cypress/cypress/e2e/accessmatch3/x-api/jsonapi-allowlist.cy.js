@@ -5,6 +5,11 @@
  * permission drift or a newly added content type, vocabulary or media bundle.
  * These specs assert the closed surface, the few open resources, and that
  * sensitive affinity_group fields stay out of the output.
+ *
+ * Media image/svg and file--file are allowlisted so Appverse software logos
+ * resolve; other media bundles (document, audio, video, remote_video) stay
+ * closed. Files on non-public schemes (private://) must never be served over
+ * JSON:API, and file entities expose no owner (uid) relationship.
  */
 describe("Test JSON:API allowlist mode", () => {
 
@@ -15,7 +20,8 @@ describe("Test JSON:API allowlist mode", () => {
     '/jsonapi/node/mentorship_engagement',
     '/jsonapi/node/article',
     '/jsonapi/user/user',
-    '/jsonapi/media/image',
+    '/jsonapi/media/document',
+    '/jsonapi/media/video',
   ];
 
   const sensitiveFields = [
@@ -114,6 +120,29 @@ describe("Test JSON:API allowlist mode", () => {
     });
   });
 
+  context("file--file", () => {
+    const walk = (url, page, seen) => jsonApi(url).then((response) => {
+      expect(response.status).to.eq(200);
+      response.body.data.forEach((item) => {
+        seen.count++;
+        expect(item.attributes.uri.value, `uri of file ${item.id}`).to.match(/^public:\/\//);
+        expect(item.attributes.uri.value).to.not.match(/^private:\/\//);
+        expect(item.relationships || {}, `relationships of file ${item.id}`).to.not.have.property('uid');
+      });
+      const next = response.body.links && response.body.links.next;
+      if (next && next.href && page < 50) {
+        return walk(next.href, page + 1, seen);
+      }
+    });
+
+    it("lists only public files and exposes no uid across all pages", () => {
+      const seen = { count: 0 };
+      walk('/jsonapi/file/file', 1, seen).then(() => {
+        cy.log(`Checked ${seen.count} files`);
+      });
+    });
+  });
+
   context("/jsonapi index", () => {
     it("does not advertise closed resources", () => {
       jsonApi('/jsonapi').then((response) => {
@@ -125,6 +154,7 @@ describe("Test JSON:API allowlist mode", () => {
           'user--user',
           'contact_form--contact_form',
           'webform--webform',
+          'media--document',
         ].forEach((key) => {
           expect(links, `index should not list ${key}`).to.not.have.property(key);
         });
@@ -135,7 +165,13 @@ describe("Test JSON:API allowlist mode", () => {
       jsonApi('/jsonapi').then((response) => {
         expect(response.status).to.eq(200);
         const links = response.body.links;
-        ['node--affinity_group', 'taxonomy_term--tags'].forEach((key) => {
+        [
+          'node--affinity_group',
+          'taxonomy_term--tags',
+          'media--image',
+          'media--svg',
+          'file--file',
+        ].forEach((key) => {
           expect(links, `index should list ${key}`).to.have.property(key);
         });
       });

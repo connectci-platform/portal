@@ -1,0 +1,29 @@
+uuid: 7d358313-32c6-4152-af83-471c69515b4f
+langcode: en
+status: true
+dependencies:
+  module:
+    - media
+id: media--image
+disabled: false
+path: media/image
+resourceType: media--image
+resourceFields:
+  uid:
+    disabled: true
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''
+  revision_user:
+    disabled: true
+    fieldName: revision_user
+    publicName: revision_user
+    enhancer:
+      id: ''
+  revision_log_message:
+    disabled: true
+    fieldName: revision_log_message
+    publicName: revision_log_message
+    enhancer:
+      id: ''

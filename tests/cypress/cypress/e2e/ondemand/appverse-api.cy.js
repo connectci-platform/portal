@@ -316,6 +316,70 @@ describe("Appverse JSON:API", () => {
       });
     });
 
+    // Logo include chain: software -> media (image|svg) -> file.
+    const logoUrl = '/jsonapi/node/appverse_software'
+      + '?include=field_appverse_logo,field_appverse_logo.field_media_image,field_appverse_logo.field_media_image_1';
+
+    const findIncluded = (included, ref) => included.find(
+      (item) => item.type === ref.type && item.id === ref.id
+    );
+
+    const assertLogoResolves = (software, included) => {
+      const ref = software.relationships.field_appverse_logo.data;
+      const media = findIncluded(included, ref);
+      expect(media, `media ${ref.type}:${ref.id} for "${software.attributes.title}" in included`).to.exist;
+      expect(['media--image', 'media--svg']).to.include(media.type);
+
+      const fileField = media.type === 'media--image' ? 'field_media_image' : 'field_media_image_1';
+      const fileRef = media.relationships[fileField].data;
+      expect(fileRef, `${fileField} data on ${media.type}`).to.not.be.null;
+      const file = findIncluded(included, fileRef);
+      expect(file, `file ${fileRef.id} in included`).to.exist;
+      expect(file.type).to.eq('file--file');
+      expect(file.attributes.uri.url).to.be.a('string');
+      expect(file.attributes.uri.url).to.match(/^\/sites\/default\/files\//);
+      expect(file.attributes.uri.value).to.match(/^public:\/\//);
+    };
+
+    it("software logos resolve to public media files", () => {
+      cy.request({
+        url: logoUrl + '&page[limit]=50',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        const withLogo = response.body.data.filter(
+          (item) => item.relationships && item.relationships.field_appverse_logo
+            && item.relationships.field_appverse_logo.data
+        );
+        expect(withLogo.length, 'software items with a logo').to.be.greaterThan(0);
+        const included = response.body.included || [];
+        withLogo.forEach((item) => assertLogoResolves(item, included));
+      });
+    });
+
+    it("Abaqus logo resolves", () => {
+      cy.request({
+        url: logoUrl + '&filter[title]=Abaqus',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        const abaqus = response.body.data.find((item) => item.attributes.title === 'Abaqus');
+        if (!abaqus) {
+          cy.log('Abaqus not present in this data set');
+          return;
+        }
+        const data = abaqus.relationships.field_appverse_logo
+          && abaqus.relationships.field_appverse_logo.data;
+        if (!data) {
+          cy.log('Abaqus has no logo in this data set');
+          return;
+        }
+        assertLogoResolves(abaqus, response.body.included || []);
+      });
+    });
+
     it("GET /jsonapi/flagging/appverse_apps returns a data array", () => {
       cy.request({
         url: '/jsonapi/flagging/appverse_apps',
