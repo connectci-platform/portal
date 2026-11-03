@@ -88,19 +88,21 @@ class AppverseReviewService implements DestructableInterface {
 
   /**
    * The workflow's model input: "qwen" runs on the on-prem gateway, "sonnet"
-   * or "opus" on the Anthropic API.
+   * or "opus" on the Anthropic API, "sonnet-subscription" or
+   * "opus-subscription" on Claude through the subscription token.
    *
    * The default where the ood_software.review_model setting names none, or
    * names a model the workflow does not accept (see reviewModel()). The
-   * on-prem model, as the workflow's own default is: a review goes to the
-   * Anthropic API only when a setting chooses it.
+   * on-prem model, as the workflow's own default is: a bad or missing
+   * setting should not send reviews to Claude by accident. The site's
+   * settings.php names the model production uses.
    */
   const DEFAULT_MODEL = 'qwen';
 
   /**
    * The model inputs the review workflow accepts.
    */
-  const MODELS = ['qwen', 'sonnet', 'opus'];
+  const MODELS = ['qwen', 'sonnet', 'opus', 'sonnet-subscription', 'opus-subscription'];
 
   /**
    * Drupal Key module key ID for the GitHub token.
