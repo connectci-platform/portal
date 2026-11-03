@@ -1,8 +1,7 @@
-diff --git a/recurring_events.module b/recurring_events.module
-index 6a08714..f5b33bb 100644
---- a/recurring_events.module
-+++ b/recurring_events.module
-@@ -559,6 +559,15 @@ function recurring_events_recurring_events_event_instances_pre_create_alter(arra
+diff --color -ruN base/recurring_events.module work/recurring_events.module
+--- a/recurring_events.module	2026-11-03 09:04:57
++++ b/recurring_events.module	2026-11-03 09:04:57
+@@ -559,6 +559,15 @@
    $exclude = array_filter(array_merge($global_exclude, $event_exclude));
    $include = array_filter(array_merge($global_include, $event_include));
  
@@ -18,7 +17,7 @@ index 6a08714..f5b33bb 100644
    if (!empty($exclude)) {
      foreach ($event_instances as $key => $dates) {
        $start = $dates['start_date']->getTimestamp();
-@@ -569,9 +578,9 @@ function recurring_events_recurring_events_event_instances_pre_create_alter(arra
+@@ -569,9 +578,9 @@
            // Ignore incomplete date ranges.
            continue;
          }
@@ -30,15 +29,13 @@ index 6a08714..f5b33bb 100644
          $excluded_end = $excluded_end->getTimestamp();
  
          if ($start >= $exclude_start && $start <= $excluded_end) {
-diff --git a/src/Entity/EventSeries.php b/src/Entity/EventSeries.php
-index d8894cc..d05879d 100644
---- a/src/Entity/EventSeries.php
-+++ b/src/Entity/EventSeries.php
-@@ -451,6 +451,45 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
-     return $this->get('recur_type')->value;
+diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.php
+--- a/src/Entity/EventSeries.php	2026-11-03 09:04:57
++++ b/src/Entity/EventSeries.php	2026-11-03 09:04:57
+@@ -452,6 +452,45 @@
    }
  
-+  /**
+   /**
 +   * The timezone this series' dates should be resolved in.
 +   *
 +   * Historically every getter below used date_default_timezone_get(), the
@@ -77,10 +74,11 @@ index d8894cc..d05879d 100644
 +    return $this->resolveTimezone()->getName();
 +  }
 +
-   /**
++  /**
     * Get consecutive recurring start date.
     *
-@@ -460,9 +499,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+    * @return \Drupal\Core\Datetime\DrupalDateTime|null
+@@ -460,9 +499,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getConsecutiveStartDate(): ?DrupalDateTime {
@@ -92,7 +90,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -476,9 +515,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -476,9 +515,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getConsecutiveEndDate(): ?DrupalDateTime {
@@ -104,7 +102,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -554,9 +593,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -554,9 +593,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getDailyStartDate(): ?DrupalDateTime {
@@ -116,7 +114,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -570,9 +609,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -570,9 +609,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getDailyEndDate(): ?DrupalDateTime {
@@ -128,7 +126,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -627,9 +666,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -627,9 +666,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getWeeklyStartDate(): ?DrupalDateTime {
@@ -140,7 +138,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -643,9 +682,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -643,9 +682,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getWeeklyEndDate(): ?DrupalDateTime {
@@ -152,7 +150,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -747,9 +786,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -747,9 +786,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getMonthlyStartDate(): ?DrupalDateTime {
@@ -164,7 +162,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -763,9 +802,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -763,9 +802,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getMonthlyEndDate(): ?DrupalDateTime {
@@ -176,7 +174,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -863,9 +902,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -863,9 +902,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getYearlyStartDate(): ?DrupalDateTime {
@@ -188,7 +186,7 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-@@ -879,9 +918,9 @@ class EventSeries extends EditorialContentEntityBase implements EventInterface {
+@@ -879,9 +918,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getYearlyEndDate(): ?DrupalDateTime {
@@ -200,11 +198,35 @@ index d8894cc..d05879d 100644
      }
      return NULL;
    }
-diff --git a/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php b/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
-index ab3a802..962c4da 100644
---- a/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
-+++ b/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
-@@ -134,6 +134,10 @@ class ConsecutiveRecurringDate extends DateRangeItem implements RecurringEventsF
+diff --color -ruN base/src/EventCreationService.php work/src/EventCreationService.php
+--- a/src/EventCreationService.php	2026-11-03 09:04:57
++++ b/src/EventCreationService.php	2026-11-03 09:05:37
+@@ -298,6 +298,21 @@
+       else {
+         $field_definition = $this->fieldTypePluginManager->getDefinition($entity_config['type']);
+         $field_class = $field_definition['class'];
++        // Recurring dates are resolved in the event's timezone, so changing it
++        // reschedules every instance. checkForFormRecurConfigChanges() sees
++        // that through the dates' zones; list it here too, or the confirm step
++        // has nothing to show and the form rebuilds without a way to save.
++        $stored_timezone = $event->getGenerationTimezoneName();
++        $form_timezone = !is_null($edited)
++          ? $edited->getGenerationTimezoneName()
++          : $field_class::resolveFormTimezone($form_state)->getName();
++        if ($stored_timezone !== $form_timezone) {
++          $diff['timezone'] = [
++            'label' => $this->translation->translate('Timezone'),
++            'stored' => $stored_timezone,
++            'override' => $form_timezone,
++          ];
++        }
+         $diff += $field_class::buildDiffArray($entity_config, $form_config);
+       }
+     }
+diff --color -ruN base/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php work/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
+--- a/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php	2026-11-03 09:04:57
++++ b/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php	2026-11-03 09:05:23
+@@ -134,6 +134,10 @@
      $buffer = $event->getConsecutiveBuffer() ?? 0;
      $config['buffer'] = $buffer >= 0 ? $buffer : NULL;
      $config['buffer_units'] = $event->getConsecutiveBufferUnits();
@@ -215,7 +237,26 @@ index ab3a802..962c4da 100644
      return $config;
    }
  
-@@ -340,7 +344,13 @@ class ConsecutiveRecurringDate extends DateRangeItem implements RecurringEventsF
+@@ -143,7 +147,7 @@
+   public static function convertFormConfigToArray(FormStateInterface $form_state): array {
+     $config = [];
+     $field_input = $form_state->getValues()['consecutive_recurring_date'][0] ?? [];
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = static::resolveFormTimezone($form_state);
+ 
+     $time = static::getTimeFromRecurringDateFieldInput($field_input, 'time');
+     $time = $time?->format('h:i A');
+@@ -161,6 +165,9 @@
+     $buffer = (int) ($field_input['buffer'] ?? 0);
+     $config['buffer'] = $buffer >= 0 ? $buffer : NULL;
+     $config['buffer_units'] = $field_input['buffer_units'] ?? NULL;
++    // Match convertEntityConfigToArray(), which carries the zone; without it
++    // an unchanged form never compares equal to the stored series.
++    $config['event_timezone'] = $user_timezone->getName();
+     return $config;
+   }
+ 
+@@ -340,7 +347,13 @@
      $count = 0;
  
      $max_time = clone $date;
@@ -230,11 +271,46 @@ index ab3a802..962c4da 100644
      $utc_timezone = new \DateTimeZone(DateTimeItemInterface::STORAGE_TIMEZONE);
  
      $time_parts = static::convertTimeTo24hourFormat($form_data['end_time']);
-diff --git a/src/Plugin/Field/FieldType/YearlyRecurringDate.php b/src/Plugin/Field/FieldType/YearlyRecurringDate.php
-index a7ed000..93ac1b3 100644
---- a/src/Plugin/Field/FieldType/YearlyRecurringDate.php
-+++ b/src/Plugin/Field/FieldType/YearlyRecurringDate.php
-@@ -106,6 +106,9 @@ class YearlyRecurringDate extends MonthlyRecurringDate {
+diff --color -ruN base/src/Plugin/Field/FieldType/DailyRecurringDate.php work/src/Plugin/Field/FieldType/DailyRecurringDate.php
+--- a/src/Plugin/Field/FieldType/DailyRecurringDate.php	2026-11-03 09:04:57
++++ b/src/Plugin/Field/FieldType/DailyRecurringDate.php	2026-11-03 09:05:23
+@@ -126,7 +126,7 @@
+    */
+   public static function convertFormConfigToArray(FormStateInterface $form_state): array {
+     $field_input = $form_state->getValues()['daily_recurring_date'][0] ?? [];
+-    return static::getConfigFromRecurringDateFieldInput($field_input);
++    return static::getConfigFromRecurringDateFieldInput($field_input, static::resolveFormTimezone($form_state));
+   }
+ 
+   /**
+diff --color -ruN base/src/Plugin/Field/FieldType/MonthlyRecurringDate.php work/src/Plugin/Field/FieldType/MonthlyRecurringDate.php
+--- a/src/Plugin/Field/FieldType/MonthlyRecurringDate.php	2026-11-03 09:04:57
++++ b/src/Plugin/Field/FieldType/MonthlyRecurringDate.php	2026-11-03 09:05:23
+@@ -128,7 +128,7 @@
+    */
+   public static function convertFormConfigToArray(FormStateInterface $form_state): array {
+     $field_input = $form_state->getValues()['monthly_recurring_date'][0] ?? [];
+-    $config = static::getConfigFromRecurringDateFieldInput($field_input);
++    $config = static::getConfigFromRecurringDateFieldInput($field_input, static::resolveFormTimezone($form_state));
+     static::addMonthlyRecurrenceConfigFromUserInput($field_input, $config);
+     return $config;
+   }
+diff --color -ruN base/src/Plugin/Field/FieldType/WeeklyRecurringDate.php work/src/Plugin/Field/FieldType/WeeklyRecurringDate.php
+--- a/src/Plugin/Field/FieldType/WeeklyRecurringDate.php	2026-11-03 09:04:57
++++ b/src/Plugin/Field/FieldType/WeeklyRecurringDate.php	2026-11-03 09:05:23
+@@ -93,7 +93,7 @@
+    */
+   public static function convertFormConfigToArray(FormStateInterface $form_state): array {
+     $field_input = $form_state->getValues()['weekly_recurring_date'][0] ?? [];
+-    $config = static::getConfigFromRecurringDateFieldInput($field_input);
++    $config = static::getConfigFromRecurringDateFieldInput($field_input, static::resolveFormTimezone($form_state));
+     $config['days'] = array_filter(array_values($field_input['days'] ?? []));
+     return $config;
+   }
+diff --color -ruN base/src/Plugin/Field/FieldType/YearlyRecurringDate.php work/src/Plugin/Field/FieldType/YearlyRecurringDate.php
+--- a/src/Plugin/Field/FieldType/YearlyRecurringDate.php	2026-11-03 09:04:57
++++ b/src/Plugin/Field/FieldType/YearlyRecurringDate.php	2026-11-03 09:05:23
+@@ -106,6 +106,9 @@
  
      $config['year_interval'] = $event->getYearlyInterval();
      $config['months'] = $event->getYearlyMonths();
@@ -244,7 +320,23 @@ index a7ed000..93ac1b3 100644
      return $config;
    }
  
-@@ -193,8 +196,14 @@ class YearlyRecurringDate extends MonthlyRecurringDate {
+@@ -114,10 +117,14 @@
+    */
+   public static function convertFormConfigToArray(FormStateInterface $form_state): array {
+     $field_input = $form_state->getValues()['yearly_recurring_date'][0] ?? [];
+-    $config = static::getConfigFromRecurringDateFieldInput($field_input);
++    $timezone = static::resolveFormTimezone($form_state);
++    $config = static::getConfigFromRecurringDateFieldInput($field_input, $timezone);
+     static::addMonthlyRecurrenceConfigFromUserInput($field_input, $config);
+     $config['year_interval'] = isset($field_input['year_interval']) ? (int) $field_input['year_interval'] : NULL;
+     $config['months'] = array_filter(array_values($field_input['months'] ?? []));
++    // Match convertEntityConfigToArray(), which carries the zone; without it
++    // an unchanged form never compares equal to the stored series.
++    $config['event_timezone'] = $timezone->getName();
+     return $config;
+   }
+ 
+@@ -193,8 +200,14 @@
  
      $recurrenceMonths = $form_data['months'] ?: [];
      $yearInterval = !empty($form_data['year_interval']) ? intval($form_data['year_interval']) : 1;
@@ -261,7 +353,7 @@ index a7ed000..93ac1b3 100644
  
      foreach ($eventsToCreate as $key => $dates) {
        /** @var \Drupal\Core\Datetime\DrupalDateTime $startDate */
-@@ -224,9 +233,12 @@ class YearlyRecurringDate extends MonthlyRecurringDate {
+@@ -224,9 +237,12 @@
     * @return array
     *   An array of matching years.
     */
@@ -276,3 +368,49 @@ index a7ed000..93ac1b3 100644
  
      $start = clone $startDate;
      $start->setTimezone($userTimezone);
+diff --color -ruN base/src/Plugin/RecurringEventsFieldTrait.php work/src/Plugin/RecurringEventsFieldTrait.php
+--- a/src/Plugin/RecurringEventsFieldTrait.php	2026-11-03 09:04:57
++++ b/src/Plugin/RecurringEventsFieldTrait.php	2026-11-03 09:05:23
+@@ -159,9 +159,9 @@
+    *
+    * @throws \DateInvalidTimeZoneException
+    */
+-  protected static function getConfigFromRecurringDateFieldInput(array $field_input): array {
++  protected static function getConfigFromRecurringDateFieldInput(array $field_input, ?\DateTimeZone $timezone = NULL): array {
+     $config = [];
+-    $user_timezone = new \DateTimeZone(date_default_timezone_get());
++    $user_timezone = $timezone ?? new \DateTimeZone(date_default_timezone_get());
+ 
+     $time = static::getTimeFromRecurringDateFieldInput($field_input, 'time');
+     $time = $time?->format('h:i A');
+@@ -185,6 +185,30 @@
+     }
+ 
+     return $config;
++  }
++
++  /**
++   * The timezone the submitted form's recurrence dates should be resolved in.
++   *
++   * Mirrors EventSeries::resolveTimezone() for the submitted values: the
++   * series' own timezone field where the form carries a valid one, otherwise
++   * the ambient zone. Building form-side dates in any other zone than the
++   * stored-side getters makes an unchanged form compare as changed whenever
++   * the editor's zone differs from the event's.
++   *
++   * @param \Drupal\Core\Form\FormStateInterface $form_state
++   *   The current state of the event series form.
++   *
++   * @return \DateTimeZone
++   *   The zone to resolve the submitted recurrence dates in.
++   */
++  public static function resolveFormTimezone(FormStateInterface $form_state): \DateTimeZone {
++    $submitted = $form_state->getValue(['field_event_timezone', 0, 'value']);
++    $submitted = is_string($submitted) ? trim($submitted) : '';
++    if ($submitted !== '' && in_array($submitted, \DateTimeZone::listIdentifiers(), TRUE)) {
++      return new \DateTimeZone($submitted);
++    }
++    return new \DateTimeZone(date_default_timezone_get());
+   }
+ 
+   /**
