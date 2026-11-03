@@ -176,7 +176,10 @@ header:has(> .appverse-hub-add-repo) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem 1rem;
-  align-items: end;
+  /* Top-aligned, so a cell with help text or All/Clear links under its box
+     grows downward instead of pushing its row's labels and boxes out of
+     line. */
+  align-items: start;
   margin-bottom: 1rem;
   padding: 1rem;
   background: #f6f8fa;
@@ -352,59 +355,38 @@ header:has(> .appverse-hub-add-repo) {
   color: #555;
 }
 
-/* Below the md breakpoint the grid would crush; stack into a single column. */
+/* Below the md breakpoint the grid would crush. The card reads top to bottom
+   instead: the title, then one line of who and when (submitted date, GitHub,
+   maintainer), any badges, and the actions in a row. Labelling each cell
+   ("Source", "Maintainer") made a short card into a long form, so the cells
+   carry their own meaning: the date says "Submitted", the GitHub mark is a
+   link, and the maintainer is a named link. */
 @media (max-width: 768px) {
   .appverse-hub-card__header {
-    grid-template-columns: 1fr;
-    row-gap: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
   }
-  .appverse-hub-card__cell--actions { justify-content: flex-start; }
-
-  /* Stacked, the cells lose the column-position that gave them meaning: a lone
-     badge or timestamp reads as unlabeled. Prefix each data cell with its label
-     so status, submitted date, owner, etc. are identifiable on a phone. The title
-     needs no label; the desktop layout (grid columns) is unaffected. */
-  .appverse-hub-card__cell--submitted::before,
-  .appverse-hub-card__cell--github::before,
-  .appverse-hub-card__cell--owner::before,
-  .appverse-hub-card__cell--status::before,
-  .appverse-hub-card__cell--actions::before {
-    flex: 0 0 5.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #57606a;
+  .appverse-hub-card__cell--title,
+  .appverse-hub-card__cell--status,
+  .appverse-hub-card__cell--actions {
+    flex: 0 0 100%;
   }
-  .appverse-hub-card__cell--status::before  { content: 'Status'; }
-  .appverse-hub-card__cell--github::before  { content: 'Source'; }
-  .appverse-hub-card__cell--owner::before   { content: 'Maintainer'; }
-  .appverse-hub-card__cell--actions::before { content: 'Actions'; }
-
-  /* The submitted cell already reads "Submitted <ts>" in its span, so it
-     needs no label — but keep the same label-column indent (empty) so its
-     content lines up with the labeled rows instead of floating at the
-     card's left edge. */
-  .appverse-hub-card__cell--submitted::before {
-    content: '';
-    flex: 0 0 5.5rem;
+  .appverse-hub-card__cell--actions {
+    justify-content: flex-start;
+    margin-top: 0.5rem;
   }
   .appverse-hub-card__submitted { white-space: normal; }
 
-  /* Empty cells (e.g. owner on your own hub, or an absent github link) would
-     otherwise render a stray label with no value. Hide any data cell that has
-     no rendered content. :has() is supported on all current mobile engines;
-     the desktop grid keeps empty cells for alignment above this breakpoint. */
+  /* An empty cell would leave a gap in the meta line or an empty row. */
+  .appverse-hub-card__cell--submitted:not(:has(span)),
   .appverse-hub-card__cell--github:not(:has(a, button)),
   .appverse-hub-card__cell--owner:not(:has(a)),
+  .appverse-hub-card__cell--status:not(:has(.badge)),
   .appverse-hub-card__cell--actions:not(:has(a, button)) {
     display: none;
   }
-
-  /* The menu's items are the full-width list Bootstrap draws; let it use the
-     stacked card's width rather than hang off the right edge. */
-  .appverse-hub-card__menu { width: 100%; }
-  .appverse-hub-card__menu .dropdown-menu { width: 100%; }
 
   /* Bigger tap targets on touch-sized screens: the 2rem icon buttons are below
      the ~44px comfortable-touch minimum. The labelled buttons are already wide
@@ -591,13 +573,38 @@ header:has(> .appverse-hub-add-repo) {
   font-size: 0.8rem;
   color: #545860;
 }
+/* The picker is the reviewer line, so its label reads like the text line it
+   replaces rather than as a form heading. */
 .appverse-hub-card__assign {
-  margin: 0.25rem 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0;
   font-size: 0.8rem;
+}
+.appverse-hub-card__assign-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600; /* as the card's Tags: and Implementation: labels */
+  color: #545860;
 }
 .appverse-hub-card__assign-select {
   max-width: 14rem;
+  min-height: 2rem;
+  padding: 0.15rem 0.4rem;
   font-size: 0.8rem;
+  border: 1px solid #c4c8cc;
+  border-radius: 4px;
+  background-color: #fff;
+}
+@media (max-width: 768px) {
+  .appverse-hub-card__assign-select {
+    flex: 1 1 10rem;
+    max-width: none;
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
 }
 .appverse-hub-card__assign-status {
   margin: 0.15rem 0 0;
@@ -677,4 +684,63 @@ header:has(> .appverse-hub-add-repo) {
 .appverse-tag--unresolved a {
   color: inherit;
   text-decoration: underline;
+}
+
+/* The Needs attention explanation under the moderation box: help text, not a
+   control, so it is quiet. */
+.appverse-hub-field-help {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #57606a;
+}
+
+/* On a phone the nine filters fill more than a screen before the first card,
+   so the hub filters script folds them behind a toggle that says how many are
+   set. Desktop keeps them open, and without the script they stay open. */
+.appverse-hub-filters-toggle {
+  display: none;
+}
+@media (max-width: 768px) {
+  .appverse-hub-filters-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 2.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #f6f8fa;
+    color: #232323;
+    font-weight: 600;
+    text-align: left;
+  }
+  .appverse-hub-filters-toggle::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    margin-top: -0.25rem;
+  }
+  .appverse-hub-filters-toggle[aria-expanded="true"]::after {
+    transform: rotate(-135deg);
+    margin-top: 0.25rem;
+  }
+  .appverse-hub-filters-toggle:focus-visible {
+    outline: 2px solid #0076af;
+    outline-offset: 2px;
+  }
+  .views-exposed-form.appverse-hub-filters--folded {
+    display: none;
+  }
+  /* The theme indents forms; the panel opens flush under its toggle. */
+  .views-exposed-form[data-drupal-selector*="my-appverse"] {
+    margin-left: 0;
+    margin-right: 0;
+  }
 }

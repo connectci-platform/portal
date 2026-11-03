@@ -229,19 +229,14 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
             $form[$key]['#options'] = $kept;
           }
           // A #description is not printed by the site theme's exposed form,
-          // so the option explains itself in a help mark beside the box.
+          // so the option explains itself in a line under the box. A hover
+          // title would never reach a phone.
           if (isset($form[$key]['#options'][ModerationStateNeedsAttention::NEEDS_ATTENTION])) {
-            $help = (string) t('Needs attention covers repos awaiting review, a resubmitted app, or an undecided report on a live or sent-back repo.');
             $form[$key]['#field_suffix'] = [
               '#type' => 'html_tag',
               '#tag' => 'span',
-              '#value' => '?',
-              '#attributes' => [
-                'class' => ['appverse-hub-help'],
-                'title' => $help,
-                'aria-label' => $help,
-                'role' => 'img',
-              ],
+              '#value' => t('Needs attention: awaiting review, a resubmitted app, or an undecided report on a live or sent-back repo.'),
+              '#attributes' => ['class' => ['appverse-hub-field-help']],
             ];
           }
         }
@@ -2697,8 +2692,9 @@ function _ood_software_hub_assign_picker(NodeInterface $repo): array {
     }
   }
   // An assignee who is no longer a reviewer (lost the role, or blocked) still
-  // has to show as the selected option, or the select would read "Unassigned"
-  // beside the "Reviewer: X" text and choosing Unassigned would fire no change.
+  // has to show as the selected option: the picker is the card's only record
+  // of who is assigned, and choosing Unassigned would otherwise fire no
+  // change.
   if ($assigneeUid !== NULL && !isset($reviewers[$assigneeUid])) {
     $options[] = ['value' => (string) $assigneeUid, 'label' => $assignee->getDisplayName()];
   }
@@ -2709,7 +2705,7 @@ function _ood_software_hub_assign_picker(NodeInterface $repo): array {
   $template = implode('', [
     '<form method="post" action="{{ action }}" class="appverse-hub-card__assign" data-hub-assign>',
     '<label class="appverse-hub-card__assign-label" for="appverse-assign-{{ id }}">',
-    '{{ "Assign reviewer"|t }}</label> ',
+    '<i class="bi bi-person" aria-hidden="true"></i> {{ "Reviewer"|t }}</label> ',
     '<select name="uid" id="appverse-assign-{{ id }}" class="appverse-hub-card__assign-select"',
     ' data-hub-assign-select>',
     '{% for o in options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>',

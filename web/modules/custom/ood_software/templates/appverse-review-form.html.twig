@@ -418,7 +418,7 @@
         {% if page.history and page.history.total > 1 %}
           <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
           {% if page.history.is_rerun %}
-            · <span class="rerun-note">{{ 'Rerun of the same commit'|t }}</span>
+            <span class="history-dot" aria-hidden="true">·</span> <span class="rerun-note">{{ 'Rerun of the same commit'|t }}</span>
           {% endif %}
         {% else %}
           <span class="muted">{{ 'First review of this repo'|t }}</span>

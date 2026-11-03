@@ -169,9 +169,10 @@ describe('Appverse live report status', () => {
       cy.url().then((before) => {
         cy.window().then((win) => { win.__noReload = true; });
         cy.get(`#appverse-repo-${seeded.nid}`).as('card');
-        cy.get('@card').find('[data-hub-assignee]').should('contain.text', 'Unassigned');
+        // The picker is the card's reviewer line for an admin.
+        cy.get('@card').find('.appverse-hub-card__assignee').should('not.exist');
+        cy.get('@card').find('select[data-hub-assign-select]').should('have.value', '');
         cy.get('@card').find('select[data-hub-assign-select]').select(String(seeded.pm2_uid));
-        cy.get('@card').find('[data-hub-assignee]').should('contain.text', 'appverse_pm_two');
         cy.get('@card').find('[data-hub-assign-status]').should('contain.text', 'appverse_pm_two');
         cy.get('@card').find('select[data-hub-assign-select]').should('have.value', String(seeded.pm2_uid));
         cy.url().should('eq', before);
@@ -212,6 +213,28 @@ describe('Appverse hub filters and review header', () => {
       expect([...selected].map((o) => o.value)).not.to.include('needs_attention');
     });
     cy.get('[data-select-clear="moderation_state"]').should('not.exist');
+  });
+
+  it('folds the filters behind a toggle on a phone, and not on desktop', () => {
+    const form = '.views-exposed-form[data-drupal-selector*="my-appverse"]';
+    cy.viewport(390, 844);
+    cy.visit('/appverse/manage-repos');
+    cy.get(form).should('not.be.visible');
+    cy.get('.appverse-hub-filters-toggle')
+      .should('be.visible')
+      .and('have.attr', 'aria-expanded', 'false')
+      .and('contain.text', 'Filters (1 set)')
+      // At phone width the admin toolbar's tray opens over the page, which
+      // only an admin sees; the toggle itself is asserted visible above.
+      .click({ force: true });
+    cy.get(form).should('be.visible');
+    cy.get('.appverse-hub-filters-toggle').should('have.attr', 'aria-expanded', 'true');
+    cy.get('.appverse-hub-field-help').should('be.visible').and('contain.text', 'Needs attention');
+
+    cy.viewport(1280, 900);
+    cy.get('.appverse-hub-filters-toggle').should('not.be.visible');
+    cy.get('.appverse-hub-filters-toggle').click({ force: true });
+    cy.get(form).should('be.visible');
   });
 
   it('limits the hub to the chosen items per page', () => {

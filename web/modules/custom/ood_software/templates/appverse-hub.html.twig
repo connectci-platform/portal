@@ -160,14 +160,17 @@
     {% if hub.progress_sentence %}
       <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
     {% endif %}
+    {# One reviewer row: the picker when the viewer can assign, which already
+       shows who is assigned, and the name as text otherwise. #}
     {% if hub.assignee is not null %}
-      <p class="appverse-hub-card__assignee">
-        <i class="bi bi-person" aria-hidden="true"></i>
-        {{ 'Reviewer:'|t }} <span data-hub-assignee>{{ hub.assignee ?: 'Unassigned'|t }}</span>
-      </p>
       {% if hub.actions.assign %}
         {{ hub.actions.assign }}
         <p class="appverse-hub-card__assign-status" data-hub-assign-status role="status" aria-live="polite"></p>
+      {% else %}
+        <p class="appverse-hub-card__assignee">
+          <i class="bi bi-person" aria-hidden="true"></i>
+          {{ 'Reviewer:'|t }} <span data-hub-assignee>{{ hub.assignee ?: 'Unassigned'|t }}</span>
+        </p>
       {% endif %}
     {% endif %}
   </div>

@@ -7,6 +7,9 @@
  * script fires one after changing the options. The moderation All link
  * keeps an href to ?moderation_state=All, so it still works without this
  * script; the other links stay hidden until it runs.
+ *
+ * It also adds the phone-width toggle that folds the filters away. The
+ * stylesheet shows the toggle, and honors the fold, only on narrow screens.
  */
 (function (Drupal, once) {
   'use strict';
@@ -44,6 +47,72 @@
     // jQuery handlers (Select2's) receive a native event too.
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }
+
+  /**
+   * Counts the filters that narrow the list, for the toggle's label.
+   *
+   * @param {HTMLFormElement} form
+   *   The exposed form.
+   *
+   * @return {number}
+   *   How many filters have a value.
+   */
+  function activeCount(form) {
+    let count = 0;
+    form.querySelectorAll('.form-item').forEach(function (item) {
+      const field = item.querySelector('select, input[type="text"], input[type="search"]');
+      if (!field || field.name === 'items_per_page') {
+        return;
+      }
+      const values = field.tagName === 'SELECT'
+        ? Array.from(field.selectedOptions).map(function (option) { return option.value; })
+        : [field.value.trim()];
+      if (values.some(function (value) { return value !== '' && value !== 'All'; })) {
+        count += 1;
+      }
+    });
+    return count;
+  }
+
+  /**
+   * Labels the toggle with the number of filters set.
+   *
+   * @param {HTMLButtonElement} toggle
+   *   The toggle.
+   * @param {HTMLFormElement} form
+   *   The exposed form.
+   */
+  function labelToggle(toggle, form) {
+    const count = activeCount(form);
+    toggle.textContent = count
+      ? Drupal.formatPlural(count, 'Filters (1 set)', 'Filters (@count set)')
+      : Drupal.t('Filters');
+  }
+
+  Drupal.behaviors.appverseHubFilterToggle = {
+    attach(context) {
+      once('appverse-hub-filter-toggle', '.views-exposed-form[data-drupal-selector*="my-appverse"]', context).forEach(function (form) {
+        if (!form.id) {
+          return;
+        }
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'appverse-hub-filters-toggle';
+        toggle.setAttribute('aria-controls', form.id);
+        toggle.setAttribute('aria-expanded', 'false');
+        labelToggle(toggle, form);
+        form.classList.add('appverse-hub-filters--folded');
+        form.parentNode.insertBefore(toggle, form);
+        toggle.addEventListener('click', function () {
+          const open = form.classList.toggle('appverse-hub-filters--folded') === false;
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        form.addEventListener('change', function () {
+          labelToggle(toggle, form);
+        });
+      });
+    },
+  };
 
   Drupal.behaviors.appverseHubFilters = {
     attach(context) {
