@@ -22,7 +22,7 @@
             "Compare RegistrationType against the enum, not strings (reg_type token and registrant list view filter/title)": "patches/recurring_events-registration-type-enum-comparisons.patch",
             "Clone the shared computed date object before converting its timezone": "patches/recurring_events-clone-shared-date-object.patch",
             "Resolve the generation timezone from the event rather than the saving user": "patches/recurring_events-generation-event-timezone.patch",
-            "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report": "patches/recurring_events-quiet-instance-status-message.patch",
+            "Only re-save instances whose status actually changes, do not count differing workflows as skipped, and only show the status message when there is something to report (https://www.drupal.org/project/recurring_events/issues/3629752, MR !224)": "patches/recurring_events-quiet-instance-status-message.patch",
             "D11: use IN operator for array value in registrations views query alter": "patches/recurring_events-views-query-alter-array-operator.patch"
         },
         "drupal/multiple_registration": {
