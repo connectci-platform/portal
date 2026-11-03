@@ -514,12 +514,12 @@ display:
         moderation_state:
           id: moderation_state
           table: node_field_data
-          field: moderation_state
+          field: ood_pending_moderation_state
           relationship: none
           group_type: group
           admin_label: ''
           entity_type: node
-          plugin_id: moderation_state_filter
+          plugin_id: ood_software_pending_aware_moderation_state
           operator: in
           value:
             appverse_editorial-ready_for_review: appverse_editorial-ready_for_review
@@ -907,6 +907,7 @@ display:
         arguments: false
         path: false
       relationships: {  }
+      display_comment: "Owner-only access is enforced by MyAppverseHubAccessCheck on this page's route (D8-2882). Keep use_ajax off: AJAX requests go through /views/ajax and skip that check."
       display_extenders: {  }
       path: user/%user/my-appverse
     cache_metadata:

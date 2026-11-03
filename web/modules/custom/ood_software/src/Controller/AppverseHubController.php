@@ -384,7 +384,15 @@ final class AppverseHubController extends ControllerBase {
       $targetState = $workflow ? $workflow->getTypePlugin()->getState($newState) : NULL;
       $isPublishedTarget = $targetState instanceof ContentModerationState && $targetState->isPublishedState();
 
-      if ($isPublishedTarget) {
+      // A live node whose update was sent back or declined keeps that update
+      // on a forward revision; moving it on (to ready_for_review) must carry
+      // the contributor's edits, so that too starts from the latest revision
+      // (D8-2882). The explicit Unpublish still starts from the default one.
+      $fromLatest = $isPublishedTarget
+        || (!($targetState instanceof ContentModerationState && $targetState->isDefaultRevisionState())
+          && in_array(_ood_software_pending_state($node), ['needs_adjustment', 'declined'], TRUE));
+
+      if ($fromLatest) {
         $latestVid = $storage->getLatestRevisionId($node->id());
         $fresh = $latestVid
           ? $storage->loadRevision($latestVid)
@@ -412,6 +420,11 @@ final class AppverseHubController extends ControllerBase {
       // determines whether the node is published in queries and the catalog.
       $verify = $storage->loadUnchanged($node->id());
       $actualState = $verify->get('moderation_state')->value;
+      // A forward revision's state is not the default revision's, so check
+      // the newest one when the target is not a default-revision state.
+      if ($fromLatest && !$isPublishedTarget) {
+        $actualState = _ood_software_pending_state($verify) ?? $actualState;
+      }
       if ($actualState !== $newState) {
         $this->messenger()->addError($this->t(
           'Transition refused: @title is still in @actual state. The workflow may not permit this move from @from to @to.',
@@ -505,7 +518,10 @@ final class AppverseHubController extends ControllerBase {
    * for review. The run starts first, so a failed dispatch moves nothing.
    */
   protected function resubmitLive(NodeInterface $repo): RedirectResponse {
-    if ($this->repoMemberApps->sentBackCount($repo) === 0) {
+    // A live repo whose own update was sent back or declined waits on a
+    // forward revision (D8-2882); its default revision still says published.
+    $ownHeldBack = in_array(_ood_software_pending_state($repo), ['needs_adjustment', 'declined'], TRUE);
+    if (!$ownHeldBack && $this->repoMemberApps->sentBackCount($repo) === 0) {
       $this->messenger()->addError($this->t('No app in @title is waiting on changes, so there is nothing to re-submit.', ['@title' => $repo->label()]));
       return $this->redirectToHub();
     }
@@ -523,6 +539,9 @@ final class AppverseHubController extends ControllerBase {
     // and is about to tell the reviewers (D8-2882).
     _ood_software_repo_review_sync_suspended(TRUE);
     try {
+      if ($ownHeldBack) {
+        $this->resubmitHeldBackRevision($repo);
+      }
       $this->repoMemberApps->cascadeModeration($repo, 'ready_for_review', ['needs_adjustment'], 'Re-submitted with the repo.');
     }
     finally {
@@ -533,6 +552,35 @@ final class AppverseHubController extends ControllerBase {
       ? $this->t('Re-submitted @title. A new review has started, and the apps already accepted stay live.', ['@title' => $repo->label()])
       : $this->t('Re-submitted @title. A new review of the whole repo has started.', ['@title' => $repo->label()]));
     return $this->redirectToHub();
+  }
+
+  /**
+   * Moves a live repo's sent-back or declined update to ready_for_review.
+   *
+   * Built on the newest revision, so the contributor's edits go back into
+   * review; ready_for_review is not a default-revision state, so the repo
+   * stays live on its live revision. resubmitLive() has already started the
+   * run and tells the reviewers, so this save is silent: the flag stops the
+   * transition's own email and AI run in hook_node_update() (D8-2882).
+   */
+  protected function resubmitHeldBackRevision(NodeInterface $repo): void {
+    $storage = $this->entityTypeManager()->getStorage('node');
+    $latestId = $storage->getLatestRevisionId($repo->id());
+    $latest = $latestId ? $storage->loadRevision($latestId) : NULL;
+    if (!$latest instanceof NodeInterface) {
+      return;
+    }
+    $latest->set('moderation_state', 'ready_for_review');
+    $latest->setNewRevision(TRUE);
+    $latest->setRevisionUserId((int) $this->currentUser()->id());
+    $latest->setRevisionLogMessage('Re-submitted by ' . $this->currentUser()->getDisplayName());
+    if (method_exists($latest, 'setValidationRequired')) {
+      $latest->setValidationRequired(FALSE);
+    }
+    // A runtime flag hook_node_update() reads; not a field.
+    // @phpstan-ignore-next-line
+    $latest->_ood_software_suppress_notifications = TRUE;
+    $latest->save();
   }
 
   /**

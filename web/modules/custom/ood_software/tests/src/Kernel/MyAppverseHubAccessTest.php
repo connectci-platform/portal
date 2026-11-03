@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\Core\Config\FileStorage;
+use Drupal\Core\Routing\RouteMatch;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\KernelTests\KernelTestBase;
@@ -136,6 +137,43 @@ class MyAppverseHubAccessTest extends KernelTestBase {
   public function testAnonymousCannotLoadHub(): void {
     $owner = $this->createUser(['access content']);
     $this->assertFalse($this->canLoadHub(new AnonymousUserSession(), (int) $owner->id()));
+  }
+
+  /**
+   * A uid that is not plain digits does not make the viewer the hub's owner.
+   *
+   * @dataProvider nonDigitUidProvider
+   */
+  public function testNonDigitUidDoesNotGrantOwnerAccess(string $uid): void {
+    $viewer = $this->createUser(['access content']);
+    $route = \Drupal::service('router.route_provider')->getRouteByName('view.my_appverse.page_user');
+    $match = new RouteMatch('view.my_appverse.page_user', $route, [], ['user' => $uid]);
+    $check = \Drupal::service('ood_software.my_appverse_hub_access');
+    $this->assertFalse($check->access($route, $match, $viewer)->isAllowed());
+  }
+
+  /**
+   * Values that numeric-looking checks accept but are not uids.
+   */
+  public static function nonDigitUidProvider(): array {
+    return [
+      'float' => ['1.0'],
+      'exponent' => ['1e1'],
+      'leading space' => [' 1'],
+      'negative' => ['-1'],
+    ];
+  }
+
+  /**
+   * The hub restriction is bypassed by AJAX views, so use_ajax must stay off.
+   */
+  public function testViewUsesNoAjax(): void {
+    $view = \Drupal::entityTypeManager()->getStorage('view')->load('my_appverse');
+    $this->assertNotNull($view);
+    $default = $view->getDisplay('default');
+    $this->assertFalse(!empty($default['display_options']['use_ajax']));
+    $page = $view->getDisplay('page_user');
+    $this->assertFalse(!empty($page['display_options']['use_ajax']));
   }
 
 }

@@ -6,6 +6,8 @@
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
+use Drupal\content_moderation\Entity\ContentModerationState;
+use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
@@ -477,6 +479,65 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
     }
   }
 
+  // A sent-back or declined update to a live repo or app is a forward
+  // revision; draft is a default-revision state, so choosing it would pull the
+  // live version out of the catalog as a side effect of fixing the update.
+  // Taking it out is the explicit Unpublish (D8-2882). For every user,
+  // reviewers included.
+  if (in_array($form_id, ['node_appverse_repo_edit_form', 'node_appverse_app_edit_form'], TRUE)) {
+    $form_object = $form_state->getFormObject();
+    $node = $form_object instanceof EntityFormInterface ? $form_object->getEntity() : NULL;
+    if ($node instanceof NodeInterface && _ood_software_live_update_held_back($node)) {
+      unset($form['moderation_state']['widget'][0]['state']['#options']['draft']);
+      $form['#validate'][] = '_ood_software_live_update_validate';
+    }
+  }
+
+}
+
+/**
+ * Whether a live node's newest revision is an update sent back or declined.
+ *
+ * The node's default revision is published, and the revision being edited
+ * (the latest one) is needs_adjustment or declined: the author is fixing an
+ * update that is not live (D8-2882).
+ */
+function _ood_software_live_update_held_back(NodeInterface $node): bool {
+  if ($node->isNew() || !$node->hasField('moderation_state')
+    || !in_array($node->get('moderation_state')->value ?? '', ['needs_adjustment', 'declined'], TRUE)) {
+    return FALSE;
+  }
+  $default = \Drupal::entityTypeManager()->getStorage('node')->load($node->id());
+  return $default instanceof NodeInterface && $default->isPublished();
+}
+
+/**
+ * Form validate handler: rejects draft on a live node's held-back update.
+ *
+ * The option is removed from the form; this refuses a crafted POST that
+ * submits it anyway (D8-2882).
+ *
+ * @param array<string, mixed> $form
+ *   The form.
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *   The form state.
+ */
+function _ood_software_live_update_validate(array &$form, FormStateInterface $form_state): void {
+  $submitted = $form_state->getValue(['moderation_state', 0, 'state'])
+    ?? $form_state->getValue(['moderation_state', 0, 'value']);
+  $form_object = $form_state->getFormObject();
+  $node = $form_object instanceof EntityFormInterface ? $form_object->getEntity() : NULL;
+  if ($submitted !== 'draft' || !$node instanceof NodeInterface || $node->isNew()) {
+    return;
+  }
+  // The stored latest revision, not the form's entity: validation may already
+  // have rebuilt that with the submitted state.
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $latestId = $storage->getLatestRevisionId($node->id());
+  $latest = $latestId ? $storage->loadRevision($latestId) : NULL;
+  if ($latest instanceof NodeInterface && _ood_software_live_update_held_back($latest)) {
+    $form_state->setErrorByName('moderation_state', t('This item is live. To take it out of the catalog use Unpublish; to keep working, re-submit it for review.'));
+  }
 }
 /**
  * Whether a repo is decided on its review page rather than from the hub.
@@ -1367,6 +1428,7 @@ function ood_software_node_presave(NodeInterface $node): void {
  * Implements hook_node_insert().
  */
 function ood_software_node_insert(NodeInterface $node): void {
+  _ood_software_pending_state_reset($node);
   _ood_software_mark_appverse_cache_dirty($node);
   if ($node->bundle() === 'appverse_app') {
     $flag_service = \Drupal::service('flag');
@@ -1415,7 +1477,9 @@ function _ood_software_repo_review_sync_suspended(?bool $suspend = NULL): bool {
  * into. A repo in draft or needs_adjustment moves to ready_for_review. A
  * published repo stays live: it gets a ready_for_review revision on top of its
  * published one, which appverse_editorial keeps non-default, so the review
- * queue sees it without the repo leaving the catalog (D8-2882).
+ * queue sees it without the repo leaving the catalog (D8-2882). That includes
+ * a live repo whose update was sent back or declined: it is re-submitted from
+ * that forward revision.
  */
 function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
   // Defence in depth against a save loop. What actually stops the hub's
@@ -1474,9 +1538,12 @@ function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
       // Build on the latest revision, not the default, so nothing already
       // pending is lost. Saved from the default revision's side the state is
       // ready_for_review, which core keeps from becoming the default, so the
-      // repo stays published. hook_node_update then reads the default revision
-      // as the previous state (published), which is what makes the reviewer
-      // notification and the AI dispatch fire once for this transition.
+      // repo stays published. hook_node_update then reads the state of the
+      // revision before this one as the previous state: published for a first
+      // pending save, or needs_adjustment / declined when the contributor is
+      // re-submitting a live repo whose update was sent back or declined
+      // (D8-2882). Either way it is not ready_for_review, which is what makes
+      // the reviewer notification and the AI dispatch fire once.
       $storage = \Drupal::entityTypeManager()->getStorage('node');
       $latestId = $storage->getLatestRevisionId($repo->id());
       $latest = $latestId ? $storage->loadRevision($latestId) : NULL;
@@ -1501,6 +1568,7 @@ function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
  * Implements hook_node_update().
  */
 function ood_software_node_update(NodeInterface $node): void {
+  _ood_software_pending_state_reset($node);
   _ood_software_mark_appverse_cache_dirty($node);
 
   // An app sent for review has to carry its parent repo with it. A review is a
@@ -1539,6 +1607,28 @@ function ood_software_node_update(NodeInterface $node): void {
 }
 
 /**
+ * Implements hook_ENTITY_TYPE_insert() for content_moderation_state.
+ *
+ * Content moderation writes a node's state in its own entity, after the node's
+ * hook_node_insert()/update() have run. A pending state read in between (by
+ * the hooks above) would be memoized from before the state was stored, so the
+ * entry is dropped once the state itself is saved (D8-2882).
+ */
+function ood_software_content_moderation_state_insert(ContentModerationState $state): void {
+  ood_software_content_moderation_state_update($state);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for content_moderation_state.
+ */
+function ood_software_content_moderation_state_update(ContentModerationState $state): void {
+  if ($state->hasField('content_entity_id') && !$state->get('content_entity_id')->isEmpty()) {
+    $cache = &drupal_static('_ood_software_pending_state', []);
+    unset($cache[(int) $state->get('content_entity_id')->value]);
+  }
+}
+
+/**
  * Implements hook_node_delete().
  */
 function ood_software_node_delete(NodeInterface $node): void {
@@ -1567,41 +1657,68 @@ function _ood_software_mark_appverse_cache_dirty(NodeInterface $node): void {
 }
 
 /**
- * Implements hook_views_plugins_filter_alter().
+ * The moderation state of a forward revision waiting on top of a live node.
  *
- * Swap core's moderation state filter for one that also sees a pending
- * revision, keeping the plugin id so existing views are untouched (D8-2882).
+ * The states ready_for_review, needs_adjustment and declined are not
+ * default-revision states, so on a live node they are saved as a forward (non-default)
+ * revision: the node stays published on its live revision while the review,
+ * the reviewer's notes or the decline apply only to what is under review.
+ * Everything that reads the default revision (the hub badge, the reviewer
+ * queue) sees plain "published" unless it asks this (D8-2882).
  *
- * @param array<string, array<string, mixed>> $plugins
- *   The filter plugin definitions.
+ * Memoized per nid: the hub card asks it several times and each answer is a
+ * few queries. The entry is dropped when the node is saved
+ * (_ood_software_pending_state_reset()).
+ *
+ * @return string|null
+ *   The state of the latest revision when it is newer than the default one,
+ *   NULL when there is no forward revision.
  */
-function ood_software_views_plugins_filter_alter(array &$plugins): void {
-  if (isset($plugins['moderation_state_filter'])) {
-    $plugins['moderation_state_filter']['class'] = \Drupal\ood_software\Plugin\views\filter\PendingAwareModerationState::class;
+function _ood_software_pending_state(NodeInterface $node): ?string {
+  if (!$node->hasField('moderation_state') || $node->isNew()) {
+    return NULL;
   }
+  $cache = &drupal_static(__FUNCTION__, []);
+  $nid = (int) $node->id();
+  if (array_key_exists($nid, $cache)) {
+    return $cache[$nid];
+  }
+  $cache[$nid] = NULL;
+  // Forward means newer than the default revision. Not asked of content
+  // moderation's hasPendingRevision(): that compares the default revision with
+  // the latest *translation-affected* one, and a save that only changes the
+  // moderation state does not count as that, so after a pending revision is
+  // published it still reports the old forward revision as pending.
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $default = $storage->load($nid);
+  $latestId = $storage->getLatestRevisionId($nid);
+  if ($default instanceof NodeInterface && $latestId && (int) $latestId > (int) $default->getRevisionId()) {
+    $latest = $storage->loadRevision($latestId);
+    if ($latest instanceof NodeInterface) {
+      $cache[$nid] = $latest->get('moderation_state')->value ?: NULL;
+    }
+  }
+  return $cache[$nid];
+}
+
+/**
+ * Drops the memoized pending state of a node (D8-2882).
+ *
+ * Called from every node save, so a caller in the same request after a save
+ * (the review decision moving a repo, then its apps) never reads a stale one.
+ */
+function _ood_software_pending_state_reset(NodeInterface $node): void {
+  $cache = &drupal_static('_ood_software_pending_state', []);
+  unset($cache[(int) $node->id()]);
 }
 
 /**
  * Whether a node is live with a ready_for_review revision waiting on top.
  *
- * The ready_for_review state is the only appverse_editorial state that is not
- * a default revision, so sending a published node for review leaves it published and
- * adds a forward revision. Everything that reads the default revision (the hub
- * badge, the reviewer queue) sees plain "published" unless it asks this
- * (D8-2882).
+ * See _ood_software_pending_state() (D8-2882).
  */
 function _ood_software_has_pending_review(NodeInterface $node): bool {
-  if (!$node->hasField('moderation_state') || $node->isNew()) {
-    return FALSE;
-  }
-  if (!\Drupal::service('content_moderation.moderation_information')->hasPendingRevision($node)) {
-    return FALSE;
-  }
-  $storage = \Drupal::entityTypeManager()->getStorage('node');
-  $latestId = $storage->getLatestRevisionId($node->id());
-  $latest = $latestId ? $storage->loadRevision($latestId) : NULL;
-  return $latest instanceof NodeInterface
-    && $latest->get('moderation_state')->value === 'ready_for_review';
+  return _ood_software_pending_state($node) === 'ready_for_review';
 }
 
 /**
@@ -2408,7 +2525,7 @@ function _ood_software_hub_cache_meta(\Drupal\node\NodeInterface $repo): array {
  *
  * @return array<string, mixed>
  */
-function _ood_software_hub_badge(string $state, bool $reviewPending = FALSE): array {
+function _ood_software_hub_badge(string $state, bool|string|null $pending = NULL): array {
   // Literal t() calls so the labels are extractable for translation. The
   // description is the badge's tooltip: these are the editorial (human)
   // states, distinct from the automated review run's badge.
@@ -2419,9 +2536,15 @@ function _ood_software_hub_badge(string $state, bool $reviewPending = FALSE): ar
     'draft' => ['label' => t('Draft'), 'modifier' => 'muted', 'description' => t('Not submitted yet. The contributor can still edit it; it is not in the review queue.')],
     'archived' => ['label' => t('Archived'), 'modifier' => 'muted', 'description' => t('Withdrawn; not shown in the catalog.')],
   ];
-  // A live node with an update waiting for a reviewer (D8-2882).
-  if ($state === 'published' && $reviewPending) {
-    return ['label' => t('Published, review pending'), 'modifier' => 'warning', 'description' => t('Live in the catalog; an update is waiting for a reviewer.')];
+  // A live node with an update on a forward revision (D8-2882): waiting for a
+  // reviewer, sent back with the reviewer's notes, or declined. $pending is
+  // that revision's state; TRUE means ready_for_review.
+  if ($state === 'published' && $pending) {
+    return match ($pending === TRUE ? 'ready_for_review' : $pending) {
+      'needs_adjustment' => ['label' => t('Published, changes requested'), 'modifier' => 'warning', 'description' => t("Live in the catalog; an update was sent back with the reviewer's notes.")],
+      'declined' => ['label' => t('Published, update declined'), 'modifier' => 'error', 'description' => t('Live in the catalog; the submitted update was declined.')],
+      default => ['label' => t('Published, review pending'), 'modifier' => 'warning', 'description' => t('Live in the catalog; an update is waiting for a reviewer.')],
+    };
   }
   // Unknown state: pass the raw id through dynamically (genuinely variable).
   return $map[$state] ?? ['label' => t('@l', ['@l' => ucfirst($state)]), 'modifier' => 'muted', 'description' => ''];
@@ -2617,9 +2740,14 @@ function _ood_software_hub_action_form(string $internalPath, string $label, stri
 /**
  * Computes the permission-filtered action set for a repo card.
  *
+ * @param bool $reviewPending
+ *   A live repo with a ready_for_review revision on top.
+ * @param bool $heldBack
+ *   A live repo with a needs_adjustment or declined revision on top.
+ *
  * @return array<string, mixed>
  */
-function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $isAdmin, string $state, bool $published, bool $reviewPending = FALSE): array {
+function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $isAdmin, string $state, bool $published, bool $reviewPending = FALSE, bool $heldBack = FALSE): array {
   $id = $repo->id();
   $dest = urlencode(\Drupal::service('path.current')->getPath());
   // Every card collapses into a menu. Named actions are much wider than the
@@ -2643,8 +2771,11 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   $notPublishedActive = in_array($state, ['draft', 'ready_for_review', 'needs_adjustment'], TRUE)
     || (!$published && $state === 'published')
     // A live repo with a review pending is decided like any other in review:
-    // publishing makes the pending revision the live one (D8-2882).
-    || $reviewPending;
+    // publishing makes the pending revision the live one (D8-2882). So is one
+    // whose update was sent back or declined, as a default needs_adjustment
+    // repo is.
+    || $reviewPending
+    || $heldBack;
   // A repo with a review is decided on the review page, where the decision
   // moves the repo and the review together (appverse-planning#29).
   $hasReview = _ood_software_repo_has_review($repo);
@@ -2653,8 +2784,10 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // a live one stays live, and a new one whose other apps were accepted with
   // suggestions waits in ready_for_review for the reviewer's Publish, which
   // used to leave the contributor no Re-submit at all.
+  // A live repo whose own update was sent back or declined (needs_adjustment
+  // or declined on a forward revision, $heldBack) re-submits the same way.
   $liveWithSentBack = (($published && $state === 'published') || $state === 'ready_for_review')
-    && \Drupal::service('ood_software.repo_member_apps')->sentBackCount($repo) > 0;
+    && ($heldBack || \Drupal::service('ood_software.repo_member_apps')->sentBackCount($repo) > 0);
   // Nothing to send while a review is already pending: a second submission
   // would only start another AI run on the same repo (D8-2882).
   if (!$isAdmin && !$reviewPending && (in_array($state, ['draft', 'needs_adjustment'], TRUE) || $liveWithSentBack)) {
@@ -2778,9 +2911,15 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     ];
   }
 
-  // needs_adjustment feedback: latest revision_log on node_revision.
+  // The state of a forward revision on a live repo (D8-2882).
+  $pendingState = $repo->isPublished() ? _ood_software_pending_state($repo) : NULL;
+  $heldBack = in_array($pendingState, ['needs_adjustment', 'declined'], TRUE);
+
+  // needs_adjustment feedback: latest revision_log on node_revision. A live
+  // repo whose update was sent back or declined shows its reviewer's notes the
+  // same way; they are the forward revision's log.
   $moderationComment = NULL;
-  if ($moderationState === 'needs_adjustment') {
+  if ($moderationState === 'needs_adjustment' || $heldBack) {
     $latest = \Drupal::database()->select('node_revision', 'nr')
       ->fields('nr', ['revision_log'])
       ->condition('nid', $repo->id())
@@ -2822,9 +2961,9 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     '#labels' => $isAdmin,
   ];
 
-  $reviewPending = $moderationState === 'published' && $repo->isPublished()
-    && _ood_software_has_pending_review($repo);
-  $actions = _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished(), $reviewPending);
+  $reviewPending = $moderationState === 'published' && $pendingState === 'ready_for_review';
+  $heldBack = $moderationState === 'published' && $heldBack;
+  $actions = _ood_software_hub_repo_actions($repo, $isAdmin, $moderationState, $repo->isPublished(), $reviewPending, $heldBack);
 
   // One action stays inline beside the Actions menu; the rest are named items
   // inside it. Two labelled buttons plus the menu overflow the 13rem column
@@ -2869,9 +3008,11 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'can_edit' => $canEdit,
     'is_admin' => $isAdmin,
     'moderation_state' => $moderationState,
-    'status' => _ood_software_hub_badge($moderationState, $reviewPending),
-    // Live, with a ready_for_review revision waiting on top (D8-2882).
-    'review_pending' => $reviewPending,
+    'status' => _ood_software_hub_badge($moderationState, $moderationState === 'published' ? $pendingState : NULL),
+    // Live, with an update on a forward revision: in review, sent back or
+    // declined. The progress line still reads "Live", so the card shows the
+    // status badge for it (D8-2882).
+    'live_update' => $moderationState === 'published' && $repo->isPublished() && $pendingState !== NULL,
     'has_validation_issues' => in_array($validationSt, ['degraded', 'stale_invalid'], TRUE),
     'validation_st' => $validationSt,
     // The card shows when the repo was submitted (node created time) rather
@@ -2935,8 +3076,8 @@ function _ood_software_build_hub_app(\Drupal\node\NodeInterface $app, bool $pare
   }
   elseif ($app->isPublished()) {
     // Live, and possibly with an update waiting for a reviewer (D8-2882).
-    $status = _ood_software_has_pending_review($app)
-      ? _ood_software_hub_badge('published', TRUE)
+    $status = ($appPending = _ood_software_pending_state($app)) !== NULL
+      ? _ood_software_hub_badge('published', $appPending)
       : ['label' => t('Published'), 'modifier' => 'success', 'description' => t('Live in the public Appverse catalog.')];
   }
   else {
@@ -3059,6 +3200,16 @@ function ood_software_preprocess_views_view(array &$variables): void {
  * @param array<string, mixed> $data
  */
 function ood_software_views_data_alter(array &$data): void {
+  // The my_appverse reviewer queue's moderation state filter: core's
+  // moderation_state field, but handled by a filter that also counts a pending
+  // revision (D8-2882; the PendingAwareModerationState filter plugin). A
+  // separate views field, so no other view's moderation_state filter changes.
+  $data['node_field_data']['ood_pending_moderation_state'] = [
+    'title' => t('Moderation state (including pending revisions)'),
+    'help' => t('The moderation state of the default revision, or of a newer pending revision.'),
+    'real field' => 'moderation_state',
+    'filter' => ['id' => 'ood_software_pending_aware_moderation_state', 'allow empty' => TRUE],
+  ];
   // The manage-repos "Assigned" filter: assigned to me / unassigned
   // (appverse-planning#33; the AssignedReviewer filter plugin).
   $data['node_field_data']['ood_assigned_reviewer'] = [

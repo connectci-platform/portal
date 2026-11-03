@@ -46,7 +46,11 @@ final class MyAppverseHubAccessCheck implements AccessInterface {
     if ($hub instanceof UserInterface) {
       return (int) $hub->id();
     }
-    if (is_scalar($hub) && is_numeric($hub)) {
+    if (is_int($hub)) {
+      return $hub;
+    }
+    // Digits only: "1.0", "1e1", " 1" and "-1" are not a uid.
+    if (is_string($hub) && ctype_digit($hub)) {
       return (int) $hub;
     }
     return NULL;

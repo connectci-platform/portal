@@ -22,6 +22,9 @@ final class MyAppverseHubRouteSubscriber extends RouteSubscriberBase {
     if ($route === NULL) {
       return;
     }
+    // Owner-only access is enforced here, on this page's route (D8-2882). The
+    // view must keep use_ajax off: AJAX requests go through /views/ajax and
+    // skip this route's access check.
     $route->setRequirement('_ood_software_my_appverse_hub', 'TRUE');
   }
 

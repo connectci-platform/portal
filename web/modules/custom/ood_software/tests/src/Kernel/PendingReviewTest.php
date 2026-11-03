@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\content_moderation\Plugin\views\filter\ModerationStateFilter;
 use Drupal\Core\Config\Entity\ConfigEntityStorageInterface;
 use Drupal\Core\Config\FileStorage;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Drupal\ood_software\Plugin\views\filter\PendingAwareModerationState;
 use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoNotificationService;
 use Drupal\taxonomy\Entity\Vocabulary;
@@ -319,6 +321,14 @@ class PendingReviewTest extends KernelTestBase {
     $this->assertNotContains((int) $pending->id(), $other, 'A view other than my_appverse must keep core behavior.');
 
     $this->assertContains((int) $pending->id(), $this->queue(['appverse_editorial-ready_for_review']), 'my_appverse still sees the pending review.');
+
+    // The widened filter is its own plugin; core's id is not swapped.
+    $view = Views::getView('my_appverse');
+    $view->setDisplay('page_admin');
+    $handler = $view->display_handler->getHandler('filter', 'moderation_state');
+    $this->assertInstanceOf(PendingAwareModerationState::class, $handler);
+    $definition = \Drupal::service('plugin.manager.views.filter')->getDefinition('moderation_state_filter');
+    $this->assertSame(ModerationStateFilter::class, ltrim($definition['class'], '\\'));
   }
 
   public function testQueueDropsRepoOnceItsPendingReviewIsPublished(): void {
@@ -342,13 +352,13 @@ class PendingReviewTest extends KernelTestBase {
     // Control: no pending revision.
     $hub = _ood_software_build_hub_row($this->fresh($repo));
     $this->assertSame('Published', (string) $hub['status']['label']);
-    $this->assertFalse($hub['review_pending']);
+    $this->assertFalse($hub['live_update'], 'A plain live repo shows no status badge.');
 
     $this->sendPending($repo);
     $hub = _ood_software_build_hub_row($this->fresh($repo));
     $this->assertSame('Published, review pending', (string) $hub['status']['label']);
     $this->assertSame('warning', $hub['status']['modifier']);
-    $this->assertTrue($hub['review_pending']);
+    $this->assertTrue($hub['live_update'], 'The card shows the review-pending badge.');
     $this->assertTrue($hub['published'], 'The repo is still live.');
     $this->assertNull($hub['actions']['send_for_review'], 'No Send for review/Re-submit while a review is pending.');
     $this->assertNull($hub['actions']['send_for_review_inline']);
@@ -398,6 +408,94 @@ class PendingReviewTest extends KernelTestBase {
     $this->assertSame('Published, review pending', (string) $byTitle['a']['status']['label']);
     $this->assertTrue($byTitle['a']['published']);
     $this->assertSame('Published', (string) $byTitle['b']['status']['label']);
+  }
+
+  /**
+   * Moves a live node's pending revision to a held-back state (D8-2882).
+   */
+  private function holdBack(NodeInterface $node, string $state, string $notes = ''): void {
+    $latest = $this->latest($node);
+    $latest->set('moderation_state', $state);
+    $latest->setNewRevision(TRUE);
+    $latest->setRevisionLogMessage($notes);
+    $latest->_ood_software_suppress_notifications = TRUE;
+    $latest->save();
+  }
+
+  /**
+   * A live repo's sent-back or declined update shows on its card.
+   *
+   * @dataProvider heldBackBadges
+   */
+  public function testHeldBackUpdateBadgeNotesAndResubmitOnRepo(string $state, string $label, string $modifier): void {
+    $owner = $this->createUser([], 'contributor');
+    \Drupal::currentUser()->setAccount($owner);
+    $repo = $this->makeRepo(['moderation_state' => 'published']);
+    $repo->setOwnerId($owner->id())->save();
+    $this->sendPending($repo);
+    $this->holdBack($repo, $state, 'Please add a LICENSE.');
+
+    $hub = _ood_software_build_hub_row($this->fresh($repo));
+
+    $this->assertSame($label, (string) $hub['status']['label']);
+    $this->assertSame($modifier, $hub['status']['modifier']);
+    $this->assertTrue($hub['live_update'], 'The card shows the held-back badge.');
+    $this->assertTrue($hub['published'], 'The repo is still live.');
+    $this->assertSame('Please add a LICENSE.', $hub['moderation_comment'], 'The owner sees the reviewer\'s notes.');
+    $this->assertNotNull($hub['actions']['send_for_review'], 'The owner can re-submit.');
+    $this->assertNotNull($hub['actions']['send_for_review_inline']);
+    $this->assertSame('Re-submit', (string) $hub['actions']['send_for_review']['#context']['label']);
+    $this->assertNull($hub['actions']['publish']);
+    $this->assertNull($hub['actions']['request_changes']);
+  }
+
+  /**
+   * The held-back states with their badge label and modifier.
+   *
+   * @return array<string, array<int, string>>
+   *   State, label and modifier per case.
+   */
+  public static function heldBackBadges(): array {
+    return [
+      'sent back' => ['needs_adjustment', 'Published, changes requested', 'warning'],
+      'declined' => ['declined', 'Published, update declined', 'error'],
+    ];
+  }
+
+  /**
+   * The reviewer queue lists a live repo whose update was sent back.
+   */
+  public function testQueueListsLiveRepoWhoseUpdateWasSentBack(): void {
+    $repo = $this->makeRepo(['moderation_state' => 'published']);
+    $this->sendPending($repo);
+    $this->holdBack($repo, 'needs_adjustment');
+
+    $this->assertContains((int) $repo->id(), $this->queue(['appverse_editorial-needs_adjustment']));
+    $this->assertNotContains((int) $repo->id(), $this->queue(['appverse_editorial-ready_for_review']));
+  }
+
+  /**
+   * A member app's held-back update shows on its row.
+   */
+  public function testHeldBackUpdateBadgeOnMemberApp(): void {
+    $repo = $this->makeRepo(['moderation_state' => 'published']);
+    $a = $this->makeApp($repo, ['title' => 'a', 'subpath' => 'a', 'moderation_state' => 'published']);
+    $b = $this->makeApp($repo, ['title' => 'b', 'subpath' => 'b', 'moderation_state' => 'published']);
+    $this->makeApp($repo, ['title' => 'c', 'subpath' => 'c', 'moderation_state' => 'published']);
+    $this->sendPending($a);
+    $this->holdBack($a, 'needs_adjustment');
+    $this->sendPending($b);
+    $this->holdBack($b, 'declined');
+
+    $hub = _ood_software_build_hub_row($this->fresh($repo));
+    $byTitle = [];
+    foreach ($hub['apps'] as $row) {
+      $byTitle[$row['title']] = $row;
+    }
+    $this->assertSame('Published, changes requested', (string) $byTitle['a']['status']['label']);
+    $this->assertSame('Published, update declined', (string) $byTitle['b']['status']['label']);
+    $this->assertSame('Published', (string) $byTitle['c']['status']['label']);
+    $this->assertTrue($byTitle['a']['published']);
   }
 
   public function testAdminPublishMakesPendingRevisionTheDefault(): void {

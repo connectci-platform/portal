@@ -210,7 +210,7 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
     $moderationFilter = $view->filter['moderation_state'];
     $this->assertFalse($moderationFilter->broken(), 'moderation_state filter must resolve to a real handler, not "broken".');
     $this->assertSame('node_field_data', $moderationFilter->table);
-    $this->assertSame('moderation_state_filter', $moderationFilter->getPluginId());
+    $this->assertSame('ood_software_pending_aware_moderation_state', $moderationFilter->getPluginId());
 
     $this->assertArrayHasKey('uid', $view->filter, 'The new Contributor (uid) filter must exist on page_admin.');
     $contributorFilter = $view->filter['uid'];
