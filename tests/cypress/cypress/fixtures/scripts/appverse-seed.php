@@ -22,17 +22,23 @@
  *   2. state: Collection moderation state (required).
  *   3. memberApps: Number of member apps to create (0-10, default 0).
  *   4. memberAppState: Moderation state for member apps (default draft).
+ *   5. extras: Optional comma-separated list of "review" (also create one
+ *      appverse_review node for the repo, with run metadata naming a model)
+ *      and "pm2" (also ensure a second appverse_pm user, appverse_pm_two,
+ *      exists). A monorepo with 4 member apps is memberApps = 4.
  *
  * Re-running with the same title first purges the previous fixture, so the
  * script is idempotent and safe to retry.
  *
  * On success the only stdout line is:
- * APPVERSE_SEED_RESULT:{"nid":123,"uuid":"..."}
+ * APPVERSE_SEED_RESULT:{"nid":123,"uuid":"...","review_nid":456,"pm2_uid":7}
+ * (review_nid and pm2_uid appear only when requested).
  * On invalid input or a missing lookup it writes to stderr and exits non-zero.
  * It refuses to run outside DDEV, since it deletes nodes by title.
  */
 
 use Drupal\node\Entity\Node;
+use Drupal\user\Entity\User;
 
 /**
  * Prints an error to stderr and stops with a non-zero exit code.
@@ -44,6 +50,9 @@ function appverse_seed_fail(string $message): void {
 
 /**
  * Loads exactly the first entity matching properties, or fails loudly.
+ *
+ * @param array<string, mixed> $properties
+ *   Entity properties to match.
  */
 function appverse_seed_lookup(string $entity_type, array $properties, string $label): object {
   $entities = \Drupal::entityTypeManager()->getStorage($entity_type)->loadByProperties($properties);
@@ -74,6 +83,12 @@ $title = (string) ($extra[0] ?? '');
 $state = (string) ($extra[1] ?? '');
 $member_apps_arg = (string) ($extra[2] ?? '0');
 $member_app_state = (string) ($extra[3] ?? 'draft');
+$extras = array_filter(explode(',', (string) ($extra[4] ?? '')));
+foreach ($extras as $flag) {
+  if (!in_array($flag, ['review', 'pm2'], TRUE)) {
+    appverse_seed_fail('invalid extras flag "' . $flag . '"; allowed: review, pm2');
+  }
+}
 
 // Validate strictly. Nothing below interpolates these into code or SQL; they
 // only reach the entity API as values.
@@ -128,6 +143,11 @@ $orphan_ids = $storage->getQuery()->accessCheck(FALSE)
   ->condition('title', \Drupal::database()->escapeLike($title . ' App ') . '%', 'LIKE')
   ->execute();
 $app_ids = array_unique(array_merge(array_values($app_ids), array_values($orphan_ids)));
+$review_ids = $repo_ids ? $storage->getQuery()->accessCheck(FALSE)
+  ->condition('type', 'appverse_review')
+  ->condition('field_arv_repo', array_values($repo_ids), 'IN')
+  ->execute() : [];
+$storage->delete($storage->loadMultiple($review_ids));
 $storage->delete($storage->loadMultiple($app_ids));
 $storage->delete($storage->loadMultiple($repo_ids));
 
@@ -155,4 +175,34 @@ for ($n = 1; $n <= $member_apps; $n++) {
   ])->save();
 }
 
-echo 'APPVERSE_SEED_RESULT:' . json_encode(['nid' => (int) $repo->id(), 'uuid' => $repo->uuid()]) . "\n";
+$result = ['nid' => (int) $repo->id(), 'uuid' => $repo->uuid()];
+
+if (in_array('review', $extras, TRUE)) {
+  $review = Node::create([
+    'type' => 'appverse_review',
+    'title' => 'Review: ' . $title,
+    'uid' => $contributor->id(),
+    'status' => 0,
+    'field_arv_repo' => $repo->id(),
+    'field_arv_run_meta' => json_encode(['model' => 'ccs/Qwen/Qwen3.6-35B-A3B-FP8']),
+  ]);
+  $review->save();
+  $result['review_nid'] = (int) $review->id();
+}
+
+if (in_array('pm2', $extras, TRUE)) {
+  $pm2 = user_load_by_name('appverse_pm_two');
+  if (!$pm2) {
+    $pm2 = User::create([
+      'name' => 'appverse_pm_two',
+      'mail' => 'appverse_pm_two@example.com',
+      'pass' => bin2hex(random_bytes(12)),
+      'status' => 1,
+    ]);
+  }
+  $pm2->addRole('appverse_pm');
+  $pm2->save();
+  $result['pm2_uid'] = (int) $pm2->id();
+}
+
+echo 'APPVERSE_SEED_RESULT:' . json_encode($result) . "\n";

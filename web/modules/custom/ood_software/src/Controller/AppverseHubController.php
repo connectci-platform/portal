@@ -4,11 +4,14 @@ namespace Drupal\ood_software\Controller;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\UrlHelper;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Drupal\content_moderation\ContentModerationState;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
 use Drupal\Core\Access\AccessResult;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -19,6 +22,7 @@ use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoSyncService;
 use Drupal\ood_software\Service\RepoMemberApps;
 use Drupal\ood_software\Service\RepoNotificationService;
+use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Plugin\GitHubService;
 
@@ -40,6 +44,7 @@ final class AppverseHubController extends ControllerBase {
     protected AppverseReviewService $reviewService,
     protected ReviewAssignment $reviewAssignment,
     protected RepoNotificationService $notifier,
+    protected RepoProgress $repoProgress,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -53,6 +58,7 @@ final class AppverseHubController extends ControllerBase {
       $container->get('ood_software.review_dispatcher'),
       $container->get('ood_software.review_assignment'),
       $container->get('ood_software.repo_notifier'),
+      $container->get('ood_software.repo_progress'),
     );
   }
 
@@ -568,6 +574,65 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
+   * The hub card's reviewer picker: assigns any reviewer, or none.
+   *
+   * Classified before ReviewAssignment::assign() is called, since that
+   * returns FALSE both for a refused uid and for no change. Answers JSON to
+   * the card's in-place script (Accept: application/json) and redirects back
+   * to the hub otherwise.
+   */
+  public function assignReviewer(NodeInterface $node, Request $request): Response {
+    $raw = $request->request->get('uid', '');
+    $raw = is_scalar($raw) ? trim((string) $raw) : '';
+    $uid = $raw === '' ? NULL : (ctype_digit($raw) ? (int) $raw : -1);
+    $current = $this->reviewAssignment->assignee($node);
+    $currentUid = $current ? (int) $current->id() : NULL;
+
+    if ($uid !== NULL && !isset($this->reviewAssignment->reviewers()[$uid])) {
+      $result = 'refused';
+      $message = (string) $this->t('That person cannot be assigned: only Appverse reviewers can.');
+    }
+    elseif ($uid === $currentUid) {
+      $result = 'unchanged';
+      $message = (string) $this->t('Nothing changed.');
+    }
+    elseif ($this->reviewAssignment->assign($node, $uid)) {
+      $result = 'assigned';
+      // From here $current is the saved assignee, which is what the card
+      // should now show.
+      $current = $this->reviewAssignment->assignee($this->entityTypeManager()->getStorage('node')->loadUnchanged($node->id()) ?? $node);
+      $message = (string) ($current
+        ? $this->t('@name is now assigned to @title.', [
+          '@name' => $current->getDisplayName(),
+          '@title' => $node->label(),
+        ])
+        : $this->t('@title is now unassigned.', ['@title' => $node->label()]));
+    }
+    else {
+      $result = 'refused';
+      $message = (string) $this->t('That person cannot be assigned: only Appverse reviewers can.');
+    }
+
+    if (in_array('application/json', $request->getAcceptableContentTypes(), TRUE)) {
+      $response = new JsonResponse([
+        'result' => $result,
+        'assignee' => $current ? ['uid' => (int) $current->id(), 'name' => $current->getDisplayName()] : NULL,
+        'message' => $message,
+      ], $result === 'refused' ? 422 : 200);
+      $response->headers->set('Cache-Control', 'no-store');
+      return $response;
+    }
+
+    if ($result === 'refused') {
+      $this->messenger()->addError($message);
+    }
+    else {
+      $this->messenger()->addStatus($message);
+    }
+    return $this->redirectToHub();
+  }
+
+  /**
    * Whether the repo's latest revision has an AI report run in flight.
    *
    * @phpstan-impure
@@ -721,6 +786,56 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
+   * Access callback for the review-status endpoint: reviewers, repos only.
+   */
+  public function reviewerRepoAccess(AccountInterface $account, NodeInterface $node): AccessResult {
+    if ($node->bundle() !== 'appverse_repo') {
+      return AccessResult::forbidden('Not a repo.')->addCacheableDependency($node);
+    }
+    return $this->adminOnlyAccess($account, $node);
+  }
+
+  /**
+   * Where a repo's AI report run stands, as JSON for the page's poller.
+   *
+   * Reviewers only. With ?check=github the run is first checked against
+   * GitHub (throttled and locked in the service), so a page that is open
+   * learns of a finished run without waiting for cron.
+   */
+  public function reviewStatus(NodeInterface $node, Request $request): JsonResponse {
+    if ($request->query->get('check') === 'github') {
+      $this->reviewService->pollRepo($node);
+    }
+    $latest = $this->reviewService->latestRevision($node);
+    $reviewId = $this->reviewService->latestReviewId($node);
+    $reviewUrl = $reviewId !== NULL
+      ? Url::fromRoute('ood_software.review_page', ['node' => $reviewId])->toString()
+      : NULL;
+
+    $stepLabel = '';
+    foreach ($this->repoProgress->steps($latest)['reviewer'] as $step) {
+      if ($step['step'] === 'AI report') {
+        $stepLabel = (string) $step['label'];
+        break;
+      }
+    }
+
+    $status = $latest->hasField('field_review_status') && !$latest->get('field_review_status')->isEmpty()
+      ? (string) $latest->get('field_review_status')->value
+      : NULL;
+    $response = new JsonResponse([
+      'in_flight' => $this->reviewService->isRunInFlight($latest),
+      'status' => $status,
+      'latest_review' => $reviewId,
+      'latest_review_url' => $reviewUrl,
+      'step_label' => $stepLabel,
+      'review_url' => $reviewUrl,
+    ]);
+    $response->headers->set('Cache-Control', 'no-store');
+    return $response;
+  }
+
+  /**
    * Redirect /user/{user}/my-apps → /user/{user}/my-appverse.
    */
   public function redirectFromLegacy(UserInterface $user): RedirectResponse {
@@ -796,6 +911,7 @@ final class AppverseHubController extends ControllerBase {
           $allowedPrefixes = [
             '/user/',
             '/appverse/manage-repos',
+            '/appverse/review',
           ];
           foreach ($allowedPrefixes as $prefix) {
             if ($destination === $prefix || str_starts_with($destination, $prefix . '/') || str_starts_with($destination, $prefix . '?') || str_starts_with($destination, $prefix . '#')) {
