@@ -17,6 +17,7 @@ use Drupal\views\Plugin\views\filter\InOperator;
 use Drupal\views\ResultRow;
 use Drupal\views\ViewExecutable;
 use Drupal\views\Views;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Covers the my_appverse:page_admin filters reworked in D8-2927.
@@ -76,6 +77,14 @@ class ManageReposFiltersTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_review_status',
       'field.storage.node.field_review_recommendation',
       'field.field.node.appverse_repo.field_review_recommendation',
+      // The Needs attention option reads each repo's newest review.
+      'node.type.appverse_review',
+      'field.storage.node.field_arv_repo',
+      'field.field.node.appverse_review.field_arv_repo',
+      'field.storage.node.field_arv_decision_sent_at',
+      'field.field.node.appverse_review.field_arv_decision_sent_at',
+      'field.storage.node.field_arv_withdrawn_at',
+      'field.field.node.appverse_review.field_arv_withdrawn_at',
     ]);
     $this->importViewConfigRaw('views.view.my_appverse');
 
@@ -116,16 +125,37 @@ class ManageReposFiltersTest extends KernelTestBase {
    * A member app of the repo, implementing the given software.
    *
    * @param int[] $softwareNids
+   * @param array<string, mixed> $values
+   *   Extra values, such as a moderation_state.
    */
-  private function makeApp(NodeInterface $repo, array $softwareNids = []): NodeInterface {
+  private function makeApp(NodeInterface $repo, array $softwareNids = [], array $values = []): NodeInterface {
     $app = Node::create([
       'type' => 'appverse_app',
       'title' => $repo->label() . ' app ' . random_int(1, 99999),
       'field_appverse_repo' => $repo->id(),
       'field_appverse_software_implemen' => $softwareNids,
-    ]);
+    ] + $values);
     $app->save();
     return $app;
+  }
+
+  /**
+   * A review of the repo: undecided (unpublished, no timestamps) by default.
+   *
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo reviewed.
+   * @param array<string, mixed> $values
+   *   Values overriding the defaults.
+   */
+  private function makeReview(NodeInterface $repo, array $values = []): NodeInterface {
+    $review = Node::create($values + [
+      'type' => 'appverse_review',
+      'title' => 'Review of ' . $repo->label(),
+      'status' => 0,
+      'field_arv_repo' => $repo->id(),
+    ]);
+    $review->save();
+    return $review;
   }
 
   private function makeSoftware(string $title): NodeInterface {
@@ -408,6 +438,277 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
+   * Runs page_admin with the given moderation_state value, sorted nids.
+   *
+   * @param string|string[] $state
+   *   One state key, "All", or a list of keys.
+   *
+   * @return int[]
+   *   The repo nids, ascending.
+   */
+  private function runModeration(string|array $state): array {
+    $nids = $this->runPageAdmin(['moderation_state' => $state]);
+    sort($nids);
+    return $nids;
+  }
+
+  /**
+   * A repo awaiting review needs attention before any report exists.
+   */
+  public function testNeedsAttentionIncludesReadyForReviewWithNoReview(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $this->makeRepo('Published', 'published');
+    $this->assertSame([(int) $ready->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A live repo whose newest report is undecided needs attention.
+   */
+  public function testNeedsAttentionIncludesPublishedWithUndecidedNewestReview(): void {
+    $repo = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($repo);
+    $this->assertSame([(int) $repo->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A live repo with a resubmitted member app needs attention, listed once.
+   */
+  public function testNeedsAttentionIncludesPublishedWithMemberAppReadyForReview(): void {
+    $repo = $this->makeRepo('Live resubmitted', 'published');
+    $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
+    $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
+    $quiet = $this->makeRepo('Live quiet', 'published');
+    $this->makeApp($quiet, [], ['moderation_state' => 'published']);
+    // Listed once although two of its apps match.
+    $this->assertSame([(int) $repo->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * Only the newest review counts, by created then nid.
+   */
+  public function testNeedsAttentionExcludesPublishedWhoseNewestReviewIsDecidedEvenIfOlderIsNot(): void {
+    $repo = $this->makeRepo('Decided last round', 'published');
+    $this->makeReview($repo, ['created' => 1700000000]);
+    $this->makeReview($repo, ['created' => 1700000100, 'field_arv_decision_sent_at' => 1700000200]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+
+    // Same created time: the higher nid is the newer, as latestReviewFor()
+    // orders them.
+    $tied = $this->makeRepo('Tied reviews', 'published');
+    $this->makeReview($tied, ['created' => 1700000000]);
+    $this->makeReview($tied, ['created' => 1700000000, 'field_arv_decision_sent_at' => 1700000200]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A published review from before D8-2788 counts as decided.
+   */
+  public function testNeedsAttentionExcludesLegacyPublishedReviewWithoutTimestamp(): void {
+    $repo = $this->makeRepo('Legacy decided', 'published');
+    $this->makeReview($repo, ['status' => 1]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A sent-back repo whose decision went out no longer needs attention.
+   */
+  public function testNeedsAttentionExcludesNeedsAdjustmentWithDecisionSent(): void {
+    $sent = $this->makeRepo('Sent back', 'needs_adjustment');
+    $this->makeReview($sent, ['field_arv_decision_sent_at' => 1700000200]);
+    $pending = $this->makeRepo('Sent back, report undecided', 'needs_adjustment');
+    $this->makeReview($pending);
+    $this->assertSame([(int) $pending->id()], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A withdrawn newest review is decided.
+   */
+  public function testNeedsAttentionExcludesWithdrawnNewestReview(): void {
+    $repo = $this->makeRepo('Withdrawn', 'published');
+    $this->makeReview($repo, ['field_arv_withdrawn_at' => 1700000200]);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * Draft and archived repos are left out of the review branch.
+   */
+  public function testNeedsAttentionExcludesDraftWithUndecidedAdminRun(): void {
+    $draft = $this->makeRepo('Draft', 'draft');
+    $this->makeReview($draft);
+    $archived = $this->makeRepo('Archived', 'archived');
+    $this->makeReview($archived);
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * Runs page_admin without its bundle filter, sorted nids.
+   *
+   * Page_admin only lists appverse_repo nodes, which would hide a leak from
+   * the moderation filter itself; without that filter, whatever the
+   * moderation filter lets through comes back.
+   *
+   * @param string[] $state
+   *   The moderation_state value.
+   *
+   * @return int[]
+   *   The nids, ascending.
+   */
+  private function runModerationWithoutBundleFilter(array $state): array {
+    $view = $this->getPageAdminView();
+    $view->removeHandler('page_admin', 'filter', 'type');
+    /** @var array<string, mixed> $input */
+    $input = ['moderation_state' => $state];
+    $view->setExposedInput($input);
+    $view->execute();
+    $this->assertArrayNotHasKey('type', $view->filter, 'The bundle filter is gone.');
+    $nids = $this->resultNids($view);
+    sort($nids);
+    return $nids;
+  }
+
+  /**
+   * The Needs attention branch never returns an app or other node.
+   *
+   * Run without page_admin's bundle filter, so only the moderation filter
+   * stands between a ready_for_review app and the result.
+   */
+  public function testNeedsAttentionNeverReturnsNonRepoNodes(): void {
+    $repo = $this->makeRepo('Repo', 'draft');
+    $app = $this->makeApp($repo, [], ['moderation_state' => 'ready_for_review']);
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+
+    // The draft repo is in because of its ready app, not the app itself.
+    $alone = $this->runModerationWithoutBundleFilter(['needs_attention']);
+    $this->assertNotContains((int) $app->id(), $alone);
+    $this->assertSame([(int) $repo->id(), (int) $ready->id()], $alone);
+
+    // ORed with a state the app is not in, the app still stays out.
+    $withDraft = $this->runModerationWithoutBundleFilter(['needs_attention', 'appverse_editorial-draft']);
+    $this->assertNotContains((int) $app->id(), $withDraft);
+    $this->assertSame([(int) $repo->id(), (int) $ready->id()], $withDraft);
+
+    // Core's own Ready for review condition matches the app too, since
+    // appverse_app is a bundle of the workflow (page_admin's bundle filter
+    // removes it there). Needs attention adds nothing beyond its repos: the
+    // union is exactly core's set plus the Needs attention repos.
+    $coreReady = $this->runModerationWithoutBundleFilter(['appverse_editorial-ready_for_review']);
+    $this->assertSame([(int) $app->id(), (int) $ready->id()], $coreReady);
+    $union = array_values(array_unique(array_merge($coreReady, $alone)));
+    sort($union);
+    $this->assertSame(
+      $union,
+      $this->runModerationWithoutBundleFilter(['needs_attention', 'appverse_editorial-ready_for_review']),
+    );
+
+    // With the bundle filter in place, as on the page, no app either way.
+    $this->assertSame(
+      [(int) $repo->id(), (int) $ready->id()],
+      $this->runModeration(['needs_attention', 'appverse_editorial-ready_for_review']),
+    );
+  }
+
+  /**
+   * Needs attention plus a state returns both sets.
+   */
+  public function testNeedsAttentionPlusDraftIsTheUnion(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $draft = $this->makeRepo('Draft', 'draft');
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+    $this->makeRepo('Live quiet', 'published');
+    $this->makeRepo('Archived', 'archived');
+
+    $this->assertSame([(int) $ready->id(), (int) $live->id()], $this->runModeration(['needs_attention']));
+    $this->assertSame([(int) $draft->id()], $this->runModeration(['appverse_editorial-draft']));
+    $this->assertSame(
+      [(int) $ready->id(), (int) $draft->id(), (int) $live->id()],
+      $this->runModeration(['needs_attention', 'appverse_editorial-draft']),
+    );
+  }
+
+  /**
+   * The hub emails' "All" link still means every state.
+   */
+  public function testAllReturnsEveryState(): void {
+    $expected = [];
+    foreach (['draft', 'ready_for_review', 'needs_adjustment', 'published', 'archived', 'declined'] as $state) {
+      $expected[] = (int) $this->makeRepo(ucfirst($state), $state)->id();
+    }
+    $this->assertSame($expected, $this->runModeration('All'));
+  }
+
+  /**
+   * Explicit states, as in older email links, filter to exactly those.
+   */
+  public function testExplicitStatesDoNotAddNeedsAttention(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+    $this->assertSame([(int) $ready->id()], $this->runModeration(['appverse_editorial-ready_for_review']));
+  }
+
+  /**
+   * The legacy email link's two states filter to exactly those states.
+   */
+  public function testLegacyTwoStateLinkDoesNotAddNeedsAttention(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $sent = $this->makeRepo('Sent back, decision sent', 'needs_adjustment');
+    $this->makeReview($sent, ['field_arv_decision_sent_at' => 1700000200]);
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+
+    $nids = $this->runModeration(['appverse_editorial-ready_for_review', 'appverse_editorial-needs_adjustment']);
+    $this->assertContains((int) $sent->id(), $nids, 'A sent-back repo is in by its state, decided or not.');
+    $this->assertNotContains((int) $live->id(), $nids, 'Needs attention is not silently added.');
+    $this->assertSame([(int) $ready->id(), (int) $sent->id()], $nids);
+  }
+
+  /**
+   * Both read the default revision's state, so a forward draft is in neither.
+   */
+  public function testNeedsAttentionAgreesWithReadyForReviewOnForwardDraft(): void {
+    $repo = $this->makeRepo('Live with a forward draft', 'published');
+    $repo->set('moderation_state', 'ready_for_review');
+    $repo->save();
+    // The forward revision is not the default one.
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    $storage->resetCache();
+    $default = $storage->load($repo->id());
+    $this->assertInstanceOf(NodeInterface::class, $default);
+    $this->assertSame('published', $default->get('moderation_state')->value);
+
+    $this->assertSame([], $this->runModeration(['appverse_editorial-ready_for_review']));
+    $this->assertSame([], $this->runModeration(['needs_attention']));
+  }
+
+  /**
+   * A page load with no moderation_state key gets Needs attention.
+   */
+  public function testDefaultIsNeedsAttentionOnRealGet(): void {
+    $ready = $this->makeRepo('Ready', 'ready_for_review');
+    $live = $this->makeRepo('Live with a report', 'published');
+    $this->makeReview($live);
+    $this->makeRepo('Sent back', 'needs_adjustment');
+    $this->makeRepo('Draft', 'draft');
+    $this->makeRepo('Live quiet', 'published');
+
+    // A real page load: no moderation_state key in the query at all.
+    $request = Request::create('/appverse/manage-repos');
+    $request->setSession(\Drupal::request()->getSession());
+    \Drupal::requestStack()->push($request);
+    try {
+      $view = $this->getPageAdminView();
+      $view->execute();
+      $nids = $this->resultNids($view);
+    }
+    finally {
+      \Drupal::requestStack()->pop();
+    }
+    sort($nids);
+    $this->assertSame([(int) $ready->id(), (int) $live->id()], $nids);
+  }
+
+  /**
    * Builds the display's exposed form and returns its render array.
    *
    * @return array<string, mixed>
@@ -444,30 +745,136 @@ class ManageReposFiltersTest extends KernelTestBase {
       $keys[] = (string) $key;
     });
     $this->assertNotEmpty($keys);
-    foreach ($keys as $key) {
+    $this->assertSame('needs_attention', $keys[0], 'Needs attention comes first.');
+    $this->assertSame('Needs attention (any state)', (string) $form['moderation_state']['#options']['needs_attention']);
+    foreach (array_slice($keys, 1) as $key) {
       $this->assertStringStartsWith('appverse_editorial-', $key);
     }
   }
 
   /**
-   * The link is in the rendered form, and keeps the other filters' values.
+   * The All link is in the rendered form, and keeps the other filters' values.
    *
    * Asserted on rendered HTML: an element description set on the form array
-   * is not printed by every theme's exposed-form template.
+   * is not printed by every theme's exposed-form template. Its href is the
+   * no-JavaScript fallback; with JavaScript the same link selects every chip.
    */
-  public function testShowAllStatesLinkRendersAndKeepsFilters(): void {
+  public function testAllLinkRendersAndKeepsFilters(): void {
     $view = Views::getView('my_appverse');
     $view->setDisplay('page_admin');
     $view->setExposedInput(['title' => 'tillicum', 'assigned' => 'none']);
     $view->build();
     $html = (string) \Drupal::service('renderer')->renderInIsolation($view->exposed_widgets);
 
-    $this->assertMatchesRegularExpression('#<a [^>]*href="([^"]*)"[^>]*>Show all states</a>#', $html);
-    preg_match('#<a [^>]*href="([^"]*)"[^>]*>Show all states</a>#', $html, $m);
-    parse_str((string) parse_url(html_entity_decode($m[1]), PHP_URL_QUERY), $query);
+    $pattern = '#<a [^>]*class="[^"]*appverse-hub-select-all[^"]*"[^>]*>#';
+    $this->assertMatchesRegularExpression($pattern, $html);
+    preg_match($pattern, $html, $m);
+    $this->assertStringContainsString('data-select-all="moderation_state"', $m[0]);
+    preg_match('#href="([^"]*)"#', $m[0], $h);
+    parse_str((string) parse_url(html_entity_decode($h[1]), PHP_URL_QUERY), $query);
     $this->assertSame('All', $query['moderation_state'] ?? NULL);
     $this->assertSame('tillicum', $query['title'] ?? NULL);
     $this->assertSame('none', $query['assigned'] ?? NULL);
+  }
+
+  /**
+   * The "All" chip replaces the old "Show all states" link.
+   */
+  public function testAllLinkReplacesShowAllStates(): void {
+    $group = $this->exposedForm()['moderation_group'];
+    $all = $group['moderation_state_links']['all'];
+    $this->assertArrayNotHasKey('clear', $group['moderation_state_links']);
+    $this->assertContains('appverse-hub-select-all', $all['#attributes']['class']);
+    $this->assertSame('moderation_state', $all['#attributes']['data-select-all']);
+    $this->assertSame('All', (string) $all['#title']);
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($group);
+    $this->assertStringNotContainsString('Show all states', $html);
+  }
+
+  /**
+   * The other multi-select filters get All and Clear links.
+   */
+  public function testOtherFiltersHaveAllAndClearLinks(): void {
+    $view = Views::getView('my_appverse');
+    $view->setDisplay('page_admin');
+    $view->build();
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($view->exposed_widgets);
+    // The form keys are the exposed identifiers. Assigned reviewer and
+    // Software used are single selects here, so they get no links.
+    foreach (['ai_report'] as $name) {
+      $this->assertStringContainsString('data-select-all="' . $name . '"', $html, "$name has All");
+      $this->assertStringContainsString('data-select-clear="' . $name . '"', $html, "$name has Clear");
+    }
+    $this->assertStringNotContainsString('data-select-all="assigned"', $html);
+    $this->assertStringContainsString('title="Selecting every report status', $html);
+    // Clearing the moderation box would bring the default queue back.
+    $this->assertStringNotContainsString('data-select-clear="moderation_state"', $html);
+  }
+
+  /**
+   * The All value shows a chip for every state, not Needs attention.
+   */
+  public function testAllRendersEveryStateChip(): void {
+    $view = Views::getView('my_appverse');
+    $view->setDisplay('page_admin');
+    $view->setExposedInput(['moderation_state' => 'All']);
+    $view->build();
+    $element = $view->exposed_widgets['moderation_group']['moderation_state'];
+    $keys = [];
+    array_walk_recursive($element['#options'], static function ($label, $key) use (&$keys): void {
+      $keys[] = (string) $key;
+    });
+    $states = array_values(array_filter($keys, static fn (string $k) => str_starts_with($k, 'appverse_editorial-')));
+    $this->assertNotEmpty($states);
+    $default = array_map('strval', array_values((array) $element['#default_value']));
+    $this->assertEqualsCanonicalizing($states, $default);
+    $this->assertNotContains('needs_attention', $default);
+
+    // The rendered options are what the reviewer sees: the "All" in the
+    // request must not beat the default and leave the box empty (D8-2930).
+    $html = (string) \Drupal::service('renderer')->renderInIsolation($view->exposed_widgets);
+    $this->assertSame(count($states), preg_match_all('#<option value="appverse_editorial-[^"]*"[^>]* selected="selected"#', $html));
+    $this->assertDoesNotMatchRegularExpression('#<option value="needs_attention"[^>]* selected#', $html);
+  }
+
+  /**
+   * Within a state, repos are ordered by title, then nid.
+   */
+  public function testWithinStateOrderedByTitleThenNid(): void {
+    $b = $this->makeRepo('b');
+    $a1 = $this->makeRepo('a');
+    $a2 = $this->makeRepo('a');
+    $this->assertSame([(int) $a1->id(), (int) $a2->id(), (int) $b->id()], $this->runPageAdmin(['moderation_state' => ['appverse_editorial-ready_for_review']]));
+  }
+
+  /**
+   * The items-per-page control offers 10, 20, 50, 100 and defaults to 20.
+   */
+  public function testItemsPerPageOptions(): void {
+    $element = $this->exposedForm()['items_per_page'];
+    $options = array_map('strval', array_keys($element['#options']));
+    $this->assertSame(['10', '20', '50', '100'], $options);
+    $this->assertSame('20', (string) $element['#default_value']);
+  }
+
+  /**
+   * Choosing fifty per page returns up to fifty rows.
+   */
+  public function testItemsPerPageFiftyReturnsUpToFifty(): void {
+    for ($i = 0; $i < 55; $i++) {
+      $this->makeRepo(sprintf('Repo %02d', $i));
+    }
+    $view = $this->getPageAdminView();
+    $query = ['moderation_state' => 'All', 'items_per_page' => 50];
+    $view->setRequest(Request::create('/appverse/manage-repos', 'GET', $query));
+    $view->setExposedInput(['moderation_state' => 'All', 'items_per_page' => 50]);
+    $view->execute();
+    $this->assertCount(50, $view->result);
+
+    $view = $this->getPageAdminView();
+    $view->setExposedInput(['moderation_state' => 'All']);
+    $view->execute();
+    $this->assertCount(20, $view->result, 'Twenty by default.');
   }
 
   /**

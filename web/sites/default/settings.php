@@ -40,13 +40,14 @@ $content_directories['sync'] = '/datastorage/content/sync';
 // (local.settings.php does, to run real reviews from ddev).
 $settings['ood_software.review_full_environments'] = ['md-2788'];
 
-// The model AppVerse AI reviews run on: "qwen" (the on-prem gateway) or
-// "sonnet" / "opus" (the Anthropic API). Read by
+// The model AppVerse AI reviews run on: "qwen" (the on-prem gateway),
+// "sonnet" / "opus" (the Anthropic API), or "sonnet-subscription" /
+// "opus-subscription" (Claude on the subscription token). Read by
 // AppverseReviewService::reviewModel(). A plain string applies everywhere,
 // live included; ['env' => 'model'] sets it per environment, with unlisted
-// environments on qwen. Reviews stay on the on-prem model unless this
-// chooses a Claude model.
-$settings['ood_software.review_model'] = 'qwen';
+// environments on qwen. Reviews run on Claude via the subscription unless
+// this names another model.
+$settings['ood_software.review_model'] = 'sonnet-subscription';
 
 // Send mail to the null transport everywhere except live, so non-live
 // environments (dev, test, multidevs) never deliver mail to real users. Set

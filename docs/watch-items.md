@@ -15,20 +15,6 @@ When an item is resolved, delete it from this file.
 
 ---
 
-## openid_connect — waiting on a stable 3.x release
-
-- **Current:** `drupal/openid_connect` 8.x-1.5 (`composer.json`: `^1.4`). Used by the
-  custom `openid_connect_cilogon_client` module, which `drupal_seamless_cilogon`
-  depends on.
-- **Trigger:** a 3.x release with no `alpha`/`beta`/`rc` in the version (for example
-  `3.0.0`).
-- **Check:** `curl -s https://updates.drupal.org/release-history/openid_connect/current`
-  and look at the `<version>` tags. Project page:
-  https://www.drupal.org/project/openid_connect
-- **Action:** draft a Jira ticket to upgrade from 1.x to 3.x. Review the 3.x upgrade
-  path and the plugin API changes affecting `openid_connect_cilogon_client`.
-- **Last checked:** 2026-10-13 — latest is 3.0.0-alpha9 (2026-08-31). Not triggered.
-
 ## domain_menu_access — waiting on issue #3557310 to be merged and released
 
 - **Current:** `drupal/domain_menu_access` pinned to the issue fork branch
@@ -48,5 +34,5 @@ When an item is resolved, delete it from this file.
   `composer.json`, change the requirement back to a normal constraint (for example
   `^2.0.2`), run `composer update drupal/domain_menu_access`, and verify domain-specific
   menu visibility still works.
-- **Last checked:** 2026-10-14 — issue status is Needs review (`8`); latest release is
+- **Last checked:** 2026-11-03 — issue status is Needs review (`8`); latest release is
   2.0.1. Not triggered.

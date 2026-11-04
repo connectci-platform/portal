@@ -15,7 +15,6 @@ multiple_registration_pages_allowed_list:
   anonymous: 0
   authenticated: 0
   administrator: 0
-  masquerade: 0
   regional_expert: 0
   campuschampionsadmin: 0
   exportpeople: 0
@@ -55,7 +54,6 @@ multiple_registration_pages_white_list:
   ra: 0
   lt: 0
   administrator: 0
-  masquerade: 0
   regional_expert: 0
   campuschampionsadmin: 0
   exportpeople: 0

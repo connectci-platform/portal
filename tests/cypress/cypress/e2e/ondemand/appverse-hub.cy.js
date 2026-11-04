@@ -254,14 +254,14 @@ describe('Appverse Maintenance Hub', () => {
           cy.get('.appverse-hub-card__submitted').should('exist')
             .invoke('text').should('match', /^\s*Submitted/);
         });
-        // Admin owner block: persona link + mailto, scoped to the card whose
-        // owner we assert (the email link is conditional on the owner having
-        // an email, so check within the owner-bearing card).
-        cy.get('.appverse-hub-card').filter(':has(.appverse-hub-card__owner)').first().within(() => {
-          cy.get('.appverse-hub-card__owner')
-            .should('have.attr', 'href').and('match', /^\/community-persona\/\d+$/);
-          cy.get('a[href^="mailto:"]').should('exist');
-        });
+        // Admin owner block: a persona link on the first owner-bearing card,
+        // and a mailto on some owner card. The email link is conditional on
+        // the owner having an email, so which card sorts first (state, then
+        // title) mustn't decide whether the mailto assertion passes.
+        cy.get('.appverse-hub-card').filter(':has(.appverse-hub-card__owner)').first()
+          .find('.appverse-hub-card__owner')
+          .should('have.attr', 'href').and('match', /^\/community-persona\/\d+$/);
+        cy.get('.appverse-hub-card__cell--owner a[href^="mailto:"]').should('exist');
       });
     });
 

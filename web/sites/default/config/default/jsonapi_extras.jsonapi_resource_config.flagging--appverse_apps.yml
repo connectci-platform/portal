@@ -1,0 +1,33 @@
+uuid: aff66f5c-31ab-4215-9f59-d504125e1ef8
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - flag
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: flagging--appverse_apps
+disabled: false
+path: flagging/appverse_apps
+resourceType: flagging--appverse_apps
+resourceFields:
+  session_id:
+    disabled: true
+    fieldName: session_id
+    publicName: session_id
+    enhancer:
+      id: ''
+  global:
+    disabled: true
+    fieldName: global
+    publicName: global
+    enhancer:
+      id: ''
+  created:
+    disabled: true
+    fieldName: created
+    publicName: created
+    enhancer:
+      id: ''

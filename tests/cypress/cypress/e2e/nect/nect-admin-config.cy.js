@@ -265,17 +265,12 @@ describe("Check admin configuration pages", () => {
     cy.visit('/admin/config/search/datalayer');
     cy.get('h1').should('contain', 'Data Layer');
 
-    cy.visit('/admin/config/search/search-api-pages');
-    cy.get('h1').should('contain', 'Search API pages');
-    cy.contains('search-page');
-
     cy.visit('/admin/config/search/redirect');
     cy.get('h1').should('contain', 'Redirect');
 
     cy.visit('/admin/config/search/facets');
     cy.get('h1').should('contain', 'Facets');
 
-    cy.contains('search_api:search_api_page__search');
     cy.contains('search_api:views_page__affinity_group_search__page_1');
     cy.contains('affinity_group_category');
     cy.contains('affinity_search_tags');
@@ -463,7 +458,6 @@ describe("Check admin configuration pages", () => {
     cy.contains('authenticated user');
     cy.contains('representative');
     cy.contains('administrator');
-    cy.contains('Masquerade');
     cy.contains('regional expert');
     cy.contains('CampusChampionsAdmin');
     cy.contains('ExportPeople');
