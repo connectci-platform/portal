@@ -4,7 +4,6 @@ status: true
 dependencies:
   config:
     - user.role.administrator
-    - user.role.masquerade
     - user.role.pascience_manager
     - webform.webform.project
   module:
@@ -1109,7 +1108,6 @@ display:
         options:
           role:
             administrator: administrator
-            masquerade: masquerade
             pascience_manager: pascience_manager
       cache:
         type: tag
@@ -2021,7 +2019,6 @@ display:
               researcher: '0'
               representative: '0'
               administrator: '0'
-              masquerade: '0'
               regional_expert: '0'
               campuschampionsadmin: '0'
               exportpeople: '0'

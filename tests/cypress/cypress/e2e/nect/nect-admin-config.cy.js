@@ -458,7 +458,6 @@ describe("Check admin configuration pages", () => {
     cy.contains('authenticated user');
     cy.contains('representative');
     cy.contains('administrator');
-    cy.contains('Masquerade');
     cy.contains('regional expert');
     cy.contains('CampusChampionsAdmin');
     cy.contains('ExportPeople');

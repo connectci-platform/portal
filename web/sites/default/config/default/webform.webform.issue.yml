@@ -314,24 +314,16 @@ access:
     roles:
       - administrator
       - regional_expert
-      - sc
-      - lt
-      - ra
     users: {  }
     permissions: {  }
   update_any:
     roles:
       - administrator
       - regional_expert
-      - sc
-      - lt
-      - ra
     users: {  }
     permissions: {  }
   delete_any:
     roles:
-      - sc
-      - ra
       - administrator
       - regional_expert
     users: {  }
