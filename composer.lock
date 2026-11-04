@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6d7c3350a0891e0e4f8293c01e12991d",
+    "content-hash": "e3506ca3d18abfab281a5a60af3c275a",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -675,11 +675,11 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-d8-2831",
+            "version": "dev-md-2950",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "58c9568c9eb3844adc1f3ae7e8306b5b2af569bb"
+                "reference": "45226a028665b63c7c2b4fc7b291652f0d038932"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
