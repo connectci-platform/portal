@@ -32,6 +32,31 @@ appverse_review:
     - core/drupal
     - core/once
 
+review_status:
+  version: 1.x
+  js:
+    js/appverse-review-status.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+
+hub_assign:
+  version: 1.x
+  js:
+    js/appverse-hub-assign.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+
+hub_filters:
+  version: 1.x
+  js:
+    js/appverse-hub-filters.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+
 appverse_doc_sidebar:
   version: 1.1
   css:

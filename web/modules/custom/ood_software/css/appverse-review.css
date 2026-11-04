@@ -1682,3 +1682,72 @@
   /* The theme sets quotes in italics; the mail has no theme. */
   font-style: normal;
 }
+
+/* Header buttons to the repo and its apps (D8-2931). */
+.arv-page .arv-go-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.arv-page .arv-go-menu {
+  position: relative;
+}
+.arv-page .arv-go-menu .dropdown-menu {
+  font-size: 0.8125rem;
+  min-width: 11rem;
+}
+/* Some themes hide every Bootstrap dropdown until hover; open it whenever
+   Bootstrap marks it open, as the hub card's menu does. */
+.arv-page .arv-go-menu .dropdown-menu.show {
+  display: block;
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+}
+
+/* Phone width (D8-2931 design pass). The header's links stack under the facts
+   rather than hang right-aligned beside nothing, and the go-to buttons drop
+   the theme's full button size, which made three of them a screen tall. */
+@media (max-width: 600px) {
+  .arv-page .arv-go-links .btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+  .arv-page .prev-reviews {
+    flex: 0 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin-top: 0.75rem;
+    text-align: left;
+  }
+  /* The flex gap separates the items, and a dot left at a line end reads
+     as stray. */
+  .arv-page .prev-reviews .history-dot {
+    display: none;
+  }
+  .arv-page .prev-reviews > div:empty,
+  .arv-page .prev-reviews > div:has(> a[hidden]:only-child) {
+    display: none;
+  }
+
+  /* Catalog checks: three columns left the detail a word or two wide. The
+     detail goes under its check, in line with the check's name. */
+  .arv-page .catalog-checks--rows .gate-rows li {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .arv-page .catalog-checks--rows .catalog-check {
+    min-width: 0;
+  }
+  .arv-page .catalog-checks--rows .gate-evidence {
+    flex: 0 0 100%;
+    padding-left: calc(3.2rem + 8px);
+  }
+}

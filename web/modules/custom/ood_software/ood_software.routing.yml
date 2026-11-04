@@ -90,7 +90,34 @@ ood_software.app_send_for_review:
     _csrf_token: 'TRUE'
     _method: POST
 
+ood_software.repo_review_status:
+  path: '/appverse/repo/{node}/review-status'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::reviewStatus'
+    _title: 'Review status'
+  methods: [GET]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::reviewerRepoAccess'
+    node: \d+
+
 # --- Admin-only transitions ---
+
+ood_software.review_rerun_confirm:
+  path: '/appverse/review/{node}/rerun'
+  defaults:
+    _form: '\Drupal\ood_software\Form\ReviewRerunConfirmForm'
+    _title: 'Rerun the AI report'
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    node: \d+
 
 ood_software.review_page:
   path: '/appverse/review/{node}'
@@ -129,6 +156,21 @@ ood_software.repo_assign_me:
         type: entity:node
   requirements:
     _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::adminOnlyAccess'
+    _csrf_token: 'TRUE'
+    _method: POST
+
+ood_software.repo_assign:
+  path: '/appverse/repo/{node}/assign'
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseHubController::assignReviewer'
+    _title: 'Assign reviewer'
+  methods: [POST]
+  options:
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _custom_access: '\Drupal\ood_software\Controller\AppverseHubController::reviewerRepoAccess'
     _csrf_token: 'TRUE'
     _method: POST
 
