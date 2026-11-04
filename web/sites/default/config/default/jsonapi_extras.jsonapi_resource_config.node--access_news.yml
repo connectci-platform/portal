@@ -1,0 +1,57 @@
+uuid: aff94b53-6867-416d-a359-d8a84f4c233c
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - node
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: node--access_news
+disabled: true
+path: node/access_news
+resourceType: node--access_news
+resourceFields:
+  field_choose_where_to_share_this:
+    disabled: true
+    fieldName: field_choose_where_to_share_this
+    publicName: field_choose_where_to_share_this
+    enhancer:
+      id: ''
+  field_domain_access:
+    disabled: true
+    fieldName: field_domain_access
+    publicName: field_domain_access
+    enhancer:
+      id: ''
+  field_domain_all_affiliates:
+    disabled: true
+    fieldName: field_domain_all_affiliates
+    publicName: field_domain_all_affiliates
+    enhancer:
+      id: ''
+  field_domain_source:
+    disabled: true
+    fieldName: field_domain_source
+    publicName: field_domain_source
+    enhancer:
+      id: ''
+  revision_log:
+    disabled: true
+    fieldName: revision_log
+    publicName: revision_log
+    enhancer:
+      id: ''
+  revision_uid:
+    disabled: true
+    fieldName: revision_uid
+    publicName: revision_uid
+    enhancer:
+      id: ''
+  uid:
+    disabled: true
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''

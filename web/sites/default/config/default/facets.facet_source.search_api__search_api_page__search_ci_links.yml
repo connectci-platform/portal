@@ -1,9 +1,0 @@
-uuid: 25b42b77-9ba6-4d90-9b0e-8251b31e2f85
-langcode: en
-status: true
-dependencies: {  }
-id: search_api__search_api_page__search_ci_links
-name: 'search_api:search_api_page__search_ci_links'
-filter_key: null
-url_processor: query_string
-breadcrumb: {  }

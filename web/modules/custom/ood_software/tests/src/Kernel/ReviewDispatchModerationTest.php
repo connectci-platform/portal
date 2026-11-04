@@ -12,6 +12,7 @@ use Drupal\Core\Lock\DatabaseLockBackend;
 use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
 use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
@@ -139,6 +140,7 @@ class ReviewDispatchModerationTest extends KernelTestBase {
       // The kernel container's lock is a no-op, so use the database one.
       new DatabaseLockBackend(\Drupal::database()),
       $this->container->get('keyvalue'),
+      $this->container->get('keyvalue.expirable'),
     );
   }
 
@@ -223,6 +225,101 @@ class ReviewDispatchModerationTest extends KernelTestBase {
     $repo = $this->makeRepo('draft');
     $repo->set('moderation_state', 'ready_for_review')->save();
     return (int) $repo->id();
+  }
+
+  /**
+   * Sends a new repo for review and makes its run pending.
+   */
+  protected function repoInFlight(): NodeInterface {
+    $nid = $this->sendNewRepoForReview();
+    $this->assertTrue($this->dispatcher->dispatchForNode(Node::load($nid)));
+    $repo = $this->latest(Node::load($nid));
+    $this->assertSame('pending', $repo->get('field_review_status')->value);
+    return $repo;
+  }
+
+  /**
+   * A completed workflow run for the repo's current dispatch.
+   *
+   * @return array<string, mixed>
+   *   The run, as GitHub lists it.
+   */
+  protected function runFor(NodeInterface $repo): array {
+    $at = (int) $repo->get('field_review_dispatched_at')->value;
+    return [
+      'id' => 5000 + (int) $repo->id(),
+      'conclusion' => 'success',
+      'display_title' => AppverseReviewService::correlationId((int) $repo->id(), $at),
+      'created_at' => gmdate('c', $at),
+    ];
+  }
+
+  /**
+   * Sets the review status on the repo's latest revision.
+   */
+  protected function setStatus(NodeInterface $repo, string $status): void {
+    $this->container->get('ood_software.in_place_saver')->updateRevisions($repo, function (NodeInterface $revision) use ($status): void {
+      $revision->set('field_review_status', $status);
+    });
+  }
+
+  /**
+   * The poll seeds a completed run for the polled repo only.
+   */
+  public function testPollRepoSeedsCompletedRunForThatRepoOnly(): void {
+    [$a, $b] = [$this->repoInFlight(), $this->repoInFlight()];
+    $this->dispatcher->completedRuns = [$this->runFor($a), $this->runFor($b)];
+    $this->dispatcher->pollRepo($a);
+    $this->assertSame([(int) $a->id()], $this->dispatcher->processed);
+  }
+
+  /**
+   * A second request within a minute makes no GitHub request.
+   */
+  public function testPollRepoWithinSixtySecondsMakesNoGitHubRequest(): void {
+    $repo = $this->repoInFlight();
+    $this->dispatcher->pollRepo($repo);
+    $this->assertGreaterThan(0, $this->dispatcher->fetchCalls);
+    // Another request; it shares the container's expirable store.
+    $second = $this->newDispatcher();
+    $second->pollRepo($repo);
+    $this->assertSame(0, $second->fetchCalls);
+  }
+
+  /**
+   * A poll started while another process holds the lock does nothing.
+   */
+  public function testPollRepoDoesNothingWhileThePollLockIsHeld(): void {
+    $repo = $this->repoInFlight();
+    $this->dispatcher->completedRuns = [$this->runFor($repo)];
+    $lock = new DatabaseLockBackend(\Drupal::database());
+    $this->assertTrue($lock->acquire('ood_software.review_poll.' . $repo->id()));
+    $this->dispatcher->pollRepo($repo);
+    $this->assertSame([], $this->dispatcher->processed);
+  }
+
+  /**
+   * A repo with no run in flight makes no GitHub request.
+   */
+  public function testPollRepoDoesNothingWithNoRunInFlight(): void {
+    $repo = $this->repoInFlight();
+    $this->setStatus($repo, 'complete');
+    $this->dispatcher->pollRepo($repo);
+    $this->assertSame(0, $this->dispatcher->fetchCalls);
+  }
+
+  /**
+   * A node loaded before another poll finished does not seed the run again.
+   */
+  public function testStaleNodeInstanceDoesNotSeedSameRunTwice(): void {
+    $repo = $this->repoInFlight();
+    $stale = $this->dispatcher->latestRevision($repo);
+    $this->dispatcher->completedRuns = [$this->runFor($repo)];
+    $this->dispatcher->pollRepo($repo);
+    $runs = $this->dispatcher->completedRuns;
+    // Cron's loop holding a node it loaded before the page's poll finished.
+    $this->dispatcher->callPollNode($stale, $runs, [], 'test-token', time());
+    $this->assertSame([(int) $repo->id()], $this->dispatcher->processed);
   }
 
   /**

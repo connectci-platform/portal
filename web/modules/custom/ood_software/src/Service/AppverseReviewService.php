@@ -7,6 +7,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\DestructableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\KeyValueStore\KeyValueExpirableFactoryInterface;
 use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
 use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
 use Drupal\Core\Lock\LockBackendInterface;
@@ -66,6 +67,24 @@ class AppverseReviewService implements DestructableInterface {
   const PENDING_TRANSITION_MAX_ATTEMPTS = 3;
 
   /**
+   * How long a poll lock lasts if its process dies before releasing it.
+   *
+   * Long, because the lock is held while a completed run's report is
+   * downloaded and seeded.
+   */
+  const POLL_LOCK_SECONDS = 600;
+
+  /**
+   * Seconds between GitHub requests for one repo's on-demand poll.
+   */
+  const POLL_THROTTLE_SECONDS = 60;
+
+  /**
+   * Expirable key-value collection recording the repos polled recently.
+   */
+  const POLL_THROTTLE_COLLECTION = 'ood_software.review_poll_throttle';
+
+  /**
    * Seconds after which a pending review is considered stale.
    * Reviewers then rerun it with Run AI report.
    */
@@ -88,19 +107,21 @@ class AppverseReviewService implements DestructableInterface {
 
   /**
    * The workflow's model input: "qwen" runs on the on-prem gateway, "sonnet"
-   * or "opus" on the Anthropic API.
+   * or "opus" on the Anthropic API, "sonnet-subscription" or
+   * "opus-subscription" on Claude through the subscription token.
    *
    * The default where the ood_software.review_model setting names none, or
    * names a model the workflow does not accept (see reviewModel()). The
-   * on-prem model, as the workflow's own default is: a review goes to the
-   * Anthropic API only when a setting chooses it.
+   * on-prem model, as the workflow's own default is: a bad or missing
+   * setting should not send reviews to Claude by accident. The site's
+   * settings.php names the model production uses.
    */
   const DEFAULT_MODEL = 'qwen';
 
   /**
    * The model inputs the review workflow accepts.
    */
-  const MODELS = ['qwen', 'sonnet', 'opus'];
+  const MODELS = ['qwen', 'sonnet', 'opus', 'sonnet-subscription', 'opus-subscription'];
 
   /**
    * Drupal Key module key ID for the GitHub token.
@@ -141,6 +162,8 @@ class AppverseReviewService implements DestructableInterface {
     // Keeps transition dispatches until started, for the cron retry.
     // Optional: unit tests skip it.
     protected ?KeyValueFactoryInterface $keyValue = NULL,
+    // Throttles the on-demand poll. Optional: unit tests skip it.
+    protected ?KeyValueExpirableFactoryInterface $keyValueExpirable = NULL,
   ) {
     $this->logger = $loggerFactory->get('ood_software');
   }
@@ -611,6 +634,21 @@ class AppverseReviewService implements DestructableInterface {
   }
 
   /**
+   * The nid of the repo's newest review, whoever may view it.
+   */
+  public function latestReviewId(NodeInterface $repo): ?int {
+    $nids = $this->entityTypeManager->getStorage('node')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_review')
+      ->condition('field_arv_repo', $repo->id())
+      ->sort('created', 'DESC')
+      ->sort('nid', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    return $nids ? (int) reset($nids) : NULL;
+  }
+
+  /**
    * Check if the node was dispatched within the debounce window.
    */
   protected function isWithinDebounce(NodeInterface $node): bool {
@@ -830,6 +868,59 @@ class AppverseReviewService implements DestructableInterface {
     $outcomes = [];
 
     foreach ($pendingNodes as $node) {
+      $outcome = $this->pollNode($node, $completedRuns, $activeRuns, $token, $now);
+      if ($outcome !== NULL) {
+        $outcomes[$outcome] = ($outcomes[$outcome] ?? 0) + 1;
+      }
+    }
+
+    $parts = [];
+    foreach ($outcomes as $outcome => $count) {
+      $parts[] = $count . ' ' . $outcome;
+    }
+    $this->logger->info('Review poll: @n review(s) to poll against @c completed and @a running run(s): @outcomes.', [
+      '@n' => count($pendingNodes),
+      '@c' => count($completedRuns),
+      '@a' => count($activeRuns),
+      '@outcomes' => implode(', ', $parts),
+    ]);
+  }
+
+  /**
+   * Polls one in-flight node's review against the fetched runs.
+   *
+   * Holds the per-repo poll lock and re-checks the status under it, so a cron
+   * pass and a page poll that both loaded the node before either finished do
+   * not both process the same completed run.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   The repo.
+   * @param array<int, array<string, mixed>> $completedRuns
+   *   Completed workflow runs.
+   * @param array<int, array<string, mixed>> $activeRuns
+   *   In-progress workflow runs.
+   * @param string $token
+   *   GitHub API token.
+   * @param int $now
+   *   The current time.
+   *
+   * @return string|null
+   *   The outcome (completed, running, error, timed out, waiting), or NULL
+   *   when another process holds the lock.
+   */
+  protected function pollNode(NodeInterface $node, array $completedRuns, array $activeRuns, string $token, int $now): ?string {
+    $lockName = 'ood_software.review_poll.' . $node->id();
+    if ($this->lock && !$this->lock->acquire($lockName, self::POLL_LOCK_SECONDS)) {
+      return NULL;
+    }
+    try {
+      // Under the lock: a poll that just finished is seen. A plain status
+      // check, not isRunInFlight(), so cron still times out old runs.
+      $node = $this->latestRevision($node);
+      if (!$node->hasField('field_review_status')
+        || !in_array((string) ($node->get('field_review_status')->value ?? ''), ['pending', 'in_progress'], TRUE)) {
+        return 'waiting';
+      }
       $dispatchedAt = $node->hasField('field_review_dispatched_at')
         ? (int) $node->get('field_review_dispatched_at')->value
         : 0;
@@ -838,8 +929,7 @@ class AppverseReviewService implements DestructableInterface {
         // Nothing to correlate on; the stale timeout below cannot fire either.
         $this->logger->warning('Review for node @nid is pending with no dispatch time; marking as error.', ['@nid' => $node->id()]);
         $this->updateNodeReviewStatus($node, 'error', 0, 'the run has no dispatch time to match it by');
-        $outcomes['error'] = ($outcomes['error'] ?? 0) + 1;
-        continue;
+        return 'error';
       }
       $correlationId = self::correlationId((int) $node->id(), $dispatchedAt);
       $minutes = (int) round(($now - $dispatchedAt) / 60);
@@ -855,8 +945,7 @@ class AppverseReviewService implements DestructableInterface {
           '@min' => $minutes,
         ]);
         $this->processCompletedRun($node, $matchedRun, $token);
-        $outcomes['completed'] = ($outcomes['completed'] ?? 0) + 1;
-        continue;
+        return 'completed';
       }
 
       // If a matching run is still in progress, update status and move on.
@@ -867,11 +956,10 @@ class AppverseReviewService implements DestructableInterface {
           '@id' => $activeRun['id'],
           '@min' => $minutes,
         ]);
-        if ($node->hasField('field_review_status') && $node->get('field_review_status')->value !== 'in_progress') {
+        if ($node->get('field_review_status')->value !== 'in_progress') {
           $this->updateNodeReviewStatus($node, 'in_progress', (int) $activeRun['id']);
         }
-        $outcomes['running'] = ($outcomes['running'] ?? 0) + 1;
-        continue;
+        return 'running';
       }
 
       // No matching run found (completed or active). If the dispatch
@@ -883,8 +971,7 @@ class AppverseReviewService implements DestructableInterface {
           '@hours' => round(($now - $dispatchedAt) / 3600, 1),
         ]);
         $this->updateNodeReviewStatus($node, 'error', 0, sprintf('no run was found for it after %d hours', (int) round(($now - $dispatchedAt) / 3600)));
-        $outcomes['timed out'] = ($outcomes['timed out'] ?? 0) + 1;
-        continue;
+        return 'timed out';
       }
       // Queued runs are not fetched, so a run GitHub has not started yet
       // lands here too.
@@ -893,19 +980,47 @@ class AppverseReviewService implements DestructableInterface {
         '@cid' => $correlationId,
         '@min' => $minutes,
       ]);
-      $outcomes['waiting'] = ($outcomes['waiting'] ?? 0) + 1;
+      return 'waiting';
     }
+    finally {
+      $this->lock?->release($lockName);
+    }
+  }
 
-    $parts = [];
-    foreach ($outcomes as $outcome => $count) {
-      $parts[] = $count . ' ' . $outcome;
+  /**
+   * Polls GitHub for one repo's review run, for a page that is watching it.
+   *
+   * Does nothing unless a run is in flight, and asks GitHub at most once per
+   * POLL_THROTTLE_SECONDS per repo, whatever the number of watchers.
+   */
+  public function pollRepo(NodeInterface $repo): void {
+    if (!$this->isRunInFlight($this->latestRevision($repo))) {
+      return;
     }
-    $this->logger->info('Review poll: @n review(s) to poll against @c completed and @a running run(s): @outcomes.', [
-      '@n' => count($pendingNodes),
-      '@c' => count($completedRuns),
-      '@a' => count($activeRuns),
-      '@outcomes' => implode(', ', $parts),
-    ]);
+    $throttle = $this->keyValueExpirable?->get(self::POLL_THROTTLE_COLLECTION);
+    $key = (string) $repo->id();
+    if ($throttle && $throttle->has($key)) {
+      return;
+    }
+    $token = $this->getToken();
+    if ($token === NULL) {
+      $this->logger->error('Review poll: no GitHub token found (tried keys @primary, @fallback); nothing polled.', [
+        '@primary' => self::GITHUB_KEY_ID,
+        '@fallback' => self::GITHUB_KEY_FALLBACK,
+      ]);
+      return;
+    }
+    // Before the GitHub calls, so a slow or failing one is not retried by
+    // every watcher.
+    $throttle?->setWithExpire($key, TRUE, self::POLL_THROTTLE_SECONDS);
+
+    $completedRuns = $this->fetchWorkflowRuns($token, 'completed');
+    if ($completedRuns === NULL) {
+      $this->logger->warning('Review poll: could not fetch completed runs for node @nid.', ['@nid' => $repo->id()]);
+      return;
+    }
+    $activeRuns = $this->fetchWorkflowRuns($token, 'in_progress') ?? [];
+    $this->pollNode($repo, $completedRuns, $activeRuns, $token, $this->time->getCurrentTime());
   }
 
   /**

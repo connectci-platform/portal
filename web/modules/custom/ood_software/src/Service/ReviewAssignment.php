@@ -24,6 +24,14 @@ final class ReviewAssignment {
 
   const ROLES = ['appverse_pm'];
 
+  /**
+   * The reviewers list, built once per request (a hub page renders one picker
+   * per card).
+   *
+   * @var array<int, string>|null
+   */
+  protected ?array $reviewersCache = NULL;
+
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager,
     protected AccountInterface $currentUser,
@@ -52,6 +60,9 @@ final class ReviewAssignment {
    *   Display names by user id.
    */
   public function reviewers(): array {
+    if ($this->reviewersCache !== NULL) {
+      return $this->reviewersCache;
+    }
     $storage = $this->entityTypeManager->getStorage('user');
     $uids = $storage->getQuery()
       ->accessCheck(FALSE)
@@ -71,7 +82,7 @@ final class ReviewAssignment {
       }
     }
     natcasesort($names);
-    return $names;
+    return $this->reviewersCache = $names;
   }
 
   /**
