@@ -33,7 +33,7 @@ const PECAN_LINK = `/community-persona/${TEST_UID}`;
 // Use an absolute URL for that cross-host case.
 const PERSONA_PATH = PECAN_LINK;
 const CSSN_DIRECTORY_PATH = "/community/cssn/directory";
-const OOD_PEOPLE_URL = "http://ondemand.ddev.site/people?search_api_fulltext=pecan&items_per_page=24";
+const OOD_PEOPLE_URL = "https://ondemand.ddev.site/people?search_api_fulltext=pecan&items_per_page=24";
 // Pecan has the data-management-software interest flag (amp_dev fixture).
 // Asserting on the persona link rather than the user's display name lets
 // the test work against the sanitized DB artifact, where the indexed
