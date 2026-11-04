@@ -248,6 +248,151 @@ describe("Appverse JSON:API", () => {
     });
   });
 
+  describe("Appverse allowlist (D8-2831)", () => {
+    // The call the appverse frontend makes for the list/detail views.
+    const frontendUrl = '/jsonapi/node/appverse_app?filter[status]=1'
+      + '&include=field_appverse_app_type,field_add_implementation_tags,field_appverse_organization,field_license'
+      + '&fields[node--appverse_app]=title,body,field_appverse_github_url,field_appverse_readme,field_appverse_lastupdated,field_appverse_stars,flag_count,drupal_internal__nid,path,field_appverse_software_implemen,field_appverse_repo,field_appverse_app_type,field_add_implementation_tags,field_appverse_organization,field_appverse_maintainer_name,field_license'
+      + '&fields[taxonomy_term--appverse_app_type]=name'
+      + '&fields[taxonomy_term--appverse_organization]=name'
+      + '&fields[taxonomy_term--appverse_license]=name';
+
+    // Relationship field => resource type that must appear in `included`.
+    const includeMap = {
+      field_appverse_app_type: 'taxonomy_term--appverse_app_type',
+      field_add_implementation_tags: 'taxonomy_term--appverse_implementation_tags',
+      field_appverse_organization: 'taxonomy_term--appverse_organization',
+      field_license: 'taxonomy_term--appverse_license',
+    };
+
+    const hasRelated = (app, field) => {
+      const data = app.relationships && app.relationships[field] && app.relationships[field].data;
+      return Array.isArray(data) ? data.length > 0 : !!data;
+    };
+
+    beforeEach(() => {
+      cy.clearCookies();
+    });
+
+    it("frontend list call includes related taxonomy terms", () => {
+      cy.request({
+        url: frontendUrl,
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body.data).to.be.an('array');
+        const included = response.body.included || [];
+
+        // A missing allowlist entry silently drops included data, so assert
+        // each type whenever some app actually references it.
+        Object.entries(includeMap).forEach(([field, type]) => {
+          if (response.body.data.some((app) => hasRelated(app, field))) {
+            expect(
+              included.some((item) => item.type === type),
+              `included contains ${type}`
+            ).to.eq(true);
+          } else {
+            cy.log(`No app has ${field} populated; skipping ${type}`);
+          }
+        });
+      });
+    });
+
+    it("appverse_app items expose the taxonomy relationships", () => {
+      cy.request({
+        url: '/jsonapi/node/appverse_app',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        if (response.body.data.length === 0) {
+          cy.log('No appverse_app data available');
+          return;
+        }
+        Object.keys(includeMap).forEach((field) => {
+          expect(response.body.data[0].relationships).to.have.property(field);
+        });
+      });
+    });
+
+    // Logo include chain: software -> media (image|svg) -> file.
+    const logoUrl = '/jsonapi/node/appverse_software'
+      + '?include=field_appverse_logo,field_appverse_logo.field_media_image,field_appverse_logo.field_media_image_1';
+
+    const findIncluded = (included, ref) => included.find(
+      (item) => item.type === ref.type && item.id === ref.id
+    );
+
+    const assertLogoResolves = (software, included) => {
+      const ref = software.relationships.field_appverse_logo.data;
+      const media = findIncluded(included, ref);
+      expect(media, `media ${ref.type}:${ref.id} for "${software.attributes.title}" in included`).to.exist;
+      expect(['media--image', 'media--svg']).to.include(media.type);
+
+      const fileField = media.type === 'media--image' ? 'field_media_image' : 'field_media_image_1';
+      const fileRef = media.relationships[fileField].data;
+      expect(fileRef, `${fileField} data on ${media.type}`).to.not.be.null;
+      const file = findIncluded(included, fileRef);
+      expect(file, `file ${fileRef.id} in included`).to.exist;
+      expect(file.type).to.eq('file--file');
+      expect(file.attributes.uri.url).to.be.a('string');
+      expect(file.attributes.uri.url).to.match(/^\/sites\/default\/files\//);
+      expect(file.attributes.uri.value).to.match(/^public:\/\//);
+    };
+
+    it("software logos resolve to public media files", () => {
+      cy.request({
+        url: logoUrl + '&page[limit]=50',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        const withLogo = response.body.data.filter(
+          (item) => item.relationships && item.relationships.field_appverse_logo
+            && item.relationships.field_appverse_logo.data
+        );
+        expect(withLogo.length, 'software items with a logo').to.be.greaterThan(0);
+        const included = response.body.included || [];
+        withLogo.forEach((item) => assertLogoResolves(item, included));
+      });
+    });
+
+    it("Abaqus logo resolves", () => {
+      cy.request({
+        url: logoUrl + '&filter[title]=Abaqus',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        const abaqus = response.body.data.find((item) => item.attributes.title === 'Abaqus');
+        if (!abaqus) {
+          cy.log('Abaqus not present in this data set');
+          return;
+        }
+        const data = abaqus.relationships.field_appverse_logo
+          && abaqus.relationships.field_appverse_logo.data;
+        if (!data) {
+          cy.log('Abaqus has no logo in this data set');
+          return;
+        }
+        assertLogoResolves(abaqus, response.body.included || []);
+      });
+    });
+
+    it("GET /jsonapi/flagging/appverse_apps returns a data array", () => {
+      cy.request({
+        url: '/jsonapi/flagging/appverse_apps',
+        headers: { 'Accept': 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+      });
+    });
+  });
+
   describe("Session Token", () => {
     it("Returns a valid CSRF token", () => {
       cy.request('/session/token').then((response) => {
