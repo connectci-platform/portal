@@ -5,7 +5,8 @@
  *
  * Available: form (the render array). form['#contributor_view'] is what
  * ContributorReviewView::build() returns for this review, plus next_step (the
- * sentence for the contributor's steps), decision_apps and decision_key.
+ * sentence for the contributor's steps), decision_apps, decision_key and resubmit (NULL, or
+ * {url} of the CSRF-tokened send-for-review route).
  * form['#page'] is the same page data the reviewer's template gets, but only
  * its header facts, decision label and history are read here. The reviewer-only
  * parts of page.decision (publish_url, update_blocker, waiting_on, email) are
@@ -99,9 +100,16 @@
         {% endif %}
         {% if view.next_step %}<p>{{ view.next_step }}</p>{% endif %}
       </div>
-      {# Re-submit goes here: the next task adds a "resubmit" element to the
-         form and it renders in this slot, beside the decision it answers. #}
-      {% if form.resubmit %}<div class="arv-contributor__actions">{{ form.resubmit }}</div>{% endif %}
+      {# Re-submit posts to the existing send-for-review route, which checks
+         the CSRF token in the URL and redirects to the hub. It is a plain
+         form, not a Form API element, so it has no form token of its own. #}
+      {% if view.resubmit %}
+        <div class="arv-contributor__actions">
+          <form method="post" action="{{ view.resubmit.url }}">
+            <button type="submit" class="btn btn-primary">{{ 'Re-submit for review'|t }}</button>
+          </form>
+        </div>
+      {% endif %}
     </section>
 
     {% if view.response %}

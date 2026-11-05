@@ -212,6 +212,7 @@ final class ReviewPageForm extends FormBase {
         $view['decision_apps'] = $this->contributorDecisionApps($page);
         // Names the band's tint: the strictest decision across the apps.
         $view['decision_key'] = ReviewProgress::strictestDecision(array_column($view['decision_apps'], 'key'));
+        $view['resubmit'] = $this->contributorResubmit($view, $repo);
         $form['#contributor_view'] = $view;
       }
       $form['#progress'] = [
@@ -1337,6 +1338,34 @@ final class ReviewPageForm extends FormBase {
       }
     }
     return $apps;
+  }
+
+  /**
+   * The contributor's Re-submit action, or NULL when it does not apply.
+   *
+   * Offered on the repo's newest review once its decision asks for changes and
+   * the repo is where sendForReview() can act: needs_adjustment, or live with
+   * apps sent back (the two cases AppverseHubController::sendForReview()
+   * handles). The URL carries the route's CSRF token.
+   *
+   * @param array<string, mixed> $view
+   *   The contributor view, with decision_apps.
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo the review is of.
+   *
+   * @return array{url: string}|null
+   *   The tokened send-for-review URL, or NULL.
+   */
+  protected function contributorResubmit(array $view, NodeInterface $repo): ?array {
+    if ($view['state'] !== 'decided' || $view['closed'] !== NULL
+      || !in_array('request_changes', array_column($view['decision_apps'], 'key'), TRUE)) {
+      return NULL;
+    }
+    $state = (string) ($repo->get('moderation_state')->value ?? '');
+    if ($state !== 'needs_adjustment' && !($repo->isPublished() && $this->memberApps->sentBackCount($repo) > 0)) {
+      return NULL;
+    }
+    return ['url' => Url::fromRoute('ood_software.repo_send_for_review', ['node' => $repo->id()])->toString()];
   }
 
   /**

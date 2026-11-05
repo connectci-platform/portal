@@ -290,4 +290,97 @@ class ReviewContributorPageTest extends KernelTestBase {
     $this->assertStringContainsString('/appverse/review/' . $newer->id(), $html);
   }
 
+  /**
+   * Puts the repo in a moderation state.
+   */
+  protected function setRepoState(NodeInterface $repo, string $state): void {
+    $repo = Node::load($repo->id());
+    $repo->set('moderation_state', $state);
+    $repo->save();
+  }
+
+  /**
+   * The form's action, or NULL when the page has no Re-submit.
+   */
+  protected function resubmitAction(string $html): ?string {
+    if (!str_contains($html, 'Re-submit for review')) {
+      return NULL;
+    }
+    $this->assertSame(1, preg_match('/<form method="post" action="([^"]+)"/', $html, $m));
+    return html_entity_decode($m[1]);
+  }
+
+  /**
+   * Changes requested on the newest review offers a tokened Re-submit.
+   */
+  public function testResubmitShownForNewestChangesRequested(): void {
+    ['review' => $review, 'repo' => $repo] = $this->makeReview(TRUE);
+    $this->setRepoState($repo, 'needs_adjustment');
+    $action = $this->resubmitAction($this->renderAs($this->owner, $review));
+    $this->assertNotNull($action);
+    $this->assertStringContainsString('/appverse/repo/' . $repo->id() . '/send-for-review?', $action);
+    $this->assertStringContainsString('token=', $action);
+  }
+
+  /**
+   * An accepted review has nothing to re-submit.
+   */
+  public function testResubmitHiddenWhenAccepted(): void {
+    ['review' => $review, 'repo' => $repo] = $this->makeReview(TRUE, 'accept');
+    $this->setRepoState($repo, 'needs_adjustment');
+    $this->assertStringNotContainsString('Re-submit for review', $this->renderAs($this->owner, $review));
+  }
+
+  /**
+   * Before the decision is sent there is nothing to re-submit either.
+   */
+  public function testResubmitHiddenBeforeDecision(): void {
+    ['review' => $review, 'repo' => $repo] = $this->makeReview(FALSE);
+    $this->setRepoState($repo, 'needs_adjustment');
+    $this->assertStringNotContainsString('Re-submit for review', $this->renderAs($this->owner, $review));
+  }
+
+  /**
+   * A superseded review says so and offers no Re-submit.
+   */
+  public function testResubmitHiddenOnSupersededReview(): void {
+    ['review' => $older, 'repo' => $repo] = $this->makeReview(TRUE);
+    $this->setRepoState($repo, 'needs_adjustment');
+    Node::create([
+      'type' => 'appverse_review',
+      'title' => 'Review: example/app',
+      'uid' => $this->reviewer->id(),
+      'status' => 0,
+      'field_arv_repo' => $repo->id(),
+      'field_arv_reviewed_at' => 1700000500,
+    ])->save();
+    $html = $this->renderAs($this->owner, $older);
+    $this->assertStringContainsString('A newer review replaced this one.', $html);
+    $this->assertStringNotContainsString('Re-submit for review', $html);
+  }
+
+  /**
+   * A repo in some other state (here, back in review) has no Re-submit.
+   */
+  public function testResubmitHiddenWhenRepoIsNotSentBack(): void {
+    ['review' => $review] = $this->makeReview(TRUE);
+    $this->assertStringNotContainsString('Re-submit for review', $this->renderAs($this->owner, $review));
+  }
+
+  /**
+   * A live repo with one app sent back offers Re-submit; with none it does not.
+   */
+  public function testResubmitFollowsSentBackAppInMixedRepo(): void {
+    ['review' => $review, 'repo' => $repo] = $this->makeReview(TRUE);
+    $this->setRepoState($repo, 'published');
+    $this->assertStringNotContainsString('Re-submit for review', $this->renderAs($this->owner, $review));
+    $apps = Node::loadMultiple(\Drupal::entityQuery('node')->accessCheck(FALSE)->condition('type', 'appverse_app')->execute());
+    $sentBack = reset($apps);
+    $sentBack->set('moderation_state', 'needs_adjustment');
+    $sentBack->save();
+    $action = $this->resubmitAction($this->renderAs($this->owner, $review));
+    $this->assertNotNull($action);
+    $this->assertStringContainsString('token=', $action);
+  }
+
 }
