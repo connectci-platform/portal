@@ -2,6 +2,8 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\node\NodeInterface;
+
 /**
  * Shapes a review's data for the review page.
  *
@@ -737,6 +739,16 @@ final class ReviewPageData {
       $total += array_sum(array_column($block['groups'], 'count'));
     }
     return ['maintenance' => $maintenance, 'blocks' => $blocks, 'total' => $total];
+  }
+
+  /**
+   * Whether a review's report has landed.
+   *
+   * The seeder sets field_arv_reviewed_at when the report lands
+   * (AppverseReviewSeeder), so a set value means the contributor may read it.
+   */
+  public static function reportLanded(NodeInterface $review): bool {
+    return $review->hasField('field_arv_reviewed_at') && !$review->get('field_arv_reviewed_at')->isEmpty();
   }
 
 }

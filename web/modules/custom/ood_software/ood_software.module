@@ -27,6 +27,7 @@ use Drupal\content_moderation\Plugin\views\filter\ModerationStateFilter;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\views\filter\ModerationStateNeedsAttention;
 use Drupal\ood_software\Service\DecisionEmail;
+use Drupal\ood_software\Service\ReviewPageData;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
@@ -1455,20 +1456,21 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
   if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
     return $access->orIf(AccessResult::allowed());
   }
-  // An unpublished review: reviewers (above), and the repo's owner once a
-  // decision has been sent (decision_sent_at; appverse-planning#28,
-  // REVIEW-STATES.md "Who can read the review"). Everyone else is forbidden,
+  // An unpublished review: reviewers (above), and the repo's owner once its
+  // report has landed (reviewed_at) or a decision has been sent
+  // (decision_sent_at; appverse-planning#28, REVIEW-STATES.md "Who can read
+  // the review"). Everyone else is forbidden,
   // not neutral: the review's author may be the contributor (a review is
   // authored by whoever started the run, send-for-review included) and every
   // user holds "view own unpublished content", which would otherwise let them
-  // read it before any decision is sent.
+  // read it before its report lands.
   if ($node->bundle() === 'appverse_review') {
     $sent = $node->hasField('field_arv_decision_sent_at') && !$node->get('field_arv_decision_sent_at')->isEmpty();
     $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
-    if ($sent && $repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+    if (($sent || ReviewPageData::reportLanded($node)) && $repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
       return $access->addCacheContexts(['user'])->addCacheableDependency($repo)->orIf(AccessResult::allowed());
     }
-    return $access->addCacheContexts(['user'])->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers, and to the contributor once a decision is sent.'));
+    return $access->addCacheContexts(['user'])->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers, and to the contributor once its report has landed.'));
   }
 
   return $access;
