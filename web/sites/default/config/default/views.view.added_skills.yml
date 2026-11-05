@@ -397,7 +397,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
       filter_groups:
         operator: AND
         groups:
@@ -596,7 +596,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
       filter_groups:
         operator: AND
         groups:
@@ -917,7 +917,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
       filter_groups:
         operator: AND
         groups:

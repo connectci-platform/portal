@@ -293,7 +293,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_carnegie_code_value:
           id: field_carnegie_code_value
           table: user__field_carnegie_code
@@ -365,7 +365,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_citizenships_value:
           id: field_citizenships_value
           table: user__field_citizenships
@@ -437,7 +437,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_current_occupation_value:
           id: field_current_occupation_value
           table: user__field_current_occupation
@@ -509,7 +509,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_degree_value:
           id: field_degree_value
           table: user__field_degree
@@ -581,7 +581,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_hpc_experience_value:
           id: field_hpc_experience_value
           table: user__field_hpc_experience
@@ -653,7 +653,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         field_is_cc_value:
           id: field_is_cc_value
           table: user__field_is_cc
@@ -795,7 +795,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         roles_target_id:
           id: roles_target_id
           table: user__roles

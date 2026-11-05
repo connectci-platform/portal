@@ -2745,7 +2745,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
         title:
           id: title
           table: eventseries_field_data
@@ -2819,7 +2819,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:
@@ -3618,7 +3618,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         uid_raw:
           id: uid_raw
           table: users_field_data
@@ -3664,7 +3664,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
         field_other_authors_target_id:
           id: field_other_authors_target_id
           table: eventseries__field_other_authors
@@ -3709,7 +3709,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:
