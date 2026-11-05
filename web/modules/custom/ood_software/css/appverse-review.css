@@ -1688,6 +1688,9 @@
 /* No box: the line is the page's own progress, not a panel of content, and
    the border made it read as another card among the findings
    (appverse-planning#53). */
+.arv-page .arv-progress {
+  --arv-p-current: var(--ink);
+}
 .arv-page .arv-progress-block {
   padding: 3px 0 11px;
   margin-bottom: 12px;

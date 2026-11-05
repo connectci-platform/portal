@@ -390,7 +390,7 @@
         {% if page.repo_link or page.app_links or is_reviewer %}
           <div class="arv-go-links">
             {% if page.repo_link %}
-              <a href="{{ page.repo_link.url }}"><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>{{ 'Repo on GitHub'|t }}</a>
+              <a href="{{ page.repo_link.url }}"><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>{{ page.repo_link.label }}</a>
             {% endif %}
             {% if page.app_links|length > 3 %}
               <div class="dropdown arv-go-menu">
@@ -411,7 +411,7 @@
       {# Reviewer only. The button is rendered hidden while a run is in flight,
          and the status line is the poller's target (D8-2931). #}
       {% if is_reviewer and (page.rerun or page.run_status) %}
-        <div class="arv-recheck-box">
+        <div class="arv-recheck-box review-history">
           {% if page.rerun %}
             <a class="arv-recheck" href="{{ page.rerun.url }}" data-review-rerun aria-label="{{ 'Recheck: run the automated check again on this commit'|t }}"{% if not page.rerun.show %} hidden{% endif %}><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"></path><path d="M20 4v5h-5"></path></svg>{{ 'Recheck'|t }}</a>
           {% endif %}
@@ -453,9 +453,9 @@
           </ul>
         </details>
       {% endif %}
-      {% if page.round_delta.has_previous %}
+      {% if page.round_delta.has_previous and page.compared_position %}
         <div class="round-delta">
-          {{ (page.history and page.history.position > 1 ? 'Compared with review @n:'|t({'@n': page.history.position - 1}) : 'Compared with the previous review:'|t) }}
+          {{ 'Compared with review @n:'|t({'@n': page.compared_position}) }}
           {{ '@new new'|t({'@new': page.round_delta.new}) }} · {{ '@resolved resolved'|t({'@resolved': page.round_delta.resolved}) }}{% if page.model_changed %} · {{ 'different model'|t }}{% endif %}
         </div>
       {% endif %}

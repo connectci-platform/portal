@@ -905,7 +905,17 @@ final class ReviewPageForm extends FormBase {
 
     $rerun = $this->rerunState($node, $repo);
     $previous = $this->previousReviews($node, $repo);
-    $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
+    $historyList = $this->reviewHistory($repo);
+    $history = ReviewPageData::historyPosition($historyList, (int) $node->id());
+    // Where the review this one is compared with sits in the history.
+    $comparedPosition = NULL;
+    if ($previous !== []) {
+      foreach (array_values($historyList) as $i => $item) {
+        if ((int) $item['nid'] === $previous[0]['nid']) {
+          $comparedPosition = $i + 1;
+        }
+      }
+    }
 
     // Once a decision is sent, the page shows what was sent, not what the
     // fields hold now (appverse-planning#51).
@@ -1017,10 +1027,11 @@ final class ReviewPageForm extends FormBase {
       'nid' => $node->id(),
       'title' => $repo ? $repo->label() : $node->label(),
       'repo_label' => $repo ? $repo->label() : '',
-      'repo_url' => $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty() ? $repo->get('field_repo_url')->first()->getValue()['uri'] : '',
+      'repo_url' => $repoUrl,
       'show_maintainer' => self::maintainerDiffers($maintainer, $contributor, $repoUrl),
+      'compared_position' => $comparedPosition,
       'model_changed' => self::modelChanged((string) ($node->get('field_arv_run_meta')->value ?? ''), $previous[0]['run_meta'] ?? NULL),
-      'maintainer' => $repo && $repo->hasField('field_repo_maintainer_name') ? (string) ($repo->get('field_repo_maintainer_name')->value ?? '') : '',
+      'maintainer' => $maintainer,
       // Who submitted the repo, linked to their community persona as the hub
       // card links it. NULL when the account has since been deleted.
       'contributor' => $contributor,
@@ -1104,7 +1115,7 @@ final class ReviewPageForm extends FormBase {
       ],
       'repo_link' => $repo ? [
         'url' => $repo->toUrl()->toString(),
-        'label' => (string) $this->t('View repo'),
+        'label' => (string) $this->t('Repo page'),
       ] : NULL,
       'app_links' => $repo ? $this->appLinks($repo) : [],
       'edit_url' => Url::fromRoute('entity.node.edit_form', ['node' => $node->id()])->toString(),
@@ -1224,7 +1235,10 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
-   * Other reviews of the same repo, newest first, with their stable ids.
+   * Earlier reviews of the same repo, newest first, with their stable ids.
+   *
+   * Only reviews created before this one count: a round is compared with the
+   * round before it, never with a later one.
    *
    * @return array<mixed>
    */
@@ -1239,10 +1253,15 @@ final class ReviewPageForm extends FormBase {
       ->condition('field_arv_repo', $repo->id())
       ->condition('nid', $node->id(), '<>')
       ->sort('created', 'DESC')
-      ->range(0, 10)
+      ->sort('nid', 'DESC')
       ->execute();
     $previous = [];
     foreach ($storage->loadMultiple($nids) as $other) {
+      // Ordered like reviewHistory(): by created, then nid.
+      $created = (int) $other->getCreatedTime();
+      if ($created > (int) $node->getCreatedTime() || ($created === (int) $node->getCreatedTime() && (int) $other->id() > (int) $node->id())) {
+        continue;
+      }
       // accessCheck(TRUE) does not drop drafts a viewer may not see; this
       // does (see AppverseReviewService::latestReviewFor()).
       if (!$other->access('view')) {
@@ -1258,6 +1277,7 @@ final class ReviewPageForm extends FormBase {
       }
       $at = (int) ($other->get('field_arv_reviewed_at')->value ?? $other->getCreatedTime());
       $previous[] = [
+        'nid' => (int) $other->id(),
         'label' => $this->formatDate($at, 'date') . ' · ' . substr((string) $other->get('field_arv_sha')->value, 0, 7),
         'url' => Url::fromRoute('ood_software.review_page', ['node' => $other->id()])->toString(),
         'stable_ids' => array_values(array_filter($ids)),

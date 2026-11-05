@@ -249,7 +249,7 @@ describe('Appverse hub filters and review header', () => {
     seedRepo('Review Nav Header', 'review').then((seeded) => {
       cy.visit(`/appverse/review/${seeded.review_nid}`);
       cy.get('.breadcrumb, nav[aria-label*="readcrumb"]').contains('a', 'Manage Repos');
-      cy.contains('.arv-go-links a', 'Repo on GitHub');
+      cy.contains('.arv-go-links a', 'Repo page');
       // The model is in the footer now, not the header.
       cy.contains('.arv-footnote', 'Qwen3.6-35B-A3B-FP8');
     });
