@@ -189,13 +189,6 @@ class GhCommands extends Tasks {
 
     $body = $this->buildPrBody($description, $issue_number, '-');
 
-    // Copy template to clipboard (macOS only).
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'DAR') {
-      $escaped = escapeshellarg($body);
-      shell_exec("echo $escaped | pbcopy");
-      $this->say("PR description template copied to clipboard!");
-    }
-
     $this->say("Creating PR for D8-$issue_number");
 
     $pr_urls = [];
@@ -237,9 +230,9 @@ class GhCommands extends Tasks {
       $this->say("  - $url");
     }
 
-    // Post all PR links + MultiDev link to Jira ticket.
+    // Write all PR links + MultiDev link into the Jira ticket description.
     if (!empty($pr_urls)) {
-      $this->postPrJiraComment($pr_urls, $issue_number);
+      $this->updateJiraDescription($pr_urls, $issue_number);
     }
   }
 
@@ -249,20 +242,11 @@ class GhCommands extends Tasks {
   private function getDescription(string $issueNumber): string {
     $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
     if ($acli_path !== '') {
-      $output = shell_exec("acli jira workitem view d8-$issueNumber --fields summary 2>/dev/null") ?? '';
-      if ($output !== '') {
-        // Try JSON parse first.
-        $decoded = json_decode(trim($output), TRUE);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && isset($decoded['summary'])) {
-          return trim($decoded['summary']);
-        }
-        // Fall back to regex extraction.
-        if (preg_match('/summary[:\s]+(.+)/i', $output, $matches)) {
-          $summary = trim($matches[1]);
-          if ($summary !== '') {
-            return $summary;
-          }
-        }
+      $output = shell_exec("acli jira workitem view " . escapeshellarg("D8-$issueNumber") . " --fields summary --json 2>/dev/null") ?? '';
+      $decoded = json_decode(trim($output), TRUE);
+      $summary = trim($decoded['fields']['summary'] ?? '');
+      if ($summary !== '') {
+        return $summary;
       }
     }
     return $this->ask("Describe context / purpose for this PR");
@@ -388,37 +372,121 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
   }
 
   /**
-   * Post PR links and MultiDev URL as a Jira comment.
+   * Write PR links and MultiDev URL into the Jira description.
+   *
+   * Replaces the content under the "Related PRs / Multidev" heading (up to the
+   * next heading), or appends that section if the ticket doesn't have one.
+   * The description is sent as ADF so links and formatting render.
    */
-  private function postPrJiraComment(array $prUrls, string $issueNumber): void {
+  private function updateJiraDescription(array $prUrls, string $issueNumber): void {
     $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
     if ($acli_path === '') {
-      $this->say("⚠️  acli not found — skipping Jira comment.");
+      $this->say("⚠️  acli not found — skipping Jira description update.");
       return;
     }
 
-    $multidev_url = "http://md-$issueNumber-accessmatch.pantheonsite.io";
-
-    $lines = ["*Pull Requests:*"];
-    foreach ($prUrls as $url) {
-      $lines[] = "- $url";
+    $key = "D8-$issueNumber";
+    $output = shell_exec("acli jira workitem view " . escapeshellarg($key) . " --fields description --json 2>/dev/null") ?? '';
+    $decoded = json_decode(trim($output), TRUE);
+    if (!is_array($decoded) || !array_key_exists('fields', $decoded)) {
+      $this->say("⚠️  Could not read description for $key — skipping Jira description update.");
+      return;
     }
-    $lines[] = "";
-    $lines[] = "*MultiDev:* $multidev_url";
 
-    $comment = implode("\n", $lines);
+    $doc = $decoded['fields']['description'] ?? NULL;
+    if (!is_array($doc) || ($doc['type'] ?? '') !== 'doc') {
+      $doc = ['type' => 'doc', 'version' => 1, 'content' => []];
+    }
+    $doc['content'] = $this->mergeRelatedSection($doc['content'] ?? [], $prUrls, $issueNumber);
+
+    $tmp = tempnam(sys_get_temp_dir(), 'ghpr-adf-');
+    file_put_contents($tmp, json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
     $result = $this->_exec(
-      "acli jira workitem comment create --key " . escapeshellarg("D8-$issueNumber") .
-      " --body " . escapeshellarg($comment)
+      "acli jira workitem edit --key " . escapeshellarg($key) .
+      " --description-file " . escapeshellarg($tmp) . " --yes"
     );
+    unlink($tmp);
 
     if ($result->wasSuccessful()) {
-      $this->say("✅ Jira comment added to D8-$issueNumber");
+      $this->say("✅ Jira description updated on $key");
     }
     else {
-      $this->say("⚠️  Failed to add Jira comment to D8-$issueNumber");
+      $this->say("⚠️  Failed to update Jira description on $key");
     }
+  }
+
+  /**
+   * Put the PR/MultiDev links under the "Related PRs / Multidev" heading.
+   *
+   * @param array $content
+   *   Top-level ADF nodes of the description.
+   * @param array $prUrls
+   *   PR URLs to list.
+   * @param string $issueNumber
+   *   Jira issue number (without the D8- prefix).
+   *
+   * @return array
+   *   The updated top-level ADF nodes.
+   */
+  private function mergeRelatedSection(array $content, array $prUrls, string $issueNumber): array {
+    $heading_text = 'Related PRs / Multidev';
+    $multidev_url = "http://md-$issueNumber-accessmatch.pantheonsite.io";
+    $link = fn(string $url) => [
+      'type' => 'text',
+      'text' => $url,
+      'marks' => [['type' => 'link', 'attrs' => ['href' => $url]]],
+    ];
+
+    $section = [
+      [
+        'type' => 'bulletList',
+        'content' => array_map(fn(string $url) => [
+          'type' => 'listItem',
+          'content' => [['type' => 'paragraph', 'content' => [$link($url)]]],
+        ], $prUrls),
+      ],
+      [
+        'type' => 'paragraph',
+        'content' => [
+          ['type' => 'text', 'text' => 'MultiDev: ', 'marks' => [['type' => 'strong']]],
+          $link($multidev_url),
+        ],
+      ],
+    ];
+
+    $heading_index = NULL;
+    foreach ($content as $i => $node) {
+      if (($node['type'] ?? '') !== 'heading') {
+        continue;
+      }
+      $text = implode('', array_map(fn($child) => $child['text'] ?? '', $node['content'] ?? []));
+      if (strcasecmp(trim($text), $heading_text) === 0) {
+        $heading_index = $i;
+        break;
+      }
+    }
+
+    if ($heading_index === NULL) {
+      $content[] = [
+        'type' => 'heading',
+        'attrs' => ['level' => 2],
+        'content' => [['type' => 'text', 'text' => $heading_text]],
+      ];
+      return array_merge($content, $section);
+    }
+
+    // Section ends at the next heading, or the end of the document.
+    $end = count($content);
+    for ($i = $heading_index + 1; $i < count($content); $i++) {
+      if (($content[$i]['type'] ?? '') === 'heading') {
+        $end = $i;
+        break;
+      }
+    }
+
+    array_splice($content, $heading_index + 1, $end - $heading_index - 1, $section);
+    return $content;
   }
 
   /**
