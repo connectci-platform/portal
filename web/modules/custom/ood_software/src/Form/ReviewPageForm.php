@@ -834,6 +834,42 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * Whether the repo's maintainer is worth naming beside the contributor.
+   *
+   * The maintainer is left out when it is empty or only repeats the
+   * contributor's display name or the GitHub owner of the repo, ignoring case,
+   * spaces, hyphens and underscores.
+   *
+   * @param string $maintainer
+   *   The repo's maintainer name, possibly empty.
+   * @param array<string, mixed>|null $contributor
+   *   The contributor link (name, url), or NULL.
+   * @param string $repoUrl
+   *   The repo's GitHub URL.
+   */
+  public static function maintainerDiffers(string $maintainer, ?array $contributor, string $repoUrl): bool {
+    $normalize = static fn (string $v): string => strtolower(str_replace([' ', '-', '_'], '', $v));
+    $maintainer = $normalize($maintainer);
+    if ($maintainer === '') {
+      return FALSE;
+    }
+    $owner = explode('/', trim((string) parse_url($repoUrl, PHP_URL_PATH), '/'))[0];
+    $known = [$normalize($owner), $normalize((string) ($contributor['name'] ?? ''))];
+    return !in_array($maintainer, array_filter($known), TRUE);
+  }
+
+  /**
+   * Whether this review was written by a different model than the last one.
+   *
+   * TRUE only when both name a model and the labels differ.
+   */
+  public static function modelChanged(?string $runMetaJson, ?string $previousRunMetaJson): bool {
+    $current = self::modelLabel($runMetaJson);
+    $previous = self::modelLabel($previousRunMetaJson);
+    return $current !== NULL && $previous !== NULL && $current['label'] !== $previous['label'];
+  }
+
+  /**
    * Links to the repo's member apps, published or not.
    *
    * @return list<array{url: string, label: string}>
@@ -973,15 +1009,21 @@ final class ReviewPageForm extends FormBase {
 
     $repoGates = ReviewPageData::gatePills(json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
 
+    $repoUrl = $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty() ? (string) ($repo->get('field_repo_url')->first()->getValue()['uri'] ?? '') : '';
+    $maintainer = $repo && $repo->hasField('field_repo_maintainer_name') ? (string) ($repo->get('field_repo_maintainer_name')->value ?? '') : '';
+    $contributor = $this->contributorLink($repo);
+
     return [
       'nid' => $node->id(),
       'title' => $repo ? $repo->label() : $node->label(),
       'repo_label' => $repo ? $repo->label() : '',
       'repo_url' => $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty() ? $repo->get('field_repo_url')->first()->getValue()['uri'] : '',
+      'show_maintainer' => self::maintainerDiffers($maintainer, $contributor, $repoUrl),
+      'model_changed' => self::modelChanged((string) ($node->get('field_arv_run_meta')->value ?? ''), $previous[0]['run_meta'] ?? NULL),
       'maintainer' => $repo && $repo->hasField('field_repo_maintainer_name') ? (string) ($repo->get('field_repo_maintainer_name')->value ?? '') : '',
       // Who submitted the repo, linked to their community persona as the hub
       // card links it. NULL when the account has since been deleted.
-      'contributor' => $this->contributorLink($repo),
+      'contributor' => $contributor,
       'sha' => $sha,
       'sha7' => substr($sha, 0, 7),
       'ref' => (string) ($node->get('field_arv_ref')->value ?? ''),
@@ -1219,6 +1261,7 @@ final class ReviewPageForm extends FormBase {
         'label' => $this->formatDate($at, 'date') . ' · ' . substr((string) $other->get('field_arv_sha')->value, 0, 7),
         'url' => Url::fromRoute('ood_software.review_page', ['node' => $other->id()])->toString(),
         'stable_ids' => array_values(array_filter($ids)),
+        'run_meta' => (string) ($other->get('field_arv_run_meta')->value ?? ''),
       ];
     }
     return $previous;

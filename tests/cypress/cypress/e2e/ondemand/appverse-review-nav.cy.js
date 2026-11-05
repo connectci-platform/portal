@@ -245,12 +245,13 @@ describe('Appverse hub filters and review header', () => {
     cy.get('.appverse-hub-card').should('have.length.at.most', 10);
   });
 
-  it('shows the breadcrumb, View repo and the model on a review', () => {
+  it('shows the breadcrumb, the repo link and the model on a review', () => {
     seedRepo('Review Nav Header', 'review').then((seeded) => {
       cy.visit(`/appverse/review/${seeded.review_nid}`);
       cy.get('.breadcrumb, nav[aria-label*="readcrumb"]').contains('a', 'Manage Repos');
-      cy.contains('a.btn', 'View repo');
-      cy.contains('.overview-line--sub', 'Qwen3.6-35B-A3B-FP8');
+      cy.contains('.arv-go-links a', 'Repo on GitHub');
+      // The model is in the footer now, not the header.
+      cy.contains('.arv-footnote', 'Qwen3.6-35B-A3B-FP8');
     });
   });
 });
