@@ -43,7 +43,10 @@ class PmdCommands extends Tasks {
     }
     else {
       $this->_exec("terminus multidev:create -- accessmatch.test $args[0]");
-      $this->_exec("terminus remote:drush accessmatch.$args[0] -- deploy");
+      $result = $this->_exec("terminus remote:drush accessmatch.$args[0] -- deploy -y");
+      if (!$result->wasSuccessful()) {
+        throw new \Exception("drush deploy failed on accessmatch.$args[0].");
+      }
       $this->say("This multidev environment has been created and deployed.");
     }
   }

@@ -8,16 +8,6 @@ database:
 build_step: false
 
 workflows:
-  sync_code:
-    after:
-      - type: webphp
-        description: Import configuration
-        script: private/scripts/drush_deploy/drush_deploy.php
-  deploy:
-    after:
-      - type: webphp
-        description: Import configuration
-        script: private/scripts/drush_deploy/drush_deploy.php
   clone_database:
     after:
       - type: webphp
@@ -28,6 +18,3 @@ workflows:
       - type: webphp
         description: Turn off non-prod site functions
         script: private/scripts/no_prod.php
-      - type: webphp
-        description: Import configuration
-        script: private/scripts/drush_deploy/drush_deploy.php
