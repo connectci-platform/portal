@@ -1294,7 +1294,7 @@ display:
           plugin_id: text
           empty: false
           content:
-            value: '<a href="/events'' class="text-uppercase">All Events</a>'
+            value: '<a href="/events" class="text-uppercase">All Events</a>'
             format: full_html
           tokenize: false
       display_extenders:
