@@ -4,10 +4,11 @@
  * Covers the custom flag API:
  *   POST   /appverse/api/flag/{nid}  (X-CSRF-Token) → 200 {"flagged": true,  "nid": N}
  *   DELETE /appverse/api/flag/{nid}  (X-CSRF-Token) → 200 {"flagged": false, "nid": N}
+ *   GET    /appverse/api/flags                      → 200 {"flagged": [{"uuid": U, "nid": N}]}
  *
- * Both are idempotent. Anonymous requests → 403, missing X-CSRF-Token → 403,
- * a node that is not an appverse_app → 404. Reads go through
- * GET /jsonapi/flagging/appverse_apps; JSON:API writes are closed (405).
+ * Writes are idempotent. Anonymous requests → 403, missing X-CSRF-Token → 403,
+ * a node that is not an appverse_app → 404. The flagging--appverse_apps
+ * JSON:API resource is disabled, so /jsonapi/flagging/appverse_apps → 404.
  *
  * This spec does NOT create apps. It flags/unflags an existing published
  * appverse_app fetched in before(). Every test that changes flag state ends
@@ -40,21 +41,23 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
     });
 
   /**
-   * Read the current user's flaggings and return whether the app is among them.
+   * Read the current user's flagged apps and return whether the app is among them.
    */
-  const isFlaggedInJsonApi = () =>
+  const isFlagged = () =>
     cy
       .request({
         method: 'GET',
-        url: '/jsonapi/flagging/appverse_apps',
-        headers: JSONAPI_HEADERS,
+        url: '/appverse/api/flags?_format=json',
+        headers: { Accept: 'application/json' },
       })
       .then((response) => {
         expect(response.status).to.eq(200);
-        expect(response.body.data).to.be.an('array');
-        return response.body.data.some(
-          (flagging) => flagging.relationships?.flagged_entity?.data?.id === app.uuid
-        );
+        expect(response.body.flagged).to.be.an('array');
+        const entry = response.body.flagged.find((item) => item.nid === app.nid);
+        if (entry) {
+          expect(entry).to.deep.equal({ uuid: app.uuid, nid: app.nid });
+        }
+        return Boolean(entry);
       });
 
   before(() => {
@@ -89,6 +92,17 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
         expect(response.status).to.eq(403);
       });
     });
+
+    it('GET /appverse/api/flags returns 403', () => {
+      cy.request({
+        method: 'GET',
+        url: '/appverse/api/flags?_format=json',
+        headers: { Accept: 'application/json' },
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(403);
+      });
+    });
   });
 
   describe('Authenticated user', () => {
@@ -96,8 +110,8 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
       cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
     });
 
-    it('JSON:API write to /jsonapi/flagging/appverse_apps returns 405 (read-only)', () => {
-      // A valid CSRF token is sent so the 405 comes from the read-only JSON:API
+    it('JSON:API write to /jsonapi/flagging/appverse_apps returns 404 (resource disabled)', () => {
+      // A valid CSRF token is sent so the 404 comes from the disabled JSON:API
       // resource, not from a CSRF rejection.
       getCsrfToken().then((token) => {
         cy.request({
@@ -121,7 +135,7 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
           },
           failOnStatusCode: false,
         }).then((response) => {
-          expect(response.status).to.eq(405);
+          expect(response.status).to.eq(404);
         });
       });
     });
@@ -136,7 +150,7 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
       });
     });
 
-    it('round trip: DELETE, POST (twice), GET shows flag, DELETE, GET shows no flag', () => {
+    it('round trip: DELETE, POST (twice), GET /appverse/api/flags shows flag, DELETE, GET shows no flag', () => {
       getCsrfToken().then((token) => {
         const flagHeaders = { 'X-CSRF-Token': token, Accept: 'application/json' };
         const flagUrl = `/appverse/api/flag/${app.nid}`;
@@ -147,7 +161,7 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
           expect(response.body).to.deep.include({ flagged: false, nid: app.nid });
         });
 
-        isFlaggedInJsonApi().should('eq', false);
+        isFlagged().should('eq', false);
 
         // First flag.
         cy.request({ method: 'POST', url: flagUrl, headers: flagHeaders }).then((response) => {
@@ -161,7 +175,7 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
           expect(response.body).to.deep.include({ flagged: true, nid: app.nid });
         });
 
-        isFlaggedInJsonApi().should('eq', true);
+        isFlagged().should('eq', true);
 
         // Unflag.
         cy.request({ method: 'DELETE', url: flagUrl, headers: flagHeaders }).then((response) => {
@@ -169,7 +183,7 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
           expect(response.body).to.deep.include({ flagged: false, nid: app.nid });
         });
 
-        isFlaggedInJsonApi().should('eq', false);
+        isFlagged().should('eq', false);
       });
     });
   });

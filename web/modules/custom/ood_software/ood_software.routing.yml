@@ -341,6 +341,18 @@ ood_software.review_publish:
     _permission: 'administer appverse content'
     node: \d+
 
+ood_software.appverse_flags:
+  path: '/appverse/api/flags'
+  methods: [GET]
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseFlagController::flags'
+    _title: 'My flagged apps'
+  options:
+    no_cache: TRUE
+  requirements:
+    _permission: 'flag appverse_apps'
+    _user_is_logged_in: 'TRUE'
+
 ood_software.appverse_flag:
   path: '/appverse/api/flag/{node}'
   methods: [POST]

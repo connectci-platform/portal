@@ -15,8 +15,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /**
  * JSON endpoint for the "We use this App" flag.
  *
- * JSON:API is read-only, so the Appverse front end flags and unflags apps
- * here instead. Only the current user's own flagging is ever touched.
+ * JSON:API is read-only and the flagging resource is disabled, so the
+ * Appverse front end lists, flags and unflags apps here instead. Only the
+ * current user's own flaggings are ever read or touched.
  */
 final class AppverseFlagController extends ControllerBase {
 
@@ -34,6 +35,30 @@ final class AppverseFlagController extends ControllerBase {
    */
   public static function create(ContainerInterface $container): self {
     return new self($container->get('flag'));
+  }
+
+  /**
+   * Lists the apps the current user has flagged, limited to viewable apps.
+   */
+  public function flags(): JsonResponse {
+    $flag = $this->flagService->getFlagById(self::FLAG_ID);
+    if (!$flag instanceof FlagInterface) {
+      throw new NotFoundHttpException();
+    }
+    $nids = [];
+    foreach ($this->flagService->getFlagUserFlaggings($flag, $this->currentUser()) as $flagging) {
+      $nids[] = (int) $flagging->getFlaggableId();
+    }
+    $flagged = [];
+    // Check view access per node: entity queries do not drop unpublished
+    // nodes when no node access module is enabled.
+    foreach ($this->entityTypeManager()->getStorage('node')->loadMultiple($nids) as $node) {
+      if ($node instanceof NodeInterface && $node->bundle() === 'appverse_app' && $node->access('view')) {
+        $flagged[(int) $node->id()] = ['uuid' => $node->uuid(), 'nid' => (int) $node->id()];
+      }
+    }
+    ksort($flagged);
+    return new JsonResponse(['flagged' => array_values($flagged)]);
   }
 
   /**

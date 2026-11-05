@@ -9,7 +9,7 @@ third_party_settings:
   jsonapi_defaults:
     page_limit: 100
 id: flagging--appverse_apps
-disabled: false
+disabled: true
 path: flagging/appverse_apps
 resourceType: flagging--appverse_apps
 resourceFields:

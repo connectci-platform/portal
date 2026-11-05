@@ -95,15 +95,36 @@ class AppverseFlagEndpointTest extends KernelTestBase {
    *   The CSRF header value, or NULL to omit it.
    */
   protected function send(string $method, NodeInterface $node, ?string $token = NULL): Response {
+    return $this->sendPath($method, '/appverse/api/flag/' . $node->id(), $token);
+  }
+
+  /**
+   * Sends a request to a path through the HTTP kernel as the current user.
+   *
+   * @param string $method
+   *   The HTTP method.
+   * @param string $path
+   *   The path, without a query string.
+   * @param string|null $token
+   *   The CSRF header value, or NULL to omit it.
+   */
+  protected function sendPath(string $method, string $path, ?string $token = NULL): Response {
     // The JSON format keeps error responses from being rendered by an HTML
     // 403/404 subrequest, which reuses the method and can turn into a 405.
-    $request = Request::create('/appverse/api/flag/' . $node->id() . '?_format=json', $method);
+    $request = Request::create($path . '?_format=json', $method);
     // Core only enforces the CSRF header on requests carrying a session cookie.
     $request->cookies->set($this->container->get('session_configuration')->getOptions($request)['name'], 'test-session');
     if ($token !== NULL) {
       $request->headers->set('X-CSRF-Token', $token);
     }
     return $this->container->get('http_kernel')->handle($request);
+  }
+
+  /**
+   * Lists the current user's flagged apps.
+   */
+  protected function get(): Response {
+    return $this->sendPath('GET', '/appverse/api/flags');
   }
 
   /**
@@ -224,6 +245,85 @@ class AppverseFlagEndpointTest extends KernelTestBase {
     $repo = $this->makeNode('appverse_repo');
     $this->assertSame(404, $this->send('POST', $repo, $this->token())->getStatusCode());
     $this->assertSame(404, $this->send('DELETE', $repo, $this->token())->getStatusCode());
+  }
+
+  /**
+   * The list contains only the current user's own flagged apps.
+   */
+  public function testFlagsListsOwnFlagsOnly(): void {
+    $app2 = $this->makeNode('appverse_app');
+    $this->setCurrentUser($this->userA);
+    $this->send('POST', $this->app, $this->token());
+    $this->setCurrentUser($this->userB);
+    $this->send('POST', $app2, $this->token());
+
+    $this->setCurrentUser($this->userA);
+    $response = $this->get();
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => [['uuid' => $this->app->uuid(), 'nid' => (int) $this->app->id()]]], $this->body($response));
+
+    $this->setCurrentUser($this->userB);
+    $response = $this->get();
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => [['uuid' => $app2->uuid(), 'nid' => (int) $app2->id()]]], $this->body($response));
+  }
+
+  /**
+   * A user with nothing flagged gets an empty list.
+   */
+  public function testFlagsEmpty(): void {
+    $this->setCurrentUser($this->userA);
+    $response = $this->get();
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => []], $this->body($response));
+  }
+
+  /**
+   * Unflagging removes the app from the list.
+   */
+  public function testFlagsReflectsUnflag(): void {
+    $this->setCurrentUser($this->userA);
+    $this->send('POST', $this->app, $this->token());
+    $this->assertCount(1, $this->body($this->get())['flagged']);
+    $this->send('DELETE', $this->app, $this->token());
+    $response = $this->get();
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => []], $this->body($response));
+  }
+
+  /**
+   * Anonymous users cannot read the list.
+   */
+  public function testFlagsAnonymousForbidden(): void {
+    $this->setCurrentUser(new AnonymousUserSession());
+    $this->assertSame(403, $this->get()->getStatusCode());
+  }
+
+  /**
+   * Users without the flag permission cannot read the list.
+   */
+  public function testFlagsMissingPermissionForbidden(): void {
+    $this->setCurrentUser($this->createUser(['access content'], 'no_perms'));
+    $this->assertSame(403, $this->get()->getStatusCode());
+  }
+
+  /**
+   * Apps the user can no longer view are not listed.
+   */
+  public function testFlagsExcludesUnpublishedApp(): void {
+    // Owned by another user so "view own unpublished content" cannot apply.
+    $app = Node::create(['type' => 'appverse_app', 'title' => 'Other', 'status' => 1, 'uid' => $this->userB->id()]);
+    $app->save();
+    $this->setCurrentUser($this->userA);
+    $this->send('POST', $app, $this->token());
+    $this->assertCount(1, $this->body($this->get())['flagged']);
+
+    $app->setUnpublished()->save();
+    // Within one process the access handler caches the earlier "allowed".
+    $this->container->get('entity_type.manager')->getAccessControlHandler('node')->resetCache();
+    $response = $this->get();
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => []], $this->body($response));
   }
 
 }
