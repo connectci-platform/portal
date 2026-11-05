@@ -14,11 +14,6 @@ namespace Drupal\ood_software\Service;
 final class ContributorReviewView {
 
   /**
-   * Blocks in the order sections are listed, for breaking severity ties.
-   */
-  private const SECTION_ORDER = ['structure', 'security', 'portability', 'documentation', 'code_quality', 'maintenance'];
-
-  /**
    * The contributor's view of one review.
    *
    * @param array<mixed> $page
@@ -64,8 +59,37 @@ final class ContributorReviewView {
     }
 
     $findings = [];
-    foreach ($sections as [$app, $key, $block]) {
+    // Failing and warning repo gates sit in the first app's Structure block
+    // on the reviewer page, so they sort there.
+    $repoGateOrder = 0;
+    foreach ($sections as $order => [$app, $key, $block]) {
+      if ($key === 'structure') {
+        $repoGateOrder = $order;
+        break;
+      }
+    }
+    foreach (self::gateRows((array) ($page['repo_gate_block']['others'] ?? [])) as $row) {
+      $item = self::finding($row, '', 'Structure', $sent);
+      if ($item !== NULL) {
+        $item['_order'] = $repoGateOrder;
+        $findings[] = $item;
+      }
+    }
+
+    foreach ($sections as $order => [$app, $key, $block]) {
       $title = (string) ($block['title'] ?? $key);
+      // The block's own gates: passes read as passed checks, anything else
+      // as a finding.
+      foreach ((array) ($block['gate_summary']['passes'] ?? []) as $pill) {
+        $view['passed'][] = ['section' => $title, 'label' => (string) ($pill['label'] ?? '')];
+      }
+      foreach (self::gateRows((array) ($block['gate_summary']['others'] ?? [])) as $row) {
+        $item = self::finding($row, $app, $title, $sent);
+        if ($item !== NULL) {
+          $item['_order'] = $order;
+          $findings[] = $item;
+        }
+      }
       $rows = [];
       foreach ((array) ($block['groups'] ?? []) as $group) {
         $rows = array_merge($rows, (array) ($group['findings'] ?? []));
@@ -80,7 +104,7 @@ final class ContributorReviewView {
         }
         $item = self::finding((array) $row, $app, $title, $sent);
         if ($item !== NULL) {
-          $item['_order'] = array_search($key, self::SECTION_ORDER, TRUE);
+          $item['_order'] = $order;
           $findings[] = $item;
         }
       }
@@ -162,6 +186,42 @@ final class ContributorReviewView {
       'url' => $url,
       'note' => $sent ? (string) ($row['prose'] ?? '') : '',
     ];
+  }
+
+  /**
+   * Failing and warning gate pills as finding rows.
+   *
+   * A pill has no severity of its own: a fail reads as high and a warn as
+   * low, unless the row carries one. Other values (a pass, a skipped check)
+   * are not findings.
+   *
+   * @param array<mixed> $pills
+   *   Gate pills (key, label, value) from a gate summary's "others".
+   *
+   * @return array<int, array<string, mixed>>
+   *   Rows shaped like a finding row.
+   */
+  private static function gateRows(array $pills): array {
+    $rows = [];
+    foreach ($pills as $pill) {
+      $value = strtolower((string) ($pill['value'] ?? ''));
+      if (!in_array($value, ['fail', 'warn'], TRUE)) {
+        continue;
+      }
+      $severity = (string) ($pill['severity'] ?? '') ?: ($value === 'fail' ? 'high' : 'low');
+      $rows[] = [
+        'source' => 'ai',
+        'severity' => $severity,
+        'tool_severity' => $severity,
+        'summary' => (string) ($pill['summary'] ?? $pill['label'] ?? ''),
+        'evidence' => (string) ($pill['evidence'] ?? ''),
+        'evidence_parts' => (array) ($pill['evidence_parts'] ?? []),
+        'dismissed' => FALSE,
+        'original' => NULL,
+        'prose' => '',
+      ];
+    }
+    return $rows;
   }
 
   /**
