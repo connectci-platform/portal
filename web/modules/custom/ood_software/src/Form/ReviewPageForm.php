@@ -206,7 +206,9 @@ final class ReviewPageForm extends FormBase {
         // decision does, so the two cannot disagree.
         $view = ContributorReviewView::build($page, (bool) $page['decision']['sent']);
         $steps['contributor'] = $this->contributorSteps($steps['contributor'], $view['state']);
-        $view['next_step'] = ReviewProgress::contributorSentence($steps['contributor']);
+        $view['next_step'] = $view['state'] === 'decided'
+          ? self::withoutStatusSentence(ReviewProgress::contributorSentence($steps['contributor']))
+          : ReviewProgress::contributorSentence($steps['contributor']);
         $view['decision_apps'] = $this->contributorDecisionApps($page);
         // Names the band's tint: the strictest decision across the apps.
         $view['decision_key'] = ReviewProgress::strictestDecision(array_column($view['decision_apps'], 'key'));
@@ -1270,6 +1272,23 @@ final class ReviewPageForm extends FormBase {
       }
     }
     return $history;
+  }
+
+  /**
+   * A next-step sentence without its leading restatement of the decision.
+   *
+   * The decision band's heading already says "Changes requested", "Declined"
+   * or "Accepted", so the sentence under it starts at what happens next. The
+   * hub card keeps the full sentence (ReviewProgress::contributorSentence()).
+   */
+  public static function withoutStatusSentence(string $sentence): string {
+    foreach ([t('Changes requested'), t('Declined'), t('Accepted')] as $status) {
+      $prefix = $status . '. ';
+      if (str_starts_with($sentence, $prefix)) {
+        return substr($sentence, strlen($prefix));
+      }
+    }
+    return $sentence;
   }
 
   /**

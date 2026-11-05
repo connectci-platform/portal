@@ -109,7 +109,7 @@ class ReviewContributorPageTest extends KernelTestBase {
    * @return array{review: \Drupal\node\NodeInterface, repo: \Drupal\node\NodeInterface}
    *   The review and its repo.
    */
-  protected function makeReview(bool $sent): array {
+  protected function makeReview(bool $sent, string $decision = 'request_changes'): array {
     $repo = $this->makeRepo('ready_for_review');
     $app = Node::create([
       'type' => 'appverse_app',
@@ -143,7 +143,7 @@ class ReviewContributorPageTest extends KernelTestBase {
       'type' => 'review_verdict',
       'field_rvv_app_ref' => $app->id(),
       'field_rvv_app_id' => 'example-app',
-      'field_rvv_conclusion' => $sent ? 'request_changes' : NULL,
+      'field_rvv_conclusion' => $sent ? $decision : NULL,
       'field_rvv_findings' => [$high, $dismissed],
     ]);
     $verdict->save();
@@ -169,7 +169,7 @@ class ReviewContributorPageTest extends KernelTestBase {
       $review->set('field_arv_decision_sent_at', 1700000100);
       $review->set('field_arv_decision_sent_by', $this->reviewer->id());
       $review->set('field_arv_sent_decisions', json_encode([
-        'apps' => [(string) $verdict->id() => 'request_changes'],
+        'apps' => [(string) $verdict->id() => $decision],
         'response' => 'Sent response text.',
         'email' => ['subject' => 'Your review', 'html' => '<p>Email body only the reviewer sees.</p>'],
       ]));
@@ -203,6 +203,9 @@ class ReviewContributorPageTest extends KernelTestBase {
     $this->assertStringContainsString('Runs user input through a shell.', $html);
     $this->assertStringContainsString('Dismissed finding summary.', $html, 'A dismissal is the reviewer\'s until sent, so the tool\'s finding still shows.');
     $this->assertStringContainsString('Changes you push to GitHub now will be reviewed in the next round.', $html);
+    $this->assertStringContainsString('Submitted ', $html);
+    $this->assertStringContainsString('github.com/example/app', $html);
+    $this->assertStringNotContainsString('Reviewed by', $html);
     $this->assertStringNotContainsString('Unsent response text.', $html);
     $this->assertStringNotContainsString('Internal note text.', $html);
     $this->assertStringNotContainsString('data-review-rerun', $html);
@@ -221,6 +224,10 @@ class ReviewContributorPageTest extends KernelTestBase {
     $this->assertStringContainsString('What to fix', $html);
     $this->assertStringContainsString('Runs user input through a shell.', $html);
     $this->assertStringContainsString('<summary>Progress</summary>', $html);
+    $this->assertStringContainsString('<p>Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.</p>', $html);
+    $this->assertStringNotContainsString('Changes requested. Read', $html);
+    $this->assertStringContainsString('Reviewed by reviewer, ', $html);
+    $this->assertStringContainsString('github.com/example/app', $html);
     $this->assertStringNotContainsString('Dismissed finding summary.', $html);
     $this->assertStringNotContainsString('Internal note text.', $html);
     $this->assertStringNotContainsString('Automated check', $html);
@@ -230,14 +237,28 @@ class ReviewContributorPageTest extends KernelTestBase {
    * The decision carries reviewer-only values the contributor must not get.
    */
   public function testDecidedPageLeaksNoReviewerOnlyDecisionFields(): void {
-    ['review' => $review] = $this->makeReview(TRUE);
+    // Accepted with suggestions on a repo still in review is the case where
+    // the publish URL is set.
+    ['review' => $review] = $this->makeReview(TRUE, 'accept_with_suggestions');
+    $reviewerHtml = $this->renderAs($this->reviewer, $review);
+    $publish = '/appverse/review/' . $review->id() . '/publish';
+    $this->assertStringContainsString($publish, $reviewerHtml, 'The reviewer gets the publish URL, so the check below means something.');
     $html = $this->renderAs($this->owner, $review);
-    $this->assertStringNotContainsString('/publish', $html, 'No publish URL.');
+    $this->assertStringContainsString('Accepted with suggestions', $html);
+    $this->assertStringNotContainsString($publish, $html, 'No publish URL.');
+    $this->assertStringNotContainsString('Waiting on a reviewer to publish', $html, 'No waiting-on text.');
     $this->assertStringNotContainsString('Email body only the reviewer sees', $html);
-    $this->assertStringNotContainsString('to re-submit. They were asked', $html, 'No waiting-on text.');
-    $this->assertStringNotContainsString('Waiting on owner', $html);
     $this->assertStringNotContainsString('Update decision', $html);
     $this->assertStringNotContainsString('Your review', $html, 'No email subject.');
+  }
+
+  /**
+   * The status sentence is dropped from the band, not from the hub card.
+   */
+  public function testWithoutStatusSentence(): void {
+    $this->assertSame('The review says why.', ReviewPageForm::withoutStatusSentence('Declined. The review says why.'));
+    $this->assertSame('A reviewer will publish it.', ReviewPageForm::withoutStatusSentence('Accepted. A reviewer will publish it.'));
+    $this->assertSame('Live in the Appverse catalog.', ReviewPageForm::withoutStatusSentence('Live in the Appverse catalog.'));
   }
 
   /**

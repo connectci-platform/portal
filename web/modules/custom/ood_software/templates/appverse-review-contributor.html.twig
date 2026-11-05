@@ -60,6 +60,18 @@
     <p class="arv-contributor__closed">{{ 'This repo was withdrawn from review.'|t }}</p>
   {% endif %}
 
+  {# What was reviewed, and when: submitted until the decision is sent, then
+     who reviewed it. Only values already on the page. #}
+  <p class="arv-contributor__meta">
+    {% if page.repo_url %}<a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>{% endif %}
+    {% if page.sha7 %}<span aria-hidden="true" class="arv-contributor__dot">·</span> <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}{% endif %}
+    {% if view.state == 'decided' and page.decision.by %}
+      <span aria-hidden="true" class="arv-contributor__dot">·</span> {{ 'Reviewed by @name, @date'|t({'@name': page.decision.by, '@date': page.decision.at}) }}
+    {% elseif page.reviewed_at %}
+      <span aria-hidden="true" class="arv-contributor__dot">·</span> {{ 'Submitted @date'|t({'@date': page.reviewed_at}) }}
+    {% endif %}
+  </p>
+
   {% if view.state != 'decided' %}
     {% if form['#progress'] %}<div class="arv-contributor__progress">{{ form['#progress'] }}</div>{% endif %}
   {% endif %}

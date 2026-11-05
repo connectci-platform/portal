@@ -302,6 +302,17 @@
 .arv-contributor .arv-progress--steps .arv-progress__step.is-failed .arv-progress__label {
   color: var(--arv-p-muted);
 }
+.arv-contributor__meta {
+  margin: 0;
+  color: var(--gray-700);
+  font-size: .94rem;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__meta code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
 .arv-contributor__section {
   display: flex;
   flex-direction: column;
@@ -1718,11 +1729,11 @@
   color: var(--gray-900);
 }
 .arv-page .decision-pill--accept,
-.arv-page .decision-pill--accept-with-suggestions {
+.arv-page .decision-pill--accept_with_suggestions {
   background: #e0f3f0;
   color: var(--status-green-text);
 }
-.arv-page .decision-pill--request-changes {
+.arv-page .decision-pill--request_changes {
   background: #fff8ec;
   color: #8a5a12;
 }
