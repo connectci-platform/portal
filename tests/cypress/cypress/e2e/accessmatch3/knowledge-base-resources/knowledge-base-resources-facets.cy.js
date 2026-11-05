@@ -9,6 +9,8 @@
       alpha        approved, ACCESS, tag xalt,  Learning, beginner
       beta         approved, ACCESS, tag dmtcp, Code,     advanced
       unapproved   NOT approved, ACCESS, tag xalt
+      private      approved, ACCESS, tag xalt, private (tagged with an
+                   Affinity Group)
       otherdomain  approved, Great Plains only, tag xalt
       sort one/two approved, ACCESS, own token, for the like sort test
       count ten/two approved, ACCESS, own token, given 10 and 2 likes, for the
@@ -33,6 +35,7 @@ import {
   ADMIN,
   AUTHENTICATED,
   SKILL,
+  approveSubmission,
   createKbResource,
   deleteSubmissions,
 } from "../../../support/kb-resources";
@@ -52,6 +55,7 @@ const TITLE = {
   alpha: `${PREFIX}-alpha`,
   beta: `${PREFIX}-beta`,
   unapproved: `${PREFIX}-unapproved`,
+  private: `${PREFIX}-private`,
   otherDomain: `${PREFIX}-otherdomain`,
   sortOne: `kbsort-${SORT_ID}-one`,
   sortTwo: `kbsort-${SORT_ID}-two`,
@@ -70,6 +74,10 @@ const MANY_TAGS = [
   ["errors", "password", "profile", "reporting", "tickets", "verification-code"],
   ["dft", "modeling", "parameter-sweeps", "random-numbers", "simulation", "cephfs"],
 ];
+
+// An existing Affinity Group on this domain that the private resource is
+// attached to. The resource is the one that is private, not the group.
+const PRIVATE_AG = "ACCESS Support";
 
 const RESOURCES = "/knowledge-base/resources";
 const RUN_ONLY = `${RESOURCES}?search_api_fulltext=${RUN}`;
@@ -148,6 +156,10 @@ describe("KB Resources page facets, copy link and sorting", () => {
     createKbResource({ title: TITLE.alpha, category: "Learning", skillLevels: [SKILL.beginner], tags: [TAG_A] }).then((id) => { sid.alpha = id; });
     createKbResource({ title: TITLE.beta, category: "Code", skillLevels: [SKILL.advanced], tags: [TAG_B] }).then((id) => { sid.beta = id; });
     createKbResource({ title: TITLE.unapproved, approved: false, tags: [TAG_A] }).then((id) => { sid.unapproved = id; });
+    // The form cannot save an approved resource with an AG and the private
+    // flag (approving disables those fields), so approve it afterwards.
+    createKbResource({ title: TITLE.private, approved: false, tags: [TAG_A], affinityGroup: PRIVATE_AG, private: true })
+      .then((id) => { sid.private = id; return approveSubmission(id); });
     createKbResource({ title: TITLE.otherDomain, domain: "Great Plains", tags: [TAG_A] }).then((id) => { sid.otherDomain = id; });
     createKbResource({ title: TITLE.sortOne, tags: [TAG_A] }).then((id) => { sid.sortOne = id; });
     createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] }).then((id) => { sid.sortTwo = id; });
@@ -200,7 +212,7 @@ describe("KB Resources page facets, copy link and sorting", () => {
 
     it("filters by a tag and restores the list when it is unchecked", () => {
       cy.visit(RUN_ONLY);
-      // Alpha and beta are all that is listed: the unapproved and other-domain
+      // Alpha and beta are all that is listed: the unapproved, private and other-domain
       // resources are not.
       cy.get(ITEMS).should("have.length", 2);
       item(TITLE.alpha);
@@ -318,15 +330,18 @@ describe("KB Resources page facets, copy link and sorting", () => {
       item(TITLE.alpha);
     });
 
-    it("lists neither the unapproved nor the other-domain resource", () => {
+    it("lists neither the unapproved, the private nor the other-domain resource", () => {
       cy.visit(RUN_ONLY);
       cy.get(ITEMS).should("have.length", 2);
       listedTitles().should("have.members", [TITLE.alpha, TITLE.beta]);
       cy.contains(ITEMS, TITLE.unapproved).should("not.exist");
+      cy.contains(ITEMS, TITLE.private).should("not.exist");
       cy.contains(ITEMS, TITLE.otherDomain).should("not.exist");
 
       // Not even by deep link.
       cy.visit(`${RESOURCES}?f%5B0%5D=submission_id%3A${sid.unapproved}`);
+      cy.get(ITEMS).should("not.exist");
+      cy.visit(`${RESOURCES}?f%5B0%5D=submission_id%3A${sid.private}`);
       cy.get(ITEMS).should("not.exist");
       cy.visit(`${RESOURCES}?f%5B0%5D=submission_id%3A${sid.otherDomain}`);
       cy.get(ITEMS).should("not.exist");
