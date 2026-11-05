@@ -24,6 +24,14 @@
   --status-green: #00857a;
   --status-amber: #c98a2b;
   --status-red: #c91235;
+  /* Tints for the status labels and the decision band, always under --ink
+     text. Placeholders pending design (Lissie): the palette is this block, so
+     swapping it is the one change. */
+  --tint-pass: #A6D4D0;
+  --tint-warn: #E0CCA6;
+  --tint-medium: #CFAF73;
+  --tint-fail: #E9A0AE;
+  --tint-decision-changes: #EEE2CC;
   /* The same three, deep enough to carry small text on their own soft
      backgrounds. The brand shades above sit at 3.94:1 (green) and 2.60:1
      (amber) there, under the 4.5:1 AA floor for body-size text; these reach
@@ -257,6 +265,203 @@
 }
 .arv-page .overview-block .muted {
   color: var(--gray-700);
+}
+
+/* The contributor's page (the repo owner's view of a review). Color means
+   status and nothing else: labels and the decision band are a tint under
+   --ink text; links, disclosures and the current step are brand black. */
+.arv-contributor {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  font-size: 1rem;
+}
+.arv-contributor a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.arv-contributor h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.arv-contributor__closed {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+/* The steps use the brand black ring, and a failed step is not red here: the
+   decision band says it. */
+.arv-contributor .arv-progress {
+  --arv-p-current: var(--ink);
+  --arv-p-failed: var(--ink);
+}
+.arv-contributor .arv-progress--steps .arv-progress__step.is-current .arv-progress__label,
+.arv-contributor .arv-progress--steps .arv-progress__step.is-failed .arv-progress__label {
+  color: var(--arv-p-muted);
+}
+.arv-contributor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.arv-contributor__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.arv-contributor__heading p {
+  margin: 0;
+  color: var(--gray-700);
+}
+.arv-contributor__decision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.arv-contributor__decision--accept { background: var(--tint-pass); }
+.arv-contributor__decision--accept-with-suggestions { background: var(--tint-warn); }
+.arv-contributor__decision--request-changes { background: var(--tint-decision-changes); }
+.arv-contributor__decision--reject { background: var(--tint-fail); }
+.arv-contributor__decision-text {
+  flex: 999 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.arv-contributor__decision-text p,
+.arv-contributor__apps {
+  margin: 0;
+}
+.arv-contributor__apps {
+  padding-left: 1.2em;
+}
+.arv-contributor__actions {
+  flex: 0 0 auto;
+}
+.arv-contributor__response {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 18px 22px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.arv-contributor__finding {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px 20px;
+}
+.arv-contributor__finding + .arv-contributor__finding {
+  border-top: 1px solid var(--gray-150);
+}
+.arv-contributor__sev {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: .8rem;
+  font-weight: 700;
+}
+.arv-contributor__sev--critical,
+.arv-contributor__sev--high { background: var(--tint-fail); }
+.arv-contributor__sev--medium { background: var(--tint-medium); }
+.arv-contributor__sev--low { background: var(--tint-warn); }
+.arv-contributor__finding-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.arv-contributor__summary {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: .88rem;
+  color: var(--ink);
+}
+.arv-contributor__details code {
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+.arv-contributor__note {
+  margin: 0;
+  font-size: .94rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__folds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.arv-contributor__folds details {
+  padding: 6px 0;
+}
+.arv-contributor__folds summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 32px;
+}
+.arv-contributor__folds ul {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+}
+.arv-contributor__passed .arv-contributor__details {
+  display: inline;
+  margin-left: 4px;
+}
+.arv-contributor__passed .arv-contributor__details::before {
+  content: "· ";
+}
+@media (max-width: 36rem) {
+  .arv-contributor {
+    gap: 20px;
+  }
+  .arv-contributor h2 {
+    font-size: 1.2rem;
+  }
+  .arv-contributor__decision {
+    padding: 16px;
+  }
+  .arv-contributor__response {
+    padding: 14px 16px;
+  }
+  .arv-contributor__finding {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 14px 16px;
+  }
+  .arv-contributor__actions .btn,
+  .arv-contributor__actions button {
+    width: 100%;
+  }
 }
 
 /* Two columns: findings, and the sticky reviewer sidebar.
@@ -1513,11 +1718,11 @@
   color: var(--gray-900);
 }
 .arv-page .decision-pill--accept,
-.arv-page .decision-pill--accept_with_suggestions {
+.arv-page .decision-pill--accept-with-suggestions {
   background: #e0f3f0;
   color: var(--status-green-text);
 }
-.arv-page .decision-pill--request_changes {
+.arv-page .decision-pill--request-changes {
   background: #fff8ec;
   color: #8a5a12;
 }

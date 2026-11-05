@@ -78,6 +78,11 @@ function ood_software_theme(): array {
       'render element' => 'form',
       'template' => 'appverse-review-form',
     ],
+    // The repo owner's page: the tool's report, then the decision once sent.
+    'appverse_review_contributor' => [
+      'render element' => 'form',
+      'template' => 'appverse-review-contributor',
+    ],
     // The same form rendered for visitors: the public summary of a review.
     'appverse_review_summary' => [
       'render element' => 'form',

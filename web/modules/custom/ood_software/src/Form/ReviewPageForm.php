@@ -16,6 +16,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Drupal\ood_software\Service\ContributorReviewView;
 use Drupal\ood_software\Service\DuplicateCheck;
 use Drupal\ood_software\Service\FindingOverride;
 use Drupal\ood_software\Service\RepoMemberApps;
@@ -181,7 +182,11 @@ final class ReviewPageForm extends FormBase {
     // while it can still be updated (appverse-planning#56).
     $updating = $reviewerView && $page['decision']['sent'] && $this->getRequest()->query->get('update')
       && $page['decision']['update_blocker'] === NULL;
-    $form['#theme'] = $mode === self::MODE_PUBLIC ? 'appverse_review_summary' : 'appverse_review_form';
+    $form['#theme'] = match ($mode) {
+      self::MODE_PUBLIC => 'appverse_review_summary',
+      self::MODE_CONTRIBUTOR => 'appverse_review_contributor',
+      default => 'appverse_review_form',
+    };
     $form['#attached']['library'][] = 'ood_software/appverse_review';
     $form['#page'] = $page;
     $form['#can_edit'] = $canEdit;
@@ -196,6 +201,17 @@ final class ReviewPageForm extends FormBase {
     // the repo's, so a superseded review shows where the repo is now.
     if ($mode !== self::MODE_PUBLIC && $repo instanceof NodeInterface) {
       $steps = $this->repoProgress->steps($repo);
+      if ($mode === self::MODE_CONTRIBUTOR) {
+        // Whether the decision is sent comes from the same place the page's
+        // decision does, so the two cannot disagree.
+        $view = ContributorReviewView::build($page, (bool) $page['decision']['sent']);
+        $steps['contributor'] = $this->contributorSteps($steps['contributor'], $view['state']);
+        $view['next_step'] = ReviewProgress::contributorSentence($steps['contributor']);
+        $view['decision_apps'] = $this->contributorDecisionApps($page);
+        // Names the band's tint: the strictest decision across the apps.
+        $view['decision_key'] = ReviewProgress::strictestDecision(array_column($view['decision_apps'], 'key'));
+        $form['#contributor_view'] = $view;
+      }
       $form['#progress'] = [
         '#theme' => 'appverse_progress',
         '#steps' => $reviewerView ? $steps['reviewer'] : $steps['contributor'],
@@ -1254,6 +1270,54 @@ final class ReviewPageForm extends FormBase {
       }
     }
     return $history;
+  }
+
+  /**
+   * The contributor's steps, with the In review step's note while it is open.
+   *
+   * Before the decision the contributor can still push to GitHub, so the step
+   * says what happens to those changes.
+   *
+   * @param array<int, array<string, mixed>> $steps
+   *   The contributor's four steps.
+   * @param string $state
+   *   The contributor view's state (waiting, precheck or decided).
+   *
+   * @return array<int, array<string, mixed>>
+   *   The steps.
+   */
+  protected function contributorSteps(array $steps, string $state): array {
+    if ($state !== 'precheck') {
+      return $steps;
+    }
+    foreach ($steps as &$step) {
+      if ($step['step'] === 'In review' && $step['state'] === ReviewProgress::CURRENT) {
+        $step['label'] = (string) $this->t('Changes you push to GitHub now will be reviewed in the next round.');
+        $step['show_label'] = TRUE;
+      }
+    }
+    return $steps;
+  }
+
+  /**
+   * Each app's name and decision label, for the contributor's decision band.
+   *
+   * @param array<mixed> $page
+   *   The page from buildPage().
+   *
+   * @return array<int, array{key: string, name: string, label: string}>
+   *   One entry per decided app.
+   */
+  protected function contributorDecisionApps(array $page): array {
+    $apps = [];
+    foreach ((array) ($page['apps'] ?? []) as $app) {
+      $key = (string) ($app['conclusion'] ?? '');
+      $label = ReviewProgress::decisionLabel($key);
+      if ($label !== '') {
+        $apps[] = ['key' => $key, 'name' => (string) $app['name'], 'label' => $label];
+      }
+    }
+    return $apps;
   }
 
   /**
