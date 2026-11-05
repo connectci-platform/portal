@@ -4,17 +4,16 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3cf2090b1f4435383dd90af17ad1b549",
+    "content-hash": "99c52ab5d922ea69ab9fa833e88e318b",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
-            "version": "3.0.x-dev",
+            "version": "dev-d8-2921-middleware",
             "source": {
                 "type": "git",
                 "url": "https://github.com/access-ci-org/drupal_seamless_cilogon.git",
-                "reference": "d6c4288e560c381909d58952cb2492d2ac4eea7c"
+                "reference": "bf9a9a137ea59048307cff8c8e387d23604aeda6"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0-or-later"
@@ -24,7 +23,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-10-30T20:32:43+00:00"
+            "time": "2026-11-05T20:25:07+00:00"
         },
         {
             "name": "access/infrastructure_news",
