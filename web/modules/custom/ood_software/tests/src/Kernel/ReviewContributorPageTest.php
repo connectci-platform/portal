@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Drupal\Tests\ood_software\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Core\Render\BubbleableMetadata;
+use Drupal\Core\Render\RenderContext;
+use Drupal\Core\Routing\RouteMatch;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Form\ReviewPageForm;
@@ -48,6 +51,13 @@ class ReviewContributorPageTest extends KernelTestBase {
    * A reviewer.
    */
   protected UserInterface $reviewer;
+
+  /**
+   * The cache contexts of the form renderAs() last built.
+   *
+   * @var string[]
+   */
+  protected array $lastCacheContexts = [];
 
   /**
    * {@inheritdoc}
@@ -186,8 +196,17 @@ class ReviewContributorPageTest extends KernelTestBase {
     $request = Request::create('/appverse/review/' . $review->id());
     $request->setSession(new Session(new MockArraySessionStorage()));
     $this->container->get('request_stack')->push($request);
-    $form = $this->container->get('form_builder')->getForm(ReviewPageForm::class, Node::load($review->id()));
-    $html = (string) $this->container->get('renderer')->renderRoot($form);
+    // A page is built inside a render context, which is where the CSRF
+    // token's placeholder in the Re-submit URL bubbles to; without one it
+    // would stay a placeholder.
+    $renderer = $this->container->get('renderer');
+    $context = new RenderContext();
+    $form = $renderer->executeInRenderContext($context, fn () => $this->container->get('form_builder')->getForm(ReviewPageForm::class, Node::load($review->id())));
+    if (!$context->isEmpty()) {
+      $context->pop()->merge(BubbleableMetadata::createFromRenderArray($form))->applyTo($form);
+    }
+    $this->lastCacheContexts = $form['#cache']['contexts'] ?? [];
+    $html = (string) $renderer->renderRoot($form);
     $this->container->get('request_stack')->pop();
     return $html;
   }
@@ -320,6 +339,14 @@ class ReviewContributorPageTest extends KernelTestBase {
     $this->assertNotNull($action);
     $this->assertStringContainsString('/appverse/repo/' . $repo->id() . '/send-for-review?', $action);
     $this->assertStringContainsString('token=', $action);
+    parse_str((string) parse_url($action, PHP_URL_QUERY), $query);
+    // Core's own CSRF access check, as the route runs it, accepts the token.
+    $route = $this->container->get('router.route_provider')->getRouteByName('ood_software.repo_send_for_review');
+    $request = Request::create($action, 'POST');
+    $match = new RouteMatch('ood_software.repo_send_for_review', $route, ['node' => $repo], ['node' => (string) $repo->id()]);
+    $this->assertTrue($this->container->get('access_check.csrf')->access($route, $request, $match)->isAllowed());
+    // The token is per session, so the page must vary by it.
+    $this->assertStringContainsString('session', implode(' ', $this->lastCacheContexts));
   }
 
   /**
@@ -378,6 +405,49 @@ class ReviewContributorPageTest extends KernelTestBase {
     $sentBack = reset($apps);
     $sentBack->set('moderation_state', 'needs_adjustment');
     $sentBack->save();
+    $action = $this->resubmitAction($this->renderAs($this->owner, $review));
+    $this->assertNotNull($action);
+    $this->assertStringContainsString('token=', $action);
+  }
+
+  /**
+   * A never-published repo in review with one app sent back offers Re-submit.
+   *
+   * One app is accepted with suggestions and the other has changes requested,
+   * so the repo stays ready_for_review with an app in needs_adjustment, the
+   * case sendForReview() and the hub card both handle.
+   */
+  public function testResubmitShownForMixedDecisionOnUnpublishedRepo(): void {
+    ['review' => $review, 'repo' => $repo] = $this->makeReview(TRUE);
+    $ids = \Drupal::entityQuery('node')->accessCheck(FALSE)->condition('type', 'appverse_app')->execute();
+    $first = Node::load(reset($ids));
+    $second = Node::create([
+      'type' => 'appverse_app',
+      'title' => 'Second App',
+      'uid' => $this->owner->id(),
+      'field_appverse_repo' => $repo->id(),
+      'moderation_state' => 'ready_for_review',
+    ]);
+    $second->save();
+    $verdict = Paragraph::create([
+      'type' => 'review_verdict',
+      'field_rvv_app_ref' => $second->id(),
+      'field_rvv_app_id' => 'second-app',
+      'field_rvv_conclusion' => 'accept_with_suggestions',
+    ]);
+    $verdict->save();
+    $review = Node::load($review->id());
+    $first_verdict = $review->get('field_arv_verdicts')->referencedEntities()[0];
+    $review->get('field_arv_verdicts')->appendItem($verdict);
+    $review->set('field_arv_sent_decisions', json_encode([
+      'apps' => [(string) $first_verdict->id() => 'request_changes', (string) $verdict->id() => 'accept_with_suggestions'],
+      'response' => 'Sent response text.',
+      'email' => ['subject' => 'Your review', 'html' => '<p>x</p>'],
+    ]));
+    $review->save();
+    $first->set('moderation_state', 'needs_adjustment');
+    $first->save();
+    $this->assertSame('ready_for_review', Node::load($repo->id())->get('moderation_state')->value);
     $action = $this->resubmitAction($this->renderAs($this->owner, $review));
     $this->assertNotNull($action);
     $this->assertStringContainsString('token=', $action);

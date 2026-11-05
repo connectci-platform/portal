@@ -213,6 +213,10 @@ final class ReviewPageForm extends FormBase {
         // Names the band's tint: the strictest decision across the apps.
         $view['decision_key'] = ReviewProgress::strictestDecision(array_column($view['decision_apps'], 'key'));
         $view['resubmit'] = $this->contributorResubmit($view, $repo);
+        if ($view['resubmit'] !== NULL) {
+          // The form's CSRF token is per session.
+          $contributorCache = TRUE;
+        }
         $form['#contributor_view'] = $view;
       }
       $form['#progress'] = [
@@ -255,6 +259,9 @@ final class ReviewPageForm extends FormBase {
     // The page differs by permission, by whether the viewer owns the repo,
     // and by ?view=public; a cached copy must never cross those lines.
     $form['#cache']['contexts'] = ['user.permissions', 'user', 'url.query_args:view'];
+    if (!empty($contributorCache)) {
+      $form['#cache']['contexts'][] = 'session';
+    }
     // node_list: the history bar and the superseded banner depend on the
     // repo's other reviews, so a newly seeded review must invalidate this one.
     $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : [], ['node_list']);
@@ -1345,8 +1352,8 @@ final class ReviewPageForm extends FormBase {
    *
    * Offered on the repo's newest review once its decision asks for changes and
    * the repo is where sendForReview() can act: needs_adjustment, or live with
-   * apps sent back (the two cases AppverseHubController::sendForReview()
-   * handles). The URL carries the route's CSRF token.
+   * apps sent back, published or still in review (the cases
+   * AppverseHubController::sendForReview() handles). The URL carries the route's CSRF token.
    *
    * @param array<string, mixed> $view
    *   The contributor view, with decision_apps.
@@ -1362,7 +1369,10 @@ final class ReviewPageForm extends FormBase {
       return NULL;
     }
     $state = (string) ($repo->get('moderation_state')->value ?? '');
-    if ($state !== 'needs_adjustment' && !($repo->isPublished() && $this->memberApps->sentBackCount($repo) > 0)) {
+    // The predicate of sendForReview() and the hub card: a live repo, or one
+    // in review, with apps sent back is re-submitted whole.
+    if ($state !== 'needs_adjustment'
+      && !(($repo->isPublished() || $state === 'ready_for_review') && $this->memberApps->sentBackCount($repo) > 0)) {
       return NULL;
     }
     return ['url' => Url::fromRoute('ood_software.repo_send_for_review', ['node' => $repo->id()])->toString()];
