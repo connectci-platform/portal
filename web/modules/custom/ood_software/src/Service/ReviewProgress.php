@@ -85,6 +85,9 @@ final class ReviewProgress {
    * The rubric's monorepo rule (appverse-review#70): the overall
    * recommendation is the strictest per-app one. NULL when no app has a
    * decision yet; unknown values are ignored.
+   *
+   * @param array<int|string, string> $decisions
+   *   The per-app decisions.
    */
   public static function strictestDecision(array $decisions): ?string {
     $strictest = NULL;
@@ -100,7 +103,7 @@ final class ReviewProgress {
   /**
    * The steps for one repo.
    *
-   * @param array $facts
+   * @param array<string, mixed> $facts
    *   - repo_state: the repo's moderation state (draft, ready_for_review,
    *     needs_adjustment, published, declined, archived).
    *   - run_status: the automated run (pending, in_progress, complete, error),
@@ -210,17 +213,25 @@ final class ReviewProgress {
    *
    * "In review. A reviewer will respond by email." for everything from
    * submission to a decision (the mock); the other steps say what the
-   * contributor does next, if anything.
+   * contributor does next, if anything. Once the automated check has landed
+   * ($precheckReady) the in-review sentences say it is ready to read.
+   *
+   * @param array<int, array<string, mixed>> $steps
+   *   The contributor steps from steps().
    */
-  public static function contributorSentence(array $steps): string {
+  public static function contributorSentence(array $steps, bool $precheckReady = FALSE): string {
     [$submitted, $inReview, $decision, $live] = $steps;
     return (string) match (TRUE) {
       $submitted['state'] === self::WAITING => t('Not submitted yet.'),
       // A live repo's update is in review while the repo itself stays up, so
       // say so rather than implying it has come down (appverse-planning#49).
       $inReview['state'] === self::CURRENT && !empty($inReview['live_update'])
-        => t('Live, and your update is in review. A reviewer will respond by email.'),
-      $inReview['state'] === self::CURRENT => t('In review. A reviewer will respond by email.'),
+        => ($precheckReady
+          ? t('Live, and your update is in review. The automated check is ready to read, and a reviewer will respond by email.')
+          : t('Live, and your update is in review. A reviewer will respond by email.')),
+      $inReview['state'] === self::CURRENT => ($precheckReady
+        ? t('In review. The automated check is ready to read, and a reviewer will respond by email.')
+        : t('In review. A reviewer will respond by email.')),
       // Name the button and where to ask, so the contributor does not have to
       // work out what "re-submit" means here (appverse-planning#55).
       $decision['state'] === self::WAITING => t('Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.'),
@@ -239,7 +250,7 @@ final class ReviewProgress {
    * (appverse-planning#55). Built from the same steps the line draws, so the
    * two can never disagree.
    *
-   * @param array $steps
+   * @param array<int, array<string, mixed>> $steps
    *   The reviewer or contributor steps from steps().
    *
    * @return array{label: string, modifier: string}
@@ -254,7 +265,8 @@ final class ReviewProgress {
       if (in_array($step['state'], [self::CURRENT, self::FAILED], TRUE) && $step['label'] !== '') {
         return [
           'label' => $step['step'] === 'Review' ? 'In review' : $step['label'],
-          'modifier' => self::CHIP_MODIFIERS[$step['state']] ?? 'secondary',
+          // The state is CURRENT or FAILED here, both mapped.
+          'modifier' => self::CHIP_MODIFIERS[$step['state']],
         ];
       }
     }
@@ -280,6 +292,15 @@ final class ReviewProgress {
     return ['label' => 'Not submitted', 'modifier' => 'secondary'];
   }
 
+  /**
+   * The Decision step, with a per-app breakdown when the apps differ.
+   *
+   * @param array<int|string, string> $appDecisions
+   *   Each app's decision, keyed by app.
+   *
+   * @return array<string, mixed>
+   *   The step.
+   */
   protected static function decisionStep(?string $decision, int $round, array $appDecisions = []): array {
     $step = match ($decision) {
       'accept', 'accept_with_suggestions' => self::step('Decision', self::DONE, self::decisionLabel($decision)),

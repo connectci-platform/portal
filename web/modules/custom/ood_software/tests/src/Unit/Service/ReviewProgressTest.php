@@ -34,6 +34,11 @@ class ReviewProgressTest extends UnitTestCase {
   /**
    * @covers ::steps
    * @dataProvider situations
+   *
+   * @param array<string, mixed> $facts
+   * @param array<int, string> $reviewer
+   * @param array<int, string> $contributor
+   * @param array<string, string> $labels
    */
   public function testSituation(array $facts, array $reviewer, array $contributor, array $labels): void {
     $steps = P::steps($facts);
@@ -46,6 +51,12 @@ class ReviewProgressTest extends UnitTestCase {
     }
   }
 
+  /**
+   * Facts and expected states for each situation.
+   *
+   * @return array<string, array<int, array<mixed>>>
+   *   Data provider rows.
+   */
   public static function situations(): array {
     [$D, $C, $W, $F, $N] = [P::DONE, P::CURRENT, P::WAITING, P::FAILED, P::NOT_REACHED];
     $base = ['repo_state' => 'ready_for_review', 'run_status' => 'complete', 'review_state' => NULL, 'decision_sent' => FALSE, 'decision' => NULL, 'suggestion' => 'request_changes', 'round' => 1];
@@ -151,6 +162,39 @@ class ReviewProgressTest extends UnitTestCase {
   }
 
   /**
+   * Once the automated check has landed, the in-review sentence says so.
+   *
+   * @covers ::contributorSentence
+   */
+  public function testContributorSentenceWithPrecheckReady(): void {
+    $inReview = ['2 submitted, AI report queued', '5 AI report ready, nobody started', '6 reviewer working'];
+    $situations = self::situations();
+    foreach ($inReview as $name) {
+      $this->assertSame(
+        'In review. The automated check is ready to read, and a reviewer will respond by email.',
+        P::contributorSentence(P::steps($situations[$name][0])['contributor'], TRUE),
+        $name
+      );
+    }
+    $this->assertSame(
+      'Live, and your update is in review. The automated check is ready to read, and a reviewer will respond by email.',
+      P::contributorSentence(P::steps($situations['12 live, update in review'][0])['contributor'], TRUE)
+    );
+  }
+
+  /**
+   * The flag changes nothing outside the in-review steps.
+   *
+   * @covers ::contributorSentence
+   */
+  public function testPrecheckReadyLeavesOtherSentencesAlone(): void {
+    foreach (['1 added, not submitted', '7 changes requested', '9 accepted, not yet published', '10 published', '11 declined'] as $name) {
+      $steps = P::steps(self::situations()[$name][0])['contributor'];
+      $this->assertSame(P::contributorSentence($steps), P::contributorSentence($steps, TRUE), $name);
+    }
+  }
+
+  /**
    * The card chip: where the repo is, in a few words.
    *
    * @covers ::chip
@@ -227,6 +271,7 @@ class ReviewProgressTest extends UnitTestCase {
       'app_decisions' => ['jupyter' => 'accept', 'rstudio' => 'request_changes'],
       'round' => 1,
     ]);
+    /** @var array<string, mixed> $decision */
     $decision = $steps['reviewer'][3];
 
     $this->assertSame('Changes requested · round 1', $decision['label'], 'The step still shows the strictest.');
