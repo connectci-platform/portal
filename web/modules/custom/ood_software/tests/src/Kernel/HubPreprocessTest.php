@@ -28,10 +28,16 @@ class HubPreprocessTest extends KernelTestBase {
   use ProdConfigTrait;
   use UserCreationTrait;
 
+  /**
+   * When the review's decision was sent, in the report-landed tests.
+   */
+  protected const SENT_AT = 1760000000;
+
   protected static $modules = [
     'system', 'user', 'node', 'field', 'text', 'filter', 'options',
     'datetime', 'link', 'taxonomy', 'path', 'path_alias',
-    'content_moderation', 'workflows', 'key', 'flag', 'file', 'ood_software',
+    'content_moderation', 'workflows', 'key', 'flag', 'file',
+    'entity_reference_revisions', 'paragraphs', 'ood_software',
   ];
 
   protected function setUp(): void {
@@ -39,6 +45,7 @@ class HubPreprocessTest extends KernelTestBase {
     $this->installEntitySchema('user');
     $this->installEntitySchema('node');
     $this->installEntitySchema('taxonomy_term');
+    $this->installEntitySchema('paragraph');
     $this->installEntitySchema('content_moderation_state');
     $this->installEntitySchema('path_alias');
     $this->installSchema('node', ['node_access']);
@@ -51,6 +58,29 @@ class HubPreprocessTest extends KernelTestBase {
       // Hub cards and the catalog cache look up each repo's newest review
       // by field_arv_repo, so the review type and that field must exist.
       'node.type.appverse_review',
+      'node.type.appverse_repo',
+      // The report-landed tests build reviews with a sent decision.
+      'paragraphs.paragraphs_type.review_verdict',
+      'field.storage.paragraph.field_rvv_conclusion',
+      'field.field.paragraph.review_verdict.field_rvv_conclusion',
+      'field.storage.node.field_arv_sha',
+      'field.field.node.appverse_review.field_arv_sha',
+      'field.storage.node.field_arv_reviewed_at',
+      'field.field.node.appverse_review.field_arv_reviewed_at',
+      'field.storage.node.field_arv_decision_sent_at',
+      'field.field.node.appverse_review.field_arv_decision_sent_at',
+      'field.storage.node.field_arv_verdicts',
+      'field.field.node.appverse_review.field_arv_verdicts',
+      'field.storage.node.field_arv_recommendation',
+      'field.field.node.appverse_review.field_arv_recommendation',
+      'field.storage.node.field_arv_withdrawn_at',
+      'field.field.node.appverse_review.field_arv_withdrawn_at',
+      'field.storage.node.field_review_status',
+      'field.field.node.appverse_repo.field_review_status',
+      'field.storage.node.field_review_dispatched_at',
+      'field.field.node.appverse_repo.field_review_dispatched_at',
+      'field.storage.node.field_repo_assigned_reviewer',
+      'field.field.node.appverse_repo.field_repo_assigned_reviewer',
       'field.storage.node.field_arv_repo',
       'field.field.node.appverse_review.field_arv_repo',
       'node.type.appverse_repo',
@@ -648,6 +678,60 @@ class HubPreprocessTest extends KernelTestBase {
     $this->assertFalse($appRow['tags']['truncated']);
     $this->assertSame(0, $appRow['tags']['remaining']);
     $this->assertSame([], $appRow['tags']['unresolved']);
+  }
+
+  /**
+   * Builds a repo in the given state with one review, as the contributor.
+   */
+  private function cardSentence(string $repoState, ?int $sentAt): string {
+    $owner = $this->createUser(['access content'], 'contributor');
+    \Drupal::currentUser()->setAccount($owner);
+    $repo = $this->makeRepo(['moderation_state' => $repoState]);
+    $repo->setOwnerId($owner->id());
+    if ($sentAt !== NULL) {
+      // The contributor re-submitted: a run was dispatched after the decision.
+      $repo->set('field_review_dispatched_at', $sentAt + 3600);
+    }
+    $repo->save();
+    $values = [
+      'type' => 'appverse_review',
+      'title' => 'Review of Example repo',
+      'moderation_state' => 'published',
+      'field_arv_repo' => $repo->id(),
+      'field_arv_sha' => 'abc1234',
+      'field_arv_reviewed_at' => self::SENT_AT - 3600,
+    ];
+    if ($sentAt !== NULL) {
+      $verdict = \Drupal::entityTypeManager()->getStorage('paragraph')->create([
+        'type' => 'review_verdict',
+        'field_rvv_conclusion' => 'request_changes',
+      ]);
+      $verdict->save();
+      $values['field_arv_decision_sent_at'] = $sentAt;
+      $values['field_arv_verdicts'] = [$verdict];
+    }
+    Node::create($values)->save();
+    return (string) _ood_software_build_hub_row($repo)['progress_sentence'];
+  }
+
+  /**
+   * A landed report with no decision sent yet is ready to read.
+   */
+  public function testLandedReportWithoutSentDecisionIsReady(): void {
+    $this->assertSame(
+      'In review. The automated check is ready to read, and a reviewer will respond by email.',
+      $this->cardSentence('ready_for_review', NULL)
+    );
+  }
+
+  /**
+   * Back in review after a sent request_changes: the new check is not here.
+   */
+  public function testResubmittedRoundDoesNotAnnounceTheOldCheck(): void {
+    $this->assertSame(
+      'In review. A reviewer will respond by email.',
+      $this->cardSentence('ready_for_review', self::SENT_AT)
+    );
   }
 
 }

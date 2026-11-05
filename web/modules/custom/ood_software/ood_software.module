@@ -2528,7 +2528,12 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($repo);
   if ($latest !== NULL) {
     $reviewUrl = \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $latest->id()])->toString();
-    $reportLanded = \Drupal\ood_software\Service\ReviewPageData::reportLanded($latest);
+    // Review nodes exist only once a report lands, so during a re-submit round
+    // the newest one is the previous round's. Its decision was sent; this
+    // round's check is not here yet, so the card must not say it is.
+    $reportLanded = \Drupal\ood_software\Service\ReviewPageData::reportLanded($latest)
+      && $latest->hasField('field_arv_decision_sent_at')
+      && $latest->get('field_arv_decision_sent_at')->isEmpty();
   }
 
   return [

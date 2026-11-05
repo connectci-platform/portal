@@ -41,8 +41,10 @@ class ReviewSummaryAnchorsTest extends KernelTestBase {
    *
    * @param array<int, array<string, mixed>> $apps
    * @param array<string, array<string, mixed>> $repoBlocks
+   * @param array<string, mixed> $page
+   *   Extra page values, such as the header facts.
    */
-  private function renderSummary(array $apps, array $repoBlocks = []): string {
+  private function renderSummary(array $apps, array $repoBlocks = [], array $page = []): string {
     $element = [
       '#theme' => 'appverse_review_summary',
       '#page' => [
@@ -51,7 +53,7 @@ class ReviewSummaryAnchorsTest extends KernelTestBase {
         'maintenance' => $this->block('maintenance'),
         'level_labels' => [],
         'conclusion_labels' => [],
-      ],
+      ] + $page,
     ];
     return (string) \Drupal::service('renderer')->renderInIsolation($element);
   }
@@ -88,6 +90,26 @@ class ReviewSummaryAnchorsTest extends KernelTestBase {
     $this->assertStringContainsString('id="block-apps/desktop-portability"', $html);
     // Repository-level blocks are unscoped, as on the reviewer's page.
     $this->assertStringContainsString('id="block-security"', $html);
+  }
+
+  /**
+   * Visitors get the header without who submitted it or a link out.
+   */
+  public function testHeaderHasNoSubmitterAndNoRepoLink(): void {
+    $html = $this->renderSummary([$this->app('root')], [], [
+      'title' => 'Example app',
+      'repo_url' => 'https://github.com/example/repo',
+      'contributor' => ['name' => 'Pat', 'url' => '/people/pat'],
+      'sha7' => 'abc1234',
+      'reviewed_at' => 'Nov 5, 2026',
+      'history' => ['position' => 1, 'total' => 1, 'older' => NULL, 'newer' => NULL, 'is_rerun' => TRUE],
+    ]);
+    $this->assertStringContainsString('example/repo', $html);
+    $this->assertStringContainsString('First review of this repo', $html);
+    $this->assertStringNotContainsString('Submitted by', $html);
+    $this->assertStringNotContainsString('rerun', $html);
+    $this->assertStringNotContainsString('href="https://github.com/example/repo"', $html);
+    $this->assertDoesNotMatchRegularExpression('/<a[^>]*example\/repo/', $html);
   }
 
 }
