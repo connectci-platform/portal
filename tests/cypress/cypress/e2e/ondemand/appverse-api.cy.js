@@ -380,15 +380,13 @@ describe("Appverse JSON:API", () => {
       });
     });
 
-    it("GET /jsonapi/flagging/appverse_apps returns a data array", () => {
+    it("GET /jsonapi/flagging/appverse_apps returns 404 (off the JSON:API allowlist)", () => {
       cy.request({
         url: '/jsonapi/flagging/appverse_apps',
         headers: { 'Accept': 'application/vnd.api+json' },
         failOnStatusCode: false,
       }).then((response) => {
-        expect(response.status).to.eq(200);
-        expect(response.body).to.have.property('data');
-        expect(response.body.data).to.be.an('array');
+        expect(response.status).to.eq(404);
       });
     });
   });

@@ -340,3 +340,49 @@ ood_software.review_publish:
   requirements:
     _permission: 'administer appverse content'
     node: \d+
+
+ood_software.appverse_flags:
+  path: '/appverse/api/flags'
+  methods: [GET]
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseFlagController::flags'
+    _title: 'My flagged apps'
+  options:
+    no_cache: TRUE
+  requirements:
+    _permission: 'flag appverse_apps'
+    _user_is_logged_in: 'TRUE'
+
+ood_software.appverse_flag:
+  path: '/appverse/api/flag/{node}'
+  methods: [POST]
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseFlagController::flag'
+    _title: 'Use this app'
+  options:
+    no_cache: TRUE
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _permission: 'flag appverse_apps'
+    _entity_access: 'node.view'
+    _csrf_request_header_token: 'TRUE'
+    _method: POST
+
+ood_software.appverse_unflag:
+  path: '/appverse/api/flag/{node}'
+  methods: [DELETE]
+  defaults:
+    _controller: '\Drupal\ood_software\Controller\AppverseFlagController::unflag'
+    _title: 'Stop using this app'
+  options:
+    no_cache: TRUE
+    parameters:
+      node:
+        type: entity:node
+  requirements:
+    _permission: 'unflag appverse_apps'
+    _entity_access: 'node.view'
+    _csrf_request_header_token: 'TRUE'
+    _method: DELETE

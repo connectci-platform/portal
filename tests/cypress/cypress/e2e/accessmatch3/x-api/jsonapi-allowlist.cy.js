@@ -22,6 +22,7 @@ describe("Test JSON:API allowlist mode", () => {
     '/jsonapi/user/user',
     '/jsonapi/media/document',
     '/jsonapi/media/video',
+    '/jsonapi/flagging/appverse_apps',
   ];
 
   const sensitiveFields = [
