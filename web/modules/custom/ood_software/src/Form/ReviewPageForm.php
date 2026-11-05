@@ -338,7 +338,7 @@ final class ReviewPageForm extends FormBase {
         '#value' => $this->t('Start the next round'),
         '#attributes' => [
           'class' => ['btn', 'primary'],
-          'title' => $this->t('Re-submit the repo for its contributor, as their Re-submit button does: a new AI report on the latest commit, and round @n.', ['@n' => $this->repoProgress->facts($repo)['round'] + 1]),
+          'title' => $this->t('Re-submit the repo for its contributor, as their Re-submit button does: a new automated check on the latest commit, and round @n.', ['@n' => $this->repoProgress->facts($repo)['round'] + 1]),
         ],
         '#submit' => ['::startNextRound'],
         '#limit_validation_errors' => [],
@@ -1111,7 +1111,7 @@ final class ReviewPageForm extends FormBase {
       ] : NULL,
       'run_status' => [
         'in_flight' => $rerun['in_flight'],
-        'label' => $rerun['in_flight'] ? ($rerun['status'] === 'in_progress' ? (string) $this->t('AI report running') : (string) $this->t('AI report queued')) : '',
+        'label' => $rerun['in_flight'] ? ($rerun['status'] === 'in_progress' ? (string) $this->t('Automated check running') : (string) $this->t('Automated check queued')) : '',
       ],
       'repo_link' => $repo ? [
         'url' => $repo->toUrl()->toString(),
@@ -1381,7 +1381,7 @@ final class ReviewPageForm extends FormBase {
       return $steps;
     }
     foreach ($steps as &$step) {
-      if ($step['step'] === 'In review' && $step['state'] === ReviewProgress::CURRENT) {
+      if ($step['key'] === 'in_review' && $step['state'] === ReviewProgress::CURRENT) {
         $step['label'] = (string) $this->t('Changes you push to GitHub now will be reviewed in the next round.');
         $step['show_label'] = TRUE;
       }

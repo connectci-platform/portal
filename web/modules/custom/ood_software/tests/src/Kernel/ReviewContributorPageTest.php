@@ -286,7 +286,7 @@ class ReviewContributorPageTest extends KernelTestBase {
   public function testReviewerStillGetsTheReviewForm(): void {
     ['review' => $review] = $this->makeReview(FALSE);
     $html = $this->renderAs($this->reviewer, $review);
-    $this->assertStringNotContainsString('Automated check', $html);
+    $this->assertStringNotContainsString('arv-contributor', $html, 'Not the contributor view.');
     $this->assertStringContainsString('data-review-rerun', $html);
   }
 

@@ -693,7 +693,7 @@ function ood_software_form_user_form_alter(array &$form, FormStateInterface $for
     'ood_software_submitted_emails' => [
       '#type' => 'checkbox',
       '#title' => t('Email me when a repo with no assigned reviewer is submitted, resubmitted or updated for review'),
-      '#description' => t('Emails about repos assigned to you, and about your own reviews such as your AI report being ready, are sent either way.'),
+      '#description' => t('Emails about repos assigned to you, and about your own reviews such as your automated check being ready, are sent either way.'),
       '#default_value' => !$notifier->optedOut($account),
     ],
   ];
@@ -1857,8 +1857,8 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       break;
 
     case 'review_run_ready':
-      $message['subject'] = t('[@site] AI report ready: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = t('<p>The AI report for "@title" is ready to check.</p>', ['@title' => $title]);
+      $message['subject'] = t('[@site] Automated check ready: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The automated check for "@title" is ready to check.</p>', ['@title' => $title]);
       $review = $params['review'] ?? NULL;
       $message['body'][] = $review instanceof NodeInterface
         ? t('<p>The review: <a href=":url">:url</a></p>', [
@@ -1868,9 +1868,9 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       break;
 
     case 'review_run_failed':
-      $message['subject'] = t('[@site] AI report failed: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = t('<p>The AI report for "@title" failed: @reason.</p>', ['@title' => $title, '@reason' => (string) ($params['reason'] ?? '')]);
-      $message['body'][] = t('<p>Fix the cause, then use Rerun AI report on the repo. There is no review by hand.</p>');
+      $message['subject'] = t('[@site] Automated check failed: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The automated check for "@title" failed: @reason.</p>', ['@title' => $title, '@reason' => (string) ($params['reason'] ?? '')]);
+      $message['body'][] = t('<p>Fix the cause, then use Recheck on the repo. There is no review by hand.</p>');
       if (!empty($params['run_id'])) {
         $message['body'][] = t('<p>The run log: <a href=":url">:url</a></p>', [
           ':url' => sprintf('https://github.com/%s/actions/runs/%d', \Drupal\ood_software\Service\AppverseReviewService::REVIEW_REPO, (int) $params['run_id']),
@@ -2478,11 +2478,10 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $dispatcher = \Drupal::service('ood_software.review_dispatcher');
   $inFlight = $isAdmin && $dispatcher->isRunInFlight($dispatcher->latestRevision($repo));
   if ($isAdmin && !$inFlight) {
-    // "Rerun report", not "Rerun AI report": the pair with the Actions toggle
-    // beside it has to fit a 12.5rem column, and the longer wording wrapped
-    // that card onto a second row. "Run AI report" (no prior run) is short
-    // enough to keep the AI, and a rerun is of the report just named.
-    $label = $reviewStatus === NULL ? t('Run AI report') : t('Rerun report');
+    // "Recheck", short because the pair with the Actions toggle beside it has
+    // to fit a 12.5rem column and longer wording wrapped that card onto a
+    // second row.
+    $label = $reviewStatus === NULL ? t('Run automated check') : t('Recheck');
     if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
@@ -2510,7 +2509,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   // coming, so the label is the rerun one.
   $runReviewActionHidden = NULL;
   if ($inFlight) {
-    $label = t('Rerun report');
+    $label = t('Recheck');
     if (!$dispatcher->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
@@ -3206,8 +3205,8 @@ function ood_software_views_data_alter(array &$data): void {
   // The manage-repos "AI report" filter: the latest run's state (D8-2927; the
   // AiReportState filter plugin).
   $data['node_field_data']['ood_ai_report'] = [
-    'title' => t('AI report state'),
-    'help' => t('The state of the repo\'s latest AI report, as its hub card shows it.'),
+    'title' => t('Automated check state'),
+    'help' => t('The state of the repo\'s latest automated check, as its hub card shows it.'),
     'real field' => 'nid',
     'filter' => ['id' => 'ood_software_ai_report_state'],
   ];

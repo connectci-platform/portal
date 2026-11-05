@@ -11,8 +11,8 @@ namespace Drupal\ood_software\Service;
  * agree. The eleven situations of appverse-planning
  * review-system/REVIEW-STATES.md are its unit tests.
  *
- * Reviewers see five steps (Submitted, AI report, Review, Decision, Live);
- * contributors see four, with the AI report folded into "In review", so no
+ * Reviewers see five steps (Submitted, Automated check, Review, Decision, Live);
+ * contributors see four, with the automated check folded into "In review", so no
  * AI state (queued, running, failed) ever reaches them.
  */
 final class ReviewProgress {
@@ -115,7 +115,7 @@ final class ReviewProgress {
    *   - suggestion: the tool's recommendation, or NULL.
    *   - round: 1 for a first submission, N for the Nth after changes requested.
    *
-   * @return array{reviewer: array<int, array{step: string, state: string, label: string}>, contributor: array<int, array{step: string, state: string, label: string}>}
+   * @return array{reviewer: array<int, array{key: string, step: string, state: string, label: string}>, contributor: array<int, array{key: string, step: string, state: string, label: string}>}
    */
   public static function steps(array $facts): array {
     $repoState = (string) ($facts['repo_state'] ?? 'draft');
@@ -139,20 +139,20 @@ final class ReviewProgress {
     // that never happened), a reviewer has to start one.
     $neverReviewed = $run === NULL && $reviewState === NULL && $repoState !== 'ready_for_review';
 
-    // 2. AI report.
+    // 2. Automated check.
     $aiDone = $submitted && $run === 'complete';
     if (!$submitted || $neverReviewed) {
-      $ai = self::step('AI report', self::NOT_REACHED, '');
+      $ai = self::step('Automated check', self::NOT_REACHED, '');
     }
     elseif ($run === NULL) {
-      $ai = self::step('AI report', self::CURRENT, 'Not started');
+      $ai = self::step('Automated check', self::CURRENT, 'Not started');
     }
     else {
       $ai = match ($run) {
-        'complete' => self::step('AI report', self::DONE, $suggestion && isset(self::SUGGESTION_LABELS[$suggestion]) ? 'Ready · suggests ' . self::SUGGESTION_LABELS[$suggestion] : 'Ready'),
-        'error' => self::step('AI report', self::FAILED, 'Failed · rerun'),
-        'in_progress' => self::step('AI report', self::CURRENT, 'Running'),
-        default => self::step('AI report', self::CURRENT, 'Queued'),
+        'complete' => self::step('Automated check', self::DONE, $suggestion && isset(self::SUGGESTION_LABELS[$suggestion]) ? 'Ready · suggests ' . self::SUGGESTION_LABELS[$suggestion] : 'Ready'),
+        'error' => self::step('Automated check', self::FAILED, 'Failed · rerun'),
+        'in_progress' => self::step('Automated check', self::CURRENT, 'Running'),
+        default => self::step('Automated check', self::CURRENT, 'Queued'),
       };
     }
 
@@ -184,7 +184,7 @@ final class ReviewProgress {
       $live = self::step('Live', self::NOT_REACHED, '');
     }
 
-    // Contributors: AI report and Review fold into "In review", which stays
+    // Contributors: Automated check and Review fold into "In review", which stays
     // current from submission until a decision is sent, whatever the run is
     // doing; a failed run is a reviewer's to rerun and is never shown.
     if (!$submitted || $neverReviewed) {
@@ -329,7 +329,7 @@ final class ReviewProgress {
    * apply |t to the key, which the extractor cannot see, so the step names
    * never reached a translation file (appverse-planning#49).
    *
-   * @return array{step: string, name: string, state: string, label: string}
+   * @return array{key: string, step: string, name: string, state: string, label: string}
    */
   protected static function step(string $step, string $state, string $label): array {
     // Whether the label is worth showing is decided here, where the English
@@ -339,6 +339,7 @@ final class ReviewProgress {
     // strings are translated the template could not tell (appverse-planning#49).
     $redundant = $label === '' || $label === $step || ($state === self::DONE && $label === 'Done');
     return [
+      'key' => self::stepKey($step),
       'step' => $step,
       'name' => self::stepName($step),
       'state' => $state,
@@ -373,12 +374,23 @@ final class ReviewProgress {
   }
 
   /**
+   * A step's stable key, so callers never match on the English label.
+   */
+  protected static function stepKey(string $step): string {
+    return match ($step) {
+      'Automated check' => 'automated_check',
+      'In review' => 'in_review',
+      default => strtolower($step),
+    };
+  }
+
+  /**
    * A step's name, translated. Literal t() calls for the extractor.
    */
   protected static function stepName(string $step): string {
     return (string) match ($step) {
       'Submitted' => t('Submitted'),
-      'AI report' => t('AI report'),
+      'Automated check' => t('Automated check'),
       'Review' => t('Review'),
       'In review' => t('In review'),
       'Decision' => t('Decision'),

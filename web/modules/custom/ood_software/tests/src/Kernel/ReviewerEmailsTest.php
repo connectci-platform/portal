@@ -209,7 +209,7 @@ class ReviewerEmailsTest extends KernelTestBase {
     // Started by cron with nobody assigned: only the Site Developers.
     $this->assertSame(['dev@example.com'], $this->recipients('review_run_failed'));
     $mail = array_values(array_filter($this->getMails(), fn ($m) => $m['key'] === 'review_run_failed'))[0];
-    $this->assertStringContainsString('failed: importing the review failed: no sha.', $mail['body']);
+    $this->assertStringContainsString('failed: importing the review failed: no sha.', preg_replace('/\s+/', ' ', (string) $mail['body']));
     $this->assertStringContainsString('actions/runs/4242', $mail['body']);
   }
 
@@ -250,7 +250,7 @@ class ReviewerEmailsTest extends KernelTestBase {
       ->condition('type', 'ood_software')
       ->condition('severity', RfcLogLevel::WARNING)
       ->execute()->fetchCol();
-    $this->assertNotEmpty(array_filter($logged, fn ($m) => str_contains($m, 'failed AI report')), 'A warning names the failed AI report.');
+    $this->assertNotEmpty(array_filter($logged, fn ($m) => str_contains($m, 'failed automated check')), 'A warning names the failed automated check.');
   }
 
   /**

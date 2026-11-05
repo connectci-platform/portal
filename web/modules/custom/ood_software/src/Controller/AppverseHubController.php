@@ -646,20 +646,20 @@ final class AppverseHubController extends ControllerBase {
       $this->messenger()->addError($this->t('Reviews are only available for Repos.'));
       return $this->redirectToHub();
     }
-    $running = $this->t('An AI report for @title is already running.', ['@title' => $node->label()]);
+    $running = $this->t('An automated check for @title is already running.', ['@title' => $node->label()]);
     if ($this->runInFlight($node)) {
       $this->messenger()->addWarning($running);
       return $this->redirectToHub();
     }
     if ($this->reviewService->dispatchForNode($node)) {
-      $this->messenger()->addStatus($this->t('AI report started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full report).', ['@title' => $node->label()]));
+      $this->messenger()->addStatus($this->t('Automated check started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full check).', ['@title' => $node->label()]));
     }
     elseif ($this->runInFlight($node)) {
       // Another request started a run between the check and the dispatch.
       $this->messenger()->addWarning($running);
     }
     else {
-      $this->messenger()->addError($this->t('Could not start the AI report for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
+      $this->messenger()->addError($this->t('Could not start the automated check for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
     }
     return $this->redirectToHub();
   }
@@ -709,9 +709,15 @@ final class AppverseHubController extends ControllerBase {
    * checked (we're called before applyTransition runs).
    */
   protected function isFirstPublishOfRepo(NodeInterface $repo): bool {
-    $vids = $this->entityTypeManager()->getStorage('node')->revisionIds($repo);
-    foreach ($vids as $vid) {
-      $rev = $this->entityTypeManager()->getStorage('node')->loadRevision($vid);
+    $storage = $this->entityTypeManager()->getStorage('node');
+    $vids = $storage->getQuery()
+      ->allRevisions()
+      ->accessCheck(FALSE)
+      ->condition('nid', $repo->id())
+      ->sort('vid')
+      ->execute();
+    foreach (array_keys($vids) as $vid) {
+      $rev = $storage->loadRevision($vid);
       if ($rev instanceof NodeInterface && $rev->hasField('moderation_state') && $rev->get('moderation_state')->value === 'published') {
         return FALSE;
       }
@@ -814,7 +820,7 @@ final class AppverseHubController extends ControllerBase {
 
     $stepLabel = '';
     foreach ($this->repoProgress->steps($latest)['reviewer'] as $step) {
-      if ($step['step'] === 'AI report') {
+      if ($step['key'] === 'automated_check') {
         $stepLabel = (string) $step['label'];
         break;
       }

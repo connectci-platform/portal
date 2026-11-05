@@ -52,6 +52,16 @@ class ReviewProgressTest extends UnitTestCase {
   }
 
   /**
+   * Each step carries a stable key, so callers never match on its label.
+   */
+  public function testStepsCarryStableKeys(): void {
+    $steps = P::steps(['repo_state' => 'ready_for_review', 'run_status' => 'complete']);
+    $this->assertSame(['submitted', 'automated_check', 'review', 'decision', 'live'], array_column($steps['reviewer'], 'key'));
+    $this->assertSame(['submitted', 'in_review', 'decision', 'live'], array_column($steps['contributor'], 'key'));
+    $this->assertSame('Automated check', $steps['reviewer'][1]['step']);
+  }
+
+  /**
    * Facts and expected states for each situation.
    *
    * @return array<string, array<int, array<mixed>>>
@@ -65,22 +75,22 @@ class ReviewProgressTest extends UnitTestCase {
         ['repo_state' => 'draft', 'run_status' => NULL] + $base,
         [$W, $N, $N, $N, $N], [$W, $N, $N, $N], ['Submitted' => 'Not submitted'],
       ],
-      '2 submitted, AI report queued' => [
+      '2 submitted, automated check queued' => [
         ['run_status' => 'pending'] + $base,
-        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Queued'],
+        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Queued'],
       ],
-      '3 AI report running' => [
+      '3 automated check running' => [
         ['run_status' => 'in_progress'] + $base,
-        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Running'],
+        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Running'],
       ],
       // The contributor still sees "In review" (current), never a failure.
-      '4 AI report failed' => [
+      '4 automated check failed' => [
         ['run_status' => 'error'] + $base,
-        [$D, $F, $N, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Failed · rerun'],
+        [$D, $F, $N, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Failed · rerun'],
       ],
-      '5 AI report ready, nobody started' => [
+      '5 automated check ready, nobody started' => [
         ['review_state' => 'draft'] + $base,
-        [$D, $D, $C, $N, $N], [$D, $C, $N, $N], ['AI report' => 'Ready · suggests Request changes', 'Review' => 'Not started'],
+        [$D, $D, $C, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Ready · suggests Request changes', 'Review' => 'Not started'],
       ],
       '6 reviewer working' => [
         ['review_state' => 'in_review'] + $base,
@@ -90,9 +100,9 @@ class ReviewProgressTest extends UnitTestCase {
         ['repo_state' => 'needs_adjustment', 'review_state' => 'in_review', 'decision_sent' => TRUE, 'decision' => 'request_changes'] + $base,
         [$D, $D, $D, $W, $N], [$D, $D, $W, $N], ['Decision' => 'Changes requested · round 1'],
       ],
-      '8 resubmitted, new AI report' => [
+      '8 resubmitted, new automated check' => [
         ['run_status' => 'pending', 'round' => 2] + $base,
-        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['Submitted' => 'Resubmitted · round 2', 'AI report' => 'Queued'],
+        [$D, $C, $N, $N, $N], [$D, $C, $N, $N], ['Submitted' => 'Resubmitted · round 2', 'Automated check' => 'Queued'],
       ],
       '9 accepted, not yet published' => [
         ['review_state' => 'in_review', 'decision_sent' => TRUE, 'decision' => 'accept_with_suggestions'] + $base,
@@ -144,13 +154,13 @@ class ReviewProgressTest extends UnitTestCase {
   public function testContributorSentence(): void {
     $expected = [
       '1 added, not submitted' => 'Not submitted yet.',
-      '2 submitted, AI report queued' => 'In review. A reviewer will respond by email.',
-      '3 AI report running' => 'In review. A reviewer will respond by email.',
-      '4 AI report failed' => 'In review. A reviewer will respond by email.',
-      '5 AI report ready, nobody started' => 'In review. A reviewer will respond by email.',
+      '2 submitted, automated check queued' => 'In review. A reviewer will respond by email.',
+      '3 automated check running' => 'In review. A reviewer will respond by email.',
+      '4 automated check failed' => 'In review. A reviewer will respond by email.',
+      '5 automated check ready, nobody started' => 'In review. A reviewer will respond by email.',
       '6 reviewer working' => 'In review. A reviewer will respond by email.',
       '7 changes requested' => 'Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.',
-      '8 resubmitted, new AI report' => 'In review. A reviewer will respond by email.',
+      '8 resubmitted, new automated check' => 'In review. A reviewer will respond by email.',
       '9 accepted, not yet published' => 'Accepted. A reviewer will publish it.',
       '10 published' => 'Live in the Appverse catalog.',
       '11 declined' => 'Declined. The review says why.',
@@ -167,7 +177,7 @@ class ReviewProgressTest extends UnitTestCase {
    * @covers ::contributorSentence
    */
   public function testContributorSentenceWithPrecheckReady(): void {
-    $inReview = ['2 submitted, AI report queued', '5 AI report ready, nobody started', '6 reviewer working'];
+    $inReview = ['2 submitted, automated check queued', '5 automated check ready, nobody started', '6 reviewer working'];
     $situations = self::situations();
     foreach ($inReview as $name) {
       $this->assertSame(
@@ -203,18 +213,18 @@ class ReviewProgressTest extends UnitTestCase {
     $expected = [
       // name => [reviewer label, contributor label, reviewer modifier]
       '1 added, not submitted' => ['Not submitted', 'Not submitted', 'secondary'],
-      '2 submitted, AI report queued' => ['Queued', 'In review', 'warning'],
-      '3 AI report running' => ['Running', 'In review', 'warning'],
+      '2 submitted, automated check queued' => ['Queued', 'In review', 'warning'],
+      '3 automated check running' => ['Running', 'In review', 'warning'],
       // A failed run is the reviewer's to rerun and is never shown to the
       // contributor, who still reads "In review".
-      '4 AI report failed' => ['Failed · rerun', 'In review', 'danger'],
-      '5 AI report ready, nobody started' => ['In review', 'In review', 'warning'],
+      '4 automated check failed' => ['Failed · rerun', 'In review', 'danger'],
+      '5 automated check ready, nobody started' => ['In review', 'In review', 'warning'],
       '6 reviewer working' => ['In review', 'In review', 'warning'],
       '7 changes requested' => ['Changes requested · round 1', 'Changes requested · round 1', 'warning'],
-      // A resubmission starts a fresh AI report, so the reviewer chip reads
+      // A resubmission starts a fresh automated check, so the reviewer chip reads
       // the same as case 2: the round shows on the progress line's Submitted
       // step, not on the chip, which says where the repo is now.
-      '8 resubmitted, new AI report' => ['Queued', 'In review', 'warning'],
+      '8 resubmitted, new automated check' => ['Queued', 'In review', 'warning'],
       '9 accepted, not yet published' => ['Ready to publish', 'Ready to publish', 'warning'],
       '10 published' => ['Live', 'Live', 'success'],
       '11 declined' => ['Declined', 'Declined', 'danger'],

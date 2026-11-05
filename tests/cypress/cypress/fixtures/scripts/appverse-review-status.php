@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Sets an Appverse repo's AI report run status for Cypress.
+ * Sets an Appverse repo's automated check run status for Cypress.
  *
  * Usage (project root is mounted at /var/www/html in DDEV):
  * @code

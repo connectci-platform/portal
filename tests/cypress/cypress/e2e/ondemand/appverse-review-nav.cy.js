@@ -1,13 +1,13 @@
 /**
  * Appverse review navigation: live report status (D8-2931).
  *
- * A reviewer who opens the review page (or the Manage Repos hub) while an AI
- * report is running sees it finish in place, with no reload:
- *  - the review page's status line goes "AI report queued" -> "AI report
- *    finished" and the Rerun link appears, or, when the run produced a newer
+ * A reviewer who opens the review page (or the Manage Repos hub) while the
+ * automated check is running sees it finish in place, with no reload:
+ *  - the review page's status line goes "Automated check queued" ->
+ *    "Automated check finished" and the Recheck link appears, or, when the run produced a newer
  *    review, a "New report ready" link to it; a failed run offers neither;
  *  - the hub card's step label updates, its review link points at the review
- *    the run produced, and its hidden Run AI report form is revealed.
+ *    the run produced, and its hidden Run automated check form is revealed.
  *
  * Fixtures come from fixtures/scripts/appverse-seed.php (a repo, optionally
  * with one review) and appverse-review-status.php (sets the run status and
@@ -67,7 +67,7 @@ describe('Appverse live report status', () => {
     it('finishes the status line on the review page without a reload', () => {
       cy.clock();
       cy.visit(`/appverse/review/${reviewNid}`);
-      cy.get('[data-review-run-status]').should('contain.text', 'AI report queued');
+      cy.get('[data-review-run-status]').should('contain.text', 'Automated check queued');
       cy.get('[data-review-rerun]').should('not.be.visible');
 
       setRunStatus(repoNid, 'complete');
@@ -75,7 +75,7 @@ describe('Appverse live report status', () => {
       cy.window().then((win) => { win.__noReload = true; });
       cy.tick(30000);
 
-      cy.get('[data-review-run-status]').should('contain.text', 'AI report finished');
+      cy.get('[data-review-run-status]').should('contain.text', 'Automated check finished');
       cy.get('[data-review-rerun]').should('be.visible');
       cy.get('[data-review-new]').should('not.be.visible');
       cy.window().its('__noReload').should('eq', true);
@@ -90,7 +90,7 @@ describe('Appverse live report status', () => {
       landReview(repoNid, 'complete').then((newNid) => {
         expect(newNid).to.be.greaterThan(reviewNid);
         cy.tick(30000);
-        cy.get('[data-review-run-status]').should('contain.text', 'AI report finished');
+        cy.get('[data-review-run-status]').should('contain.text', 'Automated check finished');
         cy.get('[data-review-new]').should('be.visible')
           .and('have.attr', 'href').and('match', new RegExp(`/appverse/review/${newNid}$`));
         // This review is superseded now, so it offers no rerun of its own.
@@ -105,12 +105,12 @@ describe('Appverse live report status', () => {
       landReview(repoNid, 'pending').then(() => {
         cy.clock();
         cy.visit(`/appverse/review/${reviewNid}`);
-        cy.get('[data-review-run-status]').should('contain.text', 'AI report queued');
+        cy.get('[data-review-run-status]').should('contain.text', 'Automated check queued');
 
         setRunStatus(repoNid, 'error');
         cy.tick(30000);
 
-        cy.get('[data-review-run-status]').should('contain.text', 'AI report failed');
+        cy.get('[data-review-run-status]').should('contain.text', 'Automated check failed');
         cy.get('[data-review-new]').should('not.be.visible');
       });
     });

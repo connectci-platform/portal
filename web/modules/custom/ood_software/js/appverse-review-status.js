@@ -1,6 +1,6 @@
 /**
  * @file
- * Live AI report status for the review page and in-flight hub cards (D8-2931).
+ * Live automated check status for the review page and in-flight hub cards (D8-2931).
  *
  * Polls the reviewer-only review-status endpoint every 30 seconds while a run
  * is in flight, and patches the page in place when it finishes. It pauses
@@ -91,8 +91,8 @@
               return;
             }
             status.textContent = data.status === 'complete'
-              ? Drupal.t('AI report finished')
-              : Drupal.t('AI report failed');
+              ? Drupal.t('Automated check finished')
+              : Drupal.t('Automated check failed');
             const rerun = page.querySelector('[data-review-rerun]');
             const fresh = page.querySelector('[data-review-new]');
             if (data.latest_review === settings.review) {
