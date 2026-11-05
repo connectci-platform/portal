@@ -348,7 +348,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       style:
         type: html_list
         options:
@@ -875,7 +875,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         name:
           id: name
           table: taxonomy_term_field_data
@@ -949,7 +949,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:
@@ -1425,7 +1425,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:
@@ -1807,7 +1807,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:
@@ -2173,7 +2173,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:

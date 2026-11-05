@@ -2015,7 +2015,7 @@ display:
           type: boolean
           type_custom_true: ''
           type_custom_false: ''
-          not: 0
+          not: false
         link_flag:
           id: link_flag
           table: flagging
@@ -3831,7 +3831,7 @@ display:
           type: boolean
           type_custom_true: ''
           type_custom_false: ''
-          not: 0
+          not: false
         link_flag:
           id: link_flag
           table: flagging
@@ -5117,7 +5117,7 @@ display:
           type: boolean
           type_custom_true: ''
           type_custom_false: ''
-          not: 0
+          not: false
         link_flag:
           id: link_flag
           table: flagging
