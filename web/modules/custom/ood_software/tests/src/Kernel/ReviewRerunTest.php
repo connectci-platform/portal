@@ -319,7 +319,7 @@ class ReviewRerunTest extends KernelTestBase {
     $review = $this->makeReview($repo);
     $form = $this->buildPage($review);
     $html = (string) \Drupal::service('renderer')->renderInIsolation($form);
-    $this->assertMatchesRegularExpression('/<a href="[^"]*\/rerun" data-review-rerun>/', $html);
+    $this->assertMatchesRegularExpression('/<a [^>]*href="[^"]*\/rerun"[^>]*data-review-rerun(?![^>]*hidden)[^>]*>/', $html);
     $this->assertStringContainsString('data-review-run-status', $html);
     $this->assertStringNotContainsString('AI report queued', $html);
 
@@ -327,7 +327,7 @@ class ReviewRerunTest extends KernelTestBase {
     $review = $this->makeReview($inFlight);
     $form = $this->buildPage($review);
     $html = (string) \Drupal::service('renderer')->renderInIsolation($form);
-    $this->assertMatchesRegularExpression('/data-review-rerun hidden>/', $html);
+    $this->assertMatchesRegularExpression('/data-review-rerun[^>]*hidden>/', $html);
     $this->assertStringContainsString('AI report queued', $html);
   }
 
