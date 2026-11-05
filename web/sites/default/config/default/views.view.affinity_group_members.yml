@@ -640,6 +640,7 @@ display:
       tags:
         - 'config:field.storage.node.field_carnegie_code'
         - 'config:field.storage.user.field_access_organization'
+        - flag.flag.affinity_group
   block_1:
     id: block_1
     display_title: Block
@@ -664,6 +665,7 @@ display:
       tags:
         - 'config:field.storage.node.field_carnegie_code'
         - 'config:field.storage.user.field_access_organization'
+        - flag.flag.affinity_group
   data_export_1:
     id: data_export_1
     display_title: 'Data export'
@@ -704,6 +706,7 @@ display:
       tags:
         - 'config:field.storage.node.field_carnegie_code'
         - 'config:field.storage.user.field_access_organization'
+        - flag.flag.affinity_group
   page_1:
     id: page_1
     display_title: Page
@@ -758,6 +761,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
         options: {  }
@@ -776,3 +780,4 @@ display:
       tags:
         - 'config:field.storage.node.field_carnegie_code'
         - 'config:field.storage.user.field_access_organization'
+        - flag.flag.affinity_group

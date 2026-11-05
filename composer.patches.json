@@ -1,9 +1,8 @@
 {
     "patches": {
         "drupal/core": {
-            "ModuleHandler skips all hook implementations when invoked before the module files have been loaded": "patches/3207813-73.patch",
             "More link is missing in pager...": "patches/3381979-views-some-pager-more-link.patch",
-            "big_pipe.js' checkMutation() does not check if node exists before using it": "https://www.drupal.org/files/issues/2024-01-21/drupal-big_pipe_does_not_check_before_using_node_object-3416141.patch"
+            "big_pipe.js' checkMutation() does not check if node exists before using it - https://www.drupal.org/i/3416141": "patches/big_pipe-checkmutation-null-node-3416141.patch"
         },
         "drupal/facets": {
             "Creating requests causes failures on Drupal 10.3": "https://www.drupal.org/files/issues/2024-08-07/3466281-2--for-2.0.8.patch",
@@ -23,7 +22,8 @@
             "Compare RegistrationType against the enum, not strings (reg_type token and registrant list view filter/title)": "patches/recurring_events-registration-type-enum-comparisons.patch",
             "Clone the shared computed date object before converting its timezone": "patches/recurring_events-clone-shared-date-object.patch",
             "Resolve the generation timezone from the event rather than the saving user": "patches/recurring_events-generation-event-timezone.patch",
-            "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report": "patches/recurring_events-quiet-instance-status-message.patch"
+            "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report": "patches/recurring_events-quiet-instance-status-message.patch",
+            "D11: use IN operator for array value in registrations views query alter": "patches/recurring_events-views-query-alter-array-operator.patch"
         },
         "drupal/multiple_registration": {
             "Undefined array key #access in form_alter": "patches/multiple_registration-undefined-access-key.patch"
@@ -33,6 +33,9 @@
         },
         "drupal/domain_simple_sitemap": {
             "Long domain machine names exceed the 32 char sitemap ID limit and break generation": "patches/domain_simple_sitemap-sitemap-id-max-length.patch"
+        },
+        "drupal/email_change_verification": {
+            "Automated Drupal 11 compatibility fixes - https://www.drupal.org/i/3430085": "patches/email_change_verification-d11-3430085.patch"
         },
         "drupal/better_exposed_filters": {
             "Autosubmit: skip the blur-driven re-submit of an unchanged text field and the stale cursor restore that scrambles typing on AJAX views": "patches/bef-autosubmit-blur-resubmit-and-stale-cursor.patch"

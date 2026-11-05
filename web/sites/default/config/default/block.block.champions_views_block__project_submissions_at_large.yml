@@ -5,7 +5,6 @@ dependencies:
   config:
     - views.view.project_submissions
   module:
-    - domain
     - system
     - views
   theme:
@@ -22,15 +21,9 @@ settings:
   label_display: visible
   provider: views
   views_label: ''
-  items_per_page: none
+  items_per_page: null
   exposed: {  }
 visibility:
-  domain:
-    id: domain
-    negate: null
-    context_mapping:
-      domain: '@domain.current_domain_context:domain'
-    domains: {  }
   request_path:
     id: request_path
     negate: false

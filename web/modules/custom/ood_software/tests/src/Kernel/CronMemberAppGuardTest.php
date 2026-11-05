@@ -84,6 +84,7 @@ class CronMemberAppGuardTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_repo_url',
       'field.storage.node.field_appverse_repo',
       'field.field.node.appverse_app.field_appverse_repo',
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       'field.storage.node.field_appverse_github_url',
       'field.field.node.appverse_app.field_appverse_github_url',

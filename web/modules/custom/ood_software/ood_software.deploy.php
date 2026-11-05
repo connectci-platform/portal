@@ -14,6 +14,7 @@ use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Url;
 use Drupal\taxonomy\Entity\Term;
 
 /**
@@ -147,14 +148,14 @@ function ood_software_deploy_10001_software() {
         'value' => $description,
         'format' => 'markdown',
       ],
-      'field_appverse_software_website' => [
+      'field_appverse_software_website' => _ood_software_valid_url($software_url) ? [
         'uri' => $software_url,
         'title' => '',
-      ],
-      'field_appverse_software_doc' => [
+      ] : NULL,
+      'field_appverse_software_doc' => _ood_software_valid_url($docs) ? [
         'uri' => $docs,
         'title' => '',
-      ],
+      ] : NULL,
       'field_license' => $license_tid ? ['target_id' => $license_tid] : NULL,
       'field_appverse_topics' => $topic_tids,
       'field_tags' => $tag_tids,
@@ -170,6 +171,24 @@ function ood_software_deploy_10001_software() {
   \Drupal::logger('ood_software')->notice('Imported @count software nodes', ['@count' => $count]);
 
   return t('Successfully imported @count software entries.', ['@count' => $count]);
+}
+
+/**
+ * Checks that a value is an absolute http(s) URL.
+ *
+ * Link fields throw on Url::fromUri() for anything else, which breaks JSON:API
+ * and rendering, so imports only store values that pass this.
+ *
+ * @param mixed $url
+ *   The candidate value.
+ *
+ * @return bool
+ *   TRUE if the value is a valid http or https URL.
+ */
+function _ood_software_valid_url($url): bool {
+  return is_string($url)
+    && filter_var($url, FILTER_VALIDATE_URL) !== FALSE
+    && in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], TRUE);
 }
 
 /**
@@ -1032,7 +1051,7 @@ function ood_software_deploy_10011_cscfi_apps() {
       'status' => 1,
     ];
 
-    if (!empty($entry['website'])) {
+    if (_ood_software_valid_url($entry['website'] ?? '')) {
       $node_data['field_appverse_software_website'] = [
         'uri' => $entry['website'],
         'title' => '',
@@ -1460,5 +1479,90 @@ function ood_software_deploy_10016_backfill_app_domain(array &$sandbox): Transla
   return t('Set the domain on @progress of @total Apps.', [
     '@progress' => $sandbox['progress'],
     '@total' => $sandbox['total'],
+  ]);
+}
+
+/**
+ * Clear invalid URIs from Appverse Software website and docs links.
+ *
+ * The 10001 and 10011 imports stored raw CSV values without validation, and
+ * one malformed row put body text in field_appverse_software_website. Core 11.4
+ * resolves link URLs while normalizing, so Url::fromUri() throwing on that
+ * value made GET /jsonapi/node/appverse_software return a 500.
+ *
+ * Any value Url::fromUri() rejects is removed from the default and latest
+ * revisions. setSyncing() keeps the saves from creating a revision, moving
+ * moderation state or touching the changed time.
+ *
+ * Idempotent: valid links are never touched.
+ *
+ * @param array<string, mixed> $sandbox
+ *   Batch sandbox.
+ *
+ * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+ *   Progress message.
+ */
+function ood_software_deploy_10017_clear_invalid_software_links(array &$sandbox): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $field_names = ['field_appverse_software_website', 'field_appverse_software_doc'];
+
+  if (!isset($sandbox['progress'])) {
+    $sandbox['progress'] = 0;
+    $sandbox['cleared'] = 0;
+    $sandbox['ids'] = array_values($storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_software')
+      ->execute());
+    $sandbox['total'] = count($sandbox['ids']);
+  }
+
+  if ($sandbox['total'] === 0) {
+    $sandbox['#finished'] = 1;
+    return t('No Software nodes to check.');
+  }
+
+  $clear_invalid = static function (NodeInterface $node) use ($field_names): int {
+    $cleared = 0;
+    foreach ($field_names as $field_name) {
+      if (!$node->hasField($field_name) || $node->get($field_name)->isEmpty()) {
+        continue;
+      }
+      try {
+        Url::fromUri((string) ($node->get($field_name)->first()?->getValue()['uri'] ?? ''));
+      }
+      catch (\InvalidArgumentException $e) {
+        $node->set($field_name, NULL);
+        $cleared++;
+      }
+    }
+    if ($cleared) {
+      $node->setNewRevision(FALSE);
+      $node->setSyncing(TRUE);
+      $node->save();
+    }
+    return $cleared;
+  };
+
+  $chunk = array_slice($sandbox['ids'], $sandbox['progress'], 25);
+  foreach ($storage->loadMultiple($chunk) as $node) {
+    $default_vid = (int) $node->getRevisionId();
+    $sandbox['cleared'] += $clear_invalid($node);
+
+    $latest_vid = (int) $storage->getLatestRevisionId($node->id());
+    if ($latest_vid && $latest_vid !== $default_vid) {
+      $latest = $storage->loadRevision($latest_vid);
+      if ($latest instanceof NodeInterface) {
+        $sandbox['cleared'] += $clear_invalid($latest);
+      }
+    }
+  }
+
+  $sandbox['progress'] += count($chunk);
+  $sandbox['#finished'] = $sandbox['progress'] / max(1, $sandbox['total']);
+
+  return t('Checked @progress of @total Software nodes; cleared @cleared invalid links.', [
+    '@progress' => $sandbox['progress'],
+    '@total' => $sandbox['total'],
+    '@cleared' => $sandbox['cleared'],
   ]);
 }

@@ -570,8 +570,10 @@ display:
       contexts:
         - 'languages:language_content'
         - 'languages:language_interface'
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_1:
     id: page_1
     display_title: Depth1
@@ -1046,8 +1048,10 @@ display:
       contexts:
         - 'languages:language_content'
         - 'languages:language_interface'
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_2:
     id: page_2
     display_title: Depth2
@@ -1108,7 +1112,7 @@ display:
           type: custom
           type_custom_true: 'flagged bg-secondary bg-dark-teal border-dark-teal text-white hover--text-white hover--opacity-80'
           type_custom_false: 'bg-white border-black hover--border-dark-teal hover--text-dark-teal'
-          not: 0
+          not: false
         link_flag:
           id: link_flag
           table: flagging
@@ -1598,8 +1602,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_3:
     id: page_3
     display_title: Depth3
@@ -1660,7 +1666,7 @@ display:
           type: custom
           type_custom_true: 'bg-secondary text-white'
           type_custom_false: bg-white
-          not: 0
+          not: false
         link_flag:
           id: link_flag
           table: flagging
@@ -2150,8 +2156,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_4:
     id: page_4
     display_title: Depth4
@@ -2649,8 +2657,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_5:
     id: page_5
     display_title: Depth5
@@ -3148,8 +3158,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_6:
     id: page_6
     display_title: Depth6
@@ -3647,8 +3659,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_7:
     id: page_7
     display_title: Depth7
@@ -4146,8 +4160,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_8:
     id: page_8
     display_title: Depth8
@@ -4645,8 +4661,10 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
   page_9:
     id: page_9
     display_title: Depth9
@@ -5092,5 +5110,7 @@ display:
         - 'languages:language_content'
         - 'languages:language_interface'
         - url
+        - user
         - user.roles
-      tags: {  }
+      tags:
+        - flag.flag.interest
