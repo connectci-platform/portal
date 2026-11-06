@@ -21,11 +21,6 @@
 
     The tests depend on each other and run in order: the resource starts out
     not allowed on the group, and test "allows it" changes that.
-
-    Not covered: the resource detail page for a member when the resource is
-    only tagged with the group. KbResourceAccess only honors resources
-    REFERENCED from the group's field_resources_entity_reference, so the
-    member check references the resource there first.
 */
 
 import {
@@ -235,15 +230,7 @@ describe("KB resources on a private Affinity Group", () => {
       .then(expectAnonymousDenied);
   });
 
-  it("opens the detail page to a member once the group references the resource", () => {
-    // The access rule only honors resources referenced from the group's
-    // field_resources_entity_reference, not ones merely tagged with its term,
-    // so reference it there.
-    const php =
-      '$n = \\Drupal::entityTypeManager()->getStorage("node")->loadByProperties(["type" => "affinity_group", "title" => "' + AG_TITLE + '"]);' +
-      '$n = reset($n); $n->get("field_resources_entity_reference")->appendItem(' + sid + '); $n->save(); print "done";';
-    phpEval(php).should("eq", "done");
-
+  it("opens the detail page to a member of the group the resource is tagged with", () => {
     loginAndWait(PECAN.login, PECAN.password);
     cy.visit(`/knowledge-base/resources/${sid}`);
     cy.contains(RESOURCE_TITLE);
@@ -260,6 +247,8 @@ describe("KB resources on a private Affinity Group", () => {
     cy.request({ url: SUBMISSION_EDIT(sid), failOnStatusCode: false, followRedirect: false }).its("status").should("eq", 200);
     cy.visit(SUBMISSION_EDIT(sid));
     cy.get("#edit-title").should("have.value", RESOURCE_TITLE);
+    // A coordinator also opens the resource detail page of their private group.
+    cy.request({ url: `/knowledge-base/resources/${sid}`, failOnStatusCode: false, followRedirect: false }).its("status").should("eq", 200);
 
     loginAndWait(PECAN.login, PECAN.password);
     cy.request({ url: SUBMISSION_EDIT(sid), failOnStatusCode: false, followRedirect: false }).its("status").should("eq", 403);
