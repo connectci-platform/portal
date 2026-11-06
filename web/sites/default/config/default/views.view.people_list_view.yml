@@ -2119,7 +2119,6 @@ display:
           value:
             student: student
             mentor: mentor
-            leadership: leadership
             representative: representative
             research_computing_facilitator: research_computing_facilitator
             research_software_engineer: research_software_engineer
