@@ -440,6 +440,12 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
 
     $section = [
       [
+        'type' => 'paragraph',
+        'content' => [
+          ['type' => 'text', 'text' => 'Pull Requests:', 'marks' => [['type' => 'em']]],
+        ],
+      ],
+      [
         'type' => 'bulletList',
         'content' => array_map(fn(string $url) => [
           'type' => 'listItem',
@@ -449,7 +455,8 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
       [
         'type' => 'paragraph',
         'content' => [
-          ['type' => 'text', 'text' => 'MultiDev: ', 'marks' => [['type' => 'strong']]],
+          ['type' => 'text', 'text' => 'MultiDev:', 'marks' => [['type' => 'em']]],
+          ['type' => 'text', 'text' => ' '],
           $link($multidev_url),
         ],
       ],
@@ -485,8 +492,55 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
       }
     }
 
-    array_splice($content, $heading_index + 1, $end - $heading_index - 1, $section);
+    // Only replace the nodes this command manages ("Pull Requests:" and
+    // "MultiDev:" lines, plus the PR bullet list). Anything else in the
+    // section, such as a "Depends on:" line, is kept where it is.
+    $kept = [];
+    $insert_at = NULL;
+    $prev_removed_label = NULL;
+    for ($i = $heading_index + 1; $i < $end; $i++) {
+      $node = $content[$i];
+      $label = $this->managedLabel($node);
+      $next_label = $i + 1 < $end ? $this->managedLabel($content[$i + 1]) : NULL;
+      $is_pr_list = ($node['type'] ?? '') === 'bulletList'
+        && ($prev_removed_label === 'pull requests:' || $next_label === 'multidev:');
+
+      if ($label !== NULL || $is_pr_list) {
+        $insert_at ??= count($kept);
+        $prev_removed_label = $label;
+        continue;
+      }
+      $prev_removed_label = NULL;
+      $kept[] = $node;
+    }
+
+    $insert_at ??= count($kept);
+    array_splice($kept, $insert_at, 0, $section);
+    array_splice($content, $heading_index + 1, $end - $heading_index - 1, $kept);
     return $content;
+  }
+
+  /**
+   * Return the lowercased label if a node is a managed paragraph.
+   *
+   * @param array $node
+   *   An ADF node.
+   *
+   * @return string|null
+   *   "pull requests:" or "multidev:" if the paragraph starts with that label,
+   *   otherwise NULL.
+   */
+  private function managedLabel(array $node): ?string {
+    if (($node['type'] ?? '') !== 'paragraph') {
+      return NULL;
+    }
+    $text = strtolower(trim(implode('', array_map(fn($child) => $child['text'] ?? '', $node['content'] ?? []))));
+    foreach (['pull requests:', 'multidev:'] as $label) {
+      if (str_starts_with($text, $label)) {
+        return $label;
+      }
+    }
+    return NULL;
   }
 
   /**
