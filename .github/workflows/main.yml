@@ -14,7 +14,7 @@ jobs:
   deploy:
     name: Deploy site
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     if: ${{ !contains(github.event.head_commit.message, '#nobuild') }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -42,7 +42,7 @@ jobs:
   md:
     name: Spin up Multidev environment
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     if: ${{ contains(github.ref, 'md-') }}
     needs: deploy
     steps:

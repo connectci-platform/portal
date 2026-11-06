@@ -57,15 +57,44 @@ waitForWorkflows () {
   fi
 }
 
+# Print 1 if maintenance mode is on for <site>.<env>, otherwise nothing.
+maintenanceMode () {
+  terminus remote:drush "$1.$2" -- state:get system.maintenance_mode 2>/dev/null | tr -d '[:space:]' | grep -x 1 || true
+}
+
 # Run drush deploy on an environment and fail the step if it fails.
 # Never pass --retry: a half-applied deploy must not be re-run automatically.
 # config:status is informational only: live has harmless false/0 drift
 # on 11 views, so it must not fail the job yet.
+#
+# updb turns maintenance mode on and only turns it off in its last batch
+# step, so a failed or killed run leaves the site in maintenance mode. Drush
+# also won't turn it off on a later run if it was already on. We only print
+# the reset command: after a failed updb the database is half-updated, and
+# whether to serve it is a human decision.
 drushDeploy () {
   site=$1
   target_env=$2
+  reset_cmd="terminus remote:drush $site.$target_env -- state:set system.maintenance_mode 0 --input-format=integer"
+
+  if [ -n "$(maintenanceMode "$site" "$target_env")" ]; then
+    echo "::warning::$site.$target_env is already in maintenance mode before drush deploy (possibly left over from a failed run). drush deploy will not turn it off."
+  fi
+
   echo "Running drush deploy on $site.$target_env..."
-  terminus remote:drush "$site.$target_env" -- deploy -y
+  if ! terminus remote:drush "$site.$target_env" -- deploy -y; then
+    if [ -n "$(maintenanceMode "$site" "$target_env")" ]; then
+      echo "::error::drush deploy failed on $site.$target_env and the site is in maintenance mode. Check drush updbst and drush cst, then turn maintenance mode off with: $reset_cmd"
+    else
+      echo "::error::drush deploy failed on $site.$target_env. Check drush updbst and drush cst."
+    fi
+    exit 1
+  fi
+
+  if [ -n "$(maintenanceMode "$site" "$target_env")" ]; then
+    echo "::warning::drush deploy succeeded but $site.$target_env is still in maintenance mode. If that is not intended, run: $reset_cmd"
+  fi
+
   echo "Config status on $site.$target_env:"
   terminus remote:drush "$site.$target_env" -- config:status || true
 }
