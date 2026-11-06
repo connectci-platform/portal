@@ -131,7 +131,7 @@
     <div class="gates">
       {% if summary.passes %}
         <details class="gate-passes">
-          <summary class="gate-passes__count">
+          <summary class="gate-passes__count{% if summary.passed == summary.total %} gate-passes__count--all{% endif %}">
             {{ '@label: @n of @total passed'|t({'@label': label, '@n': summary.passed, '@total': summary.total}) }}
           </summary>
           <div class="gate-passes__list">

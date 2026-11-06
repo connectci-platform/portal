@@ -292,6 +292,13 @@
   color: var(--gray-700);
 }
 
+/* Links on the reviewer page are brand black, like the contributor's.
+   :where() keeps this at one class so any styled link or button wins. */
+.arv-page :where(a) {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
 /* The contributor's page (the repo owner's view of a review). Color means
    status and nothing else: labels and the decision band are a tint under
    --ink text; links, disclosures and the current step are brand black. */
@@ -959,26 +966,31 @@
   color: #fff;
   vertical-align: text-bottom;
 }
-.arv-page .gate-mark--pass {
-  background: var(--status-green);
-}
+/* On a tinted chip the mark is just the glyph in ink: the chip's tint
+   already says pass or fail. */
+.arv-page .gate-mark--pass,
 .arv-page .gate-mark--fail {
-  background: var(--red);
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: var(--ink);
+  font-size: .72rem;
+  font-weight: 700;
 }
 .arv-page .gate-word {
   font-weight: 600;
 }
-.arv-page .gate--pass b {
-  color: var(--status-green);
-}
-.arv-page .gate--fail b {
-  color: var(--status-red);
-}
+/* Status is the chip's tint under ink text, as on the contributor page. */
+.arv-page .gate--pass { background: var(--tint-pass); }
+.arv-page .gate--fail { background: var(--tint-fail); }
+.arv-page .gate--warn { background: var(--tint-warn); }
+.arv-page .gate--pass b,
+.arv-page .gate--fail b,
 .arv-page .gate--warn b {
-  color: var(--status-amber);
+  color: var(--ink);
 }
 .arv-page .gate--not_checked b {
-  color: var(--gray-500);
+  color: var(--gray-700);
 }
 
 /* The passes, folded into a count (appverse-planning#54). Closed it is one
@@ -1006,12 +1018,16 @@
 }
 .arv-page .gate-passes__count {
   font-size: .76rem;
-  color: var(--status-green-text);
+  color: var(--ink);
   cursor: pointer;
   list-style: none;
   padding: .1rem .5rem;
   border-radius: 4px;
-  background: #e0f3f0;
+  background: var(--gray-100);
+}
+/* Only a group with nothing failing reads as passed. */
+.arv-page .gate-passes__count--all {
+  background: var(--tint-pass);
 }
 /* Safari draws its own disclosure triangle through ::-webkit-details-marker
    rather than list-style. */
@@ -1133,19 +1149,17 @@
   min-width: 3.2rem;
   font-size: .72rem;
   font-weight: 700;
-  color: var(--gray-700);
+  color: var(--ink);
+  text-align: center;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--gray-100);
 }
-.arv-page .gate-result--pass {
-  color: var(--status-green);
-}
-.arv-page .gate-result--fail {
-  color: var(--status-red);
-}
-.arv-page .gate-result--warn {
-  color: var(--status-amber);
-}
+.arv-page .gate-result--pass { background: var(--tint-pass); }
+.arv-page .gate-result--fail { background: var(--tint-fail); }
+.arv-page .gate-result--warn { background: var(--tint-warn); }
 .arv-page .gate-result--na {
-  color: var(--gray-500);
+  color: var(--gray-700);
 }
 /* Catalog checks as rows (A4b): the gate rows' grid inside the block. */
 .arv-page .catalog-checks--rows .gate-rows {
@@ -1488,8 +1502,16 @@
   color: var(--gray-700);
 }
 .arv-page .result-pill--pass {
-  background: #e0f3f0;
-  color: var(--status-green-text);
+  background: var(--tint-pass);
+  color: var(--ink);
+}
+.arv-page .result-pill--fail {
+  background: var(--tint-fail);
+  color: var(--ink);
+}
+.arv-page .result-pill--warn {
+  background: var(--tint-warn);
+  color: var(--ink);
 }
 
 /* Reviewer-added findings: tag + who/when, inline edit fields, add form. */
