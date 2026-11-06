@@ -614,6 +614,35 @@ header:has(> .appverse-hub-add-repo) {
 .appverse-hub-card__assign-status:empty {
   display: none;
 }
+/* In the actions column the picker and its message each take a full row
+   under the buttons, right-aligned like them, and the select shrinks to fit
+   the 12.5rem track. */
+.appverse-hub-card__cell--actions .appverse-hub-card__assign {
+  flex: 0 0 100%;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin: 0;
+}
+.appverse-hub-card__cell--actions .appverse-hub-card__assign-select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.appverse-hub-card__cell--actions .appverse-hub-card__assign-status {
+  flex: 0 0 100%;
+  margin: 0;
+  text-align: right;
+}
+@media (max-width: 768px) {
+  .appverse-hub-card__cell--actions .appverse-hub-card__assign {
+    justify-content: flex-start;
+  }
+  .appverse-hub-card__cell--actions .appverse-hub-card__assign-select {
+    flex: 1 1 10rem;
+  }
+  .appverse-hub-card__cell--actions .appverse-hub-card__assign-status {
+    text-align: left;
+  }
+}
 .appverse-hub-card__progress-sentence {
   margin: 0 0 0.35rem;
   font-size: 0.875rem;
@@ -642,26 +671,30 @@ header:has(> .appverse-hub-add-repo) {
   margin: 0.125rem 0.25rem 0.125rem 0;
 }
 
+/* Shaped like the catalog's tags (ood-appverse RepoMainCard and AppRow:
+   px-2.5 py-1 text-xs rounded) so a tag reads the same here as on the
+   public Appverse. */
 .appverse-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   max-width: 100%;
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.25rem;
   font-size: 0.75rem;
-  line-height: 1.4;
-  font-weight: 500;
+  line-height: 1rem;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Resolved: quiet neutral chip (matches the muted card palette). */
+/* Resolved: the catalog's gray tag (appverse-gray fill, appverse-black
+   text, no border). */
 .appverse-tag--resolved {
-  background: #f6f8fa;
-  color: #57606a;
-  border: 1px solid #eaecef;
+  background: #dddedf;
+  color: #232323;
+  border: 0;
 }
 
 /* Unresolved: warning chip (same colors as .badge-warning). */

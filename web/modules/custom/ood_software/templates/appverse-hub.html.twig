@@ -143,6 +143,13 @@
           </div>
         </div>
       {% endif %}
+
+      {# The reviewer picker sits under the buttons, with the other actions. It
+         already shows who is assigned. #}
+      {% if hub.assignee is not null and hub.actions.assign %}
+        {{ hub.actions.assign }}
+        <p class="appverse-hub-card__assign-status" data-hub-assign-status role="status" aria-live="polite"></p>
+      {% endif %}
     </div>
   </header>
 
@@ -160,18 +167,14 @@
     {% if hub.progress_sentence %}
       <p class="appverse-hub-card__progress-sentence">{{ hub.progress_sentence }}</p>
     {% endif %}
-    {# One reviewer row: the picker when the viewer can assign, which already
-       shows who is assigned, and the name as text otherwise. #}
-    {% if hub.assignee is not null %}
-      {% if hub.actions.assign %}
-        {{ hub.actions.assign }}
-        <p class="appverse-hub-card__assign-status" data-hub-assign-status role="status" aria-live="polite"></p>
-      {% else %}
-        <p class="appverse-hub-card__assignee">
-          <i class="bi bi-person" aria-hidden="true"></i>
-          {{ 'Reviewer:'|t }} <span data-hub-assignee>{{ hub.assignee ?: 'Unassigned'|t }}</span>
-        </p>
-      {% endif %}
+    {# Who is reviewing, as text, for a viewer who cannot assign. A viewer who
+       can gets the picker in the actions column instead, since choosing a
+       reviewer is an action. #}
+    {% if hub.assignee is not null and not hub.actions.assign %}
+      <p class="appverse-hub-card__assignee">
+        <i class="bi bi-person" aria-hidden="true"></i>
+        {{ 'Reviewer:'|t }} <span data-hub-assignee>{{ hub.assignee ?: 'Unassigned'|t }}</span>
+      </p>
     {% endif %}
   </div>
 
