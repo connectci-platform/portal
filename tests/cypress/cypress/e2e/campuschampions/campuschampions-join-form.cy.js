@@ -15,7 +15,15 @@ describe("Test registration page for becoming a campus champion", { retries: { r
   it("test the process of submitting a form to become a student campus champion", () => {
     cy.visit('/form/join-campus-champions');
     cy.contains('Join Campus Champions');
-    cy.contains('To join please submit a collaboration letter from your institution using this template.');
+    cy.contains('To join please submit a collaboration letter from your institution using this template');
+    cy.contains('a', 'using this template')
+      .should('have.attr', 'href', 'https://drive.google.com/drive/folders/1-nrz2itseKhwQdOrFAOj71mSIw5WQ68y')
+      .and('have.attr', 'target', '_blank')
+      .and('have.attr', 'rel').and('include', 'noopener');
+    cy.contains('a', 'using this template').within(() => {
+      cy.get('i.bi-box-arrow-up-right').should('have.attr', 'aria-hidden', 'true');
+      cy.get('.visually-hidden').should('have.text', '(opens in a new tab)');
+    });
     cy.contains('Letter of Collaboration');
 
     // Upload the file and wait for it to be processed
