@@ -1416,7 +1416,8 @@ final class ReviewPageForm extends FormBase {
    * Offered on the repo's newest review once its decision asks for changes and
    * the repo is where sendForReview() can act: needs_adjustment, or live with
    * apps sent back, published or still in review (the cases
-   * AppverseHubController::sendForReview() handles). The URL carries the route's CSRF token.
+   * AppverseHubController::sendForReview() handles). The URL carries the
+   * route's CSRF token.
    *
    * @param array<string, mixed> $view
    *   The contributor view, with decision_apps.

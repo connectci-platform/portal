@@ -11,10 +11,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Asks to run the automated check again, confirmed before the run starts (D8-2931).
+ * Asks to run the automated check again (D8-2931).
  *
- * The page posts straight to the hub's run-review route, which starts the run
- * and sends the reviewer back here to the review.
+ * The check is confirmed before the run starts. The page posts straight to
+ * the hub's run-review route, which starts the run and sends the reviewer
+ * back here to the review.
  */
 final class ReviewRerunConfirmForm extends ConfirmFormBase {
 

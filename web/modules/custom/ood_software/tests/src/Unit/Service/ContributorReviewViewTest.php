@@ -284,6 +284,27 @@ class ContributorReviewViewTest extends UnitTestCase {
   }
 
   /**
+   * A check the reviewer added as a pass is shown only once it is sent.
+   *
+   * @covers ::build
+   */
+  public function testReviewerAddedPassAppearsOnlyAfterDecision(): void {
+    $added = self::row([
+      'pid' => 3,
+      'source' => 'reviewer',
+      'result' => 'PASS',
+      'summary' => 'Reviewer confirmed the docs',
+    ]);
+    $tool = self::row(['pid' => 4, 'result' => 'PASS', 'summary' => 'Has a manifest']);
+    $page = self::page(['security' => self::block('Security', [$added, $tool])]);
+    $before = ContributorReviewView::build($page, FALSE);
+    $this->assertSame([['section' => 'Security', 'label' => 'Has a manifest']], $before['passed']);
+    $after = ContributorReviewView::build($page, TRUE);
+    $this->assertContains(['section' => 'Security', 'label' => 'Reviewer confirmed the docs'], $after['passed']);
+    $this->assertContains(['section' => 'Security', 'label' => 'Has a manifest'], $after['passed']);
+  }
+
+  /**
    * A failing or warning gate reaches the contributor as a finding.
    *
    * @covers ::build

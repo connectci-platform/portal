@@ -11,9 +11,9 @@ namespace Drupal\ood_software\Service;
  * agree. The eleven situations of appverse-planning
  * review-system/REVIEW-STATES.md are its unit tests.
  *
- * Reviewers see five steps (Submitted, Automated check, Review, Decision, Live);
- * contributors see four, with the automated check folded into "In review", so no
- * AI state (queued, running, failed) ever reaches them.
+ * Reviewers see five steps (Submitted, Automated check, Review, Decision,
+ * Live); contributors see four, with the automated check folded into
+ * "In review", so no AI state (queued, running, failed) ever reaches them.
  */
 final class ReviewProgress {
 
@@ -184,9 +184,9 @@ final class ReviewProgress {
       $live = self::step('Live', self::NOT_REACHED, '');
     }
 
-    // Contributors: Automated check and Review fold into "In review", which stays
-    // current from submission until a decision is sent, whatever the run is
-    // doing; a failed run is a reviewer's to rerun and is never shown.
+    // Contributors: Automated check and Review fold into "In review", which
+    // stays current from submission until a decision is sent, whatever the
+    // run is doing; a failed run is a reviewer's to rerun and is never shown.
     if (!$submitted || $neverReviewed) {
       $inReview = self::step('In review', self::NOT_REACHED, '');
     }
@@ -218,6 +218,8 @@ final class ReviewProgress {
    *
    * @param array<int, array<string, mixed>> $steps
    *   The contributor steps from steps().
+   * @param bool $precheckReady
+   *   Whether the automated check has landed for this round.
    */
   public static function contributorSentence(array $steps, bool $precheckReady = FALSE): string {
     [$submitted, $inReview, $decision, $live] = $steps;
@@ -283,8 +285,8 @@ final class ReviewProgress {
       }
       return [
         // On a card "In review" says where the repo is; the reviewer step's
-        // own "In progress"/"Not started" belong to the full line, which the
-        // review page still shows.
+        // own "In progress"/"Not started" belong to the full line, which
+        // the review page still shows.
         'label' => $step['step'] === 'Review' ? 'In review' : $step['label'],
         'modifier' => self::CHIP_MODIFIERS[$step['state']] ?? 'secondary',
       ];
@@ -295,6 +297,10 @@ final class ReviewProgress {
   /**
    * The Decision step, with a per-app breakdown when the apps differ.
    *
+   * @param string|null $decision
+   *   The strictest decision sent, or NULL when none is.
+   * @param int $round
+   *   The review round, for the changes-requested label.
    * @param array<int|string, string> $appDecisions
    *   Each app's decision, keyed by app.
    *
@@ -336,7 +342,8 @@ final class ReviewProgress {
     // is, rather than in the template comparing rendered text: a label that
     // repeats its step's name ("Submitted" under Submitted) or is a bare
     // "Done" on a step already drawn as done says nothing, and once the
-    // strings are translated the template could not tell (appverse-planning#49).
+    // strings are translated the template could not tell
+    // (appverse-planning#49).
     $redundant = $label === '' || $label === $step || ($state === self::DONE && $label === 'Done');
     return [
       'key' => self::stepKey($step),

@@ -69,7 +69,7 @@
     {% if view.state == 'decided' and page.decision.by %}
       <span aria-hidden="true" class="arv-contributor__dot">·</span> {{ 'Reviewed by @name, @date'|t({'@name': page.decision.by, '@date': page.decision.at}) }}
     {% elseif page.reviewed_at %}
-      <span aria-hidden="true" class="arv-contributor__dot">·</span> {{ 'Submitted @date'|t({'@date': page.reviewed_at}) }}
+      <span aria-hidden="true" class="arv-contributor__dot">·</span> {{ 'Checked @date'|t({'@date': page.reviewed_at}) }}
     {% endif %}
   </p>
 

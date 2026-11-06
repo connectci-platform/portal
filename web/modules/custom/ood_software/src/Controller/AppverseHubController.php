@@ -502,9 +502,10 @@ final class AppverseHubController extends ControllerBase {
   /**
    * Re-submits a live repo whose apps were sent back (appverse-planning#48).
    *
-   * One commit gives one automated check, so the whole repo is reviewed again. The
-   * repo and its accepted apps stay live; the apps sent back return to Ready
-   * for review. The run starts first, so a failed dispatch moves nothing.
+   * One commit gives one automated check, so the whole repo is reviewed
+   * again. The repo and its accepted apps stay live; the apps sent back
+   * return to Ready for review. The run starts first, so a failed dispatch
+   * moves nothing.
    */
   protected function resubmitLive(NodeInterface $repo): RedirectResponse {
     if ($this->repoMemberApps->sentBackCount($repo) === 0) {

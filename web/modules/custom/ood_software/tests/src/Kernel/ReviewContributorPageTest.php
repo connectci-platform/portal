@@ -222,7 +222,7 @@ class ReviewContributorPageTest extends KernelTestBase {
     $this->assertStringContainsString('Runs user input through a shell.', $html);
     $this->assertStringContainsString('Dismissed finding summary.', $html, 'A dismissal is the reviewer\'s until sent, so the tool\'s finding still shows.');
     $this->assertStringContainsString('Changes you push to GitHub now will be reviewed in the next round.', $html);
-    $this->assertStringContainsString('Submitted ', $html);
+    $this->assertStringContainsString('Checked ', $html);
     $this->assertStringContainsString('github.com/example/app', $html);
     $this->assertStringNotContainsString('Reviewed by', $html);
     $this->assertStringNotContainsString('Unsent response text.', $html);
@@ -440,7 +440,10 @@ class ReviewContributorPageTest extends KernelTestBase {
     $first_verdict = $review->get('field_arv_verdicts')->referencedEntities()[0];
     $review->get('field_arv_verdicts')->appendItem($verdict);
     $review->set('field_arv_sent_decisions', json_encode([
-      'apps' => [(string) $first_verdict->id() => 'request_changes', (string) $verdict->id() => 'accept_with_suggestions'],
+      'apps' => [
+        (string) $first_verdict->id() => 'request_changes',
+        (string) $verdict->id() => 'accept_with_suggestions',
+      ],
       'response' => 'Sent response text.',
       'email' => ['subject' => 'Your review', 'html' => '<p>x</p>'],
     ]));

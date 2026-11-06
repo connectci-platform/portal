@@ -449,7 +449,9 @@ class ReviewDispatchModerationTest extends KernelTestBase {
   }
 
   /**
-   * Run automated check stamps the dispatch with the current time, not the request's.
+   * Run automated check stamps the dispatch with the current time.
+   *
+   * The request's time is not used.
    */
   public function testDispatchIsStampedWithTheCurrentTime(): void {
     $repo = $this->makeRepo('ready_for_review');
@@ -697,7 +699,9 @@ class ReviewDispatchModerationTest extends KernelTestBase {
   }
 
   /**
-   * A second Run automated check while the first run is in flight starts nothing.
+   * A second Run automated check during a run starts nothing.
+   *
+   * The first run is still in flight.
    */
   public function testSecondRunReviewWhileFirstInFlightDoesNotDispatch(): void {
     $repo = $this->makeRepo('ready_for_review');

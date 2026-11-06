@@ -36,9 +36,13 @@ class ReviewProgressTest extends UnitTestCase {
    * @dataProvider situations
    *
    * @param array<string, mixed> $facts
+   *   The facts steps() reads.
    * @param array<int, string> $reviewer
+   *   The expected reviewer step states.
    * @param array<int, string> $contributor
+   *   The expected contributor step states.
    * @param array<string, string> $labels
+   *   The expected labels, keyed by step.
    */
   public function testSituation(array $facts, array $reviewer, array $contributor, array $labels): void {
     $steps = P::steps($facts);
@@ -90,7 +94,12 @@ class ReviewProgressTest extends UnitTestCase {
       ],
       '5 automated check ready, nobody started' => [
         ['review_state' => 'draft'] + $base,
-        [$D, $D, $C, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Ready · suggests Request changes', 'Review' => 'Not started'],
+        [$D, $D, $C, $N, $N],
+        [$D, $C, $N, $N],
+        [
+          'Automated check' => 'Ready · suggests Request changes',
+          'Review' => 'Not started',
+        ],
       ],
       '6 reviewer working' => [
         ['review_state' => 'in_review'] + $base,
@@ -221,9 +230,9 @@ class ReviewProgressTest extends UnitTestCase {
       '5 automated check ready, nobody started' => ['In review', 'In review', 'warning'],
       '6 reviewer working' => ['In review', 'In review', 'warning'],
       '7 changes requested' => ['Changes requested · round 1', 'Changes requested · round 1', 'warning'],
-      // A resubmission starts a fresh automated check, so the reviewer chip reads
-      // the same as case 2: the round shows on the progress line's Submitted
-      // step, not on the chip, which says where the repo is now.
+      // A resubmission starts a fresh automated check, so the reviewer chip
+      // reads the same as case 2: the round shows on the progress line's
+      // Submitted step, not on the chip, which says where the repo is now.
       '8 resubmitted, new automated check' => ['Queued', 'In review', 'warning'],
       '9 accepted, not yet published' => ['Ready to publish', 'Ready to publish', 'warning'],
       '10 published' => ['Live', 'Live', 'success'],
