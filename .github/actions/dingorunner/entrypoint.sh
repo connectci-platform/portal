@@ -57,6 +57,115 @@ waitForWorkflows () {
   fi
 }
 
+# Print 1 if maintenance mode is on for <site>.<env>, otherwise nothing.
+maintenanceMode () {
+  terminus remote:drush "$1.$2" -- state:get system.maintenance_mode 2>/dev/null | tr -d '[:space:]' | grep -x 1 || true
+}
+
+# Run drush deploy on an environment and fail the step if it fails.
+# Never pass --retry: a half-applied deploy must not be re-run automatically.
+# config:status is informational only: live has harmless false/0 drift
+# on 11 views, so it must not fail the job yet.
+#
+# updb turns maintenance mode on and only turns it off in its last batch
+# step, so a failed or killed run leaves the site in maintenance mode. Drush
+# also won't turn it off on a later run if it was already on. We only print
+# the reset command: after a failed updb the database is half-updated, and
+# whether to serve it is a human decision.
+drushDeploy () {
+  site=$1
+  target_env=$2
+  reset_cmd="terminus remote:drush $site.$target_env -- state:set system.maintenance_mode 0 --input-format=integer"
+
+  if [ -n "$(maintenanceMode "$site" "$target_env")" ]; then
+    echo "::warning::$site.$target_env is already in maintenance mode before drush deploy (possibly left over from a failed run). drush deploy will not turn it off."
+  fi
+
+  echo "Running drush deploy on $site.$target_env..."
+  if ! terminus remote:drush "$site.$target_env" -- deploy -y; then
+    if [ -n "$(maintenanceMode "$site" "$target_env")" ]; then
+      echo "::error::drush deploy failed on $site.$target_env and the site is in maintenance mode. Check drush updbst and drush cst, then turn maintenance mode off with: $reset_cmd"
+    else
+      echo "::error::drush deploy failed on $site.$target_env. Check drush updbst and drush cst."
+    fi
+    exit 1
+  fi
+
+  if [ -n "$(maintenanceMode "$site" "$target_env")" ]; then
+    echo "::warning::drush deploy succeeded but $site.$target_env is still in maintenance mode. If that is not intended, run: $reset_cmd"
+  fi
+
+  echo "Config status on $site.$target_env:"
+  terminus remote:drush "$site.$target_env" -- config:status || true
+}
+
+# Print the IDs of the workflows on one environment, one per line.
+# Workflow names contain quotes and commas, so parse JSON, not CSV.
+workflowIds () {
+  terminus workflow:list "$1" --format=json --fields=id,env 2>/dev/null | php -r '
+    $rows = json_decode(stream_get_contents(STDIN), true) ?: [];
+    foreach ($rows as $row) {
+      if ($row["env"] === $argv[1]) {
+        echo $row["id"], "\n";
+      }
+    }
+  ' "$2"
+}
+
+# Wait for a workflow on <env> whose name contains <pattern> and whose ID is
+# not in <known_ids> (newline-separated, from workflowIds) to appear and
+# finish. Exits 1 if none appears within 2 minutes, if it fails, or if it's
+# still running after 12 minutes.
+waitForNewWorkflow () {
+  site=$1
+  target_env=$2
+  pattern=$3
+  known_ids=$4
+
+  echo "Waiting for a new '$pattern' workflow on $site.$target_env..."
+  i=1
+  while [ "$i" -le 48 ]; do
+    # workflow:list is newest first, so the first match is the newest.
+    status=$(terminus workflow:list "$site" --format=json --fields=id,env,workflow,status 2>/dev/null | php -r '
+      [, $env, $pattern, $known] = $argv;
+      $known = array_filter(explode("\n", $known));
+      $rows = json_decode(stream_get_contents(STDIN), true) ?: [];
+      foreach ($rows as $row) {
+        if ($row["env"] === $env
+          && str_contains((string) $row["workflow"], $pattern)
+          && !in_array($row["id"], $known, TRUE)) {
+          echo $row["status"];
+          exit(0);
+        }
+      }
+      echo "none";
+    ' "$target_env" "$pattern" "$known_ids")
+
+    case "$status" in
+      succeeded)
+        echo "Workflow '$pattern' on $target_env finished."
+        return 0
+        ;;
+      failed|aborted)
+        echo "ERROR: Workflow '$pattern' on $site.$target_env ended with status '$status'." >&2
+        exit 1
+        ;;
+      none)
+        if [ "$i" -ge 8 ]; then
+          echo "ERROR: No new '$pattern' workflow appeared on $site.$target_env within 2 minutes." >&2
+          exit 1
+        fi
+        ;;
+    esac
+    echo "Workflow '$pattern' on $target_env: $status... attempt $i/48"
+    sleep 15
+    i=$((i + 1))
+  done
+
+  echo "ERROR: Timed out waiting for '$pattern' on $site.$target_env to finish." >&2
+  exit 1
+}
+
 if [ "$runner" = cron ];
 then
   #curl $dev_cron_url
@@ -130,6 +239,13 @@ then
 
   current_version=$(git describe --tags --abbrev=0)
   terminus env:deploy --note "Version: $current_version" $flags -- $site_name.$env
+
+  # env:deploy waits for its own workflow. On test, --sync-content may also
+  # start follow-on workflows (clone_database -> no_prod.php) that should finish
+  # before updb/cim. Give them time to be queued, then wait for them.
+  sleep 30
+  waitForWorkflows "$site_name" "$env" 40 fatal
+  drushDeploy "$site_name" "$env"
 fi
 
 if [ "$runner" = bkup ];
@@ -252,8 +368,39 @@ then
   fi
   echo 'status'
   git status
+
+  terminusApi
+  if [ "$branch" = "master" ]; then
+    target_env=dev
+  else
+    target_env=$branch
+  fi
+
+  # A brand-new md-* branch has no environment yet; md_create
+  # (PmdCommands::create) runs drush deploy for it.
+  has_env=""
+  if terminus env:info "$site_name.$target_env" >/dev/null 2>&1; then
+    has_env=1
+    known_ids=$(workflowIds "$site_name" "$target_env")
+  fi
+
+  # An md-* branch with no build changes pushes nothing, so no sync_code
+  # workflow will appear. master always gets a commit (--allow-empty).
+  needs_push=1
+  if git rev-parse --verify --quiet "origin/$branch" >/dev/null \
+    && [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$branch")" ]; then
+    needs_push=""
+  fi
+
   echo 'push'
   git push origin $branch
+
+  if [ -n "$has_env" ]; then
+    if [ -n "$needs_push" ]; then
+      waitForNewWorkflow "$site_name" "$target_env" "Sync code" "$known_ids"
+    fi
+    drushDeploy "$site_name" "$target_env"
+  fi
 fi
 
 if [ "$runner" = composer_update ];
@@ -312,7 +459,7 @@ then
   commands=$(cat robo/assets/md/$branch | tr -d '[:space:]')
   echo $commands
   terminus env:wake accessmatch.$branch
-  # Wait for any active Pantheon workflows (sync_code/deploy quicksilver) on
+  # Wait for any active Pantheon workflows (sync_code, multidev create) on
   # this multidev only, not site-wide, to finish.
   waitForWorkflows accessmatch "$branch" 24 ""
   terminus remote:drush accessmatch.$branch -- domain:default $commands

@@ -50,3 +50,32 @@ function campuschampions_deploy_settle_stuck_applications(): string {
 
   return 'Stuck applications: ' . implode('; ', $results);
 }
+
+/**
+ * Removes the old collaboration letter templates from the public files dir.
+ *
+ * The Join Campus Champions form now links to a shared Google Drive folder
+ * that the Campus Champions team keeps current (D8-2948), so the .docx
+ * templates are no longer linked anywhere. Neither file has a file_managed
+ * record, so a plain filesystem delete is enough. A no-op where the files are
+ * already gone.
+ */
+function campuschampions_deploy_remove_collaboration_letter_templates(): string {
+  $uris = [
+    'public://campuschampions_collaborationletter_yourinstitutionname_template_20200109.docx',
+    'public://campuschampions_collaborationletter_yourinstitutionname_template_2022_09_21.docx',
+  ];
+  $file_system = \Drupal::service('file_system');
+  $results = [];
+
+  foreach ($uris as $uri) {
+    if (!file_exists($uri)) {
+      $results[] = "$uri: not present";
+      continue;
+    }
+    $file_system->delete($uri);
+    $results[] = "$uri: deleted";
+  }
+
+  return 'Collaboration letter templates: ' . implode('; ', $results);
+}

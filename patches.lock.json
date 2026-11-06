@@ -1,5 +1,5 @@
 {
-    "_hash": "4e31747f202a0770586006bef02d1436435d07d63d2ed9fb6118deb5a79b026a",
+    "_hash": "dbb1d13e90339caa4cb95da083c0623eb884b6340081310e3dab87784406ea9d",
     "patches": {
         "drupal/core": [
             {
@@ -134,7 +134,7 @@
                 "package": "drupal/recurring_events",
                 "description": "Resolve the generation timezone from the event rather than the saving user",
                 "url": "patches/recurring_events-generation-event-timezone.patch",
-                "sha256": "c2984a58bd74dafeee370b02b5b1f404730f1b9be13ac657a8449d8b4d652267",
+                "sha256": "f62a0e3f8ef24466792653aabd781064121e6d5f4cc176885c27cb0fab2bc6f2",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
@@ -142,9 +142,9 @@
             },
             {
                 "package": "drupal/recurring_events",
-                "description": "Do not report instances as skipped when series and instances use different workflows, and only show the status message when there is something to report",
+                "description": "Only re-save instances whose status actually changes, do not count differing workflows as skipped, and only show the status message when there is something to report (https://www.drupal.org/project/recurring_events/issues/3629752, MR !224)",
                 "url": "patches/recurring_events-quiet-instance-status-message.patch",
-                "sha256": "be6911876d93b83352f8c995325f54f2bb396429d28b76b10006ffbfd1fba825",
+                "sha256": "4bdaabc66e7e46d458086fd551d510df044c342d030b0250e2f172c54fc01682",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"

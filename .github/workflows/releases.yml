@@ -18,6 +18,7 @@ jobs:
   release:
     name: Tag code
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -27,11 +28,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          DEADLINE=$((SECONDS + 900))
+          DEADLINE=$((SECONDS + 2700))
 
           while true; do
             if [ "$SECONDS" -ge "$DEADLINE" ]; then
-              echo "::error::Timed out after 15 minutes waiting for a successful (A) Deploy to dev run."
+              echo "::error::Timed out after 45 minutes waiting for a successful (A) Deploy to dev run."
               exit 1
             fi
 
@@ -43,7 +44,7 @@ jobs:
 
             while true; do
               if [ "$SECONDS" -ge "$DEADLINE" ]; then
-                echo "::error::Timed out after 15 minutes waiting for a successful (A) Deploy to dev run."
+                echo "::error::Timed out after 45 minutes waiting for a successful (A) Deploy to dev run."
                 exit 1
               fi
 
