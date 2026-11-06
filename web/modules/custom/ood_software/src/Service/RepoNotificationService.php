@@ -144,7 +144,7 @@ class RepoNotificationService {
     if ($sent === 0) {
       // A cron-started run on an unassigned repo reaches only the Site
       // Developers; with none active, say so where someone can find it.
-      $this->logger->warning('Nobody was emailed about the failed AI report for @title (run @run): no starter, assigned reviewer or active Site Developer. Reason: @reason', [
+      $this->logger->warning('Nobody was emailed about the failed automated check for @title (run @run): no starter, assigned reviewer or active Site Developer. Reason: @reason', [
         '@title' => $repo->label(),
         '@run' => $runId,
         '@reason' => $reason,

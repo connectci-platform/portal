@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Rerun report from the review page (D8-2931).
+ * Recheck from the review page (D8-2931).
  *
  * @group ood_software
  */
@@ -232,7 +232,7 @@ class ReviewRerunTest extends KernelTestBase {
     // Rendered but hidden, so the poller can reveal it.
     $this->assertFalse($form['#page']['rerun']['show']);
     $this->assertTrue($form['#page']['run_status']['in_flight']);
-    $this->assertSame('AI report queued', $form['#page']['run_status']['label']);
+    $this->assertSame('Automated check queued', $form['#page']['run_status']['label']);
     $settings = $form['#attached']['drupalSettings']['oodReviewStatus'];
     $this->assertTrue($settings['inFlight']);
     $this->assertSame((int) $review->id(), $settings['review']);
@@ -266,7 +266,7 @@ class ReviewRerunTest extends KernelTestBase {
     $review = $this->makeReview($repo);
     $this->setOnRepo($repo, ['field_review_status' => 'in_progress']);
     $form = $this->buildPage($review);
-    $this->assertSame('AI report running', $form['#page']['run_status']['label']);
+    $this->assertSame('Automated check running', $form['#page']['run_status']['label']);
   }
 
   /**
@@ -319,16 +319,16 @@ class ReviewRerunTest extends KernelTestBase {
     $review = $this->makeReview($repo);
     $form = $this->buildPage($review);
     $html = (string) \Drupal::service('renderer')->renderInIsolation($form);
-    $this->assertMatchesRegularExpression('/<a href="[^"]*\/rerun" data-review-rerun>/', $html);
+    $this->assertMatchesRegularExpression('/<a [^>]*href="[^"]*\/rerun"[^>]*data-review-rerun(?![^>]*hidden)[^>]*>/', $html);
     $this->assertStringContainsString('data-review-run-status', $html);
-    $this->assertStringNotContainsString('AI report queued', $html);
+    $this->assertStringNotContainsString('Automated check queued', $html);
 
     $inFlight = $this->repoInFlight();
     $review = $this->makeReview($inFlight);
     $form = $this->buildPage($review);
     $html = (string) \Drupal::service('renderer')->renderInIsolation($form);
-    $this->assertMatchesRegularExpression('/data-review-rerun hidden>/', $html);
-    $this->assertStringContainsString('AI report queued', $html);
+    $this->assertMatchesRegularExpression('/data-review-rerun[^>]*hidden>/', $html);
+    $this->assertStringContainsString('Automated check queued', $html);
   }
 
   /**
@@ -417,7 +417,7 @@ class ReviewRerunTest extends KernelTestBase {
     $this->assertSame(0, $form['#cache']['max-age']);
     $this->assertStringContainsString('/appverse/repo/' . $repo->id() . '/run-review?token=', $form['#action']);
     $this->assertStringEndsWith('destination=' . urlencode('/appverse/review/' . $review->id()), $form['#action']);
-    $this->assertStringContainsString('Rerun the AI report for example/app?', (string) $form['#title']);
+    $this->assertStringContainsString('Run the automated check again for example/app?', (string) $form['#title']);
 
     $this->expectException(NotFoundHttpException::class);
     $this->container->get('form_builder')->getForm(ReviewRerunConfirmForm::class, Node::load($repo->id()));

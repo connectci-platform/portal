@@ -284,13 +284,61 @@ class ReviewPageBreadcrumbTest extends KernelTestBase {
     $form = $this->container->get('form_builder')->getForm(ReviewPageForm::class, Node::load($review->id()));
     $page = $form['#page'];
     $this->assertSame($repo->toUrl()->toString(), $page['repo_link']['url']);
-    $this->assertSame('View repo', (string) $page['repo_link']['label']);
+    $this->assertSame('Repo page', (string) $page['repo_link']['label']);
     $this->assertCount(2, $page['app_links']);
     $urls = array_column($page['app_links'], 'url');
     sort($urls);
     $expected = [$apps['One']->toUrl()->toString(), $apps['Two']->toUrl()->toString()];
     sort($expected);
     $this->assertSame($expected, $urls);
+  }
+
+  /**
+   * The comparison is against the nearest earlier review, not a newer one.
+   */
+  public function testComparisonUsesTheNearestEarlierReview(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $models = ['{"model":"qwen/qwen3"}', '{"model":"claude-sonnet-5-5"}', '{"model":"claude-sonnet-5-5"}'];
+    $reviews = [];
+    foreach ($models as $i => $meta) {
+      $review = $this->makeReview($repo);
+      $review->set('field_arv_run_meta', $meta);
+      $review->setCreatedTime(1700000000 + $i * 1000);
+      $review->save();
+      $reviews[] = $review;
+    }
+
+    $page = $this->buildReviewPage($reviews[1]);
+    $this->assertTrue($page['round_delta']['has_previous']);
+    $this->assertSame(1, $page['compared_position']);
+    // The first review used another model; the newer third one did not.
+    $this->assertTrue($page['model_changed']);
+
+    $first = $this->buildReviewPage($reviews[0]);
+    $this->assertFalse($first['round_delta']['has_previous']);
+    $this->assertNull($first['compared_position']);
+    $this->assertFalse($first['model_changed']);
+
+    $last = $this->buildReviewPage($reviews[2]);
+    $this->assertSame(2, $last['compared_position']);
+    $this->assertFalse($last['model_changed']);
+  }
+
+  /**
+   * The page data the reviewer's template reads, for a review.
+   *
+   * @return array<mixed>
+   *   The form's #page.
+   */
+  protected function buildReviewPage(NodeInterface $review): array {
+    // Draft reviews are visible to those who bypass node access; the history
+    // and the comparison only count reviews the viewer may see.
+    $this->setCurrentUser($this->createUser(['access content', 'bypass node access']));
+    $request = Request::create('/appverse/review/' . $review->id());
+    $request->setSession(new Session(new MockArraySessionStorage()));
+    $this->container->get('request_stack')->push($request);
+    $form = $this->container->get('form_builder')->getForm(ReviewPageForm::class, Node::load($review->id()));
+    return $form['#page'];
   }
 
 }

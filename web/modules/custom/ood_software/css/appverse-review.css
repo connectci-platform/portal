@@ -24,6 +24,14 @@
   --status-green: #00857a;
   --status-amber: #c98a2b;
   --status-red: #c91235;
+  /* Tints for the status labels and the decision band, always under --ink
+     text. Placeholders pending design (Lissie): the palette is this block, so
+     swapping it is the one change. */
+  --tint-pass: #A6D4D0;
+  --tint-warn: #E0CCA6;
+  --tint-medium: #CFAF73;
+  --tint-fail: #E9A0AE;
+  --tint-decision-changes: #EEE2CC;
   /* The same three, deep enough to carry small text on their own soft
      backgrounds. The brand shades above sit at 3.94:1 (green) and 2.60:1
      (amber) there, under the 4.5:1 AA floor for body-size text; these reach
@@ -209,7 +217,7 @@
 .arv-page .overview-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 10px 24px;
 }
@@ -243,20 +251,276 @@
   color: var(--ink);
 }
 .arv-page .overview-meta a,
-.arv-page .prev-reviews a {
-  color: var(--blue-text);
+.arv-page .arv-recheck-box a {
+  color: var(--ink);
   text-decoration: underline;
 }
-.arv-page .prev-reviews {
+.arv-page .overview-title {
+  margin: 0 0 4px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+/* Recheck: the card's only button, top right. */
+.arv-page .arv-recheck-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   font-size: .83rem;
   color: var(--gray-700);
   text-align: right;
 }
-.arv-page .prev-reviews a {
-  margin-left: 0;
+.arv-page .arv-recheck-box a.arv-recheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: var(--white);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+/* display above would otherwise win over the hidden attribute. */
+.arv-page .arv-recheck-box a[hidden] {
+  display: none;
 }
 .arv-page .overview-block .muted {
   color: var(--gray-700);
+}
+
+/* Links on the reviewer page are brand black, like the contributor's.
+   :where() keeps this at one class so any styled link or button wins. */
+.arv-page :where(a) {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* The contributor's page (the repo owner's view of a review). Color means
+   status and nothing else: labels and the decision band are a tint under
+   --ink text; links, disclosures and the current step are brand black. */
+.arv-contributor {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  font-size: 1rem;
+}
+.arv-contributor a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.arv-contributor h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.arv-contributor__closed {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+/* The steps use the brand black ring, and a failed step is not red here: the
+   decision band says it. */
+.arv-contributor .arv-progress {
+  --arv-p-current: var(--ink);
+  --arv-p-failed: var(--ink);
+}
+.arv-contributor .arv-progress--steps .arv-progress__step.is-current .arv-progress__label,
+.arv-contributor .arv-progress--steps .arv-progress__step.is-failed .arv-progress__label {
+  color: var(--arv-p-muted);
+}
+.arv-contributor__meta {
+  margin: 0;
+  color: var(--gray-700);
+  font-size: .94rem;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__meta code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+.arv-contributor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.arv-contributor__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.arv-contributor__heading p {
+  margin: 0;
+  color: var(--gray-700);
+}
+.arv-contributor__decision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.arv-contributor__decision--accept { background: var(--tint-pass); }
+.arv-contributor__decision--accept-with-suggestions { background: var(--tint-warn); }
+.arv-contributor__decision--request-changes { background: var(--tint-decision-changes); }
+.arv-contributor__decision--reject { background: var(--tint-fail); }
+.arv-contributor__decision-text {
+  flex: 999 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.arv-contributor__decision-text p,
+.arv-contributor__apps {
+  margin: 0;
+}
+.arv-contributor__apps {
+  padding-left: 1.2em;
+}
+.arv-contributor__actions {
+  flex: 0 0 auto;
+}
+.arv-contributor__resubmit {
+  min-height: 48px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--white);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.arv-contributor__resubmit:hover,
+.arv-contributor__resubmit:focus-visible {
+  background: var(--ink);
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.arv-contributor__response {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 18px 22px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.arv-contributor__finding {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px 20px;
+}
+.arv-contributor__finding + .arv-contributor__finding {
+  border-top: 1px solid var(--gray-150);
+}
+.arv-contributor__sev {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: .8rem;
+  font-weight: 700;
+}
+.arv-contributor__sev--critical,
+.arv-contributor__sev--high { background: var(--tint-fail); }
+.arv-contributor__sev--medium { background: var(--tint-medium); }
+.arv-contributor__sev--low { background: var(--tint-warn); }
+.arv-contributor__finding-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.arv-contributor__summary {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: .88rem;
+  color: var(--ink);
+}
+.arv-contributor__details code {
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+.arv-contributor__note {
+  margin: 0;
+  font-size: .94rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.arv-contributor__folds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.arv-contributor__folds details {
+  padding: 6px 0;
+}
+.arv-contributor__folds summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 32px;
+}
+.arv-contributor__folds ul {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+}
+.arv-contributor__passed .arv-contributor__details {
+  display: inline;
+  margin-left: 4px;
+}
+.arv-contributor__passed .arv-contributor__details::before {
+  content: "· ";
+}
+@media (max-width: 36rem) {
+  .arv-contributor {
+    gap: 20px;
+  }
+  .arv-contributor h2 {
+    font-size: 1.2rem;
+  }
+  .arv-contributor__decision {
+    padding: 16px;
+  }
+  .arv-contributor__response {
+    padding: 14px 16px;
+  }
+  .arv-contributor__finding {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 14px 16px;
+  }
+  .arv-contributor__resubmit {
+    width: 100%;
+  }
 }
 
 /* Two columns: findings, and the sticky reviewer sidebar.
@@ -702,26 +966,31 @@
   color: #fff;
   vertical-align: text-bottom;
 }
-.arv-page .gate-mark--pass {
-  background: var(--status-green);
-}
+/* On a tinted chip the mark is just the glyph in ink: the chip's tint
+   already says pass or fail. */
+.arv-page .gate-mark--pass,
 .arv-page .gate-mark--fail {
-  background: var(--red);
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: var(--ink);
+  font-size: .72rem;
+  font-weight: 700;
 }
 .arv-page .gate-word {
   font-weight: 600;
 }
-.arv-page .gate--pass b {
-  color: var(--status-green);
-}
-.arv-page .gate--fail b {
-  color: var(--status-red);
-}
+/* Status is the chip's tint under ink text, as on the contributor page. */
+.arv-page .gate--pass { background: var(--tint-pass); }
+.arv-page .gate--fail { background: var(--tint-fail); }
+.arv-page .gate--warn { background: var(--tint-warn); }
+.arv-page .gate--pass b,
+.arv-page .gate--fail b,
 .arv-page .gate--warn b {
-  color: var(--status-amber);
+  color: var(--ink);
 }
 .arv-page .gate--not_checked b {
-  color: var(--gray-500);
+  color: var(--gray-700);
 }
 
 /* The passes, folded into a count (appverse-planning#54). Closed it is one
@@ -749,12 +1018,16 @@
 }
 .arv-page .gate-passes__count {
   font-size: .76rem;
-  color: var(--status-green-text);
+  color: var(--ink);
   cursor: pointer;
   list-style: none;
   padding: .1rem .5rem;
   border-radius: 4px;
-  background: #e0f3f0;
+  background: var(--gray-100);
+}
+/* Only a group with nothing failing reads as passed. */
+.arv-page .gate-passes__count--all {
+  background: var(--tint-pass);
 }
 /* Safari draws its own disclosure triangle through ::-webkit-details-marker
    rather than list-style. */
@@ -825,14 +1098,6 @@
   margin-top: .35rem;
   color: var(--gray-700);
 }
-.arv-page .round-delta__new {
-  color: var(--blue);
-  font-weight: 600;
-}
-.arv-page .round-delta__resolved {
-  color: var(--status-green-text);
-  font-weight: 600;
-}
 
 /* Earlier reviews: one line each, behind a toggle, because they need far less
    than the review being read (appverse-planning#54). */
@@ -884,19 +1149,17 @@
   min-width: 3.2rem;
   font-size: .72rem;
   font-weight: 700;
-  color: var(--gray-700);
+  color: var(--ink);
+  text-align: center;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--gray-100);
 }
-.arv-page .gate-result--pass {
-  color: var(--status-green);
-}
-.arv-page .gate-result--fail {
-  color: var(--status-red);
-}
-.arv-page .gate-result--warn {
-  color: var(--status-amber);
-}
+.arv-page .gate-result--pass { background: var(--tint-pass); }
+.arv-page .gate-result--fail { background: var(--tint-fail); }
+.arv-page .gate-result--warn { background: var(--tint-warn); }
 .arv-page .gate-result--na {
-  color: var(--gray-500);
+  color: var(--gray-700);
 }
 /* Catalog checks as rows (A4b): the gate rows' grid inside the block. */
 .arv-page .catalog-checks--rows .gate-rows {
@@ -1239,8 +1502,16 @@
   color: var(--gray-700);
 }
 .arv-page .result-pill--pass {
-  background: #e0f3f0;
-  color: var(--status-green-text);
+  background: var(--tint-pass);
+  color: var(--ink);
+}
+.arv-page .result-pill--fail {
+  background: var(--tint-fail);
+  color: var(--ink);
+}
+.arv-page .result-pill--warn {
+  background: var(--tint-warn);
+  color: var(--ink);
 }
 
 /* Reviewer-added findings: tag + who/when, inline edit fields, add form. */
@@ -1439,8 +1710,11 @@
 /* No box: the line is the page's own progress, not a panel of content, and
    the border made it read as another card among the findings
    (appverse-planning#53). */
+.arv-page .arv-progress {
+  --arv-p-current: var(--ink);
+}
 .arv-page .arv-progress-block {
-  padding: 4px 0 16px;
+  padding: 3px 0 11px;
   margin-bottom: 12px;
   font-size: .86rem;
 }
@@ -1687,8 +1961,25 @@
 .arv-page .arv-go-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.25rem 1.4rem;
   margin-top: 0.5rem;
+  font-weight: 600;
+}
+.arv-page .arv-go-links a,
+.arv-page .arv-go-menu .dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+.arv-page .arv-go-menu .dropdown-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .arv-page .arv-go-menu {
   position: relative;
@@ -1710,30 +2001,16 @@
    rather than hang right-aligned beside nothing, and the go-to buttons drop
    the theme's full button size, which made three of them a screen tall. */
 @media (max-width: 600px) {
-  .arv-page .arv-go-links .btn {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.875rem;
-    line-height: 1.4;
+  .arv-page .arv-go-links a,
+  .arv-page .arv-go-menu .dropdown-toggle {
     min-height: 2.75rem;
-    display: inline-flex;
-    align-items: center;
   }
-  .arv-page .prev-reviews {
+  .arv-page .arv-recheck-box {
     flex: 0 0 100%;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.25rem 1rem;
-    margin-top: 0.75rem;
+    align-items: flex-start;
     text-align: left;
   }
-  /* The flex gap separates the items, and a dot left at a line end reads
-     as stray. */
-  .arv-page .prev-reviews .history-dot {
-    display: none;
-  }
-  .arv-page .prev-reviews > div:empty,
-  .arv-page .prev-reviews > div:has(> a[hidden]:only-child) {
+  .arv-page .arv-recheck-box > div:empty {
     display: none;
   }
 

@@ -17,9 +17,9 @@ use Drupal\user\UserInterface;
  * Who can read an Appverse review (ood_software_node_access()).
  *
  * The rules, from REVIEW-STATES.md "Who can read the review": reviewers
- * (appverse_pm) always; the repo's owner once a decision is sent; the public
- * only while both the review and its repo are published
- * (appverse-planning#43).
+ * (appverse_pm) always; the repo's owner once a decision is sent or the
+ * report has landed; the public only while both the review and its repo are
+ * published (appverse-planning#43).
  *
  * @group ood_software
  */
@@ -67,6 +67,8 @@ class ReviewAccessTest extends KernelTestBase {
       'field.field.node.appverse_review.field_arv_repo',
       'field.storage.node.field_arv_decision_sent_at',
       'field.field.node.appverse_review.field_arv_decision_sent_at',
+      'field.storage.node.field_arv_reviewed_at',
+      'field.field.node.appverse_review.field_arv_reviewed_at',
     ]);
 
     // Everyone may view published content; contributors also hold "view own
@@ -165,6 +167,26 @@ class ReviewAccessTest extends KernelTestBase {
     $review->set('field_arv_decision_sent_at', \Drupal::time()->getRequestTime())->save();
     $this->assertCanView($review, $this->owner, TRUE, 'the owner after a decision');
     $this->assertCanView($review, $this->other, FALSE, 'another user after a decision');
+  }
+
+  /**
+   * An unpublished review opens to its owner once the report has landed.
+   */
+  public function testOwnerReadsUnpublishedReviewOnceReportLanded(): void {
+    $review = $this->makeReview($this->makeRepo(TRUE), FALSE, FALSE, $this->owner);
+    $review->set('field_arv_reviewed_at', \Drupal::time()->getRequestTime())->save();
+    $this->assertCanView($review, $this->owner, TRUE, 'the owner once the report landed');
+    $this->assertCanView($review, $this->other, FALSE, 'another user');
+    $this->assertCanView($review, User::getAnonymousUser(), FALSE, 'anonymous');
+  }
+
+  /**
+   * The owner cannot read an unpublished review before its report lands.
+   */
+  public function testOwnerCannotReadReviewBeforeReportLands(): void {
+    $review = $this->makeReview($this->makeRepo(TRUE), FALSE, FALSE, $this->owner);
+    $this->assertTrue($review->get('field_arv_reviewed_at')->isEmpty());
+    $this->assertCanView($review, $this->owner, FALSE, 'the owner before the report lands');
   }
 
   /**

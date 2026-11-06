@@ -11,9 +11,9 @@ namespace Drupal\ood_software\Service;
  * agree. The eleven situations of appverse-planning
  * review-system/REVIEW-STATES.md are its unit tests.
  *
- * Reviewers see five steps (Submitted, AI report, Review, Decision, Live);
- * contributors see four, with the AI report folded into "In review", so no
- * AI state (queued, running, failed) ever reaches them.
+ * Reviewers see five steps (Submitted, Automated check, Review, Decision,
+ * Live); contributors see four, with the automated check folded into
+ * "In review", so no AI state (queued, running, failed) ever reaches them.
  */
 final class ReviewProgress {
 
@@ -85,6 +85,9 @@ final class ReviewProgress {
    * The rubric's monorepo rule (appverse-review#70): the overall
    * recommendation is the strictest per-app one. NULL when no app has a
    * decision yet; unknown values are ignored.
+   *
+   * @param array<int|string, string> $decisions
+   *   The per-app decisions.
    */
   public static function strictestDecision(array $decisions): ?string {
     $strictest = NULL;
@@ -100,7 +103,7 @@ final class ReviewProgress {
   /**
    * The steps for one repo.
    *
-   * @param array $facts
+   * @param array<string, mixed> $facts
    *   - repo_state: the repo's moderation state (draft, ready_for_review,
    *     needs_adjustment, published, declined, archived).
    *   - run_status: the automated run (pending, in_progress, complete, error),
@@ -112,7 +115,7 @@ final class ReviewProgress {
    *   - suggestion: the tool's recommendation, or NULL.
    *   - round: 1 for a first submission, N for the Nth after changes requested.
    *
-   * @return array{reviewer: array<int, array{step: string, state: string, label: string}>, contributor: array<int, array{step: string, state: string, label: string}>}
+   * @return array{reviewer: array<int, array{key: string, step: string, state: string, label: string}>, contributor: array<int, array{key: string, step: string, state: string, label: string}>}
    */
   public static function steps(array $facts): array {
     $repoState = (string) ($facts['repo_state'] ?? 'draft');
@@ -136,20 +139,20 @@ final class ReviewProgress {
     // that never happened), a reviewer has to start one.
     $neverReviewed = $run === NULL && $reviewState === NULL && $repoState !== 'ready_for_review';
 
-    // 2. AI report.
+    // 2. Automated check.
     $aiDone = $submitted && $run === 'complete';
     if (!$submitted || $neverReviewed) {
-      $ai = self::step('AI report', self::NOT_REACHED, '');
+      $ai = self::step('Automated check', self::NOT_REACHED, '');
     }
     elseif ($run === NULL) {
-      $ai = self::step('AI report', self::CURRENT, 'Not started');
+      $ai = self::step('Automated check', self::CURRENT, 'Not started');
     }
     else {
       $ai = match ($run) {
-        'complete' => self::step('AI report', self::DONE, $suggestion && isset(self::SUGGESTION_LABELS[$suggestion]) ? 'Ready · suggests ' . self::SUGGESTION_LABELS[$suggestion] : 'Ready'),
-        'error' => self::step('AI report', self::FAILED, 'Failed · rerun'),
-        'in_progress' => self::step('AI report', self::CURRENT, 'Running'),
-        default => self::step('AI report', self::CURRENT, 'Queued'),
+        'complete' => self::step('Automated check', self::DONE, $suggestion && isset(self::SUGGESTION_LABELS[$suggestion]) ? 'Ready · suggests ' . self::SUGGESTION_LABELS[$suggestion] : 'Ready'),
+        'error' => self::step('Automated check', self::FAILED, 'Failed · recheck'),
+        'in_progress' => self::step('Automated check', self::CURRENT, 'Running'),
+        default => self::step('Automated check', self::CURRENT, 'Queued'),
       };
     }
 
@@ -181,9 +184,9 @@ final class ReviewProgress {
       $live = self::step('Live', self::NOT_REACHED, '');
     }
 
-    // Contributors: AI report and Review fold into "In review", which stays
-    // current from submission until a decision is sent, whatever the run is
-    // doing; a failed run is a reviewer's to rerun and is never shown.
+    // Contributors: Automated check and Review fold into "In review", which
+    // stays current from submission until a decision is sent, whatever the
+    // run is doing; a failed run is a reviewer's to rerun and is never shown.
     if (!$submitted || $neverReviewed) {
       $inReview = self::step('In review', self::NOT_REACHED, '');
     }
@@ -210,17 +213,27 @@ final class ReviewProgress {
    *
    * "In review. A reviewer will respond by email." for everything from
    * submission to a decision (the mock); the other steps say what the
-   * contributor does next, if anything.
+   * contributor does next, if anything. Once the automated check has landed
+   * ($precheckReady) the in-review sentences say it is ready to read.
+   *
+   * @param array<int, array<string, mixed>> $steps
+   *   The contributor steps from steps().
+   * @param bool $precheckReady
+   *   Whether the automated check has landed for this round.
    */
-  public static function contributorSentence(array $steps): string {
+  public static function contributorSentence(array $steps, bool $precheckReady = FALSE): string {
     [$submitted, $inReview, $decision, $live] = $steps;
     return (string) match (TRUE) {
       $submitted['state'] === self::WAITING => t('Not submitted yet.'),
       // A live repo's update is in review while the repo itself stays up, so
       // say so rather than implying it has come down (appverse-planning#49).
       $inReview['state'] === self::CURRENT && !empty($inReview['live_update'])
-        => t('Live, and your update is in review. A reviewer will respond by email.'),
-      $inReview['state'] === self::CURRENT => t('In review. A reviewer will respond by email.'),
+        => ($precheckReady
+          ? t('Live, and your update is in review. The automated check is ready to read, and a reviewer will respond by email.')
+          : t('Live, and your update is in review. A reviewer will respond by email.')),
+      $inReview['state'] === self::CURRENT => ($precheckReady
+        ? t('In review. The automated check is ready to read, and a reviewer will respond by email.')
+        : t('In review. A reviewer will respond by email.')),
       // Name the button and where to ask, so the contributor does not have to
       // work out what "re-submit" means here (appverse-planning#55).
       $decision['state'] === self::WAITING => t('Changes requested. Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.'),
@@ -239,7 +252,7 @@ final class ReviewProgress {
    * (appverse-planning#55). Built from the same steps the line draws, so the
    * two can never disagree.
    *
-   * @param array $steps
+   * @param array<int, array<string, mixed>> $steps
    *   The reviewer or contributor steps from steps().
    *
    * @return array{label: string, modifier: string}
@@ -254,7 +267,8 @@ final class ReviewProgress {
       if (in_array($step['state'], [self::CURRENT, self::FAILED], TRUE) && $step['label'] !== '') {
         return [
           'label' => $step['step'] === 'Review' ? 'In review' : $step['label'],
-          'modifier' => self::CHIP_MODIFIERS[$step['state']] ?? 'secondary',
+          // The state is CURRENT or FAILED here, both mapped.
+          'modifier' => self::CHIP_MODIFIERS[$step['state']],
         ];
       }
     }
@@ -271,8 +285,8 @@ final class ReviewProgress {
       }
       return [
         // On a card "In review" says where the repo is; the reviewer step's
-        // own "In progress"/"Not started" belong to the full line, which the
-        // review page still shows.
+        // own "In progress"/"Not started" belong to the full line, which
+        // the review page still shows.
         'label' => $step['step'] === 'Review' ? 'In review' : $step['label'],
         'modifier' => self::CHIP_MODIFIERS[$step['state']] ?? 'secondary',
       ];
@@ -280,6 +294,19 @@ final class ReviewProgress {
     return ['label' => 'Not submitted', 'modifier' => 'secondary'];
   }
 
+  /**
+   * The Decision step, with a per-app breakdown when the apps differ.
+   *
+   * @param string|null $decision
+   *   The strictest decision sent, or NULL when none is.
+   * @param int $round
+   *   The review round, for the changes-requested label.
+   * @param array<int|string, string> $appDecisions
+   *   Each app's decision, keyed by app.
+   *
+   * @return array<string, mixed>
+   *   The step.
+   */
   protected static function decisionStep(?string $decision, int $round, array $appDecisions = []): array {
     $step = match ($decision) {
       'accept', 'accept_with_suggestions' => self::step('Decision', self::DONE, self::decisionLabel($decision)),
@@ -308,16 +335,18 @@ final class ReviewProgress {
    * apply |t to the key, which the extractor cannot see, so the step names
    * never reached a translation file (appverse-planning#49).
    *
-   * @return array{step: string, name: string, state: string, label: string}
+   * @return array{key: string, step: string, name: string, state: string, label: string}
    */
   protected static function step(string $step, string $state, string $label): array {
     // Whether the label is worth showing is decided here, where the English
     // is, rather than in the template comparing rendered text: a label that
     // repeats its step's name ("Submitted" under Submitted) or is a bare
     // "Done" on a step already drawn as done says nothing, and once the
-    // strings are translated the template could not tell (appverse-planning#49).
+    // strings are translated the template could not tell
+    // (appverse-planning#49).
     $redundant = $label === '' || $label === $step || ($state === self::DONE && $label === 'Done');
     return [
+      'key' => self::stepKey($step),
       'step' => $step,
       'name' => self::stepName($step),
       'state' => $state,
@@ -337,7 +366,7 @@ final class ReviewProgress {
       'Not started' => t('Not started'),
       'Queued' => t('Queued'),
       'Running' => t('Running'),
-      'Failed · rerun' => t('Failed · rerun'),
+      'Failed · recheck' => t('Failed · recheck'),
       'Ready' => t('Ready'),
       'In progress' => t('In progress'),
       'In review' => t('In review'),
@@ -352,12 +381,23 @@ final class ReviewProgress {
   }
 
   /**
+   * A step's stable key, so callers never match on the English label.
+   */
+  protected static function stepKey(string $step): string {
+    return match ($step) {
+      'Automated check' => 'automated_check',
+      'In review' => 'in_review',
+      default => strtolower($step),
+    };
+  }
+
+  /**
    * A step's name, translated. Literal t() calls for the extractor.
    */
   protected static function stepName(string $step): string {
     return (string) match ($step) {
       'Submitted' => t('Submitted'),
-      'AI report' => t('AI report'),
+      'Automated check' => t('Automated check'),
       'Review' => t('Review'),
       'In review' => t('In review'),
       'Decision' => t('Decision'),

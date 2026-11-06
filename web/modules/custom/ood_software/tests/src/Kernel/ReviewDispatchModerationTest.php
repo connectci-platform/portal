@@ -436,7 +436,7 @@ class ReviewDispatchModerationTest extends KernelTestBase {
     $this->assertSame($queued['queued_at'], $failed['queued_at'], 'A failed attempt keeps queued_at.');
     $this->assertGreaterThanOrEqual(\Drupal::time()->getCurrentTime() + AppverseReviewService::PENDING_TRANSITION_RETRY_AFTER, $failed['retry_after']);
 
-    // Run AI report, in a reviewer request that began a little earlier.
+    // Run automated check, in a reviewer request that began a little earlier.
     $reviewer = $this->newDispatcher($this->clock(-10, 0));
     $this->assertTrue($reviewer->dispatchForNode(Node::load($nid)));
     $this->latest(Node::load($nid))->set('field_review_status', 'complete')->save();
@@ -449,7 +449,9 @@ class ReviewDispatchModerationTest extends KernelTestBase {
   }
 
   /**
-   * Run AI report stamps the dispatch with the current time, not the request's.
+   * Run automated check stamps the dispatch with the current time.
+   *
+   * The request's time is not used.
    */
   public function testDispatchIsStampedWithTheCurrentTime(): void {
     $repo = $this->makeRepo('ready_for_review');
@@ -697,7 +699,9 @@ class ReviewDispatchModerationTest extends KernelTestBase {
   }
 
   /**
-   * A second Run AI report while the first run is in flight starts nothing.
+   * A second Run automated check during a run starts nothing.
+   *
+   * The first run is still in flight.
    */
   public function testSecondRunReviewWhileFirstInFlightDoesNotDispatch(): void {
     $repo = $this->makeRepo('ready_for_review');
