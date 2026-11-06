@@ -1,6 +1,6 @@
 diff --color -ruN base/recurring_events.module work/recurring_events.module
---- a/recurring_events.module	2026-11-03 09:04:57
-+++ b/recurring_events.module	2026-11-03 09:04:57
+--- base/recurring_events.module	2026-11-06 11:38:58
++++ work/recurring_events.module	2026-11-06 11:38:58
 @@ -559,6 +559,15 @@
    $exclude = array_filter(array_merge($global_exclude, $event_exclude));
    $include = array_filter(array_merge($global_include, $event_include));
@@ -30,9 +30,34 @@ diff --color -ruN base/recurring_events.module work/recurring_events.module
  
          if ($start >= $exclude_start && $start <= $excluded_end) {
 diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.php
---- a/src/Entity/EventSeries.php	2026-11-03 09:04:57
-+++ b/src/Entity/EventSeries.php	2026-11-03 09:04:57
-@@ -452,6 +452,45 @@
+--- base/src/Entity/EventSeries.php	2026-11-06 11:38:58
++++ work/src/Entity/EventSeries.php	2026-11-06 11:39:46
+@@ -118,6 +118,24 @@
+   public function preSave(EntityStorageInterface $storage): void {
+     parent::preSave($storage);
+ 
++    // Writers other than the widget (the API, migrations, code) store the
++    // boundaries at whatever time they like, most often midnight UTC. Pin
++    // every boundary to noon UTC on its stored UTC date, as the widget does,
++    // so the widget shows every editor the date that was meant.
++    foreach (['consecutive_recurring_date', 'daily_recurring_date', 'weekly_recurring_date', 'monthly_recurring_date', 'yearly_recurring_date'] as $field_name) {
++      if (!$this->hasField($field_name)) {
++        continue;
++      }
++      foreach ($this->get($field_name) as $item) {
++        foreach (['value', 'end_value'] as $property) {
++          $stored = $item->get($property)->getValue();
++          if (is_string($stored) && preg_match('/^\d{4}-\d{2}-\d{2}/', $stored) && $stored !== substr($stored, 0, 10) . 'T12:00:00') {
++            $item->set($property, substr($stored, 0, 10) . 'T12:00:00');
++          }
++        }
++      }
++    }
++
+     foreach (array_keys($this->getTranslationLanguages()) as $langcode) {
+       $translation = $this->getTranslation($langcode);
+ 
+@@ -452,6 +470,68 @@
    }
  
    /**
@@ -75,10 +100,33 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +  }
 +
 +  /**
++   * The calendar date a stored recurrence boundary names, at midnight in a zone.
++   *
++   * The recurrence boundaries are date-only in meaning but stored as UTC
++   * datetimes. The widget writes the date the editor picked at noon UTC, and
++   * API callers write it at midnight UTC, so the stored value's UTC calendar
++   * date is the date that was meant. Re-zoning the instant first would move
++   * that date by a day whenever the stored time falls on the other side of
++   * midnight in the event's zone.
++   *
++   * @param \Drupal\Core\Datetime\DrupalDateTime $stored
++   *   The stored boundary. Not modified.
++   * @param \DateTimeZone $timezone
++   *   The zone the returned midnight is in.
++   *
++   * @return \Drupal\Core\Datetime\DrupalDateTime
++   *   Midnight on the stored UTC calendar date, in $timezone.
++   */
++  protected function calendarDateInEventZone(DrupalDateTime $stored, \DateTimeZone $timezone): DrupalDateTime {
++    $utc = (clone $stored)->setTimezone(new \DateTimeZone('UTC'));
++    return new DrupalDateTime($utc->format('Y-m-d') . ' 00:00:00', $timezone);
++  }
++
++  /**
     * Get consecutive recurring start date.
     *
     * @return \Drupal\Core\Datetime\DrupalDateTime|null
-@@ -460,9 +499,9 @@
+@@ -460,9 +540,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getConsecutiveStartDate(): ?DrupalDateTime {
@@ -86,11 +134,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('consecutive_recurring_date')->start_date)) {
 -      return $this->get('consecutive_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('consecutive_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('consecutive_recurring_date')->start_date, $user_timezone);
      }
      return NULL;
    }
-@@ -476,9 +515,9 @@
+@@ -476,9 +556,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getConsecutiveEndDate(): ?DrupalDateTime {
@@ -98,11 +146,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('consecutive_recurring_date')->end_date)) {
 -      return $this->get('consecutive_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('consecutive_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('consecutive_recurring_date')->end_date, $user_timezone);
      }
      return NULL;
    }
-@@ -554,9 +593,9 @@
+@@ -554,9 +634,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getDailyStartDate(): ?DrupalDateTime {
@@ -110,11 +158,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('daily_recurring_date')->start_date)) {
 -      return $this->get('daily_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('daily_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('daily_recurring_date')->start_date, $user_timezone);
      }
      return NULL;
    }
-@@ -570,9 +609,9 @@
+@@ -570,9 +650,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getDailyEndDate(): ?DrupalDateTime {
@@ -122,11 +170,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('daily_recurring_date')->end_date)) {
 -      return $this->get('daily_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('daily_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('daily_recurring_date')->end_date, $user_timezone);
      }
      return NULL;
    }
-@@ -627,9 +666,9 @@
+@@ -627,9 +707,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getWeeklyStartDate(): ?DrupalDateTime {
@@ -134,11 +182,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('weekly_recurring_date')->start_date)) {
 -      return $this->get('weekly_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('weekly_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('weekly_recurring_date')->start_date, $user_timezone);
      }
      return NULL;
    }
-@@ -643,9 +682,9 @@
+@@ -643,9 +723,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getWeeklyEndDate(): ?DrupalDateTime {
@@ -146,11 +194,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('weekly_recurring_date')->end_date)) {
 -      return $this->get('weekly_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('weekly_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('weekly_recurring_date')->end_date, $user_timezone);
      }
      return NULL;
    }
-@@ -747,9 +786,9 @@
+@@ -747,9 +827,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getMonthlyStartDate(): ?DrupalDateTime {
@@ -158,11 +206,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('monthly_recurring_date')->start_date)) {
 -      return $this->get('monthly_recurring_date')->start_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('monthly_recurring_date')->start_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('monthly_recurring_date')->start_date, $user_timezone);
      }
      return NULL;
    }
-@@ -763,9 +802,9 @@
+@@ -763,9 +843,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getMonthlyEndDate(): ?DrupalDateTime {
@@ -170,11 +218,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $user_timezone = $this->resolveTimezone();
      if (!empty($this->get('monthly_recurring_date')->end_date)) {
 -      return $this->get('monthly_recurring_date')->end_date->setTimezone($user_timezone)->setTime(0, 0, 0);
-+      return (clone $this->get('monthly_recurring_date')->end_date)->setTimezone($user_timezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('monthly_recurring_date')->end_date, $user_timezone);
      }
      return NULL;
    }
-@@ -863,9 +902,9 @@
+@@ -863,9 +943,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getYearlyStartDate(): ?DrupalDateTime {
@@ -182,11 +230,11 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $userTimezone = $this->resolveTimezone();
      if (!empty($this->get('yearly_recurring_date')->start_date)) {
 -      return $this->get('yearly_recurring_date')->start_date->setTimezone($userTimezone)->setTime(0, 0, 0);
-+      return (clone $this->get('yearly_recurring_date')->start_date)->setTimezone($userTimezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('yearly_recurring_date')->start_date, $userTimezone);
      }
      return NULL;
    }
-@@ -879,9 +918,9 @@
+@@ -879,9 +959,9 @@
     * @throws \DateInvalidTimeZoneException
     */
    public function getYearlyEndDate(): ?DrupalDateTime {
@@ -194,13 +242,13 @@ diff --color -ruN base/src/Entity/EventSeries.php work/src/Entity/EventSeries.ph
 +    $userTimezone = $this->resolveTimezone();
      if (!empty($this->get('yearly_recurring_date')->end_date)) {
 -      return $this->get('yearly_recurring_date')->end_date->setTimezone($userTimezone)->setTime(0, 0, 0);
-+      return (clone $this->get('yearly_recurring_date')->end_date)->setTimezone($userTimezone)->setTime(0, 0, 0);
++      return $this->calendarDateInEventZone($this->get('yearly_recurring_date')->end_date, $userTimezone);
      }
      return NULL;
    }
 diff --color -ruN base/src/EventCreationService.php work/src/EventCreationService.php
---- a/src/EventCreationService.php	2026-11-03 09:04:57
-+++ b/src/EventCreationService.php	2026-11-03 09:05:37
+--- base/src/EventCreationService.php	2026-11-06 11:38:58
++++ work/src/EventCreationService.php	2026-11-06 11:38:58
 @@ -298,6 +298,21 @@
        else {
          $field_definition = $this->fieldTypePluginManager->getDefinition($entity_config['type']);
@@ -224,8 +272,8 @@ diff --color -ruN base/src/EventCreationService.php work/src/EventCreationServic
        }
      }
 diff --color -ruN base/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php work/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php
---- a/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php	2026-11-03 09:04:57
-+++ b/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php	2026-11-03 09:05:23
+--- base/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php	2026-11-06 11:38:58
 @@ -134,6 +134,10 @@
      $buffer = $event->getConsecutiveBuffer() ?? 0;
      $config['buffer'] = $buffer >= 0 ? $buffer : NULL;
@@ -272,8 +320,8 @@ diff --color -ruN base/src/Plugin/Field/FieldType/ConsecutiveRecurringDate.php w
  
      $time_parts = static::convertTimeTo24hourFormat($form_data['end_time']);
 diff --color -ruN base/src/Plugin/Field/FieldType/DailyRecurringDate.php work/src/Plugin/Field/FieldType/DailyRecurringDate.php
---- a/src/Plugin/Field/FieldType/DailyRecurringDate.php	2026-11-03 09:04:57
-+++ b/src/Plugin/Field/FieldType/DailyRecurringDate.php	2026-11-03 09:05:23
+--- base/src/Plugin/Field/FieldType/DailyRecurringDate.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldType/DailyRecurringDate.php	2026-11-06 11:38:58
 @@ -126,7 +126,7 @@
     */
    public static function convertFormConfigToArray(FormStateInterface $form_state): array {
@@ -284,8 +332,8 @@ diff --color -ruN base/src/Plugin/Field/FieldType/DailyRecurringDate.php work/sr
  
    /**
 diff --color -ruN base/src/Plugin/Field/FieldType/MonthlyRecurringDate.php work/src/Plugin/Field/FieldType/MonthlyRecurringDate.php
---- a/src/Plugin/Field/FieldType/MonthlyRecurringDate.php	2026-11-03 09:04:57
-+++ b/src/Plugin/Field/FieldType/MonthlyRecurringDate.php	2026-11-03 09:05:23
+--- base/src/Plugin/Field/FieldType/MonthlyRecurringDate.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldType/MonthlyRecurringDate.php	2026-11-06 11:38:58
 @@ -128,7 +128,7 @@
     */
    public static function convertFormConfigToArray(FormStateInterface $form_state): array {
@@ -296,8 +344,8 @@ diff --color -ruN base/src/Plugin/Field/FieldType/MonthlyRecurringDate.php work/
      return $config;
    }
 diff --color -ruN base/src/Plugin/Field/FieldType/WeeklyRecurringDate.php work/src/Plugin/Field/FieldType/WeeklyRecurringDate.php
---- a/src/Plugin/Field/FieldType/WeeklyRecurringDate.php	2026-11-03 09:04:57
-+++ b/src/Plugin/Field/FieldType/WeeklyRecurringDate.php	2026-11-03 09:05:23
+--- base/src/Plugin/Field/FieldType/WeeklyRecurringDate.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldType/WeeklyRecurringDate.php	2026-11-06 11:38:58
 @@ -93,7 +93,7 @@
     */
    public static function convertFormConfigToArray(FormStateInterface $form_state): array {
@@ -308,8 +356,8 @@ diff --color -ruN base/src/Plugin/Field/FieldType/WeeklyRecurringDate.php work/s
      return $config;
    }
 diff --color -ruN base/src/Plugin/Field/FieldType/YearlyRecurringDate.php work/src/Plugin/Field/FieldType/YearlyRecurringDate.php
---- a/src/Plugin/Field/FieldType/YearlyRecurringDate.php	2026-11-03 09:04:57
-+++ b/src/Plugin/Field/FieldType/YearlyRecurringDate.php	2026-11-03 09:05:23
+--- base/src/Plugin/Field/FieldType/YearlyRecurringDate.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldType/YearlyRecurringDate.php	2026-11-06 11:38:58
 @@ -106,6 +106,9 @@
  
      $config['year_interval'] = $event->getYearlyInterval();
@@ -368,9 +416,31 @@ diff --color -ruN base/src/Plugin/Field/FieldType/YearlyRecurringDate.php work/s
  
      $start = clone $startDate;
      $start->setTimezone($userTimezone);
+diff --color -ruN base/src/Plugin/Field/FieldWidget/ConsecutiveRecurringDateWidget.php work/src/Plugin/Field/FieldWidget/ConsecutiveRecurringDateWidget.php
+--- base/src/Plugin/Field/FieldWidget/ConsecutiveRecurringDateWidget.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldWidget/ConsecutiveRecurringDateWidget.php	2026-11-06 11:50:19
+@@ -187,6 +187,7 @@
+    */
+   public function massageFormValues(array $values, array $form, FormStateInterface $form_state): array {
+     foreach ($values as &$item) {
++      static::normalizeRecurringDateItem($item);
+       if (!empty($item['time']) && $item['time'] instanceof DrupalDateTime) {
+         $item['time'] = $item['time']->format('h:i A');
+       }
+diff --color -ruN base/src/Plugin/Field/FieldWidget/DailyRecurringDateWidget.php work/src/Plugin/Field/FieldWidget/DailyRecurringDateWidget.php
+--- base/src/Plugin/Field/FieldWidget/DailyRecurringDateWidget.php	2026-11-06 11:38:58
++++ work/src/Plugin/Field/FieldWidget/DailyRecurringDateWidget.php	2026-11-06 11:50:19
+@@ -160,6 +160,7 @@
+    */
+   public function massageFormValues(array $values, array $form, FormStateInterface $form_state): array {
+     foreach ($values as &$item) {
++      static::normalizeRecurringDateItem($item);
+       if (!empty($item['time']) && $item['time'] instanceof DrupalDateTime) {
+         $item['time'] = $item['time']->format('h:i A');
+       }
 diff --color -ruN base/src/Plugin/RecurringEventsFieldTrait.php work/src/Plugin/RecurringEventsFieldTrait.php
---- a/src/Plugin/RecurringEventsFieldTrait.php	2026-11-03 09:04:57
-+++ b/src/Plugin/RecurringEventsFieldTrait.php	2026-11-03 09:05:23
+--- base/src/Plugin/RecurringEventsFieldTrait.php	2026-11-06 11:38:58
++++ work/src/Plugin/RecurringEventsFieldTrait.php	2026-11-06 11:50:19
 @@ -159,9 +159,9 @@
     *
     * @throws \DateInvalidTimeZoneException
@@ -383,10 +453,28 @@ diff --color -ruN base/src/Plugin/RecurringEventsFieldTrait.php work/src/Plugin/
  
      $time = static::getTimeFromRecurringDateFieldInput($field_input, 'time');
      $time = $time?->format('h:i A');
-@@ -185,6 +185,30 @@
-     }
+@@ -188,6 +188,51 @@
+   }
  
-     return $config;
+   /**
++   * Stores a picked recurrence date as noon UTC on that calendar date.
++   *
++   * The date-only element builds its value in the editor's zone with the
++   * moment of submission as the time of day. Storing that instant would make
++   * the stored UTC date depend on when and where the editor saved. Noon UTC
++   * on the picked date falls on that same date from UTC-11 to UTC+11, so the
++   * widget shows it back unchanged and the series' getters read it as the
++   * date that was picked.
++   *
++   * @param array $item
++   *   A widget item, modified in place.
++   */
++  protected static function normalizeRecurringDateItem(array &$item): void {
++    foreach (['value', 'end_value'] as $key) {
++      if (!empty($item[$key]) && $item[$key] instanceof DrupalDateTime) {
++        $item[$key] = new DrupalDateTime($item[$key]->format('Y-m-d') . ' 12:00:00', new \DateTimeZone('UTC'));
++      }
++    }
 +  }
 +
 +  /**
@@ -411,6 +499,23 @@ diff --color -ruN base/src/Plugin/RecurringEventsFieldTrait.php work/src/Plugin/
 +      return new \DateTimeZone($submitted);
 +    }
 +    return new \DateTimeZone(date_default_timezone_get());
-   }
++  }
++
++  /**
+    * Gets the time value from user input for a recurring date field.
+    *
+    * @param array $field_input
+@@ -250,8 +295,11 @@
+     $time_parts = static::convertTimeTo24hourFormat($time);
+     $timestamp = implode(':', $time_parts);
  
-   /**
+-    // Sanitize the date from the input.
+-    $date_input->setTimezone($user_timezone);
++    // Take the calendar date in the zone the widget built the value in (the
++    // editor's), then rebuild it in the event's zone. The widget's date-only
++    // element fills the time of day with the moment of submission, so
++    // re-zoning the instant first moves the date by a day for late-evening
++    // saves whenever the editor's zone differs from the event's.
+     $date_with_timestamp = $date_input->format('Y-m-d') . 'T' . $timestamp;
+     $date = DrupalDateTime::createFromFormat(DateTimeItemInterface::DATETIME_STORAGE_FORMAT, $date_with_timestamp, $user_timezone);
+     $date->setTime(0, 0);

@@ -1,5 +1,5 @@
 {
-    "_hash": "4ee94adb9c1d39471d6c17c9765efb964df9ba65b9c2e89fe699ed1177ff56f9",
+    "_hash": "dbb1d13e90339caa4cb95da083c0623eb884b6340081310e3dab87784406ea9d",
     "patches": {
         "drupal/core": [
             {
@@ -134,7 +134,7 @@
                 "package": "drupal/recurring_events",
                 "description": "Resolve the generation timezone from the event rather than the saving user",
                 "url": "patches/recurring_events-generation-event-timezone.patch",
-                "sha256": "99fff0959b9790330279ad336f6684434b01e693150740a367f5d5d9e54f3766",
+                "sha256": "f62a0e3f8ef24466792653aabd781064121e6d5f4cc176885c27cb0fab2bc6f2",
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
