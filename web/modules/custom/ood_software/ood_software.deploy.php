@@ -1566,12 +1566,3 @@ function ood_software_deploy_10017_clear_invalid_software_links(array &$sandbox)
     '@cleared' => $sandbox['cleared'],
   ]);
 }
-
-/**
- * TEMPORARY (D8-2956): Fail on purpose to test that CI catches it.
- *
- * Remove this function once the forced-failure test is done.
- */
-function ood_software_deploy_d8_2956_forced_failure(): void {
-  throw new \RuntimeException('D8-2956: forced deploy hook failure to test the GitHub Actions deploy.');
-}
