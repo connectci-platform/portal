@@ -502,7 +502,7 @@ final class AppverseHubController extends ControllerBase {
   /**
    * Re-submits a live repo whose apps were sent back (appverse-planning#48).
    *
-   * One commit gives one AI report, so the whole repo is reviewed again. The
+   * One commit gives one automated check, so the whole repo is reviewed again. The
    * repo and its accepted apps stay live; the apps sent back return to Ready
    * for review. The run starts first, so a failed dispatch moves nothing.
    */
@@ -529,7 +529,7 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Admin action: rerun the AI report.
+   * Admin action: Recheck, run the automated check again.
    *
    * Route: POST /appverse/repo/{node}/re-review
    */
@@ -633,7 +633,7 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Whether the repo's latest revision has an AI report run in flight.
+   * Whether the repo's latest revision has an automated check run in flight.
    *
    * @phpstan-impure
    */
@@ -802,7 +802,7 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Where a repo's AI report run stands, as JSON for the page's poller.
+   * Where a repo's automated check run stands, as JSON for the page's poller.
    *
    * Reviewers only. With ?check=github the run is first checked against
    * GitHub (throttled and locked in the service), so a page that is open

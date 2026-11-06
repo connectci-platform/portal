@@ -150,7 +150,7 @@ final class ReviewProgress {
     else {
       $ai = match ($run) {
         'complete' => self::step('Automated check', self::DONE, $suggestion && isset(self::SUGGESTION_LABELS[$suggestion]) ? 'Ready · suggests ' . self::SUGGESTION_LABELS[$suggestion] : 'Ready'),
-        'error' => self::step('Automated check', self::FAILED, 'Failed · rerun'),
+        'error' => self::step('Automated check', self::FAILED, 'Failed · recheck'),
         'in_progress' => self::step('Automated check', self::CURRENT, 'Running'),
         default => self::step('Automated check', self::CURRENT, 'Queued'),
       };
@@ -359,7 +359,7 @@ final class ReviewProgress {
       'Not started' => t('Not started'),
       'Queued' => t('Queued'),
       'Running' => t('Running'),
-      'Failed · rerun' => t('Failed · rerun'),
+      'Failed · recheck' => t('Failed · recheck'),
       'Ready' => t('Ready'),
       'In progress' => t('In progress'),
       'In review' => t('In review'),

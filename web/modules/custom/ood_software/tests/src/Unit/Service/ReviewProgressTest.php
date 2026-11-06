@@ -86,7 +86,7 @@ class ReviewProgressTest extends UnitTestCase {
       // The contributor still sees "In review" (current), never a failure.
       '4 automated check failed' => [
         ['run_status' => 'error'] + $base,
-        [$D, $F, $N, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Failed · rerun'],
+        [$D, $F, $N, $N, $N], [$D, $C, $N, $N], ['Automated check' => 'Failed · recheck'],
       ],
       '5 automated check ready, nobody started' => [
         ['review_state' => 'draft'] + $base,
@@ -217,7 +217,7 @@ class ReviewProgressTest extends UnitTestCase {
       '3 automated check running' => ['Running', 'In review', 'warning'],
       // A failed run is the reviewer's to rerun and is never shown to the
       // contributor, who still reads "In review".
-      '4 automated check failed' => ['Failed · rerun', 'In review', 'danger'],
+      '4 automated check failed' => ['Failed · recheck', 'In review', 'danger'],
       '5 automated check ready, nobody started' => ['In review', 'In review', 'warning'],
       '6 reviewer working' => ['In review', 'In review', 'warning'],
       '7 changes requested' => ['Changes requested · round 1', 'Changes requested · round 1', 'warning'],

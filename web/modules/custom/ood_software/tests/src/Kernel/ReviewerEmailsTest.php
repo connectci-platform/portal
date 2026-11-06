@@ -180,6 +180,7 @@ class ReviewerEmailsTest extends KernelTestBase {
     $review->save();
     $this->notifier()->notifyRunReady($repo, $review);
     $this->assertSame(['alice@example.com'], $this->recipients('review_run_ready'));
+    $this->assertStringContainsString('is ready to read.', preg_replace('/\s+/', ' ', (string) array_values(array_filter($this->getMails(), fn ($m) => $m['key'] === 'review_run_ready'))[0]['body']));
   }
 
   /**

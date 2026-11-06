@@ -509,7 +509,7 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
  * Whether a repo is decided on its review page rather than from the hub.
  *
  * True once it has a review, or has had an AI run even when the run failed
- * and seeded no review: a failed AI report is rerun, never decided by hand
+ * and seeded no review: a failed automated check is rechecked, never decided by hand
  * (appverse-planning#34). The hub's Publish and Request changes would be a
  * second, unrecorded place to act, so the hub hides them and their routes
  * refuse (#50). Repos without a review (legacy, or before a run) keep them.
@@ -1858,7 +1858,7 @@ function ood_software_mail(string $key, array &$message, array $params): void {
 
     case 'review_run_ready':
       $message['subject'] = t('[@site] Automated check ready: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = t('<p>The automated check for "@title" is ready to check.</p>', ['@title' => $title]);
+      $message['body'][] = t('<p>The automated check for "@title" is ready to read.</p>', ['@title' => $title]);
       $review = $params['review'] ?? NULL;
       $message['body'][] = $review instanceof NodeInterface
         ? t('<p>The review: <a href=":url">:url</a></p>', [
@@ -2464,8 +2464,8 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
     : NULL;
 
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
-  // Run AI report: on every repo an admin can see, whatever its moderation
-  // state, except while a run is in flight (the progress line's AI report
+  // Run automated check: on every repo an admin can see, whatever its moderation
+  // state, except while a run is in flight (the progress line's automated check
   // step says so). In flight is the shared rule: a pending status older than
   // the stale timeout is not a run in progress. The action does not move the
   // app's editorial state.

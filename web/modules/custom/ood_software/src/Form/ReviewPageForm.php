@@ -235,7 +235,7 @@ final class ReviewPageForm extends FormBase {
       // act on. What the page should say is where things end up, and that
       // lives next to the assessment and the decision instead.
     }
-    // Rerun report and the run status line are the reviewer's alone, so a
+    // Recheck and the run status line are the reviewer's alone, so a
     // contributor's or visitor's page carries neither, nor any polling.
     $rerun = $this->rerunState($node, $repo instanceof NodeInterface ? $repo : NULL);
     if ($reviewerView && $repo instanceof NodeInterface) {
