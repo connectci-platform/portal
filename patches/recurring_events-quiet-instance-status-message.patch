@@ -1,28 +1,18 @@
 diff --git a/recurring_events.module b/recurring_events.module
+index 6a08714fe1efbb0ee39e1095a83a30a0ba079ee7..a7d9cfe57afc1f085a401adc3ad78aebc27ffaa8 100644
 --- a/recurring_events.module
 +++ b/recurring_events.module
-@@ -247,20 +247,32 @@
-   $instances = $entity->getInstances();
-   $updated_statuses = $skipped_statuses = 0;
+@@ -249,18 +249,20 @@ function recurring_events_eventseries_update(EntityInterface $entity) {
    if (!empty($instances)) {
-+    // When the series and its instances are moderated by different workflows
-+    // their states can never be mirrored, so every instance would be reported
-+    // as skipped on every save. Do not count those as skipped.
-+    $workflows_differ = FALSE;
-+    if (\Drupal::moduleHandler()->moduleExists('content_moderation')) {
-+      $moderation_information = \Drupal::service('content_moderation.moderation_information');
-+      $series_workflow = $moderation_information->getWorkflowForEntity($entity);
-+      $instance_workflow = $moderation_information->getWorkflowForEntity(reset($instances));
-+      $workflows_differ = $series_workflow && $instance_workflow && $series_workflow->id() !== $instance_workflow->id();
-+    }
      foreach ($instances as $instance) {
        $status_updated = $creation_service->updateInstanceStatus($instance, $entity);
-       if ($status_updated) {
+-      if ($status_updated) {
++      if ($status_updated === TRUE) {
          $updated_statuses++;
          $instance->save();
        }
 -      else {
-+      elseif (!$workflows_differ) {
++      elseif ($status_updated === FALSE) {
          $skipped_statuses++;
        }
      }
@@ -39,3 +29,40 @@ diff --git a/recurring_events.module b/recurring_events.module
    }
  }
  
+diff --git a/src/EventCreationService.php b/src/EventCreationService.php
+index 83d610b9972728e51008f8b400c30dea344663e4..c0c1aa98b1a85c8629fb96c2b81e156125c368ed 100644
+--- a/src/EventCreationService.php
++++ b/src/EventCreationService.php
+@@ -702,6 +702,13 @@ class EventCreationService {
+    *   The event instance for which to update the status.
+    * @param \Drupal\recurring_events\Entity\EventSeries $event
+    *   The event series entity.
++   *
++   * @return bool|null
++   *   TRUE if the state was changed on the instance and it must be saved.
++   *   FALSE if the instance diverged from the original series state and was
++   *   intentionally skipped. NULL if there is nothing to do, because the
++   *   instance already has the new state or the series and instance use
++   *   different workflows.
+    */
+   public function updateInstanceStatus(EventInstance $instance, EventSeries $event) {
+     $original_event = $event->original;
+@@ -727,7 +734,7 @@ class EventCreationService {
+           $field_name = 'moderation_state';
+         }
+         else {
+-          return FALSE;
++          return NULL;
+         }
+       }
+     }
+@@ -746,6 +753,9 @@ class EventCreationService {
+     // If the instance state matches the original state of the series we want
+     // to also update the instance state.
+     if ($instance_state === $original_state) {
++      if ($instance_state == $new_state) {
++        return NULL;
++      }
+       $instance->set($field_name, $new_state);
+       return TRUE;
+     }
