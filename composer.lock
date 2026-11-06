@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3cf2090b1f4435383dd90af17ad1b549",
+    "content-hash": "5821be86b478760a4f44af4593f84af7",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -8932,71 +8932,6 @@
                 "irc": "irc://irc.freenode.org/drupal-search-api"
             },
             "published-time": "2026-10-28T09:14:58+00:00"
-        },
-        {
-            "name": "drupal/search_api_page",
-            "version": "1.2.0",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/search_api_page.git",
-                "reference": "8.x-1.2"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/search_api_page-8.x-1.2.zip",
-                "reference": "8.x-1.2",
-                "shasum": "6899f5411e28baf7681e93844b9c47c4a9827dba"
-            },
-            "require": {
-                "drupal/core": "^9.2 || ^10 || ^11",
-                "drupal/search_api": "^1.25"
-            },
-            "require-dev": {
-                "drupal/facets": "2.0.x-dev"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "8.x-1.2",
-                    "datestamp": "1773598839",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                },
-                "branch-alias": {
-                    "dev-8.x-1.x": "1.x-dev"
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "See contributors",
-                    "homepage": "https://www.drupal.org/node/1142202/committers"
-                },
-                {
-                    "name": "drunken monkey",
-                    "homepage": "https://www.drupal.org/user/205582"
-                },
-                {
-                    "name": "japerry",
-                    "homepage": "https://www.drupal.org/user/45640"
-                },
-                {
-                    "name": "karlshea",
-                    "homepage": "https://www.drupal.org/user/294283"
-                }
-            ],
-            "description": "Create search pages using Search API indexes.",
-            "homepage": "https://www.drupal.org/project/search_api_page",
-            "support": {
-                "source": "http://git.drupal.org/project/search_api_page.git",
-                "issues": "https://www.drupal.org/project/issues/search_api_page",
-                "irc": "irc://irc.freenode.org/drupal-search-api"
-            }
         },
         {
             "name": "drupal/search_exclude",
