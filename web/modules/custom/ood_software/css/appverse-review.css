@@ -944,7 +944,7 @@
   padding: .1rem .5rem;
   border-radius: 4px;
   background: var(--gray-100);
-  color: var(--gray-900);
+  color: var(--ink);
 }
 .arv-page .gate b {
   font-weight: 600;
@@ -1600,17 +1600,18 @@
    they are the step states rather than the review node's moderation states
    (appverse-planning#53). Blue is the current step, green done, amber waiting
    on the contributor, red failed or declined, per the brand palette. */
+/* Tints under ink text, like the gate chips. */
 .arv-page .state-pill--success {
-  background: #e0f3f0;
-  color: var(--status-green-text);
+  background: var(--tint-pass);
+  color: var(--ink);
 }
 .arv-page .state-pill--warning {
-  background: #fbf0dd;
-  color: var(--status-amber-text);
+  background: var(--tint-warn);
+  color: var(--ink);
 }
 .arv-page .state-pill--danger {
-  background: #fae3e8;
-  color: var(--status-red);
+  background: var(--tint-fail);
+  color: var(--ink);
 }
 .arv-page .state-pill--secondary {
   background: var(--gray-100);
@@ -1786,18 +1787,22 @@
   background: var(--gray-100);
   color: var(--gray-900);
 }
-.arv-page .decision-pill--accept,
+/* The same tints as the contributor's decision band, under ink text. */
+.arv-page .decision-pill--accept {
+  background: var(--tint-pass);
+  color: var(--ink);
+}
 .arv-page .decision-pill--accept_with_suggestions {
-  background: #e0f3f0;
-  color: var(--status-green-text);
+  background: var(--tint-warn);
+  color: var(--ink);
 }
 .arv-page .decision-pill--request_changes {
-  background: #fff8ec;
-  color: #8a5a12;
+  background: var(--tint-decision-changes);
+  color: var(--ink);
 }
 .arv-page .decision-pill--reject {
-  background: #fbe7eb;
-  color: var(--status-red);
+  background: var(--tint-fail);
+  color: var(--ink);
 }
 .arv-page .summary-rows {
   margin: 0;
