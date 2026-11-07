@@ -40,13 +40,14 @@ $content_directories['sync'] = '/datastorage/content/sync';
 // (local.settings.php does, to run real reviews from ddev).
 $settings['ood_software.review_full_environments'] = ['md-2788'];
 
-// The model AppVerse AI reviews run on: "qwen" (the on-prem gateway) or
-// "sonnet" / "opus" (the Anthropic API). Read by
+// The model AppVerse AI reviews run on: "qwen" (the on-prem gateway),
+// "sonnet" / "opus" (the Anthropic API), or "sonnet-subscription" /
+// "opus-subscription" (Claude on the subscription token). Read by
 // AppverseReviewService::reviewModel(). A plain string applies everywhere,
 // live included; ['env' => 'model'] sets it per environment, with unlisted
-// environments on qwen. Reviews stay on the on-prem model unless this
-// chooses a Claude model.
-$settings['ood_software.review_model'] = 'qwen';
+// environments on qwen. Reviews run on Claude via the subscription unless
+// this names another model.
+$settings['ood_software.review_model'] = 'sonnet-subscription';
 
 // Send mail to the null transport everywhere except live, so non-live
 // environments (dev, test, multidevs) never deliver mail to real users. Set
@@ -74,6 +75,24 @@ foreach ($additionalSettingsFiles as $settingsFile) {
   if (file_exists($settingsFile)) {
     require $settingsFile;
   }
+}
+
+/**
+ * Reroute email for non-production environments.
+ *
+ * On dev, test, and multidev environments, all emails are rerouted to prevent
+ * accidental emails to real users during testing.
+ *
+ * Note: This does not affect local DDEV or CI environments which use mailpit,
+ * as PANTHEON_ENVIRONMENT is only set on Pantheon servers.
+ */
+if (isset($_ENV['PANTHEON_ENVIRONMENT']) &&
+    $_ENV['PANTHEON_ENVIRONMENT'] !== 'live' &&
+    $_ENV['PANTHEON_ENVIRONMENT'] !== 'local') {
+  $config['reroute_email.settings']['enable'] = TRUE;
+  $config['reroute_email.settings']['address'] = 'andrew@elytra.net';
+  $config['reroute_email.settings']['description'] = TRUE;
+  $config['reroute_email.settings']['message'] = TRUE;
 }
 
 if (defined('PANTHEON_ENVIRONMENT')) {
@@ -212,7 +231,11 @@ $settings['config_exclude_modules'] = [
   'recaptcha_v3',
 ];
 
-ini_set('max_execution_time', 360);
+// Web requests only: CLI is unlimited by default, and a single drush batch
+// process (e.g. updatedb on a major upgrade) can run well past 360 seconds.
+if (PHP_SAPI !== 'cli') {
+  ini_set('max_execution_time', 360);
+}
 
 // Configure Redis.
 if (defined(

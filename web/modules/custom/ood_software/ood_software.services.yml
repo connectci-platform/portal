@@ -31,6 +31,14 @@ services:
     class: Drupal\ood_software\Service\RepoMemberApps
     arguments: ['@entity_type.manager']
 
+  ood_software.review_page_breadcrumb:
+    class: Drupal\ood_software\Breadcrumb\ReviewPageBreadcrumbBuilder
+    arguments: ['@current_user', '@entity_type.manager', '@request_stack', '@?easy_breadcrumb.breadcrumb']
+    tags:
+      # Above easy_breadcrumb (1003), which applies to every route and would
+      # otherwise print its path-derived trail here.
+      - { name: breadcrumb_builder, priority: 2000 }
+
   ood_software.appverse_cache_flush:
     class: Drupal\ood_software\EventSubscriber\AppverseCacheFlushSubscriber
     arguments: ['@ood_software.appverse_cache']
@@ -43,7 +51,7 @@ services:
 
   ood_software.review_dispatcher:
     class: Drupal\ood_software\Service\AppverseReviewService
-    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier', '@ood_software.in_place_saver', '@lock', '@keyvalue']
+    arguments: ['@http_client', '@key.repository', '@logger.factory', '@entity_type.manager', '@datetime.time', '@file_system', '@ood_software.review_seeder', '@current_user', '@ood_software.repo_notifier', '@ood_software.in_place_saver', '@lock', '@keyvalue', '@keyvalue.expirable']
     tags:
       - { name: needs_destruction }
 

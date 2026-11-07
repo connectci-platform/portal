@@ -132,7 +132,7 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
     $this->assertSame(AppverseReviewService::correlationId(self::NID, self::NOW), $inputs['correlation_id']);
     // Not a live environment in a unit test, so the dispatch is a dry-run.
     $this->assertSame('dry-run', $inputs['review_aspects']);
-    // No setting: the on-prem model, never the Anthropic API.
+    // No setting: the on-prem model, never a Claude backend.
     $this->assertSame('qwen', $inputs['model']);
 
     $this->assertContains(['field_review_dispatched_at', self::NOW], $this->freshSets);
@@ -157,6 +157,26 @@ class AppverseReviewServiceDispatchTest extends UnitTestCase {
       new Settings(['ood_software.review_model' => 'gpt-9']);
       $this->assertTrue($this->makeService(204)->dispatchForNode($this->makeRepoNode()));
       $this->assertSame('qwen', $this->postOptions['json']['inputs']['model']);
+    }
+    finally {
+      new Settings([]);
+    }
+  }
+
+  /**
+   * The subscription models are accepted as named, not replaced by the
+   * on-prem fallback.
+   *
+   * @covers ::dispatchForNode
+   * @covers ::reviewModel
+   */
+  public function testDispatchSendsTheSubscriptionModels(): void {
+    try {
+      foreach (['sonnet-subscription', 'opus-subscription'] as $model) {
+        new Settings(['ood_software.review_model' => $model]);
+        $this->assertTrue($this->makeService(204)->dispatchForNode($this->makeRepoNode()));
+        $this->assertSame($model, $this->postOptions['json']['inputs']['model']);
+      }
     }
     finally {
       new Settings([]);

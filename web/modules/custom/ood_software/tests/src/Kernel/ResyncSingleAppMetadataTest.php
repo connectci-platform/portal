@@ -129,6 +129,7 @@ class ResyncSingleAppMetadataTest extends KernelTestBase {
       'field.field.node.appverse_repo.field_repo_tags',
       'field.storage.node.field_repo_readme',
       'field.field.node.appverse_repo.field_repo_readme',
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       'field.storage.node.field_appverse_repo',
       'field.field.node.appverse_app.field_appverse_repo',
@@ -297,6 +298,7 @@ YAML;
       $this->container->get('ood_software.review_dispatcher'),
       $this->container->get('ood_software.review_assignment'),
       $this->container->get('ood_software.repo_notifier'),
+      $this->container->get('ood_software.repo_progress'),
     );
   }
 

@@ -1,0 +1,42 @@
+clients:
+  access-qa-bot:
+    type: browser
+    audience: 'https://qa.access-ci.org'
+    origins:
+      -
+        origin: 'https://support.access-ci.org'
+        scopes:
+          - 'agent:read'
+          - 'agent:write'
+      -
+        origin: 'https://qa.access-ci.org'
+        scopes:
+          - 'agent:read'
+          - 'agent:write'
+      -
+        origin: 'https://access-ci.org'
+        scopes:
+          - 'agent:read'
+          - 'agent:write'
+      -
+        origin: 'https://allocations.access-ci.org'
+        scopes:
+          - 'agent:read'
+          - 'agent:write'
+      -
+        origin: 'https://ara.access-ci.org'
+        scopes:
+          - 'agent:read'
+          - 'agent:write'
+      -
+        origin: 'https://sds.access-ci.org'
+        scopes:
+          - 'agent:read'
+          - 'agent:write'
+  access-assistant:
+    type: confidential
+    audience: 'https://xdmod.access-ci.org'
+    scopes:
+      - 'xdmod:read'
+    subject_clients:
+      - access-qa-bot

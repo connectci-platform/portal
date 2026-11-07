@@ -22,8 +22,8 @@ use Drupal\views\Views;
  * as a broken handler and silently dropped it: the "Moderation state"
  * exposed filter never actually narrowed the result set, regardless of its
  * configured default. This test asserts the fixed filter (now on
- * node_field_data, plugin moderation_state_filter) genuinely applies its
- * default — ready_for_review + needs_adjustment — with no exposed input at
+ * node_field_data; since D8-2931 the ood_software_moderation_state subclass)
+ * genuinely applies its default, Needs attention, with no exposed input at
  * all, that the new "Contributor" (uid/user_name) exposed filter narrows by
  * author, and that the deleted "Last synced" filter is really gone from the
  * display.
@@ -73,6 +73,14 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
       'field.field.node.appverse_app.field_appverse_repo',
       'field.storage.node.field_appverse_software_implemen',
       'field.field.node.appverse_app.field_appverse_software_implemen',
+      // The Needs attention default reads each repo's newest review.
+      'node.type.appverse_review',
+      'field.storage.node.field_arv_repo',
+      'field.field.node.appverse_review.field_arv_repo',
+      'field.storage.node.field_arv_decision_sent_at',
+      'field.field.node.appverse_review.field_arv_decision_sent_at',
+      'field.storage.node.field_arv_withdrawn_at',
+      'field.field.node.appverse_review.field_arv_withdrawn_at',
     ]);
     $this->importViewConfigRaw('views.view.my_appverse');
 
@@ -127,20 +135,27 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
   }
 
   /**
-   * With no exposed input, the moderation default now genuinely applies.
+   * With no exposed input, the moderation default genuinely applies.
    *
-   * Seeds one repo in each of four moderation states. Before the fix, the
-   * moderation_state filter was a broken handler and this would have
-   * returned all four (or errored); after the fix, only the
-   * ready_for_review and needs_adjustment repos should come back. The
-   * status ("Published") filter's default is now "All", so it must not
-   * narrow the set any further.
+   * Before D8-2846 the moderation_state filter was a broken handler and
+   * every repo came back. The default is now Needs attention (D8-2931): the
+   * ready_for_review repo, and a live repo whose newest report is undecided.
+   * A needs_adjustment repo with no undecided report is no longer in the
+   * default queue. The status ("Published") filter's default is "All", so it
+   * must not narrow the set any further.
    */
   public function testDefaultResultSetAppliesModerationDefault(): void {
     $published = $this->makeRepo('Published Repo', 'published');
     $readyForReview = $this->makeRepo('Ready For Review Repo', 'ready_for_review');
     $needsAdjustment = $this->makeRepo('Needs Adjustment Repo', 'needs_adjustment');
     $draft = $this->makeRepo('Draft Repo', 'draft');
+    $liveWithReport = $this->makeRepo('Live Repo With Report', 'published');
+    Node::create([
+      'type' => 'appverse_review',
+      'title' => 'Review',
+      'status' => 0,
+      'field_arv_repo' => $liveWithReport->id(),
+    ])->save();
 
     $view = $this->getPageAdminView();
     // Deliberately no setExposedInput() call: this exercises the exposed
@@ -148,18 +163,19 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
     // with no query string takes.
     $view->execute();
 
-    $resultNids = array_unique(array_map(
+    $resultNids = array_map(
       static fn (ResultRow $row) => (int) $row->_entity->id(),
       $view->result,
-    ));
+    );
     sort($resultNids);
 
-    $expected = [(int) $readyForReview->id(), (int) $needsAdjustment->id()];
+    $expected = [(int) $readyForReview->id(), (int) $liveWithReport->id()];
     sort($expected);
 
-    $this->assertSame($expected, $resultNids, 'Default result set must be exactly the ready_for_review + needs_adjustment repos.');
-    $this->assertNotContains((int) $published->id(), $resultNids, 'Published repo must not appear under the default moderation filter.');
-    $this->assertNotContains((int) $draft->id(), $resultNids, 'Draft repo must not appear under the default moderation filter.');
+    $this->assertSame($expected, $resultNids, 'Default result set must be exactly the Needs attention repos, each once.');
+    $this->assertNotContains((int) $published->id(), $resultNids);
+    $this->assertNotContains((int) $needsAdjustment->id(), $resultNids);
+    $this->assertNotContains((int) $draft->id(), $resultNids);
   }
 
   /**
@@ -210,7 +226,15 @@ class ManageReposFilterDefaultsTest extends KernelTestBase {
     $moderationFilter = $view->filter['moderation_state'];
     $this->assertFalse($moderationFilter->broken(), 'moderation_state filter must resolve to a real handler, not "broken".');
     $this->assertSame('node_field_data', $moderationFilter->table);
-    $this->assertSame('ood_software_pending_aware_moderation_state', $moderationFilter->getPluginId());
+    $this->assertSame('ood_software_moderation_state', $moderationFilter->getPluginId());
+    $this->assertSame(['needs_attention' => 'needs_attention'], $moderationFilter->value, 'Needs attention is the default.');
+    $this->assertTrue((bool) $moderationFilter->options['needs_attention']);
+    // Core's moderation_state filter is left alone, so other views keep their
+    // plugin and gain no dependency on ood_software.
+    $nodeData = $this->container->get('views.views_data')->get('node_field_data');
+    $this->assertSame('moderation_state_filter', $nodeData['moderation_state']['filter']['id']);
+    $this->assertSame('ood_software_moderation_state', $nodeData['ood_moderation_state']['filter']['id']);
+    $this->assertSame('moderation_state', $moderationFilter->realField);
 
     $this->assertArrayHasKey('uid', $view->filter, 'The new Contributor (uid) filter must exist on page_admin.');
     $contributorFilter = $view->filter['uid'];

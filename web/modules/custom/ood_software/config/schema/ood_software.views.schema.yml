@@ -1,3 +1,0 @@
-views.filter.ood_software_pending_aware_moderation_state:
-  type: views.filter.moderation_state_filter
-  label: 'Moderation state filter, including pending revisions'

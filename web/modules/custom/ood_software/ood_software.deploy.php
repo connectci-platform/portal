@@ -14,12 +14,13 @@ use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Url;
 use Drupal\taxonomy\Entity\Term;
 
 /**
  * Add terms.
  */
-function ood_software_deploy_10000_terms() {
+function ood_software_deploy_10000_terms(): void {
   $terms = [
     'appverse_app_type' => [
       'batch_connect',
@@ -64,19 +65,19 @@ function ood_software_deploy_10000_terms() {
 /**
  * Add software via csv.
  */
-function ood_software_deploy_10001_software() {
+function ood_software_deploy_10001_software(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $csv_file = $module_path . '/csv/software.csv';
 
   if (!file_exists($csv_file)) {
     \Drupal::logger('ood_software')->error('CSV file not found at @path', ['@path' => $csv_file]);
-    return;
+    return NULL;
   }
 
   $handle = fopen($csv_file, 'r');
   if (!$handle) {
     \Drupal::logger('ood_software')->error('Unable to open CSV file');
-    return;
+    return NULL;
   }
 
   $count = 0;
@@ -147,14 +148,14 @@ function ood_software_deploy_10001_software() {
         'value' => $description,
         'format' => 'markdown',
       ],
-      'field_appverse_software_website' => [
+      'field_appverse_software_website' => _ood_software_valid_url($software_url) ? [
         'uri' => $software_url,
         'title' => '',
-      ],
-      'field_appverse_software_doc' => [
+      ] : NULL,
+      'field_appverse_software_doc' => _ood_software_valid_url($docs) ? [
         'uri' => $docs,
         'title' => '',
-      ],
+      ] : NULL,
       'field_license' => $license_tid ? ['target_id' => $license_tid] : NULL,
       'field_appverse_topics' => $topic_tids,
       'field_tags' => $tag_tids,
@@ -170,6 +171,24 @@ function ood_software_deploy_10001_software() {
   \Drupal::logger('ood_software')->notice('Imported @count software nodes', ['@count' => $count]);
 
   return t('Successfully imported @count software entries.', ['@count' => $count]);
+}
+
+/**
+ * Checks that a value is an absolute http(s) URL.
+ *
+ * Link fields throw on Url::fromUri() for anything else, which breaks JSON:API
+ * and rendering, so imports only store values that pass this.
+ *
+ * @param mixed $url
+ *   The candidate value.
+ *
+ * @return bool
+ *   TRUE if the value is a valid http or https URL.
+ */
+function _ood_software_valid_url($url): bool {
+  return is_string($url)
+    && filter_var($url, FILTER_VALIDATE_URL) !== FALSE
+    && in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], TRUE);
 }
 
 /**
@@ -222,19 +241,19 @@ function _ood_software_get_or_create_term($name, $vocabulary) {
 /**
  * Add apps via csv.
  */
-function ood_software_deploy_10002_apps() {
+function ood_software_deploy_10002_apps(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $csv_file = $module_path . '/csv/apps.csv';
 
   if (!file_exists($csv_file)) {
     \Drupal::logger('ood_software')->error('CSV file not found at @path', ['@path' => $csv_file]);
-    return;
+    return NULL;
   }
 
   $handle = fopen($csv_file, 'r');
   if (!$handle) {
     \Drupal::logger('ood_software')->error('Unable to open CSV file');
-    return;
+    return NULL;
   }
 
   // Read and skip header row.
@@ -377,14 +396,14 @@ function ood_software_deploy_10002_apps() {
 /**
  * Add logos to software nodes.
  */
-function ood_software_deploy_10003_logos() {
+function ood_software_deploy_10003_logos(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $logos_dir = $module_path . '/logos';
   $mapping_file = $logos_dir . '/mapping.php';
 
   if (!file_exists($mapping_file)) {
     \Drupal::logger('ood_software')->error('Logo mapping file not found at @path', ['@path' => $mapping_file]);
-    return;
+    return NULL;
   }
 
   $mapping = include $mapping_file;
@@ -431,11 +450,6 @@ function ood_software_deploy_10003_logos() {
 
     $file_data = file_get_contents($logo_path);
     $file = \Drupal::service('file.repository')->writeData($file_data, $destination, FileExists::Replace);
-
-    if (!$file) {
-      \Drupal::logger('ood_software')->error('Failed to copy logo: @file', ['@file' => $filename]);
-      continue;
-    }
 
     // Create media entity.
     if ($is_svg) {
@@ -479,7 +493,7 @@ function ood_software_deploy_10003_logos() {
 /**
  * Add menu links.
  */
-function ood_software_deploy_10004_menus() {
+function ood_software_deploy_10004_menus(): void {
   $my_apps = [
     'title' => 'My Apps',
     'link' => ['uri' => 'internal:/appverse/my-apps'],
@@ -518,7 +532,7 @@ function ood_software_deploy_10004_menus() {
 /**
  * Clear last updated field for apps missing body/readme to force GitHub sync.
  */
-function ood_software_deploy_10005_force_app_sync() {
+function ood_software_deploy_10005_force_app_sync(): TranslatableMarkup {
   $node_storage = \Drupal::entityTypeManager()->getStorage('node');
 
   // Find all appverse_app nodes.
@@ -555,14 +569,14 @@ function ood_software_deploy_10005_force_app_sync() {
 /**
  * Retry adding logos to software nodes (fixes field config to accept images).
  */
-function ood_software_deploy_10006_logos_retry() {
+function ood_software_deploy_10006_logos_retry(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $logos_dir = $module_path . '/logos';
   $mapping_file = $logos_dir . '/mapping.php';
 
   if (!file_exists($mapping_file)) {
     \Drupal::logger('ood_software')->error('Logo mapping file not found at @path', ['@path' => $mapping_file]);
-    return;
+    return NULL;
   }
 
   $mapping = include $mapping_file;
@@ -610,11 +624,6 @@ function ood_software_deploy_10006_logos_retry() {
     $file_data = file_get_contents($logo_path);
     $file = \Drupal::service('file.repository')->writeData($file_data, $destination, FileExists::Replace);
 
-    if (!$file) {
-      \Drupal::logger('ood_software')->error('Failed to copy logo: @file', ['@file' => $filename]);
-      continue;
-    }
-
     // Create media entity.
     if ($is_svg) {
       $media = Media::create([
@@ -657,14 +666,14 @@ function ood_software_deploy_10006_logos_retry() {
 /**
  * Replace logos with color versions.
  */
-function ood_software_deploy_10007_color_logos() {
+function ood_software_deploy_10007_color_logos(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $logos_dir = $module_path . '/color-logos';
   $mapping_file = $logos_dir . '/mapping.php';
 
   if (!file_exists($mapping_file)) {
     \Drupal::logger('ood_software')->error('Color logo mapping file not found at @path', ['@path' => $mapping_file]);
-    return;
+    return NULL;
   }
 
   $mapping = include $mapping_file;
@@ -705,11 +714,6 @@ function ood_software_deploy_10007_color_logos() {
 
     $file_data = file_get_contents($logo_path);
     $file = \Drupal::service('file.repository')->writeData($file_data, $destination, FileExists::Replace);
-
-    if (!$file) {
-      \Drupal::logger('ood_software')->error('Failed to copy color logo: @file', ['@file' => $filename]);
-      continue;
-    }
 
     // Create media entity.
     if ($is_svg) {
@@ -753,7 +757,7 @@ function ood_software_deploy_10007_color_logos() {
 /**
  * Normalize app type term names to match APP_TYPE_MANIFEST_MAP.
  */
-function ood_software_deploy_10008_normalize_app_types() {
+function ood_software_deploy_10008_normalize_app_types(): TranslatableMarkup {
   $renames = [
     'batch_connect' => 'batch-connect-basic',
     'dashboard'     => 'dashboards',
@@ -794,7 +798,7 @@ function ood_software_deploy_10008_normalize_app_types() {
  * creates flat terms with no parent. This reparents terms that belong in the
  * hierarchy and deletes duplicates/junk terms.
  */
-function ood_software_deploy_10010_cleanup_orphan_tags() {
+function ood_software_deploy_10010_cleanup_orphan_tags(): TranslatableMarkup {
   $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
   $node_storage = \Drupal::entityTypeManager()->getStorage('node');
   $messages = [];
@@ -896,7 +900,7 @@ function ood_software_deploy_10010_cleanup_orphan_tags() {
   return t("Cleaned up orphan tags:\n@summary", ['@summary' => $summary]);
 }
 
-function ood_software_deploy_10009_resync_app_types() {
+function ood_software_deploy_10009_resync_app_types(): TranslatableMarkup {
   $queue = \Drupal::queue('appverse_app_updater');
   $storage = \Drupal::entityTypeManager()->getStorage('node');
   $nids = \Drupal::entityQuery('node')
@@ -916,8 +920,11 @@ function ood_software_deploy_10009_resync_app_types() {
 
 /**
  * Create menu item.
+ *
+ * @param array<string, mixed> $menu_link
+ *   The menu_link_content values, with roles under options.attributes.
  */
-function ood_software_links($menu_link) {
+function ood_software_links(array $menu_link): void {
   $existing_links = \Drupal::entityTypeManager()
     ->getStorage('menu_link_content')
     ->loadByProperties([
@@ -968,7 +975,7 @@ function ood_software_links($menu_link) {
  * Creates 3 new software entries (Desktop, SSH Terminal, Cloud Storage
  * Configuration) and 7 app nodes from CSCfi GitHub repos.
  */
-function ood_software_deploy_10011_cscfi_apps() {
+function ood_software_deploy_10011_cscfi_apps(): TranslatableMarkup {
   $messages = [];
 
   // --- 1. Create new software entries ---
@@ -1032,7 +1039,7 @@ function ood_software_deploy_10011_cscfi_apps() {
       'status' => 1,
     ];
 
-    if (!empty($entry['website'])) {
+    if (_ood_software_valid_url($entry['website'] ?? '')) {
       $node_data['field_appverse_software_website'] = [
         'uri' => $entry['website'],
         'title' => '',
@@ -1168,7 +1175,7 @@ function ood_software_deploy_10011_cscfi_apps() {
  * in the vocabulary — they're needed for the hierarchy — only the references
  * from Software nodes are removed.
  */
-function ood_software_deploy_10012_remove_parent_tags_from_software() {
+function ood_software_deploy_10012_remove_parent_tags_from_software(): TranslatableMarkup {
   $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
   $node_storage = \Drupal::entityTypeManager()->getStorage('node');
 
@@ -1240,7 +1247,7 @@ function ood_software_deploy_10012_remove_parent_tags_from_software() {
  * follows automatically. Idempotent: re-runs no-op once the singular term
  * exists.
  */
-function ood_software_deploy_10013_singularize_app_types() {
+function ood_software_deploy_10013_singularize_app_types(): TranslatableMarkup {
   $renames = [
     'dashboards' => 'dashboard',
     'widgets'    => 'widget',
@@ -1278,8 +1285,11 @@ function ood_software_deploy_10013_singularize_app_types() {
  * deploy:hook step — after config:import — so every field exists here. Running
  * this during the update phase (update_10503, or a post_update hook) was too
  * early and failed with "getColumns() on false" for every App.
+ *
+ * @param array<string, mixed> $sandbox
+ *   The batch sandbox.
  */
-function ood_software_deploy_10014_backfill_inferred_repos(&$sandbox) {
+function ood_software_deploy_10014_backfill_inferred_repos(array &$sandbox): TranslatableMarkup {
   $entityTypeManager = \Drupal::entityTypeManager();
 
   if (!isset($sandbox['progress'])) {
@@ -1370,6 +1380,7 @@ function ood_software_deploy_10015_unstrand_repos_awaiting_review(): \Drupal\Cor
     // a deploy that unstrands N repos sends N "ready for review" notices in one
     // burst, and on a host without working SMTP the synchronous per-repo send
     // stalls the deploy mid-repair. Same guard the inferred-repo backfill uses.
+    // @phpstan-ignore-next-line
     $repo->_ood_software_suppress_notifications = TRUE;
     $repo->set('moderation_state', 'ready_for_review');
     $repo->setNewRevision(TRUE);
@@ -1460,5 +1471,90 @@ function ood_software_deploy_10016_backfill_app_domain(array &$sandbox): Transla
   return t('Set the domain on @progress of @total Apps.', [
     '@progress' => $sandbox['progress'],
     '@total' => $sandbox['total'],
+  ]);
+}
+
+/**
+ * Clear invalid URIs from Appverse Software website and docs links.
+ *
+ * The 10001 and 10011 imports stored raw CSV values without validation, and
+ * one malformed row put body text in field_appverse_software_website. Core 11.4
+ * resolves link URLs while normalizing, so Url::fromUri() throwing on that
+ * value made GET /jsonapi/node/appverse_software return a 500.
+ *
+ * Any value Url::fromUri() rejects is removed from the default and latest
+ * revisions. setSyncing() keeps the saves from creating a revision, moving
+ * moderation state or touching the changed time.
+ *
+ * Idempotent: valid links are never touched.
+ *
+ * @param array<string, mixed> $sandbox
+ *   Batch sandbox.
+ *
+ * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+ *   Progress message.
+ */
+function ood_software_deploy_10017_clear_invalid_software_links(array &$sandbox): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  $field_names = ['field_appverse_software_website', 'field_appverse_software_doc'];
+
+  if (!isset($sandbox['progress'])) {
+    $sandbox['progress'] = 0;
+    $sandbox['cleared'] = 0;
+    $sandbox['ids'] = array_values($storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_software')
+      ->execute());
+    $sandbox['total'] = count($sandbox['ids']);
+  }
+
+  if ($sandbox['total'] === 0) {
+    $sandbox['#finished'] = 1;
+    return t('No Software nodes to check.');
+  }
+
+  $clear_invalid = static function (NodeInterface $node) use ($field_names): int {
+    $cleared = 0;
+    foreach ($field_names as $field_name) {
+      if (!$node->hasField($field_name) || $node->get($field_name)->isEmpty()) {
+        continue;
+      }
+      try {
+        Url::fromUri((string) ($node->get($field_name)->first()?->getValue()['uri'] ?? ''));
+      }
+      catch (\InvalidArgumentException $e) {
+        $node->set($field_name, NULL);
+        $cleared++;
+      }
+    }
+    if ($cleared) {
+      $node->setNewRevision(FALSE);
+      $node->setSyncing(TRUE);
+      $node->save();
+    }
+    return $cleared;
+  };
+
+  $chunk = array_slice($sandbox['ids'], $sandbox['progress'], 25);
+  foreach ($storage->loadMultiple($chunk) as $node) {
+    $default_vid = (int) $node->getRevisionId();
+    $sandbox['cleared'] += $clear_invalid($node);
+
+    $latest_vid = (int) $storage->getLatestRevisionId($node->id());
+    if ($latest_vid && $latest_vid !== $default_vid) {
+      $latest = $storage->loadRevision($latest_vid);
+      if ($latest instanceof NodeInterface) {
+        $sandbox['cleared'] += $clear_invalid($latest);
+      }
+    }
+  }
+
+  $sandbox['progress'] += count($chunk);
+  $sandbox['#finished'] = $sandbox['progress'] / max(1, $sandbox['total']);
+
+  return t('Checked @progress of @total Software nodes; cleared @cleared invalid links.', [
+    '@progress' => $sandbox['progress'],
+    '@total' => $sandbox['total'],
+    '@cleared' => $sandbox['cleared'],
   ]);
 }

@@ -1,0 +1,7 @@
+views.filter.ood_software_moderation_state:
+  type: views.filter.in_operator
+  label: 'Moderation state, with Needs attention'
+  mapping:
+    needs_attention:
+      type: boolean
+      label: 'Offer the Needs attention option'

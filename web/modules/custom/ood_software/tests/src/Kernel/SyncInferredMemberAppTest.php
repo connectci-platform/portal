@@ -81,6 +81,7 @@ class SyncInferredMemberAppTest extends KernelTestBase {
       'field.storage.node.field_repo_url',
       'field.field.node.appverse_repo.field_repo_url',
       // body is a base-table field on node bundles; attach it to appverse_app.
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       // appverse_app fields written by syncInferredMemberApp.
       'field.storage.node.field_appverse_repo',

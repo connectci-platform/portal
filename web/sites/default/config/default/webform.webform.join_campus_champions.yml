@@ -56,7 +56,7 @@ elements: |-
     '#max_filesize': '32'
   letter_of_collaboration_helper:
     '#type': webform_markup
-    '#markup': '<p class="small">To join please submit a collaboration letter from your institution <a href="/sites/default/files/campuschampions_collaborationletter_yourinstitutionname_template_2022_09_21.docx">using this template</a>.</p>'
+    '#markup': '<p class="small">To join please submit a collaboration letter from your institution <a href="https://drive.google.com/drive/folders/1-nrz2itseKhwQdOrFAOj71mSIw5WQ68y" target="_blank" rel="noopener">using this template <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span class="visually-hidden">(opens in a new tab)</span></a>.</p>'
   processed_text:
     '#type': processed_text
     '#admin_title': 'Account Details'
@@ -409,6 +409,7 @@ handlers:
       attachments: false
       twig: false
       theme_name: ''
+      langcode: ''
       parameters: {  }
       debug: false
   create_user:

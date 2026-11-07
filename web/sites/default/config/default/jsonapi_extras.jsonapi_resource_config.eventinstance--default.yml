@@ -1,0 +1,189 @@
+uuid: e1ccc8ae-86a5-4756-b4d0-993baaee8d3c
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - recurring_events
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: eventinstance--default
+disabled: false
+path: eventinstance/default
+resourceType: eventinstance--default
+resourceFields:
+  field_post_survey_email_text:
+    disabled: true
+    fieldName: field_post_survey_email_text
+    publicName: field_post_survey_email_text
+    enhancer:
+      id: ''
+  field_post_survey_url:
+    disabled: true
+    fieldName: field_post_survey_url
+    publicName: field_post_survey_url
+    enhancer:
+      id: ''
+  field_pre_survey_email_text:
+    disabled: true
+    fieldName: field_pre_survey_email_text
+    publicName: field_pre_survey_email_text
+    enhancer:
+      id: ''
+  field_pre_survey_url:
+    disabled: true
+    fieldName: field_pre_survey_url
+    publicName: field_pre_survey_url
+    enhancer:
+      id: ''
+  field_screen_survey_email_text:
+    disabled: true
+    fieldName: field_screen_survey_email_text
+    publicName: field_screen_survey_email_text
+    enhancer:
+      id: ''
+  field_screen_survey_url:
+    disabled: true
+    fieldName: field_screen_survey_url
+    publicName: field_screen_survey_url
+    enhancer:
+      id: ''
+  post_survey_email_text:
+    disabled: true
+    fieldName: post_survey_email_text
+    publicName: post_survey_email_text
+    enhancer:
+      id: ''
+  post_survey_url:
+    disabled: true
+    fieldName: post_survey_url
+    publicName: post_survey_url
+    enhancer:
+      id: ''
+  pre_survey_email_text:
+    disabled: true
+    fieldName: pre_survey_email_text
+    publicName: pre_survey_email_text
+    enhancer:
+      id: ''
+  pre_survey_url:
+    disabled: true
+    fieldName: pre_survey_url
+    publicName: pre_survey_url
+    enhancer:
+      id: ''
+  screen_survey_email_text:
+    disabled: true
+    fieldName: screen_survey_email_text
+    publicName: screen_survey_email_text
+    enhancer:
+      id: ''
+  screen_survey_url:
+    disabled: true
+    fieldName: screen_survey_url
+    publicName: screen_survey_url
+    enhancer:
+      id: ''
+  field_registration:
+    disabled: true
+    fieldName: field_registration
+    publicName: field_registration
+    enhancer:
+      id: ''
+  registration:
+    disabled: true
+    fieldName: registration
+    publicName: registration
+    enhancer:
+      id: ''
+  field_post_survey_reminder_sent:
+    disabled: true
+    fieldName: field_post_survey_reminder_sent
+    publicName: field_post_survey_reminder_sent
+    enhancer:
+      id: ''
+  field_post_survey_sent:
+    disabled: true
+    fieldName: field_post_survey_sent
+    publicName: field_post_survey_sent
+    enhancer:
+      id: ''
+  choose_where_to_share_this:
+    disabled: true
+    fieldName: choose_where_to_share_this
+    publicName: choose_where_to_share_this
+    enhancer:
+      id: ''
+  domain_access:
+    disabled: true
+    fieldName: domain_access
+    publicName: domain_access
+    enhancer:
+      id: ''
+  contact:
+    disabled: true
+    fieldName: contact
+    publicName: contact
+    enhancer:
+      id: ''
+  other_authors:
+    disabled: true
+    fieldName: other_authors
+    publicName: other_authors
+    enhancer:
+      id: ''
+  registration_count:
+    disabled: true
+    fieldName: registration_count
+    publicName: registration_count
+    enhancer:
+      id: ''
+  waitlist_count:
+    disabled: true
+    fieldName: waitlist_count
+    publicName: waitlist_count
+    enhancer:
+      id: ''
+  availability_count:
+    disabled: true
+    fieldName: availability_count
+    publicName: availability_count
+    enhancer:
+      id: ''
+  reminder_date:
+    disabled: true
+    fieldName: reminder_date
+    publicName: reminder_date
+    enhancer:
+      id: ''
+  reminder_sent:
+    disabled: true
+    fieldName: reminder_sent
+    publicName: reminder_sent
+    enhancer:
+      id: ''
+  field_inheritance:
+    disabled: true
+    fieldName: field_inheritance
+    publicName: field_inheritance
+    enhancer:
+      id: ''
+  revision_log:
+    disabled: true
+    fieldName: revision_log
+    publicName: revision_log
+    enhancer:
+      id: ''
+  revision_uid:
+    disabled: true
+    fieldName: revision_uid
+    publicName: revision_uid
+    enhancer:
+      id: ''
+  uid:
+    disabled: true
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''

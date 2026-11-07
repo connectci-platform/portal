@@ -115,6 +115,7 @@ class DeclaredSingleAppTest extends KernelTestBase {
       'field.storage.node.field_repo_readme',
       'field.field.node.appverse_repo.field_repo_readme',
       // body is a base-table field; attach it to appverse_app.
+      'field.storage.node.body',
       'field.field.node.appverse_app.body',
       // appverse_app fields written by applyDeclaredApp().
       'field.storage.node.field_appverse_repo',

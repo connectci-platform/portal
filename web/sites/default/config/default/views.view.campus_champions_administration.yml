@@ -231,19 +231,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              sc: '0'
-              ra: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
           is_grouped: false
           group_info:
             label: ''

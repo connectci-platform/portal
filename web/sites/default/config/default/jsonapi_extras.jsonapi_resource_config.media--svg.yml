@@ -1,0 +1,29 @@
+uuid: 2833baf3-7773-4cfe-9298-232174a1e870
+langcode: en
+status: true
+dependencies:
+  module:
+    - media
+id: media--svg
+disabled: false
+path: media/svg
+resourceType: media--svg
+resourceFields:
+  uid:
+    disabled: true
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''
+  revision_user:
+    disabled: true
+    fieldName: revision_user
+    publicName: revision_user
+    enhancer:
+      id: ''
+  revision_log_message:
+    disabled: true
+    fieldName: revision_log_message
+    publicName: revision_log_message
+    enhancer:
+      id: ''

@@ -52,7 +52,6 @@ describe("Test Structure admin page", () => {
     cy.visit('/admin/structure/block/list/aspTheme');
     cy.contains('Breadcrumbs');
     cy.contains('Status messages');
-    cy.contains('Masquerade');
     cy.contains('CCEP CTA');
     cy.contains('Home CTA');
     cy.contains('MATCH CTA');

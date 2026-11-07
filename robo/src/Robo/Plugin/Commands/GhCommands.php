@@ -18,16 +18,19 @@ class GhCommands extends Tasks {
    *
    * @command gh:tag
    * @description take current tag number and iterate.
+   *
+   * @param array<int, string> $args
+   *   The current tag, as the first argument.
    */
-  public function iterateTag(array $args) {
+  public function iterateTag(array $args): ?string {
     if ($args) {
       $current_tag = $args[0];
       $tag = explode('.', $current_tag);
-      $tag[2] = $tag[2]+1;
+      $tag[2] = (int) $tag[2] + 1;
       $new_tag = implode('.', $tag);
       return $new_tag;
     }
-
+    return NULL;
   }
 
   /**
@@ -36,8 +39,8 @@ class GhCommands extends Tasks {
    * @command gh:keepalive
    * @description Continuous loop that says bing.
    */
-  public function keepAlive() {
-    while (1) {
+  public function keepAlive(): void {
+    for (;;) {
       $this->say("🔁 Bing");
       $this->_exec("sleep 120");
     }
@@ -49,7 +52,7 @@ class GhCommands extends Tasks {
    * @command gh:pulldb
    * @description Pulls latest database artifact from Github.
    */
-  public function pulldb() {
+  public function pulldb(): void {
     $this->say("Downloading latest database backup from GitHub artifacts...");
 
     // Create a temporary directory for download to avoid path traversal issues
@@ -113,7 +116,7 @@ class GhCommands extends Tasks {
    * @command gh:pullfiles
    * @description Pulls latest database artifact from Github.
    */
-  public function pullfiles() {
+  public function pullfiles(): void {
     $this->say("Downloading latest file backup from GitHub artifacts...");
 
     // List available workflows/runs to debug
@@ -174,7 +177,7 @@ class GhCommands extends Tasks {
    * @command gh:pr
    * @description Create a pull request.
    */
-  public function ghpr() {
+  public function ghpr(): void {
     $full_branch = shell_exec("git rev-parse --abbrev-ref HEAD");
     $full_branch = preg_replace('/\r\n|\r|\n/', '', $full_branch);
 
@@ -188,13 +191,6 @@ class GhCommands extends Tasks {
     $custom_repos = $this->findCustomModuleRepos($issue_number);
 
     $body = $this->buildPrBody($description, $issue_number, '-');
-
-    // Copy template to clipboard (macOS only).
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'DAR') {
-      $escaped = escapeshellarg($body);
-      shell_exec("echo $escaped | pbcopy");
-      $this->say("PR description template copied to clipboard!");
-    }
 
     $this->say("Creating PR for D8-$issue_number");
 
@@ -237,9 +233,9 @@ class GhCommands extends Tasks {
       $this->say("  - $url");
     }
 
-    // Post all PR links + MultiDev link to Jira ticket.
+    // Write all PR links + MultiDev link into the Jira ticket description.
     if (!empty($pr_urls)) {
-      $this->postPrJiraComment($pr_urls, $issue_number);
+      $this->updateJiraDescription($pr_urls, $issue_number);
     }
   }
 
@@ -249,20 +245,11 @@ class GhCommands extends Tasks {
   private function getDescription(string $issueNumber): string {
     $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
     if ($acli_path !== '') {
-      $output = shell_exec("acli jira workitem view d8-$issueNumber --fields summary 2>/dev/null") ?? '';
-      if ($output !== '') {
-        // Try JSON parse first.
-        $decoded = json_decode(trim($output), TRUE);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && isset($decoded['summary'])) {
-          return trim($decoded['summary']);
-        }
-        // Fall back to regex extraction.
-        if (preg_match('/summary[:\s]+(.+)/i', $output, $matches)) {
-          $summary = trim($matches[1]);
-          if ($summary !== '') {
-            return $summary;
-          }
-        }
+      $output = shell_exec("acli jira workitem view " . escapeshellarg("D8-$issueNumber") . " --fields summary --json 2>/dev/null") ?? '';
+      $decoded = json_decode(trim($output), TRUE);
+      $summary = trim($decoded['fields']['summary'] ?? '');
+      if ($summary !== '') {
+        return $summary;
       }
     }
     return $this->ask("Describe context / purpose for this PR");
@@ -388,41 +375,185 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
   }
 
   /**
-   * Post PR links and MultiDev URL as a Jira comment.
+   * Write PR links and MultiDev URL into the Jira description.
+   *
+   * Replaces the content under the "Related PRs / Multidev" heading (up to the
+   * next heading), or appends that section if the ticket doesn't have one.
+   * The description is sent as ADF so links and formatting render.
+   *
+   * @param string[] $prUrls
+   *   The PR URLs to list.
    */
-  private function postPrJiraComment(array $prUrls, string $issueNumber): void {
+  private function updateJiraDescription(array $prUrls, string $issueNumber): void {
     $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
     if ($acli_path === '') {
-      $this->say("⚠️  acli not found — skipping Jira comment.");
+      $this->say("⚠️  acli not found — skipping Jira description update.");
       return;
     }
 
-    $multidev_url = "http://md-$issueNumber-accessmatch.pantheonsite.io";
-
-    $lines = ["*Pull Requests:*"];
-    foreach ($prUrls as $url) {
-      $lines[] = "- $url";
+    $key = "D8-$issueNumber";
+    $output = shell_exec("acli jira workitem view " . escapeshellarg($key) . " --fields description --json 2>/dev/null") ?? '';
+    $decoded = json_decode(trim($output), TRUE);
+    if (!is_array($decoded) || !array_key_exists('fields', $decoded)) {
+      $this->say("⚠️  Could not read description for $key — skipping Jira description update.");
+      return;
     }
-    $lines[] = "";
-    $lines[] = "*MultiDev:* $multidev_url";
 
-    $comment = implode("\n", $lines);
+    $doc = $decoded['fields']['description'] ?? NULL;
+    if (!is_array($doc) || ($doc['type'] ?? '') !== 'doc') {
+      $doc = ['type' => 'doc', 'version' => 1, 'content' => []];
+    }
+    $doc['content'] = $this->mergeRelatedSection($doc['content'] ?? [], $prUrls, $issueNumber);
+
+    $tmp = tempnam(sys_get_temp_dir(), 'ghpr-adf-');
+    file_put_contents($tmp, json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
     $result = $this->_exec(
-      "acli jira workitem comment create --key " . escapeshellarg("D8-$issueNumber") .
-      " --body " . escapeshellarg($comment)
+      "acli jira workitem edit --key " . escapeshellarg($key) .
+      " --description-file " . escapeshellarg($tmp) . " --yes"
     );
+    unlink($tmp);
 
     if ($result->wasSuccessful()) {
-      $this->say("✅ Jira comment added to D8-$issueNumber");
+      $this->say("✅ Jira description updated on $key");
     }
     else {
-      $this->say("⚠️  Failed to add Jira comment to D8-$issueNumber");
+      $this->say("⚠️  Failed to update Jira description on $key");
     }
   }
 
   /**
+   * Put the PR/MultiDev links under the "Related PRs / Multidev" heading.
+   *
+   * @param array<int, mixed> $content
+   *   Top-level ADF nodes of the description.
+   * @param string[] $prUrls
+   *   PR URLs to list.
+   * @param string $issueNumber
+   *   Jira issue number (without the D8- prefix).
+   *
+   * @return array<int, mixed>
+   *   The updated top-level ADF nodes.
+   */
+  private function mergeRelatedSection(array $content, array $prUrls, string $issueNumber): array {
+    $heading_text = 'Related PRs / Multidev';
+    $multidev_url = "http://md-$issueNumber-accessmatch.pantheonsite.io";
+    $link = fn(string $url) => [
+      'type' => 'text',
+      'text' => $url,
+      'marks' => [['type' => 'link', 'attrs' => ['href' => $url]]],
+    ];
+
+    $section = [
+      [
+        'type' => 'paragraph',
+        'content' => [
+          ['type' => 'text', 'text' => 'Pull Requests:', 'marks' => [['type' => 'em']]],
+        ],
+      ],
+      [
+        'type' => 'bulletList',
+        'content' => array_map(fn(string $url) => [
+          'type' => 'listItem',
+          'content' => [['type' => 'paragraph', 'content' => [$link($url)]]],
+        ], $prUrls),
+      ],
+      [
+        'type' => 'paragraph',
+        'content' => [
+          ['type' => 'text', 'text' => 'MultiDev:', 'marks' => [['type' => 'em']]],
+          ['type' => 'text', 'text' => ' '],
+          $link($multidev_url),
+        ],
+      ],
+    ];
+
+    $heading_index = NULL;
+    foreach ($content as $i => $node) {
+      if (($node['type'] ?? '') !== 'heading') {
+        continue;
+      }
+      $text = implode('', array_map(fn($child) => $child['text'] ?? '', $node['content'] ?? []));
+      if (strcasecmp(trim($text), $heading_text) === 0) {
+        $heading_index = $i;
+        break;
+      }
+    }
+
+    if ($heading_index === NULL) {
+      $content[] = [
+        'type' => 'heading',
+        'attrs' => ['level' => 2],
+        'content' => [['type' => 'text', 'text' => $heading_text]],
+      ];
+      return array_merge($content, $section);
+    }
+
+    // Section ends at the next heading, or the end of the document.
+    $end = count($content);
+    for ($i = $heading_index + 1; $i < count($content); $i++) {
+      if (($content[$i]['type'] ?? '') === 'heading') {
+        $end = $i;
+        break;
+      }
+    }
+
+    // Only replace the nodes this command manages ("Pull Requests:" and
+    // "MultiDev:" lines, plus the PR bullet list). Anything else in the
+    // section, such as a "Depends on:" line, is kept where it is.
+    $kept = [];
+    $insert_at = NULL;
+    $prev_removed_label = NULL;
+    for ($i = $heading_index + 1; $i < $end; $i++) {
+      $node = $content[$i];
+      $label = $this->managedLabel($node);
+      $next_label = $i + 1 < $end ? $this->managedLabel($content[$i + 1]) : NULL;
+      $is_pr_list = ($node['type'] ?? '') === 'bulletList'
+        && ($prev_removed_label === 'pull requests:' || $next_label === 'multidev:');
+
+      if ($label !== NULL || $is_pr_list) {
+        $insert_at ??= count($kept);
+        $prev_removed_label = $label;
+        continue;
+      }
+      $prev_removed_label = NULL;
+      $kept[] = $node;
+    }
+
+    $insert_at ??= count($kept);
+    array_splice($kept, $insert_at, 0, $section);
+    array_splice($content, $heading_index + 1, $end - $heading_index - 1, $kept);
+    return $content;
+  }
+
+  /**
+   * Return the lowercased label if a node is a managed paragraph.
+   *
+   * @param array<string, mixed> $node
+   *   An ADF node.
+   *
+   * @return string|null
+   *   "pull requests:" or "multidev:" if the paragraph starts with that label,
+   *   otherwise NULL.
+   */
+  private function managedLabel(array $node): ?string {
+    if (($node['type'] ?? '') !== 'paragraph') {
+      return NULL;
+    }
+    $text = strtolower(trim(implode('', array_map(fn($child) => $child['text'] ?? '', $node['content'] ?? []))));
+    foreach (['pull requests:', 'multidev:'] as $label) {
+      if (str_starts_with($text, $label)) {
+        return $label;
+      }
+    }
+    return NULL;
+  }
+
+  /**
    * Update all PRs to cross-reference each other in the related PRs section.
+   *
+   * @param string[] $prUrls
+   *   The PR URLs to cross-reference.
    */
   private function crossReferencePrs(array $prUrls, string $description, string $issueNumber): void {
     $pr_list = implode("\n", array_map(fn(string $url) => "- $url", $prUrls));

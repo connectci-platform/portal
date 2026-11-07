@@ -1,0 +1,123 @@
+uuid: 9dd8a782-9503-4450-8113-29b421ef28e8
+langcode: en
+status: true
+dependencies:
+  module:
+    - jsonapi_defaults
+    - recurring_events
+third_party_settings:
+  jsonapi_defaults:
+    page_limit: 100
+id: eventseries--default
+disabled: false
+path: eventseries/default
+resourceType: eventseries--default
+resourceFields:
+  field_post_survey_email_text:
+    disabled: true
+    fieldName: field_post_survey_email_text
+    publicName: field_post_survey_email_text
+    enhancer:
+      id: ''
+  field_post_survey_url:
+    disabled: true
+    fieldName: field_post_survey_url
+    publicName: field_post_survey_url
+    enhancer:
+      id: ''
+  field_pre_survey_email_text:
+    disabled: true
+    fieldName: field_pre_survey_email_text
+    publicName: field_pre_survey_email_text
+    enhancer:
+      id: ''
+  field_pre_survey_url:
+    disabled: true
+    fieldName: field_pre_survey_url
+    publicName: field_pre_survey_url
+    enhancer:
+      id: ''
+  field_screen_survey_email_text:
+    disabled: true
+    fieldName: field_screen_survey_email_text
+    publicName: field_screen_survey_email_text
+    enhancer:
+      id: ''
+  field_screen_survey_url:
+    disabled: true
+    fieldName: field_screen_survey_url
+    publicName: field_screen_survey_url
+    enhancer:
+      id: ''
+  field_registration:
+    disabled: true
+    fieldName: field_registration
+    publicName: field_registration
+    enhancer:
+      id: ''
+  field_choose_where_to_share_this:
+    disabled: true
+    fieldName: field_choose_where_to_share_this
+    publicName: field_choose_where_to_share_this
+    enhancer:
+      id: ''
+  domain_access:
+    disabled: true
+    fieldName: domain_access
+    publicName: domain_access
+    enhancer:
+      id: ''
+  field_contact:
+    disabled: true
+    fieldName: field_contact
+    publicName: field_contact
+    enhancer:
+      id: ''
+  field_event_allocation_grant:
+    disabled: true
+    fieldName: field_event_allocation_grant
+    publicName: field_event_allocation_grant
+    enhancer:
+      id: ''
+  field_other_authors:
+    disabled: true
+    fieldName: field_other_authors
+    publicName: field_other_authors
+    enhancer:
+      id: ''
+  event_registration:
+    disabled: true
+    fieldName: event_registration
+    publicName: event_registration
+    enhancer:
+      id: ''
+  registration_reminders:
+    disabled: true
+    fieldName: registration_reminders
+    publicName: registration_reminders
+    enhancer:
+      id: ''
+  revision_log:
+    disabled: true
+    fieldName: revision_log
+    publicName: revision_log
+    enhancer:
+      id: ''
+  revision_uid:
+    disabled: true
+    fieldName: revision_uid
+    publicName: revision_uid
+    enhancer:
+      id: ''
+  uid:
+    disabled: true
+    fieldName: uid
+    publicName: uid
+    enhancer:
+      id: ''
+  event_instances:
+    disabled: true
+    fieldName: event_instances
+    publicName: event_instances
+    enhancer:
+      id: ''

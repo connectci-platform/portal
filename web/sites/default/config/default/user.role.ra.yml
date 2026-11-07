@@ -1,52 +1,9 @@
 uuid: 721bb94f-01a6-4927-8c29-72d4a65a77b2
 langcode: en
 status: true
-dependencies:
-  config:
-    - filter.format.basic_html
-    - filter.format.full_html
-    - filter.format.restricted_html
-    - node.type.blog_post
-    - node.type.blog_post_region_
-    - taxonomy.vocabulary.tags
-  module:
-    - contact
-    - file
-    - filter
-    - help
-    - node
-    - role_delegation
-    - shortcut
-    - system
-    - taxonomy
-    - toolbar
+dependencies: {  }
 id: ra
 label: 'regional admin'
 weight: 15
 is_admin: null
-permissions:
-  - 'access administration pages'
-  - 'access content overview'
-  - 'access help pages'
-  - 'access shortcuts'
-  - 'access site in maintenance mode'
-  - 'access taxonomy overview'
-  - 'access toolbar'
-  - 'access user contact forms'
-  - 'assign professional_mentor role'
-  - 'assign regional_expert role'
-  - 'assign representative role'
-  - 'create blog_post content'
-  - 'create blog_post_region_ content'
-  - 'create terms in tags'
-  - 'delete own blog_post content'
-  - 'delete own blog_post_region_ content'
-  - 'delete own files'
-  - 'delete terms in tags'
-  - 'edit any blog_post content'
-  - 'edit any blog_post_region_ content'
-  - 'edit terms in tags'
-  - 'use text format basic_html'
-  - 'use text format full_html'
-  - 'use text format restricted_html'
-  - 'view the administration theme'
+permissions: {  }

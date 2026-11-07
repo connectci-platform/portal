@@ -853,8 +853,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -896,8 +894,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -939,8 +935,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -982,8 +976,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -1029,8 +1021,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             min_placeholder: ''
             max_placeholder: ''
             placeholder: ''
@@ -1078,8 +1068,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             min_placeholder: ''
             max_placeholder: ''
             placeholder: ''
@@ -1123,8 +1111,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
           is_grouped: false
           group_info:
             label: ''
@@ -1230,6 +1216,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:
@@ -2030,8 +2017,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -2073,8 +2058,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -2117,34 +2100,6 @@ display:
             multiple: true
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
-              research_computing_facilitator: '0'
-              research_software_engineer: '0'
-              ci_systems_engineer: '0'
-              mentee: '0'
-              student_champion: '0'
-              domain_champion: '0'
-              cssn: '0'
-              affinity_group_leader: '0'
-              match_pm: '0'
-              sc: '0'
-              lt: '0'
-              ra: '0'
-              coco_pm: '0'
-              cnctci_pm: '0'
-              news_pm: '0'
-              kb_pm: '0'
-              careers_sc: '0'
             reduce: true
           is_grouped: true
           group_info:
@@ -2208,34 +2163,6 @@ display:
             multiple: true
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
-              research_computing_facilitator: '0'
-              research_software_engineer: '0'
-              ci_systems_engineer: '0'
-              mentee: '0'
-              student_champion: '0'
-              domain_champion: '0'
-              cssn: '0'
-              affinity_group_leader: '0'
-              match_pm: '0'
-              sc: '0'
-              lt: '0'
-              ra: '0'
-              coco_pm: '0'
-              cnctci_pm: '0'
-              news_pm: '0'
-              kb_pm: '0'
-              careers_sc: '0'
             reduce: true
           is_grouped: true
           group_info:
@@ -2288,8 +2215,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: true
           group_info:
@@ -2351,8 +2276,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
           is_grouped: true
           group_info:
             label: Published
@@ -2399,39 +2322,6 @@ display:
             multiple: true
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
-              research_computing_facilitator: '0'
-              research_software_engineer: '0'
-              ci_systems_engineer: '0'
-              mentee: '0'
-              student_champion: '0'
-              domain_champion: '0'
-              cssn: '0'
-              affinity_group_leader: '0'
-              match_pm: '0'
-              sc: '0'
-              lt: '0'
-              ra: '0'
-              coco_pm: '0'
-              cnctci_pm: '0'
-              news_pm: '0'
-              kb_pm: '0'
-              careers_sc: '0'
-              ccmnet_pm: '0'
-              consultant: '0'
-              match_sc: '0'
-              cip: '0'
-              site_developer: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -2748,7 +2638,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
         title:
           id: title
           table: eventseries_field_data
@@ -2777,39 +2667,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
-              research_computing_facilitator: '0'
-              research_software_engineer: '0'
-              ci_systems_engineer: '0'
-              mentee: '0'
-              student_champion: '0'
-              domain_champion: '0'
-              cssn: '0'
-              affinity_group_leader: '0'
-              match_pm: '0'
-              sc: '0'
-              lt: '0'
-              ra: '0'
-              coco_pm: '0'
-              cnctci_pm: '0'
-              news_pm: '0'
-              kb_pm: '0'
-              careers_sc: '0'
-              ccmnet_pm: '0'
-              consultant: '0'
-              match_sc: '0'
-              cip: '0'
-              site_developer: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -2823,7 +2680,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:
@@ -3163,8 +3020,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -3575,41 +3430,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              student: '0'
-              mentor: '0'
-              professional_mentor: '0'
-              researcher: '0'
-              representative: '0'
-              administrator: '0'
-              masquerade: '0'
-              regional_expert: '0'
-              campuschampionsadmin: '0'
-              exportpeople: '0'
-              research_computing_facilitator: '0'
-              research_software_engineer: '0'
-              ci_systems_engineer: '0'
-              mentee: '0'
-              student_champion: '0'
-              domain_champion: '0'
-              cssn: '0'
-              affinity_group_leader: '0'
-              match_pm: '0'
-              sc: '0'
-              lt: '0'
-              ra: '0'
-              coco_pm: '0'
-              cnctci_pm: '0'
-              news_pm: '0'
-              kb_pm: '0'
-              careers_sc: '0'
-              ccmnet_pm: '0'
-              consultant: '0'
-              match_sc: '0'
-              cip: '0'
-              site_developer: '0'
-              ccmnet: '0'
-              ccmnet_admin: '0'
             placeholder: 'Search My Events'
           is_grouped: false
           group_info:
@@ -3623,7 +3443,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
         uid_raw:
           id: uid_raw
           table: users_field_data
@@ -3669,7 +3489,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 1
+          use_tokens: true
         field_other_authors_target_id:
           id: field_other_authors_target_id
           table: eventseries__field_other_authors
@@ -3714,7 +3534,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
-          use_tokens: 0
+          use_tokens: false
       filter_groups:
         operator: AND
         groups:

@@ -158,22 +158,21 @@ display:
             label: ''
             field_identifier: ''
           exposed: false
-        created:
-          id: created
+        title:
+          id: title
           table: node_field_data
-          field: created
+          field: title
           relationship: none
           group_type: group
           admin_label: ''
           entity_type: node
-          entity_field: created
-          plugin_id: date
+          entity_field: title
+          plugin_id: standard
           order: ASC
           expose:
             label: ''
             field_identifier: ''
           exposed: false
-          granularity: second
         nid:
           id: nid
           table: node_field_data
@@ -299,9 +298,9 @@ display:
             first: '« First'
             last: 'Last »'
           expose:
-            items_per_page: false
+            items_per_page: true
             items_per_page_label: 'Items per page'
-            items_per_page_options: '5, 10, 25, 50'
+            items_per_page_options: '10, 20, 50, 100'
             items_per_page_options_all: false
             items_per_page_options_all_label: '- All -'
             offset: false
@@ -496,8 +495,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -514,16 +511,15 @@ display:
         moderation_state:
           id: moderation_state
           table: node_field_data
-          field: ood_pending_moderation_state
+          field: ood_moderation_state
           relationship: none
           group_type: group
           admin_label: ''
           entity_type: node
-          plugin_id: ood_software_pending_aware_moderation_state
+          plugin_id: ood_software_moderation_state
           operator: in
           value:
-            appverse_editorial-ready_for_review: appverse_editorial-ready_for_review
-            appverse_editorial-needs_adjustment: appverse_editorial-needs_adjustment
+            needs_attention: needs_attention
           group: 1
           exposed: true
           expose:
@@ -540,8 +536,6 @@ display:
             multiple: true
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -555,6 +549,7 @@ display:
             default_group: All
             default_group_multiple: {  }
             group_items: {  }
+          needs_attention: true
         ood_ai_report:
           id: ood_ai_report
           table: node_field_data
@@ -582,8 +577,6 @@ display:
             multiple: true
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -623,8 +616,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -664,8 +655,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -712,8 +701,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -753,8 +740,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:
@@ -796,8 +781,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              administrator: '0'
             reduce: false
           is_grouped: false
           group_info:

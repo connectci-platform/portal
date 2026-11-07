@@ -11,7 +11,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
-use Drupal\ood_software\Plugin\views\filter\PendingAwareModerationState;
+use Drupal\ood_software\Plugin\views\filter\ModerationStateNeedsAttention;
 use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoNotificationService;
 use Drupal\taxonomy\Entity\Vocabulary;
@@ -326,9 +326,63 @@ class PendingReviewTest extends KernelTestBase {
     $view = Views::getView('my_appverse');
     $view->setDisplay('page_admin');
     $handler = $view->display_handler->getHandler('filter', 'moderation_state');
-    $this->assertInstanceOf(PendingAwareModerationState::class, $handler);
+    $this->assertInstanceOf(ModerationStateNeedsAttention::class, $handler);
     $definition = \Drupal::service('plugin.manager.views.filter')->getDefinition('moderation_state_filter');
     $this->assertSame(ModerationStateFilter::class, ltrim($definition['class'], '\\'));
+  }
+
+  /**
+   * Needs attention lists a live repo whose pending revision is in review.
+   *
+   * The repo's default revision stays published and it has no review node,
+   * so only the newest-revision check can find it (D8-2882 with D8-2931).
+   */
+  public function testNeedsAttentionFindsLiveRepoWithPendingReview(): void {
+    $pending = $this->makeRepo(['title' => 'Pending', 'moderation_state' => 'published']);
+    $plain = $this->makeRepo(['title' => 'Plain', 'moderation_state' => 'published']);
+    $this->sendPending($pending);
+    $this->assertTrue($this->fresh($pending)->isPublished());
+
+    $queued = $this->queue([ModerationStateNeedsAttention::NEEDS_ATTENTION]);
+    $this->assertContains((int) $pending->id(), $queued, 'A live repo with a pending review needs attention.');
+    $this->assertNotContains((int) $plain->id(), $queued, 'A plain live repo does not.');
+
+    // Once the pending review is published it no longer needs attention.
+    $latest = $this->latest($pending);
+    $latest->set('moderation_state', 'published');
+    $latest->setNewRevision(TRUE);
+    $latest->save();
+    $this->assertNotContains((int) $pending->id(), $this->queue([ModerationStateNeedsAttention::NEEDS_ATTENTION]));
+  }
+
+  /**
+   * Needs attention lists a live repo whose live app was sent for review.
+   */
+  public function testNeedsAttentionFindsLiveAppWithPendingReview(): void {
+    $repo = $this->makeRepo(['moderation_state' => 'published']);
+    $app = $this->makeApp($repo, ['moderation_state' => 'published']);
+    $this->sendPending($app);
+    $this->assertTrue($this->fresh($app)->isPublished(), 'The live app stays published.');
+
+    $this->assertContains((int) $repo->id(), $this->queue([ModerationStateNeedsAttention::NEEDS_ATTENTION]));
+  }
+
+  /**
+   * Needs attention combined with states keeps both, pending-aware.
+   */
+  public function testNeedsAttentionWithStatesIsPendingAware(): void {
+    $draft = $this->makeRepo(['title' => 'Draft', 'moderation_state' => 'draft']);
+    $sentBack = $this->makeRepo(['title' => 'Sent back', 'moderation_state' => 'published']);
+    $this->sendPending($sentBack);
+    $this->holdBack($sentBack, 'needs_adjustment');
+
+    $queued = $this->queue([
+      ModerationStateNeedsAttention::NEEDS_ATTENTION,
+      'appverse_editorial-draft',
+      'appverse_editorial-needs_adjustment',
+    ]);
+    $this->assertContains((int) $draft->id(), $queued, 'A selected state still matches the default revision.');
+    $this->assertContains((int) $sentBack->id(), $queued, 'A selected state also matches a pending revision.');
   }
 
   public function testQueueDropsRepoOnceItsPendingReviewIsPublished(): void {
