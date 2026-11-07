@@ -38,6 +38,9 @@ const ADMIN_PASS = 'b8QW]X9h7#5n';
 const CONTRIBUTOR_EMAIL = 'authenticated@amptesting.com';
 const CONTRIBUTOR_PASS = '6%l7iF}6(4tI';
 const CONTRIBUTOR_NAME = 'authenticated_test_user';
+// Admin account created by amp_dev's install hook (see backupdb.yml); the
+// "other user" in the hub owner-only checks.
+const ADMIN_NAME = 'administrator_test_user';
 
 // Real GitHub repo we own; the seed script stores it as each Collection's
 // canonical URL (a plain field value, nothing calls GitHub), and the email
@@ -57,8 +60,8 @@ function escapeRegExpForTest(str) {
 // an aliased slug (e.g. /user/authenticatedtestuser), so the numeric uid can
 // not be scraped off the profile URL. Resolve it directly with a tiny drush
 // call so callers can build /user/<uid>/my-appverse.
-function resolveContributorUid(attempt = 1) {
-  const cmd = `ddev drush ev "\\$u = user_load_by_name('${CONTRIBUTOR_NAME}'); echo \\$u ? \\$u->id() : '';"`;
+function resolveUidByName(name, attempt = 1) {
+  const cmd = `ddev drush ev "\\$u = user_load_by_name('${name}'); echo \\$u ? \\$u->id() : '';"`;
   return cy.exec(cmd, { timeout: 60000, failOnNonZeroExit: false }).then((res) => {
     const uid = (res.stdout || '').trim();
     if (/^\d+$/.test(uid)) {
@@ -66,10 +69,14 @@ function resolveContributorUid(attempt = 1) {
     }
     if (attempt < 3) {
       // eslint-disable-next-line cypress/no-unnecessary-waiting
-      return cy.wait(500 * attempt, { log: false }).then(() => resolveContributorUid(attempt + 1));
+      return cy.wait(500 * attempt, { log: false }).then(() => resolveUidByName(name, attempt + 1));
     }
-    throw new Error(`could not resolve contributor uid for ${CONTRIBUTOR_NAME}. code=${res.code} stdout=[${res.stdout}] stderr=[${(res.stderr || '').slice(0, 200)}]`);
+    throw new Error(`could not resolve uid for ${name}. code=${res.code} stdout=[${res.stdout}] stderr=[${(res.stderr || '').slice(0, 200)}]`);
   });
+}
+
+function resolveContributorUid() {
+  return resolveUidByName(CONTRIBUTOR_NAME);
 }
 
 /**
@@ -311,40 +318,101 @@ describe('Appverse Maintenance Hub', () => {
   });
 
   describe('Cross-user 403', () => {
+    // Fixtures are seeded (not looked up through JSON:API, which silently
+    // skipped this block when the endpoint or the old "Test Notebooks
+    // Collection" fixture was missing). seedRepo() yields the nid directly and
+    // resolveUidByName() resolves uids with drush, so nothing here depends on
+    // JSON:API. Setup problems throw rather than skip.
+    let contributorUid;
+    let adminUid;
+
+    beforeEach(() => {
+      cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
+      resolveContributorUid().then((uid) => { contributorUid = uid; });
+      resolveUidByName(ADMIN_NAME).then((uid) => { adminUid = uid; });
+    });
+
     it('refuses to re-sync a Collection owned by another user', () => {
-      // The contributor (authenticated_test_user) is created in
-      // backupdb.yml, so it is always present; guard defensively and skip
-      // rather than fail if the DB artifact predates it.
-      cy.request({
-        url: `/jsonapi/user/user?filter[name]=${CONTRIBUTOR_NAME}`,
-        failOnStatusCode: false,
-      }).then((listResponse) => {
-        if (listResponse.status !== 200 || !listResponse.body.data.length) {
-          cy.log(`${CONTRIBUTOR_NAME} fixture not present; skipping cross-user test.`);
-          return;
-        }
-
+      // seedRepo() makes the contributor the owner; hand the Collection to the
+      // admin so the contributor is a non-owner of it.
+      seedRepo({ title: 'Cross User Collection', state: 'published' }).then(({ nid }) => {
+        cy.exec(
+          `ddev drush ev "\\$n = \\Drupal\\node\\Entity\\Node::load(${nid}); \\$n->setOwnerId(${adminUid}); \\$n->save();"`,
+          { timeout: 60000 },
+        );
+        cy.clearCookies();
+        cy.loginUser(CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASS);
         cy.request({
-          url: '/jsonapi/node/appverse_repo?filter[title]=Test%20Notebooks%20Collection',
+          method: 'POST',
+          url: `/appverse/repo/${nid}/resync`,
           failOnStatusCode: false,
-        }).then((collectionResp) => {
-          if (collectionResp.status !== 200 || !collectionResp.body.data.length) {
-            cy.log('Test Notebooks Collection fixture not present; skipping.');
-            return;
-          }
-          const collectionNid = collectionResp.body.data[0].attributes.drupal_internal__nid;
-
-          cy.loginUser(CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASS);
-          cy.request({
-            method: 'POST',
-            url: `/appverse/repo/${collectionNid}/resync`,
-            failOnStatusCode: false,
-            form: true,
-            body: {},
-          }).then((postResp) => {
-            expect(postResp.status).to.be.oneOf([403, 405]);
-          });
+          form: true,
+          body: {},
+        }).then((postResp) => {
+          expect(postResp.status).to.be.oneOf([403, 405]);
         });
+      });
+    });
+
+    it('returns 403 for another user\'s hub and 200 for the contributor\'s own', () => {
+      cy.clearCookies();
+      cy.loginUser(CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASS);
+      cy.request({ url: `/user/${adminUid}/my-appverse`, failOnStatusCode: false })
+        .its('status').should('eq', 403);
+      cy.request({ url: `/user/${contributorUid}/my-appverse`, failOnStatusCode: false })
+        .its('status').should('eq', 200);
+    });
+
+    it('lets an admin (administer appverse content) open the contributor\'s hub', () => {
+      cy.request({ url: `/user/${contributorUid}/my-appverse`, failOnStatusCode: false })
+        .its('status').should('eq', 200);
+    });
+  });
+
+  describe('Published repo sent for review (D8-2882)', () => {
+    const TITLE = 'Pending Review Collection';
+    let repo;
+
+    beforeEach(() => {
+      cy.loginUser(ADMIN_EMAIL, ADMIN_PASS);
+      // A live Collection with one draft member app. Sending the app for
+      // review is what puts a forward ready_for_review revision on the
+      // published repo (_ood_software_sync_repo_to_app_review()). The seed
+      // purges same-titled leftovers first, so reruns start clean and no
+      // teardown is needed.
+      seedRepo({ title: TITLE, state: 'published', memberApps: 1, memberAppState: 'draft' }).then((seeded) => { repo = seeded; });
+    });
+
+    it('shows Published, review pending to the owner and keeps the repo in the catalog', () => {
+      // The send is made with the entity API, as the seed does: the app edit
+      // form needs a complete valid manifest, while the sync hook under test
+      // runs on any app save moving it to ready_for_review.
+      cy.then(() => cy.exec(
+        `ddev drush ev "\\$ids = \\Drupal::entityTypeManager()->getStorage('node')->getQuery()->accessCheck(FALSE)->condition('type', 'appverse_app')->condition('field_appverse_repo', ${repo.nid})->execute(); \\$a = \\Drupal\\node\\Entity\\Node::load(reset(\\$ids)); \\$a->set('moderation_state', 'ready_for_review'); \\$a->setNewRevision(TRUE); \\$a->save(); echo 'SENT';"`,
+        { timeout: 60000 },
+      )).its('stdout').should('contain', 'SENT');
+
+      // Owner's hub: badge reads "Published, review pending".
+      cy.clearCookies();
+      cy.loginUser(CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASS);
+      resolveContributorUid().then((uid) => {
+        cy.visit(`/user/${uid}/my-appverse`, { failOnStatusCode: false });
+      });
+      cy.contains('.appverse-hub-card', TITLE, { timeout: 10000 })
+        .find('.appverse-hub-card__cell--status .badge')
+        .should('contain.text', 'Published, review pending');
+
+      // Still in the public catalog: an anonymous reader gets the repo from
+      // its published default revision (the catalog reads the same data).
+      cy.clearCookies();
+      cy.then(() => cy.request({
+        url: `/jsonapi/node/appverse_repo/${repo.uuid}`,
+        headers: { Accept: 'application/vnd.api+json' },
+        failOnStatusCode: false,
+      })).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body.data.attributes.status).to.eq(true);
+        expect(res.body.data.attributes.moderation_state).to.eq('published');
       });
     });
   });
@@ -523,7 +591,7 @@ describe('Appverse Maintenance Hub', () => {
       });
     });
 
-    describe('Case B: email + cascade-unpublish (published starting state)', () => {
+    describe('Case B: email, repo stays live (published starting state)', () => {
       const COLLECTION_TITLE = 'Test Notebooks (Published)';
       const REVIEW_COMMENT = 'Discovered a regression, please address.';
 
@@ -538,7 +606,7 @@ describe('Appverse Maintenance Hub', () => {
         cy.clearMailpit();
       });
 
-      it('emails the contributor AND cascade-unpublishes member apps', () => {
+      it('emails the contributor and keeps the repo and its apps live', () => {
         // Narrow to this collection by title: the queue sorts published
         // repos after awaiting-review and oldest first within each state, so
         // a freshly seeded published collection lands past the 20-row pager
@@ -581,15 +649,22 @@ describe('Appverse Maintenance Hub', () => {
           });
         });
 
-        // Cascade-unpublish: every member app moved off published.
-        // Session is still admin from beforeEach, so JSON:API can see
-        // unpublished nodes (filter status=1 should return zero rows).
+        // A decision only affects what is under review (D8-2882): the request
+        // waits on a forward revision, so the live repo and both of its live
+        // apps stay in the catalog. Pulling a live repo is an explicit
+        // Unpublish, not a side effect of requesting changes.
         const collectionUuid = Cypress.env('TEST_COLLECTION_UUID');
         cy.request({
           url: `/jsonapi/node/appverse_app?filter[field_appverse_repo.id]=${collectionUuid}&filter[status]=1`,
           headers: { Accept: 'application/vnd.api+json' },
         }).then((res) => {
-          expect(res.body.data).to.have.length(0);
+          expect(res.body.data).to.have.length(2);
+        });
+        cy.request({
+          url: `/jsonapi/node/appverse_repo/${collectionUuid}`,
+          headers: { Accept: 'application/vnd.api+json' },
+        }).then((res) => {
+          expect(res.body.data.attributes.status).to.eq(true);
         });
       });
     });

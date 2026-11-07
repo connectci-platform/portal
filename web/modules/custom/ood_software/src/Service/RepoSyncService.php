@@ -92,10 +92,11 @@ class RepoSyncService {
    * Save a node the sync wrote.
    *
    * Background syncs save in place; attended ones (the add form, Resync) are
-   * editorial and make a revision as before.
+   * editorial and make a revision as before, unless a review is pending on
+   * the node: a new default revision would bury it.
    */
   protected function persist(NodeInterface $node): void {
-    if ($this->background) {
+    if ($this->background || $this->inPlaceSaver->hasForwardRevision($node)) {
       $this->inPlaceSaver->save($node);
       return;
     }

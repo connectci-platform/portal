@@ -15,16 +15,22 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * Offered as its own views data entry, node_field_data.ood_moderation_state
  * (see ood_software_views_data_alter()), so only views that pick it use it;
- * core's moderation_state filter is untouched. It behaves exactly like core's
- * unless its needs_attention option is on and the value includes
- * "needs_attention" (D8-2931). Manage Repos does, as its default queue.
+ * core's moderation_state filter is untouched. Besides seeing pending revisions
+ * (below), it behaves like core's unless its needs_attention option is on and
+ * the value includes "needs_attention" (D8-2931). Manage Repos does, as its
+ * default queue.
  *
- * A repo needs attention when, reading the default revision's state as core's
- * filter does: it is ready_for_review; or a member app is ready_for_review (a
- * live repo resubmitted whole stays published); or it is published or
- * needs_adjustment and its newest review (created DESC, nid DESC) is
- * undecided by ReleaseWatcher::isDecided()'s rule. Draft and archived repos
- * are left out of the review branch: nothing would ever decide an admin run.
+ * A repo needs attention when: its newest revision is ready_for_review; or a
+ * member app's newest revision is ready_for_review (a live repo or app sent
+ * for review stays published, with the review on a forward revision,
+ * D8-2882); or its default revision is published or needs_adjustment and its
+ * newest review (created DESC, nid DESC) is undecided by
+ * ReleaseWatcher::isDecided()'s rule. Draft and archived repos are left out
+ * of the review branch: nothing would ever decide an admin run.
+ *
+ * Selected states are pending-aware too: "is one of" matches a node whose
+ * default revision is in the state, or whose newest revision is in it and is
+ * newer than the default one (D8-2882). "Is not one of" is left to core.
  *
  * The option is matched with a nid IN (subquery) branch, ORed with core's own
  * condition for any states also selected, so a repo is never repeated and
@@ -118,29 +124,39 @@ class ModerationStateNeedsAttention extends ModerationStateFilter {
    */
   protected function opSimple(): void {
     $value = (array) $this->value;
-    $wants = in_array(self::NEEDS_ATTENTION, $value, TRUE);
+    $wants = in_array(self::NEEDS_ATTENTION, $value, TRUE)
+      && !empty($this->options['needs_attention'])
+      && $this->operator === 'in';
     // Core splits every value on "-" as workflow-state, so it must never see
     // this key, whether or not the option applies.
     $this->value = array_diff($value, [self::NEEDS_ATTENTION]);
-    if (!$wants || empty($this->options['needs_attention']) || $this->operator !== 'in') {
-      parent::opSimple();
-      $this->value = $value;
-      return;
-    }
 
     /** @var \Drupal\views\Plugin\views\query\Sql $query */
     $query = $this->query;
     $group = $this->options['group'];
     $before = count($query->where[$group]['conditions'] ?? []);
-    // Core's condition for any states also selected; nothing when Needs
-    // attention is selected alone.
+    // Core's condition for any states selected; nothing when Needs attention
+    // is selected alone.
     parent::opSimple();
     $parent = NULL;
     if (count($query->where[$group]['conditions'] ?? []) > $before) {
       $parent = array_pop($query->where[$group]['conditions']);
     }
+    // Only "is one of" with real states is widened to pending revisions; the
+    // no-moderated-bundle case adds a bare expression with nothing to widen.
+    $widen = $this->operator === 'in' && $this->value && $parent !== NULL
+      && $parent['field'] instanceof ConditionInterface;
+
+    if (!$wants && !$widen) {
+      if ($parent !== NULL) {
+        $query->where[$group]['conditions'][] = $parent;
+      }
+      $this->value = $value;
+      return;
+    }
 
     $connection = $query->getConnection();
+    $base = $query->ensureTable($this->table, $this->relationship);
     $any = $connection->condition('OR');
     if ($parent !== NULL) {
       if ($parent['field'] instanceof ConditionInterface) {
@@ -153,10 +169,48 @@ class ModerationStateNeedsAttention extends ModerationStateFilter {
         $any->condition($parent['field'], $parent['value'], $parent['operator']);
       }
     }
-    $base = $query->ensureTable($this->table, $this->relationship);
-    $any->condition("$base.nid", $this->needsAttentionSubquery(), 'IN');
+    if ($widen) {
+      $any->condition($this->pendingRevisionCondition($base));
+    }
+    if ($wants) {
+      $any->condition("$base.nid", $this->needsAttentionSubquery(), 'IN');
+    }
     $query->addWhere($group, $any);
     $this->value = $value;
+  }
+
+  /**
+   * Matches a node whose newest revision is in a selected state and pending.
+   *
+   * In appverse_editorial ready_for_review, needs_adjustment and declined are
+   * not default revisions, so a live repo sent for review, sent back or
+   * declined stays published with the state on a forward revision, which
+   * core's filter (default revision only) cannot see (D8-2882).
+   *
+   * @param string $base
+   *   The view's alias for node_field_data.
+   */
+  protected function pendingRevisionCondition(string $base): ConditionInterface {
+    /** @var \Drupal\views\Plugin\views\query\Sql $query */
+    $query = $this->query;
+    $connection = $query->getConnection();
+    $pending = $connection->condition('OR');
+    foreach ((array) $this->value as $value) {
+      [$workflowId, $stateId] = explode('-', (string) $value, 2) + [1 => ''];
+      // Every value is bound as a parameter; the only interpolated text is
+      // the view's own table alias.
+      $exists = $connection->select('content_moderation_state_field_revision', 'pending_cms');
+      $exists->addExpression('1');
+      $exists
+        ->condition('pending_cms.content_entity_type_id', 'node')
+        ->condition('pending_cms.workflow', $workflowId)
+        ->condition('pending_cms.moderation_state', $stateId);
+      $exists->where("pending_cms.content_entity_id = $base.nid");
+      $exists->where("pending_cms.content_entity_revision_id > $base.vid");
+      $exists->where('pending_cms.content_entity_revision_id = (' . $this->latestVidSql("$base.nid") . ')');
+      $pending->exists($exists);
+    }
+    return $pending;
   }
 
   /**
@@ -189,17 +243,18 @@ class ModerationStateNeedsAttention extends ModerationStateFilter {
 
     $repos = $connection->select('node_field_data', 'ood_na_repo')->fields('ood_na_repo', ['nid']);
     $this->joinModerationState($repos, 'ood_na_repo', 'ood_na_repo_state');
+    $this->joinModerationState($repos, 'ood_na_repo', 'ood_na_repo_latest', TRUE);
     $repos->condition('ood_na_repo.type', 'appverse_repo');
 
     $any = $connection->condition('OR')
-      ->condition('ood_na_repo_state.moderation_state', 'ready_for_review');
+      ->condition('ood_na_repo_latest.moderation_state', 'ready_for_review');
 
     // A member app awaiting review.
     if (isset($fields['field_appverse_repo'])) {
       $apps = $connection->select('node__field_appverse_repo', 'ood_na_app_repo');
       $apps->addExpression('1');
       $apps->innerJoin('node_field_data', 'ood_na_app', 'ood_na_app.nid = ood_na_app_repo.entity_id AND ood_na_app.vid = ood_na_app_repo.revision_id');
-      $this->joinModerationState($apps, 'ood_na_app', 'ood_na_app_state');
+      $this->joinModerationState($apps, 'ood_na_app', 'ood_na_app_state', TRUE);
       $apps->where('ood_na_app_repo.field_appverse_repo_target_id = ood_na_repo.nid')
         ->condition('ood_na_app_repo.deleted', 0)
         ->condition('ood_na_app_state.moderation_state', 'ready_for_review');
@@ -239,12 +294,27 @@ class ModerationStateNeedsAttention extends ModerationStateFilter {
   }
 
   /**
-   * Joins a node's default-revision Appverse moderation state, as core does.
+   * Joins a node's Appverse moderation state.
+   *
+   * The default revision's, as core does, or with $latest the newest
+   * revision's, where a live node's pending review or send-back is.
    */
-  protected function joinModerationState(SelectInterface $select, string $node, string $alias): void {
-    $select->innerJoin('content_moderation_state_field_revision', $alias, "$alias.content_entity_id = $node.nid AND $alias.content_entity_revision_id = $node.vid AND $alias.langcode = $node.langcode");
+  protected function joinModerationState(SelectInterface $select, string $node, string $alias, bool $latest = FALSE): void {
+    $revision = $latest ? '(' . $this->latestVidSql("$node.nid") . ')' : "$node.vid";
+    $select->innerJoin('content_moderation_state_field_revision', $alias, "$alias.content_entity_id = $node.nid AND $alias.content_entity_revision_id = $revision AND $alias.langcode = $node.langcode");
     $select->condition("$alias.content_entity_type_id", 'node')
       ->condition("$alias.workflow", self::WORKFLOW);
+  }
+
+  /**
+   * SQL for the newest revision id of the node in $nid, for a correlated use.
+   *
+   * @param string $nid
+   *   A column expression holding the node id, an alias owned by this class
+   *   or the view, never user input.
+   */
+  protected function latestVidSql(string $nid): string {
+    return "SELECT MAX(ood_latest_nr.vid) FROM {node_revision} ood_latest_nr WHERE ood_latest_nr.nid = $nid";
   }
 
 }

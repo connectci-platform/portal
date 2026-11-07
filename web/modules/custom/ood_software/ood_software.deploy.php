@@ -20,7 +20,7 @@ use Drupal\taxonomy\Entity\Term;
 /**
  * Add terms.
  */
-function ood_software_deploy_10000_terms() {
+function ood_software_deploy_10000_terms(): void {
   $terms = [
     'appverse_app_type' => [
       'batch_connect',
@@ -65,19 +65,19 @@ function ood_software_deploy_10000_terms() {
 /**
  * Add software via csv.
  */
-function ood_software_deploy_10001_software() {
+function ood_software_deploy_10001_software(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $csv_file = $module_path . '/csv/software.csv';
 
   if (!file_exists($csv_file)) {
     \Drupal::logger('ood_software')->error('CSV file not found at @path', ['@path' => $csv_file]);
-    return;
+    return NULL;
   }
 
   $handle = fopen($csv_file, 'r');
   if (!$handle) {
     \Drupal::logger('ood_software')->error('Unable to open CSV file');
-    return;
+    return NULL;
   }
 
   $count = 0;
@@ -241,19 +241,19 @@ function _ood_software_get_or_create_term($name, $vocabulary) {
 /**
  * Add apps via csv.
  */
-function ood_software_deploy_10002_apps() {
+function ood_software_deploy_10002_apps(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $csv_file = $module_path . '/csv/apps.csv';
 
   if (!file_exists($csv_file)) {
     \Drupal::logger('ood_software')->error('CSV file not found at @path', ['@path' => $csv_file]);
-    return;
+    return NULL;
   }
 
   $handle = fopen($csv_file, 'r');
   if (!$handle) {
     \Drupal::logger('ood_software')->error('Unable to open CSV file');
-    return;
+    return NULL;
   }
 
   // Read and skip header row.
@@ -396,14 +396,14 @@ function ood_software_deploy_10002_apps() {
 /**
  * Add logos to software nodes.
  */
-function ood_software_deploy_10003_logos() {
+function ood_software_deploy_10003_logos(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $logos_dir = $module_path . '/logos';
   $mapping_file = $logos_dir . '/mapping.php';
 
   if (!file_exists($mapping_file)) {
     \Drupal::logger('ood_software')->error('Logo mapping file not found at @path', ['@path' => $mapping_file]);
-    return;
+    return NULL;
   }
 
   $mapping = include $mapping_file;
@@ -450,11 +450,6 @@ function ood_software_deploy_10003_logos() {
 
     $file_data = file_get_contents($logo_path);
     $file = \Drupal::service('file.repository')->writeData($file_data, $destination, FileExists::Replace);
-
-    if (!$file) {
-      \Drupal::logger('ood_software')->error('Failed to copy logo: @file', ['@file' => $filename]);
-      continue;
-    }
 
     // Create media entity.
     if ($is_svg) {
@@ -498,7 +493,7 @@ function ood_software_deploy_10003_logos() {
 /**
  * Add menu links.
  */
-function ood_software_deploy_10004_menus() {
+function ood_software_deploy_10004_menus(): void {
   $my_apps = [
     'title' => 'My Apps',
     'link' => ['uri' => 'internal:/appverse/my-apps'],
@@ -537,7 +532,7 @@ function ood_software_deploy_10004_menus() {
 /**
  * Clear last updated field for apps missing body/readme to force GitHub sync.
  */
-function ood_software_deploy_10005_force_app_sync() {
+function ood_software_deploy_10005_force_app_sync(): TranslatableMarkup {
   $node_storage = \Drupal::entityTypeManager()->getStorage('node');
 
   // Find all appverse_app nodes.
@@ -574,14 +569,14 @@ function ood_software_deploy_10005_force_app_sync() {
 /**
  * Retry adding logos to software nodes (fixes field config to accept images).
  */
-function ood_software_deploy_10006_logos_retry() {
+function ood_software_deploy_10006_logos_retry(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $logos_dir = $module_path . '/logos';
   $mapping_file = $logos_dir . '/mapping.php';
 
   if (!file_exists($mapping_file)) {
     \Drupal::logger('ood_software')->error('Logo mapping file not found at @path', ['@path' => $mapping_file]);
-    return;
+    return NULL;
   }
 
   $mapping = include $mapping_file;
@@ -629,11 +624,6 @@ function ood_software_deploy_10006_logos_retry() {
     $file_data = file_get_contents($logo_path);
     $file = \Drupal::service('file.repository')->writeData($file_data, $destination, FileExists::Replace);
 
-    if (!$file) {
-      \Drupal::logger('ood_software')->error('Failed to copy logo: @file', ['@file' => $filename]);
-      continue;
-    }
-
     // Create media entity.
     if ($is_svg) {
       $media = Media::create([
@@ -676,14 +666,14 @@ function ood_software_deploy_10006_logos_retry() {
 /**
  * Replace logos with color versions.
  */
-function ood_software_deploy_10007_color_logos() {
+function ood_software_deploy_10007_color_logos(): ?TranslatableMarkup {
   $module_path = \Drupal::service('extension.list.module')->getPath('ood_software');
   $logos_dir = $module_path . '/color-logos';
   $mapping_file = $logos_dir . '/mapping.php';
 
   if (!file_exists($mapping_file)) {
     \Drupal::logger('ood_software')->error('Color logo mapping file not found at @path', ['@path' => $mapping_file]);
-    return;
+    return NULL;
   }
 
   $mapping = include $mapping_file;
@@ -724,11 +714,6 @@ function ood_software_deploy_10007_color_logos() {
 
     $file_data = file_get_contents($logo_path);
     $file = \Drupal::service('file.repository')->writeData($file_data, $destination, FileExists::Replace);
-
-    if (!$file) {
-      \Drupal::logger('ood_software')->error('Failed to copy color logo: @file', ['@file' => $filename]);
-      continue;
-    }
 
     // Create media entity.
     if ($is_svg) {
@@ -772,7 +757,7 @@ function ood_software_deploy_10007_color_logos() {
 /**
  * Normalize app type term names to match APP_TYPE_MANIFEST_MAP.
  */
-function ood_software_deploy_10008_normalize_app_types() {
+function ood_software_deploy_10008_normalize_app_types(): TranslatableMarkup {
   $renames = [
     'batch_connect' => 'batch-connect-basic',
     'dashboard'     => 'dashboards',
@@ -813,7 +798,7 @@ function ood_software_deploy_10008_normalize_app_types() {
  * creates flat terms with no parent. This reparents terms that belong in the
  * hierarchy and deletes duplicates/junk terms.
  */
-function ood_software_deploy_10010_cleanup_orphan_tags() {
+function ood_software_deploy_10010_cleanup_orphan_tags(): TranslatableMarkup {
   $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
   $node_storage = \Drupal::entityTypeManager()->getStorage('node');
   $messages = [];
@@ -915,7 +900,7 @@ function ood_software_deploy_10010_cleanup_orphan_tags() {
   return t("Cleaned up orphan tags:\n@summary", ['@summary' => $summary]);
 }
 
-function ood_software_deploy_10009_resync_app_types() {
+function ood_software_deploy_10009_resync_app_types(): TranslatableMarkup {
   $queue = \Drupal::queue('appverse_app_updater');
   $storage = \Drupal::entityTypeManager()->getStorage('node');
   $nids = \Drupal::entityQuery('node')
@@ -935,8 +920,11 @@ function ood_software_deploy_10009_resync_app_types() {
 
 /**
  * Create menu item.
+ *
+ * @param array<string, mixed> $menu_link
+ *   The menu_link_content values, with roles under options.attributes.
  */
-function ood_software_links($menu_link) {
+function ood_software_links(array $menu_link): void {
   $existing_links = \Drupal::entityTypeManager()
     ->getStorage('menu_link_content')
     ->loadByProperties([
@@ -987,7 +975,7 @@ function ood_software_links($menu_link) {
  * Creates 3 new software entries (Desktop, SSH Terminal, Cloud Storage
  * Configuration) and 7 app nodes from CSCfi GitHub repos.
  */
-function ood_software_deploy_10011_cscfi_apps() {
+function ood_software_deploy_10011_cscfi_apps(): TranslatableMarkup {
   $messages = [];
 
   // --- 1. Create new software entries ---
@@ -1187,7 +1175,7 @@ function ood_software_deploy_10011_cscfi_apps() {
  * in the vocabulary — they're needed for the hierarchy — only the references
  * from Software nodes are removed.
  */
-function ood_software_deploy_10012_remove_parent_tags_from_software() {
+function ood_software_deploy_10012_remove_parent_tags_from_software(): TranslatableMarkup {
   $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
   $node_storage = \Drupal::entityTypeManager()->getStorage('node');
 
@@ -1259,7 +1247,7 @@ function ood_software_deploy_10012_remove_parent_tags_from_software() {
  * follows automatically. Idempotent: re-runs no-op once the singular term
  * exists.
  */
-function ood_software_deploy_10013_singularize_app_types() {
+function ood_software_deploy_10013_singularize_app_types(): TranslatableMarkup {
   $renames = [
     'dashboards' => 'dashboard',
     'widgets'    => 'widget',
@@ -1297,8 +1285,11 @@ function ood_software_deploy_10013_singularize_app_types() {
  * deploy:hook step — after config:import — so every field exists here. Running
  * this during the update phase (update_10503, or a post_update hook) was too
  * early and failed with "getColumns() on false" for every App.
+ *
+ * @param array<string, mixed> $sandbox
+ *   The batch sandbox.
  */
-function ood_software_deploy_10014_backfill_inferred_repos(&$sandbox) {
+function ood_software_deploy_10014_backfill_inferred_repos(array &$sandbox): TranslatableMarkup {
   $entityTypeManager = \Drupal::entityTypeManager();
 
   if (!isset($sandbox['progress'])) {
@@ -1389,6 +1380,7 @@ function ood_software_deploy_10015_unstrand_repos_awaiting_review(): \Drupal\Cor
     // a deploy that unstrands N repos sends N "ready for review" notices in one
     // burst, and on a host without working SMTP the synchronous per-repo send
     // stalls the deploy mid-repair. Same guard the inferred-repo backfill uses.
+    // @phpstan-ignore-next-line
     $repo->_ood_software_suppress_notifications = TRUE;
     $repo->set('moderation_state', 'ready_for_review');
     $repo->setNewRevision(TRUE);

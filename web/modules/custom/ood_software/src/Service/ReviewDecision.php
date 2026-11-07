@@ -54,8 +54,9 @@ final class ReviewDecision {
    * Each app gets its own outcome, and the repo is published when any app is:
    * an accepted app is published with the repo and the review at once; an app
    * accepted with suggestions waits for the review page's Publish; an app sent
-   * back or declined leaves the catalog. With no app accepted, the repo waits
-   * for Publish when any app was accepted with suggestions, goes back to the
+   * back or declined is not published, and one that is live stays live on its
+   * current version (D8-2882). With no app accepted, the repo waits for
+   * Publish when any app was accepted with suggestions, goes back to the
    * contributor when any app can be fixed, and is declined only when every app
    * is. Every app makes its own move, also when it goes where the repo goes:
    * the repo's cascade only takes live apps, and only to draft, which left a
@@ -94,11 +95,12 @@ final class ReviewDecision {
    * submission stands, this names the state each should end in, so an update
    * can get there from wherever the first decision left it. Accepted apps are
    * live; an app accepted with suggestions waits, ready to publish, unless it
-   * is already live; an app sent back or declined leaves the catalog. The repo
-   * is live when any app is accepted, waits for Publish when only suggestions
-   * remain (or stays live, when it was live before this round), goes back to
-   * the contributor when any app can be fixed, and is declined only when
-   * every app is. The review is public only after an Accept.
+   * is already live; an app sent back or declined is not published (a live
+   * one stays live on its current version, D8-2882). The repo is live when
+   * any app is accepted, waits for Publish when only suggestions remain (or
+   * stays live, when it was live before this round), goes back to the
+   * contributor when any app can be fixed, and is declined only when every
+   * app is. The review is public only after an Accept.
    *
    * @param array<string, string> $appDecisions
    *   App key => its new decision.
@@ -265,10 +267,10 @@ final class ReviewDecision {
           ? new TranslatableMarkup('Catalog: the repo stays live.')
           : new TranslatableMarkup('Catalog: nothing goes live yet; the repo waits as Ready to publish.'),
         'request_changes' => $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo and its apps come down.')
+          ? new TranslatableMarkup('Catalog: the repo stays live as it is; the update goes back to the contributor.')
           : new TranslatableMarkup('Catalog: nothing goes live; the repo moves to Needs changes.'),
         default => $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo and its apps come down.')
+          ? new TranslatableMarkup('Catalog: the repo stays live as it is; the update is declined.')
           : new TranslatableMarkup('Catalog: the repo does not go live.'),
       };
       $out[] = match ($distinct[0]) {
@@ -297,7 +299,7 @@ final class ReviewDecision {
       }
       elseif ($any('request_changes')) {
         $out[] = $repoPublished
-          ? new TranslatableMarkup('Catalog: the repo and its apps come down.')
+          ? new TranslatableMarkup('Catalog: the repo stays live as it is; the update goes back to the contributor.')
           : new TranslatableMarkup('Catalog: nothing goes live; the repo moves to Needs changes.');
         $out[] = new TranslatableMarkup('Review: stays unpublished while the contributor works.');
       }

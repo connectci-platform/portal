@@ -4,6 +4,11 @@ parameters:
         - docroot/modules/custom
     excludePaths:
         - docroot/modules/custom/*/tests/*
+        # The pre-commit hook passes staged files by their web/ path (web is a
+        # symlink to docroot), which the docroot pattern above does not match.
+        - web/modules/custom/*/tests/*
+        # Core scaffold, not our code.
+        - web/sites/default/default.settings.php
 
 services:
     -

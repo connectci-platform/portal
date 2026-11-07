@@ -60,9 +60,13 @@ final class RepoProgress {
     // in review while the Re-submit button was still in front of them
     // (appverse-planning#49).
     $repoState = (string) ($repo->get('moderation_state')->value ?? 'draft');
+    // A live repo that was sent back stays published and carries
+    // needs_adjustment or declined on a forward revision (D8-2882), so that
+    // state is read too: the default revision's alone says "published".
     $resubmitted = $newestSentAt
       && $dispatchedAt > $newestSentAt
-      && !in_array($repoState, ['needs_adjustment', 'declined'], TRUE);
+      && !in_array($repoState, ['needs_adjustment', 'declined'], TRUE)
+      && !in_array(_ood_software_pending_state($repo), ['needs_adjustment', 'declined'], TRUE);
     $current = $newest && !$withdrawn && !$resubmitted ? $newest : NULL;
 
     $changesRequested = 0;

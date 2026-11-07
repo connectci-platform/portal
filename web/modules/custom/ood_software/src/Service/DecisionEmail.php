@@ -81,10 +81,10 @@ final class DecisionEmail {
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and accepted it, with suggestions below. It stays listed in the Appverse catalog, and the suggestions are worth a look when you next update it.', $args)
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and accepted it, with suggestions below. None of them block it being listed, but it is not in the catalog yet, so there is time to act on any you want to fix before it goes public. Reply to this email when you are ready, or say nothing and it will be listed as it is.', $args),
       'request_changes' => $wasLive
-        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and is asking for changes. It is out of the Appverse catalog until they are made.', $args)
+        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and is asking for changes. It stays listed in the Appverse catalog as it is now; the update you submitted is not listed until the changes are made and accepted.', $args)
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and is asking for changes before it can be listed.', $args),
       'reject' => $wasLive
-        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and did not accept it, so it has been removed from the Appverse catalog.', $args)
+        ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and did not accept the update you submitted. It stays listed in the Appverse catalog as it is now.', $args)
         : new TranslatableMarkup('@reviewer reviewed your repo "@repo" for the Appverse catalog and did not accept it.', $args),
       default => $wasLive
         ? new TranslatableMarkup('@reviewer reviewed your repo "@repo" again and decided on each app:', $args)

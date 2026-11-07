@@ -18,16 +18,19 @@ class GhCommands extends Tasks {
    *
    * @command gh:tag
    * @description take current tag number and iterate.
+   *
+   * @param array<int, string> $args
+   *   The current tag, as the first argument.
    */
-  public function iterateTag(array $args) {
+  public function iterateTag(array $args): ?string {
     if ($args) {
       $current_tag = $args[0];
       $tag = explode('.', $current_tag);
-      $tag[2] = $tag[2]+1;
+      $tag[2] = (int) $tag[2] + 1;
       $new_tag = implode('.', $tag);
       return $new_tag;
     }
-
+    return NULL;
   }
 
   /**
@@ -36,8 +39,8 @@ class GhCommands extends Tasks {
    * @command gh:keepalive
    * @description Continuous loop that says bing.
    */
-  public function keepAlive() {
-    while (1) {
+  public function keepAlive(): void {
+    for (;;) {
       $this->say("🔁 Bing");
       $this->_exec("sleep 120");
     }
@@ -49,7 +52,7 @@ class GhCommands extends Tasks {
    * @command gh:pulldb
    * @description Pulls latest database artifact from Github.
    */
-  public function pulldb() {
+  public function pulldb(): void {
     $this->say("Downloading latest database backup from GitHub artifacts...");
 
     // Create a temporary directory for download to avoid path traversal issues
@@ -113,7 +116,7 @@ class GhCommands extends Tasks {
    * @command gh:pullfiles
    * @description Pulls latest database artifact from Github.
    */
-  public function pullfiles() {
+  public function pullfiles(): void {
     $this->say("Downloading latest file backup from GitHub artifacts...");
 
     // List available workflows/runs to debug
@@ -174,7 +177,7 @@ class GhCommands extends Tasks {
    * @command gh:pr
    * @description Create a pull request.
    */
-  public function ghpr() {
+  public function ghpr(): void {
     $full_branch = shell_exec("git rev-parse --abbrev-ref HEAD");
     $full_branch = preg_replace('/\r\n|\r|\n/', '', $full_branch);
 
@@ -377,6 +380,9 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
    * Replaces the content under the "Related PRs / Multidev" heading (up to the
    * next heading), or appends that section if the ticket doesn't have one.
    * The description is sent as ADF so links and formatting render.
+   *
+   * @param string[] $prUrls
+   *   The PR URLs to list.
    */
   private function updateJiraDescription(array $prUrls, string $issueNumber): void {
     $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
@@ -419,14 +425,14 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
   /**
    * Put the PR/MultiDev links under the "Related PRs / Multidev" heading.
    *
-   * @param array $content
+   * @param array<int, mixed> $content
    *   Top-level ADF nodes of the description.
-   * @param array $prUrls
+   * @param string[] $prUrls
    *   PR URLs to list.
    * @param string $issueNumber
    *   Jira issue number (without the D8- prefix).
    *
-   * @return array
+   * @return array<int, mixed>
    *   The updated top-level ADF nodes.
    */
   private function mergeRelatedSection(array $content, array $prUrls, string $issueNumber): array {
@@ -523,7 +529,7 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
   /**
    * Return the lowercased label if a node is a managed paragraph.
    *
-   * @param array $node
+   * @param array<string, mixed> $node
    *   An ADF node.
    *
    * @return string|null
@@ -545,6 +551,9 @@ http://md-$issueNumber-accessmatch.pantheonsite.io
 
   /**
    * Update all PRs to cross-reference each other in the related PRs section.
+   *
+   * @param string[] $prUrls
+   *   The PR URLs to cross-reference.
    */
   private function crossReferencePrs(array $prUrls, string $description, string $issueNumber): void {
     $pr_list = implode("\n", array_map(fn(string $url) => "- $url", $prUrls));

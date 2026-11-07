@@ -56,15 +56,31 @@ class RepoMemberApps {
   }
 
   /**
+   * The state an app is effectively in: its pending revision's, else its own.
+   *
+   * A live app that was sent back keeps its published default revision and
+   * carries needs_adjustment on a forward revision (D8-2882), so the default
+   * revision's state alone says "published".
+   */
+  public function effectiveState(NodeInterface $app): ?string {
+    if (!$app->hasField('moderation_state')) {
+      return NULL;
+    }
+    return _ood_software_pending_state($app) ?? $app->get('moderation_state')->value;
+  }
+
+  /**
    * How many of a repo's apps were sent back and wait on changes.
    *
    * A live monorepo can have an app sent back while the others stay listed;
    * the contributor then re-submits the whole repo (appverse-planning#48).
+   * A live app that was sent back counts too: its needs_adjustment is on a
+   * forward revision (D8-2882).
    */
   public function sentBackCount(NodeInterface $repo): int {
     $count = 0;
     foreach ($this->entityTypeManager->getStorage('node')->loadMultiple($this->queryMemberAppIds($repo)) as $app) {
-      if ($app->hasField('moderation_state') && $app->get('moderation_state')->value === 'needs_adjustment') {
+      if ($this->effectiveState($app) === 'needs_adjustment') {
         $count++;
       }
     }
@@ -104,8 +120,15 @@ class RepoMemberApps {
       if (!$app->hasField('moderation_state')) {
         continue;
       }
-      if ($from_states && !in_array($app->get('moderation_state')->value, $from_states, TRUE)) {
+      if ($from_states && !in_array($this->effectiveState($app), $from_states, TRUE)) {
         continue;
+      }
+      // Build on the newest revision, so a live app's pending edits carry
+      // instead of being dropped for the live content (D8-2882).
+      $latestId = $storage->getLatestRevisionId($app->id());
+      $latest = $latestId ? $storage->loadRevision($latestId) : NULL;
+      if ($latest instanceof NodeInterface) {
+        $app = $latest;
       }
       $app->set('moderation_state', $target_state);
       $app->setNewRevision(TRUE);

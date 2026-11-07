@@ -135,7 +135,10 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     $repo->_ood_software_suppress_notifications = TRUE;
     $repo->save();
     // Its apps went into review with it, so they come back out with it.
-    $this->repoMemberApps->cascadeModeration($repo, 'draft', ['ready_for_review'], 'Withdrawn from review with the repo by ' . $who);
+    // A live app with a review pending on top is ready_for_review as far as
+    // the cascade can tell (D8-2882), but it is not part of this submission
+    // and withdrawing must not take it out of the catalog.
+    $this->repoMemberApps->cascadeModeration($repo, 'draft', ['ready_for_review'], 'Withdrawn from review with the repo by ' . $who, FALSE, FALSE, $this->repoMemberApps->queryMemberAppIds($repo, TRUE));
 
     $this->messenger()->addStatus($this->t('Withdrew @title from review. It is a draft again; re-submit it when you are ready.', ['@title' => $repo->label()]));
     $form_state->setRedirectUrl($this->getCancelUrl());

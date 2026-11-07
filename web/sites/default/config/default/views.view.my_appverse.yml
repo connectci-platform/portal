@@ -890,6 +890,7 @@ display:
         arguments: false
         path: false
       relationships: {  }
+      display_comment: "Owner-only access is enforced by MyAppverseHubAccessCheck on this page's route (D8-2882). Keep use_ajax off: AJAX requests go through /views/ajax and skip that check."
       display_extenders: {  }
       path: user/%user/my-appverse
     cache_metadata:

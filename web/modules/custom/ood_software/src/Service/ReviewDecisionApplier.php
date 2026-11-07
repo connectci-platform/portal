@@ -29,7 +29,14 @@ use Drupal\user\UserInterface;
  *   app and review" (publish()).
  * - An app sent back goes to needs_adjustment, a declined one to declined.
  * - With no app accepted, the repo goes back to the contributor or, when every
- *   app is declined, is declined; a live repo takes its apps with it.
+ *   app is declined, is declined. A decision only affects what is under
+ *   review (D8-2882): needs_adjustment and declined are not default-revision states, so a live
+ *   repo or app stays published on its live revision and the sent-back update
+ *   waits as a forward revision for the contributor to fix and re-submit.
+ *   Pulling a live repo out of the catalog is the reviewer's explicit
+ *   Unpublish, not a side effect of a decision. A new repo or app that was
+ *   never live has no live revision, so it becomes needs_adjustment or
+ *   declined outright.
  * Every decision records decision_sent_at / _by, which also opens the review
  * to the repo's owner. The repo's own transition emails are suppressed: the
  * owner gets one decision email for the whole repo (#32; DecisionEmail), and
@@ -148,7 +155,13 @@ final class ReviewDecisionApplier {
     if (!$repo instanceof NodeInterface) {
       return NULL;
     }
+    // A live repo's default revision says "published" whatever its update is
+    // doing: one sent back (needs_adjustment on a forward revision) has not
+    // been re-submitted, so it is not awaiting review either (D8-2882).
     $state = (string) ($repo->get('moderation_state')->value ?? '');
+    if ($repo->isPublished()) {
+      $state = _ood_software_pending_state($repo) ?? 'published';
+    }
     if (in_array($state, ['ready_for_review', 'published'], TRUE)) {
       return NULL;
     }
@@ -385,13 +398,18 @@ final class ReviewDecisionApplier {
     $live = array_map(static fn (NodeInterface $app): bool => $app->isPublished(), $apps);
     $targets = ReviewDecision::updateTargets($decisions, $live, $wasLive);
     // Apps first, as on send.
+    // Taking back an Accept that put a new repo in the catalog takes it out
+    // again: nothing of it was live before this round, so there is no live
+    // revision to keep. For a repo that was already live, a sent-back update
+    // is a forward revision and the repo stays up (D8-2882).
+    $takeDown = static fn (string $target): bool => !$wasLive && in_array($target, ['needs_adjustment', 'declined'], TRUE);
     foreach ($targets['apps'] as $pid => $target) {
       if ($target !== NULL && isset($apps[$pid])) {
-        $this->moveTo($apps[$pid], $target, 'Decision updated on the review.');
+        $this->moveTo($apps[$pid], $target, 'Decision updated on the review.', $takeDown($target));
       }
     }
     if ($repo instanceof NodeInterface) {
-      $this->moveTo($repo, $targets['repo'], $response !== '' ? $response : 'Decision updated on the review.');
+      $this->moveTo($repo, $targets['repo'], $response !== '' ? $response : 'Decision updated on the review.', $takeDown($targets['repo']));
     }
     $this->moveTo($review, $targets['review'], sprintf('Review page: decision updated by %s', $this->currentUser->getDisplayName()));
 
@@ -401,20 +419,45 @@ final class ReviewDecisionApplier {
   /**
    * Moves a node to a moderation state along the workflow's transitions,
    * through intermediate states where there is no direct one (needs
-   * adjustment to declined goes by ready for review). Every save is silent:
+   * adjustment to declined goes by ready for review). With $takeDown a live
+   * node is unpublished first (see below). Every save is silent:
    * the update email replaces the transitions' own, and a pass through
    * ready_for_review must not start an AI run.
    */
-  protected function moveTo(NodeInterface $node, string $target, string $log): void {
+  protected function moveTo(NodeInterface $node, string $target, string $log, bool $takeDown = FALSE): void {
     $storage = $this->entityTypeManager->getStorage('node');
     $fresh = $storage->loadUnchanged($node->id());
     $workflow = $fresh instanceof NodeInterface ? $this->moderationInformation->getWorkflowForEntity($fresh)?->getTypePlugin() : NULL;
     if (!$workflow || !$workflow->hasState($target)) {
       return;
     }
-    $from = (string) ($fresh->get('moderation_state')->value ?? '');
+    // Start from the newest revision, not the default one: a live node whose
+    // update was sent back is published by default with needs_adjustment on a
+    // forward revision (D8-2882), and every step is built on that revision so
+    // the contributor's edits are not dropped for the live content.
+    $from = (string) ($this->latestRevision($node)?->get('moderation_state')->value ?? '');
     if ($from === $target || !$workflow->hasState($from)) {
       return;
+    }
+    // A live node must not pass through a default-revision state that is not
+    // published (draft, archived): that save would take it out of the catalog.
+    // Unless it is meant to come out ($takeDown) and the target is a forward
+    // state, which would otherwise leave it live: then it is unpublished
+    // first, on its newest revision so the contributor's edits are not lost,
+    // and moved on from draft like any node that is not live.
+    $live = $fresh->isPublished();
+    $targetState = $workflow->getState($target);
+    if ($takeDown && $live && $targetState instanceof ContentModerationState && !$targetState->isDefaultRevisionState()) {
+      $down = $this->latestRevision($node);
+      if (!$down instanceof NodeInterface || !$this->canMove($down, 'draft')) {
+        return;
+      }
+      $down->set('moderation_state', 'draft');
+      // @phpstan-ignore-next-line
+      $down->_ood_software_suppress_notifications = TRUE;
+      $this->saveRevision($down, $log);
+      $from = 'draft';
+      $live = FALSE;
     }
     // Breadth-first over the transitions, for the shortest path.
     $previous = [$from => NULL];
@@ -423,6 +466,14 @@ final class ReviewDecisionApplier {
       $state = array_shift($queue);
       foreach ($workflow->getState($state)->getTransitions() as $transition) {
         $next = $transition->to()->id();
+        $nextState = $transition->to();
+        // Nor may a node that is not live pass through published on its way
+        // to a state that is not: that would put it in the catalog.
+        if ($next !== $target && $nextState instanceof ContentModerationState
+          && (($live && $nextState->isDefaultRevisionState() && !$nextState->isPublishedState())
+            || (!$live && $nextState->isPublishedState()))) {
+          continue;
+        }
         if (!array_key_exists($next, $previous)) {
           $previous[$next] = $state;
           $queue[] = $next;
@@ -438,11 +489,7 @@ final class ReviewDecisionApplier {
       array_unshift($path, $state);
     }
     foreach ($path as $state) {
-      $latest = $storage->getLatestRevisionId($node->id());
-      $published = $workflow->getState($state);
-      $step = $published instanceof ContentModerationState && $published->isPublishedState() && $latest
-        ? $storage->loadRevision($latest)
-        : $storage->loadUnchanged($node->id());
+      $step = $this->latestRevision($node);
       if (!$step instanceof NodeInterface) {
         return;
       }
@@ -457,6 +504,19 @@ final class ReviewDecisionApplier {
       $this->saveRevision($step, $log);
     }
     $this->messenger->addStatus($this->t('Moved @title to @state.', ['@title' => $fresh->label(), '@state' => str_replace('_', ' ', $target)]));
+  }
+
+  /**
+   * The newest revision of a node, which is where its in-flight edits are.
+   *
+   * For a live node with an update waiting this is the forward revision; the
+   * default revision is the live content (D8-2882).
+   */
+  protected function latestRevision(NodeInterface $node): ?NodeInterface {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $latest = $storage->getLatestRevisionId($node->id());
+    $revision = $latest ? $storage->loadRevision($latest) : $storage->loadUnchanged($node->id());
+    return $revision instanceof NodeInterface ? $revision : NULL;
   }
 
   /**
@@ -737,13 +797,16 @@ final class ReviewDecisionApplier {
    */
   protected function publishNode(NodeInterface $node, string $log): bool {
     // Already live: nothing to move, and a published-to-published save of a
-    // repo would send the publish email again.
-    if ($node->isPublished()) {
+    // repo would send the publish email again. A live node with a review
+    // pending on top is not done, though: its default revision is published
+    // but the accepted content is the forward revision, which would stay
+    // "Published, review pending" and queued for review (D8-2882). Any forward
+    // revision counts, one sent back as well as one in review. The save
+    // below carries the suppress flag, so no second publish email goes out.
+    if ($node->isPublished() && _ood_software_pending_state($node) === NULL) {
       return FALSE;
     }
-    $storage = $this->entityTypeManager->getStorage('node');
-    $latest = $storage->getLatestRevisionId($node->id());
-    $fresh = $latest ? $storage->loadRevision($latest) : $storage->loadUnchanged($node->id());
+    $fresh = $this->latestRevision($node);
     if (!$fresh instanceof NodeInterface || !$this->canMove($fresh, 'published')) {
       return FALSE;
     }
@@ -760,9 +823,13 @@ final class ReviewDecisionApplier {
   /**
    * Moves an app to needs_adjustment or declined; one that cannot move from
    * where it is (a draft app is not live) stays.
+   *
+   * Built on the newest revision so the contributor's edits carry. A new app
+   * becomes needs_adjustment or declined outright; a live one gets a forward
+   * revision and stays in the catalog (D8-2882).
    */
   protected function moveNode(NodeInterface $node, string $state, string $log): void {
-    $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($node->id());
+    $fresh = $this->latestRevision($node);
     if (!$fresh instanceof NodeInterface || !$this->canMove($fresh, $state)) {
       return;
     }
@@ -774,35 +841,45 @@ final class ReviewDecisionApplier {
   }
 
   /**
-   * Moves the repo to needs_adjustment or declined, as the hub's request
-   * changes does: the response becomes the revision log (the hub card's
-   * feedback), and a live repo's apps are unpublished with it. The decision
-   * email replaces the transition's own.
+   * Moves the repo to needs_adjustment or declined.
+   *
+   * As the hub's request changes does: the response becomes the revision log
+   * (the hub card's feedback). The decision email replaces the transition's
+   * own.
+   *
+   * A decision only affects what is under review (D8-2882). The move is made
+   * on the newest revision, so the contributor's pending edits go back to
+   * them with the notes, and a live repo stays published on its live revision
+   * because these states are not default revisions. The member apps follow
+   * to draft only if the repo actually left the catalog, which a decision no
+   * longer does; the path stays for safety.
    */
   protected function moveRepo(NodeInterface $repo, string $state, string $response, string $cascadeLog): void {
+    $latest = $this->latestRevision($repo);
     // save() does not validate the transition, so check it here: a repo
     // already sent back (needs_adjustment) cannot move again until it is
     // re-submitted.
-    if (!$this->canMove($repo, $state)) {
+    if (!$latest instanceof NodeInterface || !$this->canMove($latest, $state)) {
       $this->messenger->addWarning($this->t('The decision was recorded, but @title stays @from: it cannot move to @to from there.', [
         '@title' => $repo->label(),
-        '@from' => $repo->get('moderation_state')->value,
+        '@from' => $latest?->get('moderation_state')->value ?? $repo->get('moderation_state')->value,
         '@to' => $state,
       ]));
       return;
     }
     $wasPublished = $repo->isPublished();
-    $repo->set('moderation_state', $state);
-    $repo->setRevisionLogMessage($response);
-    $repo->setNewRevision(TRUE);
+    $latest->set('moderation_state', $state);
     // A runtime flag hook_node_update() reads; not a field.
     // @phpstan-ignore-next-line
-    $repo->_ood_software_suppress_notifications = TRUE;
-    $repo->save();
+    $latest->_ood_software_suppress_notifications = TRUE;
+    $this->saveRevision($latest, $response);
     if ($wasPublished) {
-      $count = $this->repoMemberApps->cascadeModeration($repo, 'draft', [], $cascadeLog, TRUE);
-      if ($count > 0) {
-        $this->messenger->addStatus($this->t('Also unpublished @count member apps under @title.', ['@count' => $count, '@title' => $repo->label()]));
+      $default = $this->entityTypeManager->getStorage('node')->loadUnchanged($repo->id());
+      if ($default instanceof NodeInterface && !$default->isPublished()) {
+        $count = $this->repoMemberApps->cascadeModeration($repo, 'draft', [], $cascadeLog, TRUE);
+        if ($count > 0) {
+          $this->messenger->addStatus($this->t('Also unpublished @count member apps under @title.', ['@count' => $count, '@title' => $repo->label()]));
+        }
       }
     }
   }

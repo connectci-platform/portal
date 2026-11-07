@@ -664,10 +664,13 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
-   * Both read the default revision's state, so a forward draft is in neither.
+   * Both see a live repo's review on its forward revision (D8-2882).
+   *
+   * ready_for_review is not a default-revision state, so the repo stays
+   * published by default; both filters must still list it, and agree.
    */
-  public function testNeedsAttentionAgreesWithReadyForReviewOnForwardDraft(): void {
-    $repo = $this->makeRepo('Live with a forward draft', 'published');
+  public function testNeedsAttentionAgreesWithReadyForReviewOnPendingReview(): void {
+    $repo = $this->makeRepo('Live with a pending review', 'published');
     $repo->set('moderation_state', 'ready_for_review');
     $repo->save();
     // The forward revision is not the default one.
@@ -677,8 +680,8 @@ class ManageReposFiltersTest extends KernelTestBase {
     $this->assertInstanceOf(NodeInterface::class, $default);
     $this->assertSame('published', $default->get('moderation_state')->value);
 
-    $this->assertSame([], $this->runModeration(['appverse_editorial-ready_for_review']));
-    $this->assertSame([], $this->runModeration(['needs_attention']));
+    $this->assertSame([(int) $repo->id()], $this->runModeration(['appverse_editorial-ready_for_review']));
+    $this->assertSame([(int) $repo->id()], $this->runModeration(['needs_attention']));
   }
 
   /**

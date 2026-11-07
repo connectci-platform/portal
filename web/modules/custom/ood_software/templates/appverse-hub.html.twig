@@ -72,7 +72,7 @@
          (appverse-planning#31); these badges are what it does not show. #}
       {% if hub.unpublished_after_publish %}
         <span class="badge badge-warning badge--hint" title="{{ 'Was published, then unpublished. Only an admin can republish it.'|t }}">{{ hub.is_admin ? 'Unpublished'|t : 'Unpublished — admin must republish'|t }}</span>
-      {% elseif hub.moderation_state == 'archived' %}
+      {% elseif hub.moderation_state == 'archived' or hub.live_update %}
         <span class="badge badge-{{ hub.status.modifier }} badge--hint" title="{{ hub.status.description }}">{{ hub.status.label }}</span>
       {% endif %}
       {% if hub.has_validation_issues %}
@@ -219,7 +219,8 @@
     </div>
   {% endif %}
 
-  {% if hub.moderation_state == 'needs_adjustment' and hub.moderation_comment %}
+  {# Set for a sent-back repo, and for a live one whose update was sent back or declined. #}
+  {% if hub.moderation_comment %}
     <div class="appverse-hub-card__moderation-comment">
       <strong>{{ 'Admin feedback:'|t }}</strong>
       <p>{{ hub.moderation_comment }}</p>
