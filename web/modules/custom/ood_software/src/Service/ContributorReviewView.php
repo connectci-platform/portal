@@ -68,7 +68,13 @@ final class ContributorReviewView {
         break;
       }
     }
-    foreach (self::gateRows((array) ($page['repo_gate_block']['others'] ?? [])) as $row) {
+    // A repo gate can be explained by a finding in any section (a single
+    // app's root findings sit in its own blocks).
+    $allRows = [];
+    foreach ($sections as [, , $block]) {
+      $allRows = array_merge($allRows, self::blockRows($block, $sent));
+    }
+    foreach (self::gateRows((array) ($page['repo_gate_block']['others'] ?? []), $allRows, $sent) as $row) {
       $item = self::finding($row, '', 'Structure', $sent);
       if ($item !== NULL) {
         $item['_order'] = $repoGateOrder;
@@ -83,25 +89,17 @@ final class ContributorReviewView {
       foreach ((array) ($block['gate_summary']['passes'] ?? []) as $pill) {
         $view['passed'][] = ['section' => $title, 'label' => (string) ($pill['label'] ?? '')];
       }
-      foreach (self::gateRows((array) ($block['gate_summary']['others'] ?? [])) as $row) {
+      $blockRows = self::blockRows($block, $sent);
+      foreach (self::gateRows((array) ($block['gate_summary']['others'] ?? []), $blockRows, $sent) as $row) {
         $item = self::finding($row, $app, $title, $sent);
         if ($item !== NULL) {
           $item['_order'] = $order;
           $findings[] = $item;
         }
       }
-      $rows = [];
-      foreach ((array) ($block['groups'] ?? []) as $group) {
-        $rows = array_merge($rows, (array) ($group['findings'] ?? []));
-      }
       $checked = (array) ($block['checked']['rows'] ?? []);
-      // Dismissals are the reviewer's until sent; the tool's report still
-      // has the finding.
       $dismissed = $sent ? [] : (array) ($block['dismissed'] ?? []);
-      foreach (array_merge($rows, $dismissed) as $row) {
-        if (!self::isDefect((array) $row)) {
-          continue;
-        }
+      foreach ($blockRows as $row) {
         $item = self::finding((array) $row, $app, $title, $sent);
         if ($item !== NULL) {
           $item['_order'] = $order;
@@ -189,7 +187,36 @@ final class ContributorReviewView {
   }
 
   /**
+   * A block's defect rows the contributor may be shown, in page order.
+   *
+   * Dismissals are the reviewer's until sent; the tool's report still has
+   * the finding, so before sending they are listed too.
+   *
+   * @param array<mixed> $block
+   *   A block from the page.
+   * @param bool $sent
+   *   Whether the decision has been sent.
+   *
+   * @return array<int, array<mixed>>
+   *   The rows.
+   */
+  private static function blockRows(array $block, bool $sent): array {
+    $rows = [];
+    foreach ((array) ($block['groups'] ?? []) as $group) {
+      $rows = array_merge($rows, (array) ($group['findings'] ?? []));
+    }
+    $dismissed = $sent ? [] : (array) ($block['dismissed'] ?? []);
+    return array_values(array_filter(array_merge($rows, $dismissed), static fn ($row): bool => self::isDefect((array) $row)));
+  }
+
+  /**
    * Failing and warning gate pills as finding rows.
+   *
+   * A gate is only the tool's tally of finding rows, so a gate whose rows the
+   * contributor already sees is left out: the finding says what is wrong and
+   * where, and the gate's label alone said neither. A gate with no such row
+   * (a gate set by a check the report does not list) stays, worded as a
+   * sentence rather than a bare label.
    *
    * A pill has no severity of its own: a fail reads as high and a warn as
    * low, unless the row carries one. Other values (a pass, a skipped check)
@@ -197,23 +224,31 @@ final class ContributorReviewView {
    *
    * @param array<mixed> $pills
    *   Gate pills (key, label, value) from a gate summary's "others".
+   * @param array<int, array<mixed>> $rows
+   *   The defect rows that may explain the gates.
+   * @param bool $sent
+   *   Whether the decision has been sent.
    *
    * @return array<int, array<string, mixed>>
    *   Rows shaped like a finding row.
    */
-  private static function gateRows(array $pills): array {
-    $rows = [];
+  private static function gateRows(array $pills, array $rows, bool $sent): array {
+    $out = [];
     foreach ($pills as $pill) {
       $value = strtolower((string) ($pill['value'] ?? ''));
       if (!in_array($value, ['fail', 'warn'], TRUE)) {
         continue;
       }
+      if (self::gateExplained((string) ($pill['key'] ?? ''), $value, $rows, $sent)) {
+        continue;
+      }
+      $label = (string) ($pill['label'] ?? '');
       $severity = (string) ($pill['severity'] ?? '') ?: ($value === 'fail' ? 'high' : 'low');
-      $rows[] = [
+      $out[] = [
         'source' => 'ai',
         'severity' => $severity,
         'tool_severity' => $severity,
-        'summary' => (string) ($pill['summary'] ?? $pill['label'] ?? ''),
+        'summary' => (string) ($pill['summary'] ?? sprintf($value === 'fail' ? 'The "%s" check failed.' : 'The "%s" check raised a warning.', $label)),
         'evidence' => (string) ($pill['evidence'] ?? ''),
         'evidence_parts' => (array) ($pill['evidence_parts'] ?? []),
         'dismissed' => FALSE,
@@ -221,7 +256,43 @@ final class ContributorReviewView {
         'prose' => '',
       ];
     }
-    return $rows;
+    return $out;
+  }
+
+  /**
+   * Whether a row the contributor sees accounts for the gate.
+   *
+   * The tool sets a gate to the worst result among its rows (every row of the
+   * rule, other: notes included), so a failed gate is accounted for only by a
+   * visible FAIL row: a WARN row left after the FAIL was dismissed would
+   * otherwise stand in for it at its own, lower severity.
+   *
+   * @param string $gate
+   *   The gate's key, as ReviewPageData::GATE_RULES names it.
+   * @param string $value
+   *   The gate's value, fail or warn.
+   * @param array<int, array<mixed>> $rows
+   *   Defect rows.
+   * @param bool $sent
+   *   Whether the decision has been sent.
+   */
+  private static function gateExplained(string $gate, string $value, array $rows, bool $sent): bool {
+    [$rules, $tags] = ReviewPageData::GATE_RULES[$gate] ?? [[], NULL];
+    $results = $value === 'fail' ? ['FAIL'] : ['FAIL', 'WARN'];
+    foreach ($rows as $row) {
+      $rule = strtoupper(trim((string) ($row['rule'] ?? '')));
+      // A row with no result is a FAIL, as on the reviewer page.
+      $result = strtoupper(trim((string) ($row['result'] ?? ''))) ?: 'FAIL';
+      if (!in_array($rule, $rules, TRUE) || !in_array($result, $results, TRUE) || self::finding((array) $row, '', '', $sent) === NULL) {
+        continue;
+      }
+      $key = (string) ($row['defect_key'] ?? '');
+      $tag = explode(':', str_contains($key, ':') ? explode(':', $key, 2)[1] : $key, 2)[0];
+      if ($tags === NULL || in_array($tag, $tags, TRUE)) {
+        return TRUE;
+      }
+    }
+    return FALSE;
   }
 
   /**

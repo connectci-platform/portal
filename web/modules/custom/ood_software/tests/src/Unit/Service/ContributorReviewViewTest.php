@@ -316,7 +316,11 @@ class ContributorReviewViewTest extends UnitTestCase {
     $page['repo_gate_block']['others'] = [self::pill('YAML valid', 'fail')];
     foreach ([FALSE, TRUE] as $sent) {
       $findings = ContributorReviewView::build($page, $sent)['findings'];
-      $this->assertSame(['YAML valid', 'Layout', 'Docs'], array_column($findings, 'summary'));
+      $this->assertSame([
+        'The "YAML valid" check failed.',
+        'The "Layout" check failed.',
+        'The "Docs" check raised a warning.',
+      ], array_column($findings, 'summary'));
       $this->assertSame(['high', 'high', 'low'], array_column($findings, 'severity'));
       $this->assertSame(['', 'My App', 'My App'], array_column($findings, 'app'));
       $this->assertSame(['Structure', 'Structure', 'Structure'], array_column($findings, 'section'));
@@ -326,6 +330,119 @@ class ContributorReviewViewTest extends UnitTestCase {
     $page['repo_gate_block']['others'][0]['severity'] = 'critical';
     $findings = ContributorReviewView::build($page, FALSE)['findings'];
     $this->assertSame('critical', $findings[0]['severity']);
+  }
+
+  /**
+   * A gate whose finding the contributor sees is not repeated as a bare row.
+   *
+   * Review 12415: structure and references warned, and the STR-07 and STR-04
+   * rows behind them were already listed, so the two gate rows said nothing.
+   *
+   * @covers ::build
+   */
+  public function testGateExplainedByItsFindingIsNotRepeated(): void {
+    $layout = self::row([
+      'rule' => 'STR-07',
+      'result' => 'WARN',
+      'severity' => 'low',
+      'tool_severity' => 'low',
+      'defect_key' => 'form.yml.erb:other:missing-pre-render-script',
+      'summary' => 'pre_render_script.sh is not in the repo',
+    ]);
+    $gates = [
+      ['key' => 'structure', 'label' => 'Standard layout', 'value' => 'warn'],
+      ['key' => 'references', 'label' => 'References resolve', 'value' => 'warn'],
+    ];
+    $page = self::page(['structure' => self::block('Structure', [$layout], $gates)]);
+    $findings = ContributorReviewView::build($page, FALSE)['findings'];
+    $this->assertSame([
+      'The "References resolve" check raised a warning.',
+      'pre_render_script.sh is not in the repo',
+    ], array_column($findings, 'summary'));
+
+    // A row the contributor does not see explains nothing: a reviewer's
+    // finding before the decision is sent.
+    $page = self::page(['structure' => self::block('Structure', [['source' => 'reviewer'] + $layout], $gates)]);
+    $this->assertSame([
+      'The "Standard layout" check raised a warning.',
+      'The "References resolve" check raised a warning.',
+    ], array_column(ContributorReviewView::build($page, FALSE)['findings'], 'summary'));
+  }
+
+  /**
+   * STR-01 sets two repo gates; each is explained only by its own tag.
+   *
+   * @covers ::build
+   */
+  public function testRepoGateExplainedOnlyByItsOwnTag(): void {
+    $license = self::row(['rule' => 'STR-01', 'defect_key' => 'LICENSE:missing-license', 'summary' => 'No LICENSE file']);
+    $page = self::page(['structure' => self::block('Structure', [$license])]);
+    $page['repo_gate_block']['others'] = [
+      ['key' => 'license', 'label' => 'License', 'value' => 'fail'],
+      ['key' => 'readme_substantive', 'label' => 'README substantive', 'value' => 'fail'],
+    ];
+    $this->assertSame([
+      'The "README substantive" check failed.',
+      'No LICENSE file',
+    ], array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
+
+    // In a monorepo a repo gate is explained by its row in any app's block.
+    $page['apps'][] = ['name' => 'Other App', 'blocks' => ['structure' => self::block('Structure', [])]];
+    $page['apps'] = array_reverse($page['apps']);
+    $this->assertNotContains('The "License" check failed.', array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
+  }
+
+  /**
+   * A failed gate is explained only by a visible FAIL row of its rule.
+   *
+   * The reviewer dismissed the STR-07 FAIL and sent; the WARN note left over
+   * must not stand in for the failed gate at its own low severity.
+   *
+   * @covers ::build
+   */
+  public function testFailedGateNeedsVisibleFailRow(): void {
+    $fail = self::row([
+      'rule' => 'STR-07',
+      'defect_key' => 'apps/x:missing-entry-point',
+      'severity' => 'high',
+      'tool_severity' => 'high',
+      'summary' => 'No entry point',
+    ]);
+    $note = self::row([
+      'rule' => 'STR-07',
+      'result' => 'WARN',
+      'severity' => 'low',
+      'tool_severity' => 'low',
+      'defect_key' => 'form.yml:other:odd-layout',
+      'summary' => 'Odd layout',
+    ]);
+    $gates = [['key' => 'structure', 'label' => 'Standard layout', 'value' => 'fail']];
+
+    $page = self::page(['structure' => self::block('Structure', [$fail, $note], $gates)]);
+    $this->assertSame(['No entry point', 'Odd layout'], array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
+
+    $page = self::page(['structure' => self::block('Structure', [['dismissed' => TRUE] + $fail, $note], $gates)]);
+    $findings = ContributorReviewView::build($page, TRUE)['findings'];
+    $this->assertSame(['The "Standard layout" check failed.', 'Odd layout'], array_column($findings, 'summary'));
+    $this->assertSame(['high', 'low'], array_column($findings, 'severity'));
+    // Before sending, the dismissed FAIL is still the tool's and is listed.
+    $this->assertSame(['No entry point', 'Odd layout'], array_column(ContributorReviewView::build($page, FALSE)['findings'], 'summary'));
+  }
+
+  /**
+   * The template syntax gate is explained by STR-05 or STR-06.
+   *
+   * @covers ::build
+   */
+  public function testTemplateSyntaxGate(): void {
+    $syntax = self::row([
+      'rule' => 'STR-06',
+      'defect_key' => 'template/script.sh.erb:bash-syntax-error',
+      'summary' => 'bash -n fails',
+    ]);
+    $gates = [['key' => 'template_syntax', 'label' => 'Template syntax', 'value' => 'fail']];
+    $page = self::page(['structure' => self::block('Structure', [$syntax], $gates)]);
+    $this->assertSame(['bash -n fails'], array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
   }
 
   /**
