@@ -565,7 +565,7 @@ display:
           exposed: true
           expose:
             operator_id: ood_ai_report_op
-            label: 'AI report'
+            label: 'Automated check'
             description: ''
             use_operator: false
             operator: ood_ai_report_op

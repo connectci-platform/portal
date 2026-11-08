@@ -2,6 +2,8 @@
 
 namespace Drupal\ood_software\Service;
 
+use Drupal\node\NodeInterface;
+
 /**
  * Shapes a review's data for the review page.
  *
@@ -122,6 +124,23 @@ final class ReviewPageData {
     'readme_substantive' => 'README substantive',
     'not_archived' => 'Not archived',
     'public' => 'Public',
+  ];
+
+  /**
+   * The finding rows behind each gate.
+   *
+   * As the review tool derives the gates (assemble-artifact.py): gate =>
+   * [rules, defect_key tags or NULL for any]. STR-01 sets two repo gates, so
+   * those two are told apart by tag.
+   */
+  const GATE_RULES = [
+    'metadata' => [['STR-02'], NULL],
+    'yaml_valid' => [['STR-03'], NULL],
+    'structure' => [['STR-07'], NULL],
+    'template_syntax' => [['STR-05', 'STR-06'], NULL],
+    'references' => [['STR-04'], NULL],
+    'license' => [['STR-01'], ['missing-license']],
+    'readme_substantive' => [['STR-01'], ['missing-readme', 'readme-not-substantive']],
   ];
 
   /**
@@ -737,6 +756,16 @@ final class ReviewPageData {
       $total += array_sum(array_column($block['groups'], 'count'));
     }
     return ['maintenance' => $maintenance, 'blocks' => $blocks, 'total' => $total];
+  }
+
+  /**
+   * Whether a review's report has landed.
+   *
+   * The seeder sets field_arv_reviewed_at when the report lands
+   * (AppverseReviewSeeder), so a set value means the contributor may read it.
+   */
+  public static function reportLanded(NodeInterface $review): bool {
+    return $review->hasField('field_arv_reviewed_at') && !$review->get('field_arv_reviewed_at')->isEmpty();
   }
 
 }

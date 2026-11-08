@@ -502,9 +502,10 @@ final class AppverseHubController extends ControllerBase {
   /**
    * Re-submits a live repo whose apps were sent back (appverse-planning#48).
    *
-   * One commit gives one AI report, so the whole repo is reviewed again. The
-   * repo and its accepted apps stay live; the apps sent back return to Ready
-   * for review. The run starts first, so a failed dispatch moves nothing.
+   * One commit gives one automated check, so the whole repo is reviewed
+   * again. The repo and its accepted apps stay live; the apps sent back
+   * return to Ready for review. The run starts first, so a failed dispatch
+   * moves nothing.
    */
   protected function resubmitLive(NodeInterface $repo): RedirectResponse {
     if ($this->repoMemberApps->sentBackCount($repo) === 0) {
@@ -529,7 +530,7 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Admin action: rerun the AI report.
+   * Admin action: Recheck, run the automated check again.
    *
    * Route: POST /appverse/repo/{node}/re-review
    */
@@ -633,7 +634,7 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Whether the repo's latest revision has an AI report run in flight.
+   * Whether the repo's latest revision has an automated check run in flight.
    *
    * @phpstan-impure
    */
@@ -646,20 +647,20 @@ final class AppverseHubController extends ControllerBase {
       $this->messenger()->addError($this->t('Reviews are only available for Repos.'));
       return $this->redirectToHub();
     }
-    $running = $this->t('An AI report for @title is already running.', ['@title' => $node->label()]);
+    $running = $this->t('An automated check for @title is already running.', ['@title' => $node->label()]);
     if ($this->runInFlight($node)) {
       $this->messenger()->addWarning($running);
       return $this->redirectToHub();
     }
     if ($this->reviewService->dispatchForNode($node)) {
-      $this->messenger()->addStatus($this->t('AI report started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full report).', ['@title' => $node->label()]));
+      $this->messenger()->addStatus($this->t('Automated check started for @title. The result appears on this card when the run completes (a few minutes; up to fifteen for a full check).', ['@title' => $node->label()]));
     }
     elseif ($this->runInFlight($node)) {
       // Another request started a run between the check and the dispatch.
       $this->messenger()->addWarning($running);
     }
     else {
-      $this->messenger()->addError($this->t('Could not start the AI report for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
+      $this->messenger()->addError($this->t('Could not start the automated check for @title. See the site log; a missing GitHub token is the usual cause.', ['@title' => $node->label()]));
     }
     return $this->redirectToHub();
   }
@@ -709,9 +710,15 @@ final class AppverseHubController extends ControllerBase {
    * checked (we're called before applyTransition runs).
    */
   protected function isFirstPublishOfRepo(NodeInterface $repo): bool {
-    $vids = $this->entityTypeManager()->getStorage('node')->revisionIds($repo);
-    foreach ($vids as $vid) {
-      $rev = $this->entityTypeManager()->getStorage('node')->loadRevision($vid);
+    $storage = $this->entityTypeManager()->getStorage('node');
+    $vids = $storage->getQuery()
+      ->allRevisions()
+      ->accessCheck(FALSE)
+      ->condition('nid', $repo->id())
+      ->sort('vid')
+      ->execute();
+    foreach (array_keys($vids) as $vid) {
+      $rev = $storage->loadRevision($vid);
       if ($rev instanceof NodeInterface && $rev->hasField('moderation_state') && $rev->get('moderation_state')->value === 'published') {
         return FALSE;
       }
@@ -796,7 +803,7 @@ final class AppverseHubController extends ControllerBase {
   }
 
   /**
-   * Where a repo's AI report run stands, as JSON for the page's poller.
+   * Where a repo's automated check run stands, as JSON for the page's poller.
    *
    * Reviewers only. With ?check=github the run is first checked against
    * GitHub (throttled and locked in the service), so a page that is open
@@ -814,7 +821,7 @@ final class AppverseHubController extends ControllerBase {
 
     $stepLabel = '';
     foreach ($this->repoProgress->steps($latest)['reviewer'] as $step) {
-      if ($step['step'] === 'AI report') {
+      if ($step['key'] === 'automated_check') {
         $stepLabel = (string) $step['label'];
         break;
       }

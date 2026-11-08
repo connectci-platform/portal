@@ -16,6 +16,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Controller\AppverseHubController;
+use Drupal\ood_software\Service\ContributorReviewView;
 use Drupal\ood_software\Service\DuplicateCheck;
 use Drupal\ood_software\Service\FindingOverride;
 use Drupal\ood_software\Service\RepoMemberApps;
@@ -181,7 +182,11 @@ final class ReviewPageForm extends FormBase {
     // while it can still be updated (appverse-planning#56).
     $updating = $reviewerView && $page['decision']['sent'] && $this->getRequest()->query->get('update')
       && $page['decision']['update_blocker'] === NULL;
-    $form['#theme'] = $mode === self::MODE_PUBLIC ? 'appverse_review_summary' : 'appverse_review_form';
+    $form['#theme'] = match ($mode) {
+      self::MODE_PUBLIC => 'appverse_review_summary',
+      self::MODE_CONTRIBUTOR => 'appverse_review_contributor',
+      default => 'appverse_review_form',
+    };
     $form['#attached']['library'][] = 'ood_software/appverse_review';
     $form['#page'] = $page;
     $form['#can_edit'] = $canEdit;
@@ -196,6 +201,24 @@ final class ReviewPageForm extends FormBase {
     // the repo's, so a superseded review shows where the repo is now.
     if ($mode !== self::MODE_PUBLIC && $repo instanceof NodeInterface) {
       $steps = $this->repoProgress->steps($repo);
+      if ($mode === self::MODE_CONTRIBUTOR) {
+        // Whether the decision is sent comes from the same place the page's
+        // decision does, so the two cannot disagree.
+        $view = ContributorReviewView::build($page, (bool) $page['decision']['sent']);
+        $steps['contributor'] = $this->contributorSteps($steps['contributor'], $view['state']);
+        $view['next_step'] = $view['state'] === 'decided'
+          ? self::withoutStatusSentence(ReviewProgress::contributorSentence($steps['contributor']))
+          : ReviewProgress::contributorSentence($steps['contributor']);
+        $view['decision_apps'] = $this->contributorDecisionApps($page);
+        // Names the band's tint: the strictest decision across the apps.
+        $view['decision_key'] = ReviewProgress::strictestDecision(array_column($view['decision_apps'], 'key'));
+        $view['resubmit'] = $this->contributorResubmit($view, $repo);
+        if ($view['resubmit'] !== NULL) {
+          // The form's CSRF token is per session.
+          $contributorCache = TRUE;
+        }
+        $form['#contributor_view'] = $view;
+      }
       $form['#progress'] = [
         '#theme' => 'appverse_progress',
         '#steps' => $reviewerView ? $steps['reviewer'] : $steps['contributor'],
@@ -212,7 +235,7 @@ final class ReviewPageForm extends FormBase {
       // act on. What the page should say is where things end up, and that
       // lives next to the assessment and the decision instead.
     }
-    // Rerun report and the run status line are the reviewer's alone, so a
+    // Recheck and the run status line are the reviewer's alone, so a
     // contributor's or visitor's page carries neither, nor any polling.
     $rerun = $this->rerunState($node, $repo instanceof NodeInterface ? $repo : NULL);
     if ($reviewerView && $repo instanceof NodeInterface) {
@@ -236,6 +259,9 @@ final class ReviewPageForm extends FormBase {
     // The page differs by permission, by whether the viewer owns the repo,
     // and by ?view=public; a cached copy must never cross those lines.
     $form['#cache']['contexts'] = ['user.permissions', 'user', 'url.query_args:view'];
+    if (!empty($contributorCache)) {
+      $form['#cache']['contexts'][] = 'session';
+    }
     // node_list: the history bar and the superseded banner depend on the
     // repo's other reviews, so a newly seeded review must invalidate this one.
     $form['#cache']['tags'] = array_merge($node->getCacheTags(), $repo instanceof NodeInterface ? $repo->getCacheTags() : [], ['node_list']);
@@ -312,7 +338,7 @@ final class ReviewPageForm extends FormBase {
         '#value' => $this->t('Start the next round'),
         '#attributes' => [
           'class' => ['btn', 'primary'],
-          'title' => $this->t('Re-submit the repo for its contributor, as their Re-submit button does: a new AI report on the latest commit, and round @n.', ['@n' => $this->repoProgress->facts($repo)['round'] + 1]),
+          'title' => $this->t('Re-submit the repo for its contributor, as their Re-submit button does: a new automated check on the latest commit, and round @n.', ['@n' => $this->repoProgress->facts($repo)['round'] + 1]),
         ],
         '#submit' => ['::startNextRound'],
         '#limit_validation_errors' => [],
@@ -808,6 +834,42 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
+   * Whether the repo's maintainer is worth naming beside the contributor.
+   *
+   * The maintainer is left out when it is empty or only repeats the
+   * contributor's display name or the GitHub owner of the repo, ignoring case,
+   * spaces, hyphens and underscores.
+   *
+   * @param string $maintainer
+   *   The repo's maintainer name, possibly empty.
+   * @param array<string, mixed>|null $contributor
+   *   The contributor link (name, url), or NULL.
+   * @param string $repoUrl
+   *   The repo's GitHub URL.
+   */
+  public static function maintainerDiffers(string $maintainer, ?array $contributor, string $repoUrl): bool {
+    $normalize = static fn (string $v): string => strtolower(str_replace([' ', '-', '_'], '', $v));
+    $maintainer = $normalize($maintainer);
+    if ($maintainer === '') {
+      return FALSE;
+    }
+    $owner = explode('/', trim((string) parse_url($repoUrl, PHP_URL_PATH), '/'))[0];
+    $known = [$normalize($owner), $normalize((string) ($contributor['name'] ?? ''))];
+    return !in_array($maintainer, array_filter($known), TRUE);
+  }
+
+  /**
+   * Whether this review was written by a different model than the last one.
+   *
+   * TRUE only when both name a model and the labels differ.
+   */
+  public static function modelChanged(?string $runMetaJson, ?string $previousRunMetaJson): bool {
+    $current = self::modelLabel($runMetaJson);
+    $previous = self::modelLabel($previousRunMetaJson);
+    return $current !== NULL && $previous !== NULL && $current['label'] !== $previous['label'];
+  }
+
+  /**
    * Links to the repo's member apps, published or not.
    *
    * @return list<array{url: string, label: string}>
@@ -843,7 +905,17 @@ final class ReviewPageForm extends FormBase {
 
     $rerun = $this->rerunState($node, $repo);
     $previous = $this->previousReviews($node, $repo);
-    $history = ReviewPageData::historyPosition($this->reviewHistory($repo), (int) $node->id());
+    $historyList = $this->reviewHistory($repo);
+    $history = ReviewPageData::historyPosition($historyList, (int) $node->id());
+    // Where the review this one is compared with sits in the history.
+    $comparedPosition = NULL;
+    if ($previous !== []) {
+      foreach (array_values($historyList) as $i => $item) {
+        if ((int) $item['nid'] === $previous[0]['nid']) {
+          $comparedPosition = $i + 1;
+        }
+      }
+    }
 
     // Once a decision is sent, the page shows what was sent, not what the
     // fields hold now (appverse-planning#51).
@@ -947,15 +1019,22 @@ final class ReviewPageForm extends FormBase {
 
     $repoGates = ReviewPageData::gatePills(json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
 
+    $repoUrl = $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty() ? (string) ($repo->get('field_repo_url')->first()->getValue()['uri'] ?? '') : '';
+    $maintainer = $repo && $repo->hasField('field_repo_maintainer_name') ? (string) ($repo->get('field_repo_maintainer_name')->value ?? '') : '';
+    $contributor = $this->contributorLink($repo);
+
     return [
       'nid' => $node->id(),
       'title' => $repo ? $repo->label() : $node->label(),
       'repo_label' => $repo ? $repo->label() : '',
-      'repo_url' => $repo && $repo->hasField('field_repo_url') && !$repo->get('field_repo_url')->isEmpty() ? $repo->get('field_repo_url')->first()->getValue()['uri'] : '',
-      'maintainer' => $repo && $repo->hasField('field_repo_maintainer_name') ? (string) ($repo->get('field_repo_maintainer_name')->value ?? '') : '',
+      'repo_url' => $repoUrl,
+      'show_maintainer' => self::maintainerDiffers($maintainer, $contributor, $repoUrl),
+      'compared_position' => $comparedPosition,
+      'model_changed' => self::modelChanged((string) ($node->get('field_arv_run_meta')->value ?? ''), $previous[0]['run_meta'] ?? NULL),
+      'maintainer' => $maintainer,
       // Who submitted the repo, linked to their community persona as the hub
       // card links it. NULL when the account has since been deleted.
-      'contributor' => $this->contributorLink($repo),
+      'contributor' => $contributor,
       'sha' => $sha,
       'sha7' => substr($sha, 0, 7),
       'ref' => (string) ($node->get('field_arv_ref')->value ?? ''),
@@ -1032,11 +1111,11 @@ final class ReviewPageForm extends FormBase {
       ] : NULL,
       'run_status' => [
         'in_flight' => $rerun['in_flight'],
-        'label' => $rerun['in_flight'] ? ($rerun['status'] === 'in_progress' ? (string) $this->t('AI report running') : (string) $this->t('AI report queued')) : '',
+        'label' => $rerun['in_flight'] ? ($rerun['status'] === 'in_progress' ? (string) $this->t('Automated check running') : (string) $this->t('Automated check queued')) : '',
       ],
       'repo_link' => $repo ? [
         'url' => $repo->toUrl()->toString(),
-        'label' => (string) $this->t('View repo'),
+        'label' => (string) $this->t('Repo page'),
       ] : NULL,
       'app_links' => $repo ? $this->appLinks($repo) : [],
       'edit_url' => Url::fromRoute('entity.node.edit_form', ['node' => $node->id()])->toString(),
@@ -1156,7 +1235,10 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
-   * Other reviews of the same repo, newest first, with their stable ids.
+   * Earlier reviews of the same repo, newest first, with their stable ids.
+   *
+   * Only reviews created before this one count: a round is compared with the
+   * round before it, never with a later one.
    *
    * @return array<mixed>
    */
@@ -1171,10 +1253,15 @@ final class ReviewPageForm extends FormBase {
       ->condition('field_arv_repo', $repo->id())
       ->condition('nid', $node->id(), '<>')
       ->sort('created', 'DESC')
-      ->range(0, 10)
+      ->sort('nid', 'DESC')
       ->execute();
     $previous = [];
     foreach ($storage->loadMultiple($nids) as $other) {
+      // Ordered like reviewHistory(): by created, then nid.
+      $created = (int) $other->getCreatedTime();
+      if ($created > (int) $node->getCreatedTime() || ($created === (int) $node->getCreatedTime() && (int) $other->id() > (int) $node->id())) {
+        continue;
+      }
       // accessCheck(TRUE) does not drop drafts a viewer may not see; this
       // does (see AppverseReviewService::latestReviewFor()).
       if (!$other->access('view')) {
@@ -1190,9 +1277,11 @@ final class ReviewPageForm extends FormBase {
       }
       $at = (int) ($other->get('field_arv_reviewed_at')->value ?? $other->getCreatedTime());
       $previous[] = [
+        'nid' => (int) $other->id(),
         'label' => $this->formatDate($at, 'date') . ' · ' . substr((string) $other->get('field_arv_sha')->value, 0, 7),
         'url' => Url::fromRoute('ood_software.review_page', ['node' => $other->id()])->toString(),
         'stable_ids' => array_values(array_filter($ids)),
+        'run_meta' => (string) ($other->get('field_arv_run_meta')->value ?? ''),
       ];
     }
     return $previous;
@@ -1254,6 +1343,103 @@ final class ReviewPageForm extends FormBase {
       }
     }
     return $history;
+  }
+
+  /**
+   * A next-step sentence without its leading restatement of the decision.
+   *
+   * The decision band's heading already says "Changes requested", "Declined"
+   * or "Accepted", so the sentence under it starts at what happens next. The
+   * hub card keeps the full sentence (ReviewProgress::contributorSentence()).
+   */
+  public static function withoutStatusSentence(string $sentence): string {
+    foreach ([t('Changes requested'), t('Declined'), t('Accepted')] as $status) {
+      $prefix = $status . '. ';
+      if (str_starts_with($sentence, $prefix)) {
+        return substr($sentence, strlen($prefix));
+      }
+    }
+    return $sentence;
+  }
+
+  /**
+   * The contributor's steps, with the In review step's note while it is open.
+   *
+   * Before the decision the contributor can still push to GitHub, so the step
+   * says what happens to those changes.
+   *
+   * @param array<int, array<string, mixed>> $steps
+   *   The contributor's four steps.
+   * @param string $state
+   *   The contributor view's state (waiting, precheck or decided).
+   *
+   * @return array<int, array<string, mixed>>
+   *   The steps.
+   */
+  protected function contributorSteps(array $steps, string $state): array {
+    if ($state !== 'precheck') {
+      return $steps;
+    }
+    foreach ($steps as &$step) {
+      if ($step['key'] === 'in_review' && $step['state'] === ReviewProgress::CURRENT) {
+        $step['label'] = (string) $this->t('Changes you push to GitHub now will be reviewed in the next round.');
+        $step['show_label'] = TRUE;
+      }
+    }
+    return $steps;
+  }
+
+  /**
+   * Each app's name and decision label, for the contributor's decision band.
+   *
+   * @param array<mixed> $page
+   *   The page from buildPage().
+   *
+   * @return array<int, array{key: string, name: string, label: string}>
+   *   One entry per decided app.
+   */
+  protected function contributorDecisionApps(array $page): array {
+    $apps = [];
+    foreach ((array) ($page['apps'] ?? []) as $app) {
+      $key = (string) ($app['conclusion'] ?? '');
+      $label = ReviewProgress::decisionLabel($key);
+      if ($label !== '') {
+        $apps[] = ['key' => $key, 'name' => (string) $app['name'], 'label' => $label];
+      }
+    }
+    return $apps;
+  }
+
+  /**
+   * The contributor's Re-submit action, or NULL when it does not apply.
+   *
+   * Offered on the repo's newest review once its decision asks for changes and
+   * the repo is where sendForReview() can act: needs_adjustment, or live with
+   * apps sent back, published or still in review (the cases
+   * AppverseHubController::sendForReview() handles). The URL carries the
+   * route's CSRF token.
+   *
+   * @param array<string, mixed> $view
+   *   The contributor view, with decision_apps.
+   * @param \Drupal\node\NodeInterface $repo
+   *   The repo the review is of.
+   *
+   * @return array{url: string}|null
+   *   The tokened send-for-review URL, or NULL.
+   */
+  protected function contributorResubmit(array $view, NodeInterface $repo): ?array {
+    if ($view['state'] !== 'decided' || $view['closed'] !== NULL
+      || !in_array('request_changes', array_column($view['decision_apps'], 'key'), TRUE)) {
+      return NULL;
+    }
+    $state = (string) ($repo->get('moderation_state')->value ?? '');
+    // The predicate of sendForReview() and the hub card: a live repo, or one
+    // in review, with apps sent back is re-submitted whole.
+    if ($state !== 'needs_adjustment'
+      && !(($repo->isPublished() || $state === 'ready_for_review') && $this->memberApps->sentBackCount($repo) > 0)) {
+      return NULL;
+    }
+    return ['url' => Url::fromRoute('ood_software.repo_send_for_review', ['node' => $repo->id()])->toString()];
   }
 
   /**

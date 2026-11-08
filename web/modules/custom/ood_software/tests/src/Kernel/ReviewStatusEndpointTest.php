@@ -288,7 +288,7 @@ class ReviewStatusEndpointTest extends KernelTestBase {
   }
 
   /**
-   * The card offers Run AI report on a stale pending repo.
+   * The card offers Run automated check on a stale pending repo.
    */
   public function testHubCardShowsRunReportForStalePending(): void {
     $repo = $this->repoInFlight();
@@ -299,7 +299,7 @@ class ReviewStatusEndpointTest extends KernelTestBase {
   }
 
   /**
-   * The card withholds Run AI report while a run is in flight.
+   * The card withholds Run automated check while a run is in flight.
    */
   public function testHubCardHidesRunReportWhileInFlight(): void {
     $repo = $this->repoInFlight();

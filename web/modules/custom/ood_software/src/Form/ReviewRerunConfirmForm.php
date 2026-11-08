@@ -11,10 +11,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Asks to rerun the AI report, confirmed before the run starts (D8-2931).
+ * Asks to run the automated check again (D8-2931).
  *
- * The page posts straight to the hub's run-review route, which starts the run
- * and sends the reviewer back here to the review.
+ * The check is confirmed before the run starts. The page posts straight to
+ * the hub's run-review route, which starts the run and sends the reviewer
+ * back here to the review.
  */
 final class ReviewRerunConfirmForm extends ConfirmFormBase {
 
@@ -88,22 +89,21 @@ final class ReviewRerunConfirmForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function getQuestion() {
-    return $this->t('Rerun the AI report for @repo? The new report becomes the newest review of this repo. This review, including your notes and edits, stays as it is.', ['@repo' => $this->repo->label()]);
+    return $this->t('Run the automated check again for @repo?', ['@repo' => $this->repo->label()]);
   }
 
   /**
    * {@inheritdoc}
    */
   public function getDescription() {
-    // @phpstan-ignore-next-line
-    return '';
+    return $this->t('This starts a new review of the same commit. The current review stays in Earlier reviews.');
   }
 
   /**
    * {@inheritdoc}
    */
   public function getConfirmText() {
-    return $this->t('Rerun report');
+    return $this->t('Recheck');
   }
 
   /**

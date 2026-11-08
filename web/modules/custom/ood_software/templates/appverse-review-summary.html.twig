@@ -74,31 +74,40 @@
 
   <div class="overview-block">
     <div class="overview-row">
-      {# The same two lines as the full page: what was reviewed, then the
-         commit and when (appverse-planning#53). #}
+      {# The reviewer page's header lines, for visitors: the app, what was
+         reviewed, then this review. No "Submitted by", no links out, no
+         rerun note. #}
       <div class="overview-meta">
+        <h2 class="overview-title">{{ page.title }}</h2>
         <div class="overview-line overview-facts">
           {% if page.repo_url %}
-            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
+            <span>{{ page.repo_url|replace({'https://': '', 'http://': '', 'github.com/': ''}) }}</span>
           {% endif %}
-          {% if page.maintainer %}
-            <span class="overview-sep" aria-hidden="true">/</span>
-            {{ 'Maintainer: @m'|t({'@m': page.maintainer}) }}
+          {% if page.show_maintainer %}
+            <span class="overview-sep" aria-hidden="true">·</span>
+            {{ 'Maintained by @m'|t({'@m': page.maintainer}) }}
           {% endif %}
           {% if page.shape %}
-            <span class="overview-sep" aria-hidden="true">/</span>
+            <span class="overview-sep" aria-hidden="true">·</span>
             {{ page.shape }}
           {% endif %}
         </div>
         <div class="overview-line overview-line--sub">
-          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
+          <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
+          {% if page.reviewed_at %}<span class="overview-sep" aria-hidden="true">·</span>{{ page.reviewed_at }}{% endif %}
+          <span class="overview-sep" aria-hidden="true">·</span>
+          {% if page.history and page.history.total > 1 %}
+            <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
+          {% else %}
+            {{ 'First review of this repo'|t }}
+          {% endif %}
         </div>
       </div>
-      {% if page.history and page.history.total > 1 %}
+      {% if page.history and page.history.total > 1 and (page.history.older or page.history.newer) %}
         <div class="prev-reviews review-history">
-          <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
-          {% if page.history.older %}· <a href="{{ page.history.older.url }}">‹ {{ 'Older'|t }}</a>{% endif %}
-          {% if page.history.newer %}· <a href="{{ page.history.newer.url }}">{{ 'Newer'|t }} ›</a>{% endif %}
+          {% if page.history.older %}<a href="{{ page.history.older.url }}">‹ {{ 'Older'|t }}</a>{% endif %}
+          {% if page.history.older and page.history.newer %}·{% endif %}
+          {% if page.history.newer %}<a href="{{ page.history.newer.url }}">{{ 'Newer'|t }} ›</a>{% endif %}
         </div>
       {% endif %}
     </div>

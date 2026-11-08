@@ -17,8 +17,8 @@ use Drupal\Tests\user\Traits\UserCreationTrait;
  * that is no longer true.
  *
  * A run dispatched after a decision was sent used to mean the contributor had
- * re-submitted, whoever started it. An admin's Run AI report dispatches too,
- * so re-running the report on a repo the reviewer had sent back showed the
+ * re-submitted, whoever started it. An admin's Run automated check dispatches
+ * too, so re-running the report on a repo the reviewer had sent back showed the
  * contributor "Resubmitted · round 2" and told them the repo was in review,
  * with the Re-submit button still in front of them.
  *
@@ -97,8 +97,8 @@ class RepoProgressAndHubCacheTest extends KernelTestBase {
   /**
    * Re-running the report on a sent-back repo is still round 1.
    *
-   * The repo stays in needs_adjustment, because Run AI report does not move
-   * it. Nothing about the contributor's position has changed, so the line
+   * The repo stays in needs_adjustment, because Run automated check does not
+   * move it. Nothing about the contributor's position has changed, so the line
    * must not say they re-submitted.
    *
    * @covers ::facts

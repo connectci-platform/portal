@@ -27,6 +27,7 @@ use Drupal\content_moderation\Plugin\views\filter\ModerationStateFilter;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\views\filter\ModerationStateNeedsAttention;
 use Drupal\ood_software\Service\DecisionEmail;
+use Drupal\ood_software\Service\ReviewPageData;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
@@ -76,6 +77,11 @@ function ood_software_theme(): array {
     'appverse_review_form' => [
       'render element' => 'form',
       'template' => 'appverse-review-form',
+    ],
+    // The repo owner's page: the tool's report, then the decision once sent.
+    'appverse_review_contributor' => [
+      'render element' => 'form',
+      'template' => 'appverse-review-contributor',
     ],
     // The same form rendered for visitors: the public summary of a review.
     'appverse_review_summary' => [
@@ -503,8 +509,8 @@ function ood_software_form_alter(array &$form, FormStateInterface $form_state, s
  * Whether a repo is decided on its review page rather than from the hub.
  *
  * True once it has a review, or has had an AI run even when the run failed
- * and seeded no review: a failed AI report is rerun, never decided by hand
- * (appverse-planning#34). The hub's Publish and Request changes would be a
+ * and seeded no review: a failed automated check is rechecked, never decided
+ * by hand (appverse-planning#34). The hub's Publish and Request changes would be a
  * second, unrecorded place to act, so the hub hides them and their routes
  * refuse (#50). Repos without a review (legacy, or before a run) keep them.
  */
@@ -687,7 +693,7 @@ function ood_software_form_user_form_alter(array &$form, FormStateInterface $for
     'ood_software_submitted_emails' => [
       '#type' => 'checkbox',
       '#title' => t('Email me when a repo with no assigned reviewer is submitted, resubmitted or updated for review'),
-      '#description' => t('Emails about repos assigned to you, and about your own reviews such as your AI report being ready, are sent either way.'),
+      '#description' => t('Emails about repos assigned to you, and about your own reviews such as your automated check being ready, are sent either way.'),
       '#default_value' => !$notifier->optedOut($account),
     ],
   ];
@@ -1381,10 +1387,24 @@ function _ood_software_resync_repo_batch(int $repoId, string $repoUrl, ?string $
  * depth for any other write path. The hub's Withdraw sets the state in
  * code, so this does not stop it.
  *
+ * A review's report files are for reviewers only (appverse-planning#42).
+ * The contributor can read an unpublished review once its report lands, and
+ * core lets a file be downloaded by whoever can view the referencing field,
+ * so viewing the report fields is forbidden without "administer appverse
+ * content", before and after a decision.
+ *
  * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface>|null $items
  *   The field values, when access is checked on an entity.
  */
 function ood_software_entity_field_access(string $operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL): AccessResultInterface {
+  if (
+    $operation === 'view'
+    && in_array($field_definition->getName(), ['field_arv_report_md', 'field_arv_report_html', 'field_arv_report_pdf'], TRUE)
+    && $field_definition->getTargetEntityTypeId() === 'node'
+    && !$account->hasPermission('administer appverse content')
+  ) {
+    return AccessResult::forbidden('A review\'s report files are for reviewers.')->cachePerPermissions();
+  }
   if ($operation !== 'edit' || $field_definition->getName() !== 'moderation_state' || $items === NULL) {
     return AccessResult::neutral();
   }
@@ -1455,20 +1475,21 @@ function ood_software_node_access(NodeInterface $node, string $operation, Accoun
   if (in_array('appverse_pm', $account->getRoles(), TRUE)) {
     return $access->orIf(AccessResult::allowed());
   }
-  // An unpublished review: reviewers (above), and the repo's owner once a
-  // decision has been sent (decision_sent_at; appverse-planning#28,
-  // REVIEW-STATES.md "Who can read the review"). Everyone else is forbidden,
+  // An unpublished review: reviewers (above), and the repo's owner once its
+  // report has landed (reviewed_at) or a decision has been sent
+  // (decision_sent_at; appverse-planning#28, REVIEW-STATES.md "Who can read
+  // the review"). Everyone else is forbidden,
   // not neutral: the review's author may be the contributor (a review is
   // authored by whoever started the run, send-for-review included) and every
   // user holds "view own unpublished content", which would otherwise let them
-  // read it before any decision is sent.
+  // read it before its report lands.
   if ($node->bundle() === 'appverse_review') {
     $sent = $node->hasField('field_arv_decision_sent_at') && !$node->get('field_arv_decision_sent_at')->isEmpty();
     $repo = $node->hasField('field_arv_repo') ? $node->get('field_arv_repo')->entity : NULL;
-    if ($sent && $repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
+    if (($sent || ReviewPageData::reportLanded($node)) && $repo instanceof NodeInterface && $account->isAuthenticated() && (int) $repo->getOwnerId() === (int) $account->id()) {
       return $access->addCacheContexts(['user'])->addCacheableDependency($repo)->orIf(AccessResult::allowed());
     }
-    return $access->addCacheContexts(['user'])->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers, and to the contributor once a decision is sent.'));
+    return $access->addCacheContexts(['user'])->orIf(AccessResult::forbidden('An unpublished review is visible to reviewers, and to the contributor once its report has landed.'));
   }
 
   return $access;
@@ -1850,8 +1871,8 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       break;
 
     case 'review_run_ready':
-      $message['subject'] = t('[@site] AI report ready: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = t('<p>The AI report for "@title" is ready to check.</p>', ['@title' => $title]);
+      $message['subject'] = t('[@site] Automated check ready: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The automated check for "@title" is ready to read.</p>', ['@title' => $title]);
       $review = $params['review'] ?? NULL;
       $message['body'][] = $review instanceof NodeInterface
         ? t('<p>The review: <a href=":url">:url</a></p>', [
@@ -1861,9 +1882,9 @@ function ood_software_mail(string $key, array &$message, array $params): void {
       break;
 
     case 'review_run_failed':
-      $message['subject'] = t('[@site] AI report failed: @title', ['@site' => $site_name, '@title' => $title]);
-      $message['body'][] = t('<p>The AI report for "@title" failed: @reason.</p>', ['@title' => $title, '@reason' => (string) ($params['reason'] ?? '')]);
-      $message['body'][] = t('<p>Fix the cause, then use Rerun AI report on the repo. There is no review by hand.</p>');
+      $message['subject'] = t('[@site] Automated check failed: @title', ['@site' => $site_name, '@title' => $title]);
+      $message['body'][] = t('<p>The automated check for "@title" failed: @reason.</p>', ['@title' => $title, '@reason' => (string) ($params['reason'] ?? '')]);
+      $message['body'][] = t('<p>Fix the cause, then use Recheck on the repo. There is no review by hand.</p>');
       if (!empty($params['run_id'])) {
         $message['body'][] = t('<p>The run log: <a href=":url">:url</a></p>', [
           ':url' => sprintf('https://github.com/%s/actions/runs/%d', \Drupal\ood_software\Service\AppverseReviewService::REVIEW_REPO, (int) $params['run_id']),
@@ -2457,11 +2478,11 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
     : NULL;
 
   $isAdmin = \Drupal::currentUser()->hasPermission('administer appverse content');
-  // Run AI report: on every repo an admin can see, whatever its moderation
-  // state, except while a run is in flight (the progress line's AI report
-  // step says so). In flight is the shared rule: a pending status older than
-  // the stale timeout is not a run in progress. The action does not move the
-  // app's editorial state.
+  // Run automated check: on every repo an admin can see, whatever its
+  // moderation state, except while a run is in flight (the progress line's
+  // automated check step says so). In flight is the shared rule: a pending
+  // status older than the stale timeout is not a run in progress. The action
+  // does not move the app's editorial state.
   //
   // "Start review" read as starting the human review, which is the next step
   // along and a different thing. The model produces a report; the reviewer
@@ -2471,11 +2492,10 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   $dispatcher = \Drupal::service('ood_software.review_dispatcher');
   $inFlight = $isAdmin && $dispatcher->isRunInFlight($dispatcher->latestRevision($repo));
   if ($isAdmin && !$inFlight) {
-    // "Rerun report", not "Rerun AI report": the pair with the Actions toggle
-    // beside it has to fit a 12.5rem column, and the longer wording wrapped
-    // that card onto a second row. "Run AI report" (no prior run) is short
-    // enough to keep the AI, and a rerun is of the report just named.
-    $label = $reviewStatus === NULL ? t('Run AI report') : t('Rerun report');
+    // "Recheck", short because the pair with the Actions toggle beside it has
+    // to fit a 12.5rem column and longer wording wrapped that card onto a
+    // second row.
+    $label = $reviewStatus === NULL ? t('Run automated check') : t('Recheck');
     if (!\Drupal::service('ood_software.review_dispatcher')->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
@@ -2503,7 +2523,7 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
   // coming, so the label is the rerun one.
   $runReviewActionHidden = NULL;
   if ($inFlight) {
-    $label = t('Rerun report');
+    $label = t('Recheck');
     if (!$dispatcher->fullReviewsEnabled()) {
       $label = t('@label (dry-run on this environment)', ['@label' => $label]);
     }
@@ -2517,13 +2537,21 @@ function _ood_software_hub_review_info(\Drupal\node\NodeInterface $repo): array 
 
   // The newest review node for this repo, if the viewer may see it.
   $reviewUrl = NULL;
+  $reportLanded = FALSE;
   $latest = \Drupal::service('ood_software.review_dispatcher')->latestReviewFor($repo);
   if ($latest !== NULL) {
     $reviewUrl = \Drupal\Core\Url::fromRoute('ood_software.review_page', ['node' => $latest->id()])->toString();
+    // Review nodes exist only once a report lands, so during a re-submit round
+    // the newest one is the previous round's. Its decision was sent; this
+    // round's check is not here yet, so the card must not say it is.
+    $reportLanded = ReviewPageData::reportLanded($latest)
+      && $latest->hasField('field_arv_decision_sent_at')
+      && $latest->get('field_arv_decision_sent_at')->isEmpty();
   }
 
   return [
     'review_url' => $reviewUrl,
+    'report_landed' => $reportLanded,
     'run_review_action' => $runReviewAction,
     'run_review_action_menu' => $runReviewActionMenu,
     'run_review_action_hidden' => $runReviewActionHidden,
@@ -2740,7 +2768,8 @@ function _ood_software_hub_repo_actions(\Drupal\node\NodeInterface $repo, bool $
   // Every card collapses into a menu. Named actions are much wider than the
   // icons they replace: a contributor's three come to ~430px of buttons and a
   // reviewer's six to far more, against an actions column of 13rem, so either
-  // role overflows and wraps onto the progress line below (appverse-planning#55).
+  // role overflows and wraps onto the progress line below
+  // (appverse-planning#55).
   // One inline action plus the menu fits both. This flag is also what the
   // template reads as hub.has_menu, so the two stay in step by construction.
   $inMenu = TRUE;
@@ -2988,7 +3017,7 @@ function _ood_software_build_hub_row(\Drupal\node\NodeInterface $repo): array {
     'progress' => $progress,
     // Reviewers only: who is reviewing this repo (appverse-planning#33).
     'assignee' => $isAdmin ? (\Drupal::service('ood_software.review_assignment')->assignee($repo)?->getDisplayName() ?? '') : NULL,
-    'progress_sentence' => $isAdmin ? '' : \Drupal\ood_software\Service\ReviewProgress::contributorSentence($steps['contributor']),
+    'progress_sentence' => $isAdmin ? '' : \Drupal\ood_software\Service\ReviewProgress::contributorSentence($steps['contributor'], $review['report_landed']),
     // One chip for the card; the full five-step line stays on the review page
     // (appverse-planning#55).
     'progress_chip' => \Drupal\ood_software\Service\ReviewProgress::chip($isAdmin ? $steps['reviewer'] : $steps['contributor']),
@@ -3191,8 +3220,8 @@ function ood_software_views_data_alter(array &$data): void {
   // The manage-repos "AI report" filter: the latest run's state (D8-2927; the
   // AiReportState filter plugin).
   $data['node_field_data']['ood_ai_report'] = [
-    'title' => t('AI report state'),
-    'help' => t('The state of the repo\'s latest AI report, as its hub card shows it.'),
+    'title' => t('Automated check state'),
+    'help' => t('The state of the repo\'s latest automated check, as its hub card shows it.'),
     'real field' => 'nid',
     'filter' => ['id' => 'ood_software_ai_report_state'],
   ];

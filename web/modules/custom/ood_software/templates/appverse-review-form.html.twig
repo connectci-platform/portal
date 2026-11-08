@@ -131,7 +131,7 @@
     <div class="gates">
       {% if summary.passes %}
         <details class="gate-passes">
-          <summary class="gate-passes__count">
+          <summary class="gate-passes__count{% if summary.passed == summary.total %} gate-passes__count--all{% endif %}">
             {{ '@label: @n of @total passed'|t({'@label': label, '@n': summary.passed, '@total': summary.total}) }}
           </summary>
           <div class="gate-passes__list">
@@ -352,78 +352,75 @@
   {% endif %}
   <div class="overview-block">
     <div class="overview-row">
-      {# Two lines: what was reviewed, then who/when and the links. One long
-         line wrapped unevenly. #}
-      {# Who and what, separated by slashes: the repo, who submitted it, who
-         maintains it, and what shape it is. The commit and the run details
-         follow on their own line, since they are about this review rather
-         than the app (appverse-planning#53). #}
+      {# What was reviewed (the app, who sent it, what shape), then this
+         review (commit, date, position), then the links out. The model and
+         the tool build are in the footer: they matter when a finding looks
+         wrong, not in the header. #}
       <div class="overview-meta">
+        <h2 class="overview-title">{{ page.title }}</h2>
         <div class="overview-line overview-facts">
           {% if page.repo_url %}
-            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'github.com/': ''}) }}</a>
-          {% endif %}
-          {% if page.maintainer %}
-            <span class="overview-sep" aria-hidden="true">/</span>
-            {{ 'Maintainer: @m'|t({'@m': page.maintainer}) }}
+            <a href="{{ page.repo_url }}" target="_blank" rel="noopener">{{ page.repo_url|replace({'https://': '', 'http://': '', 'github.com/': ''}) }}</a>
           {% endif %}
           {% if page.contributor %}
-            <span class="overview-sep" aria-hidden="true">/</span>
-            {{ 'Contributor:'|t }} <a href="{{ page.contributor.url }}">{{ page.contributor.name }}</a>
+            <span class="overview-sep" aria-hidden="true">·</span>
+            {{ 'Submitted by'|t }} <a href="{{ page.contributor.url }}">{{ page.contributor.name }}</a>
+          {% endif %}
+          {% if page.show_maintainer %}
+            <span class="overview-sep" aria-hidden="true">·</span>
+            {{ 'Maintained by @m'|t({'@m': page.maintainer}) }}
           {% endif %}
           {% if page.shape %}
-            <span class="overview-sep" aria-hidden="true">/</span>
+            <span class="overview-sep" aria-hidden="true">·</span>
             {{ page.shape }}
           {% endif %}
         </div>
         <div class="overview-line overview-line--sub">
-          {{ 'Reviewed'|t }} <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
-          {% if page.reviewed_at %} · {{ page.reviewed_at }}{% endif %}
-          {% if page.model %} · <span title="{{ page.model_full }}">{{ page.model }}</span>{% endif %}
+          <code>{{ page.sha7 }}</code>{% if page.ref and page.ref != page.sha %} {{ 'on'|t }} <code>{{ page.ref }}</code>{% endif %}
+          {% if page.reviewed_at %}<span class="overview-sep" aria-hidden="true">·</span>{{ page.reviewed_at }}{% endif %}
+          <span class="overview-sep" aria-hidden="true">·</span>
+          {% if page.history and page.history.total > 1 %}
+            <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>{% if page.history.is_rerun %}{{ ', rerun of the same commit'|t }}{% endif %}
+          {% else %}
+            {{ 'First review of this repo'|t }}{% if page.history.is_rerun %}{{ ', rerun of the same commit'|t }}{% endif %}
+          {% endif %}
         </div>
         {# Go to the repo and its apps. Past three apps they collapse into one
            dropdown, as the hub card's Actions menu is built. #}
-        {% if page.repo_link or page.app_links %}
+        {% if page.repo_link or page.app_links or is_reviewer %}
           <div class="arv-go-links">
-            {% if page.repo_link %}<a class="btn" href="{{ page.repo_link.url }}">{{ page.repo_link.label }}</a>{% endif %}
+            {% if page.repo_link %}
+              <a href="{{ page.repo_link.url }}"><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>{{ page.repo_link.label }}</a>
+            {% endif %}
             {% if page.app_links|length > 3 %}
               <div class="dropdown arv-go-menu">
-                <button class="btn dropdown-toggle" type="button" id="arv-apps-{{ page.nid }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ 'Apps'|t }}</button>
+                <button class="dropdown-toggle" type="button" id="arv-apps-{{ page.nid }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M4 9h16"></path></svg>{{ 'Apps'|t }}</button>
                 <div class="dropdown-menu" aria-labelledby="arv-apps-{{ page.nid }}">
                   {% for app in page.app_links %}<a class="dropdown-item" href="{{ app.url }}">{{ app.label }}</a>{% endfor %}
                 </div>
               </div>
             {% else %}
-              {% for app in page.app_links %}<a class="btn" href="{{ app.url }}"{% if page.app_links|length > 1 %} title="{{ app.label }}"{% endif %}>{{ page.app_links|length > 1 ? 'View app: @app'|t({'@app': app.label}) : 'View app'|t }}</a>{% endfor %}
+              {% for app in page.app_links %}<a href="{{ app.url }}"{% if page.app_links|length > 1 %} title="{{ app.label }}"{% endif %}><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M4 9h16"></path></svg>{{ page.app_links|length > 1 ? 'View app: @app'|t({'@app': app.label}) : 'View app'|t }}</a>{% endfor %}
+            {% endif %}
+            {% if is_reviewer %}
+              <a href="{{ page.public_url }}"><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>{{ 'Public view'|t }}</a>
             {% endif %}
           </div>
         {% endif %}
       </div>
-      {# The header keeps the position and the rerun note; the reviews
-         themselves are listed below it, one line each, rather than as a
-         prev/next pair (appverse-planning#54). #}
-      {# Right-aligned: the public view link over how many reviews this repo
-         has had (appverse-planning#53). #}
-      <div class="prev-reviews review-history">
-        {% if is_reviewer %}<div><a href="{{ page.public_url }}">{{ 'Public view'|t }}</a></div>{% endif %}
-        {# Reviewer only. The link is rendered hidden while a run is in flight,
-           and the status line is the poller's target (D8-2931). #}
-        {% if is_reviewer and page.rerun %}
-          <div><a href="{{ page.rerun.url }}" data-review-rerun{% if not page.rerun.show %} hidden{% endif %}>{{ 'Rerun report'|t }}</a></div>
-        {% endif %}
-        {% if is_reviewer and page.run_status %}
-          <div class="arv-run-status" data-review-run-status role="status" aria-live="polite">{% if page.run_status.in_flight %}{{ page.run_status.label }}{% endif %}</div>
-          <div><a href="#" data-review-new hidden>{{ 'New report ready, open it'|t }}</a></div>
-        {% endif %}
-        {% if page.history and page.history.total > 1 %}
-          <b>{{ 'Review @n of @total'|t({'@n': page.history.position, '@total': page.history.total}) }}</b>
-          {% if page.history.is_rerun %}
-            <span class="history-dot" aria-hidden="true">·</span> <span class="rerun-note">{{ 'Rerun of the same commit'|t }}</span>
+      {# Reviewer only. The button is rendered hidden while a run is in flight,
+         and the status line is the poller's target (D8-2931). #}
+      {% if is_reviewer and (page.rerun or page.run_status) %}
+        <div class="arv-recheck-box review-history">
+          {% if page.rerun %}
+            <a class="arv-recheck" href="{{ page.rerun.url }}" data-review-rerun aria-label="{{ 'Recheck: run the automated check again on this commit'|t }}"{% if not page.rerun.show %} hidden{% endif %}><svg class="arv-go-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"></path><path d="M20 4v5h-5"></path></svg>{{ 'Recheck'|t }}</a>
           {% endif %}
-        {% else %}
-          <span class="muted">{{ 'First review of this repo'|t }}</span>
-        {% endif %}
-      </div>
+          {% if page.run_status %}
+            <div class="arv-run-status" data-review-run-status role="status" aria-live="polite">{% if page.run_status.in_flight %}{{ page.run_status.label }}{% endif %}</div>
+            <div><a href="#" data-review-new hidden>{{ 'New report ready, open it'|t }}</a></div>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
   </div>
   {% if form['#progress'] %}
@@ -456,11 +453,10 @@
           </ul>
         </details>
       {% endif %}
-      {% if page.round_delta.has_previous and (page.round_delta.new or page.round_delta.resolved) %}
+      {% if page.round_delta.has_previous and page.compared_position %}
         <div class="round-delta">
-          {% if page.round_delta.new %}<span class="round-delta__new">{{ '@n new since the last round'|t({'@n': page.round_delta.new}) }}</span>{% endif %}
-          {% if page.round_delta.new and page.round_delta.resolved %} · {% endif %}
-          {% if page.round_delta.resolved %}<span class="round-delta__resolved">{{ '@n resolved'|t({'@n': page.round_delta.resolved}) }}</span>{% endif %}
+          {{ 'Compared with review @n:'|t({'@n': page.compared_position}) }}
+          {{ '@new new'|t({'@new': page.round_delta.new}) }} · {{ '@resolved resolved'|t({'@resolved': page.round_delta.resolved}) }}{% if page.model_changed %} · {{ 'different model'|t }}{% endif %}
         </div>
       {% endif %}
       {% for app in page.apps %}
@@ -599,11 +595,11 @@
 
   {{ form|without('page', 'can_edit', 'conclusion', 'level', 'level_note', 'prose', 'maint_level', 'maint_level_note', 'response', 'assessment', 'new_note', 'assignee', 'actions', 'add_finding', 'edit_finding', 'delete_finding', 'override', 'save_finding', 'duplicate') }}
 
-  {# Which build of the tool wrote this report. It matters when a finding
-     looks wrong and someone is working out whether the tool has changed
-     since, which is not often enough to earn a place in the header
-     (appverse-planning#53). #}
-  {% if page.tool_version %}
-    <p class="arv-footnote">{{ 'Report produced by @tool'|t({'@tool': page.tool_version}) }}</p>
+  {# Which build of the tool and which model wrote this report. It matters
+     when a finding looks wrong and someone is working out whether the tool
+     has changed since, which is not often enough to earn a place in the
+     header. #}
+  {% if page.tool_version or page.model %}
+    <p class="arv-footnote">{% if page.tool_version %}{{ 'Report by appverse-review @tool'|t({'@tool': page.tool_version|replace({'appverse-review@': ''})}) }}{% else %}{{ 'Report'|t }}{% endif %}{% if page.model %} {{ 'using'|t }} <span title="{{ page.model_full }}">{{ page.model }}</span>{% endif %}{% if page.reviewed_at %}, {{ page.reviewed_at }}{% endif %}</p>
   {% endif %}
 </div>

@@ -372,7 +372,7 @@ class ManageReposFiltersTest extends KernelTestBase {
   }
 
   /**
-   * A repo whose AI report has the given run status and recommendation.
+   * A repo whose automated check has the given run status and recommendation.
    */
   private function makeReported(string $title, ?string $status, ?string $recommendation = NULL): NodeInterface {
     return $this->makeRepo($title, 'ready_for_review', array_filter([
