@@ -1165,6 +1165,10 @@ final class ReviewPageForm extends FormBase {
       // FAIL / WARN / PASS / NOT CHECKED. Rows seeded before the result was
       // stored have none and count as findings, as they always have.
       'result' => strtoupper(str_replace('_', ' ', (string) ($p->hasField('field_rvf_result') ? ($p->get('field_rvf_result')->value ?? '') : ''))) ?: 'FAIL',
+      // The result as stored, '' when none was: ReviewFloors tells a stored
+      // FAIL from a row seeded before results were (ReviewWorklist).
+      'stored_result' => strtolower((string) ($p->hasField('field_rvf_result') ? ($p->get('field_rvf_result')->value ?? '') : '')),
+      'aspect' => (string) ($p->get('field_rvf_aspect')->value ?? ''),
       'stable_id' => (string) ($p->get('field_rvf_stable_id')->value ?? ''),
       // The reviewer's wording when they edited it, else the tool's.
       'summary' => $change['summary'] ?? (string) ($p->get('field_rvf_summary')->value ?? ''),
