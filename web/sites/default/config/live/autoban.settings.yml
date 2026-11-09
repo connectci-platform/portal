@@ -1,3 +1,7 @@
 autoban_threshold_last: 2
 autoban_window_last: '1 hour ago'
 autoban_provider_last: ban
+autoban_whitelist: |-
+  # University of Kentucky, ACCESS support chatbot and its answer-quality checks.
+  128.163.239.139
+  128.163.202.94
