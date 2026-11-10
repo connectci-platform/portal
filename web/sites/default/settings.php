@@ -167,11 +167,13 @@ if (isset($env)) {
 // Access token clients (D8-2933) for every environment except live, whose
 // registry is the access.token_exchange config in the live split. Each other
 // environment registers only its own origin, against audiences no production
-// service accepts: a developer's local agent, and a reserved .invalid name for
-// XDMoD. This is a setting rather than a $config override because it must
-// replace the stored registry, not merge into it: a database cloned from live
-// carries live's. An environment still mints nothing until it has its own
-// agent and xdmod keys and an explicit issuer for its own host.
+// service accepts: a developer's local agent, and reserved .invalid names for
+// XDMoD and the MCP tool servers (D8-2946; a local tool server sets
+// MCP_TOKEN_AUDIENCE to match). This is a setting rather than a $config
+// override because it must replace the stored registry, not merge into it: a
+// database cloned from live carries live's. An environment still mints nothing
+// until it has its own agent and xdmod keys and an explicit issuer for its own
+// host.
 if (!empty($env) && $env !== 'live') {
   $token_origins = $env === 'local'
     ? ['https://accessmatch.ddev.site', 'https://chat.accessmatch.ddev.site']
@@ -187,8 +189,10 @@ if (!empty($env) && $env !== 'live') {
     ],
     'access-assistant' => [
       'type' => 'confidential',
-      'audience' => 'https://xdmod.dev.invalid',
-      'scopes' => ['xdmod:read'],
+      'audiences' => [
+        ['audience' => 'https://xdmod.dev.invalid', 'scopes' => ['xdmod:read']],
+        ['audience' => 'https://mcp.dev.invalid', 'scopes' => ['mcp:write']],
+      ],
       'subject_clients' => ['access-qa-bot'],
     ],
   ];
