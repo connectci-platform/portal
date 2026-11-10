@@ -2542,7 +2542,8 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    *
    * @return bool
    *   FALSE when the save was refused as coming from an out-of-date window,
-   *   and nothing else was checked.
+   *   or as a Confirm on a duplicate check that changed since the page
+   *   loaded, and nothing else was checked.
    */
   protected function validatePage(array $form, FormStateInterface $form_state, ?string $skip = NULL): bool {
     $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($this->node->id());
@@ -2599,6 +2600,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
         $this->messenger()->addError($this->duplicateChangedMessage());
       }
       $form_state->setRebuild();
+      // Nothing else is checked: any form error would stop the rebuild and
+      // redraw the stale check.
+      return FALSE;
     }
     foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
       if (DuplicateCheck::needsNote((string) ($input['outcome'] ?? ''), (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {

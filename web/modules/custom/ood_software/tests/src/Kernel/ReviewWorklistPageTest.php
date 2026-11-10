@@ -602,6 +602,15 @@ class ReviewWorklistPageTest extends KernelTestBase {
         $this->assertContains($message, array_map('strval', \Drupal::messenger()->messagesByType('error')));
       }
     }
+    // An outcome picked with no note would be a form error on the check now
+    // that it isn't clear; the refusal still rebuilds instead of redrawing
+    // the stale check.
+    $input['duplicate'][$pid]['outcome'] = 'none';
+    [$form, $formState] = $this->post($review, $input, 'confirm_duplicate__' . $pid, 'Confirm', TRUE);
+    $this->assertNull(Paragraph::load($pid)->get('field_rvv_duplicate')->value);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertTrue($formState->isRebuilding());
+    $this->assertStringNotContainsString('confirm_duplicate__', $this->duplicateHtml($this->renderForm($form), $pid));
   }
 
   /**
