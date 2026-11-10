@@ -62,6 +62,20 @@ describe("Resource Documentation API", () => {
       expect(metrics["gpu-standard"]).to.have.property("job_count");
       expect(metrics["gpu-standard"].daily_wait).to.be.an("array");
       expect(response.body.queue_metrics_updated).to.be.a("string");
+      // Null until the nightly fetch rewrites a blob from before last_data
+      // existed (the CI database's fixture can be one), else YYYY-MM-DD.
+      expect(response.body, "queue_metrics_last_data").to.have.property("queue_metrics_last_data");
+      const lastData = response.body.queue_metrics_last_data;
+      if (lastData !== null) {
+        expect(lastData).to.match(/^\d{4}-\d{2}-\d{2}$/);
+      }
+      // wait_time is hours or null (missing data), never omitted.
+      Object.entries(metrics).forEach(([name, queue]) => {
+        expect(queue, `${name} wait_time`).to.have.property("wait_time");
+        if (queue.wait_time !== null) {
+          expect(queue.wait_time, `${name} wait_time`).to.be.a("number");
+        }
+      });
 
       // The measurement lives once in queue_metrics; queue_specs rows are per
       // node type and must not carry a copy.
