@@ -83,24 +83,33 @@ final class ReviewWorklist {
     }
     $repo['items'] = array_merge($gateItems, $repo['items']);
 
-    // Every-app blockers, as reference rows in each other app's list.
+    // Every-app blockers, as reference rows in each other app's list: one
+    // row per blocker when a list has one, else one row for all of that
+    // list's, linking to the most severe, so a monorepo does not repeat a
+    // dozen rows in every app.
     if ($multi) {
       $sources = [['Repository', NULL, $repo['every_app']]];
       foreach ($appLists as $i => $list) {
         $sources[] = [(string) ($list['app']['name'] ?? ''), $i, $list['every_app']];
       }
       foreach ($sources as [$title, $from, $everyApp]) {
-        foreach ($everyApp as $item) {
-          foreach (array_keys($appLists) as $i) {
-            if ($i === $from) {
-              continue;
-            }
-            $appLists[$i]['items'][] = self::item('reference', $item['section'], $item['section_title'], $item['severity'], $item['blocking'], [
-              'pid' => $item['row']['pid'] ?? NULL,
-              'app_title' => $title,
-              'rule' => (string) ($item['row']['rule'] ?? ''),
-              'summary' => (string) ($item['row']['summary'] ?? ''),
-            ]);
+        if ($everyApp === []) {
+          continue;
+        }
+        // Stable, so ties keep page order.
+        usort($everyApp, static fn (array $a, array $b): int => self::severityRank($a['severity']) <=> self::severityRank($b['severity']));
+        $item = $everyApp[0];
+        $reference = self::item('reference', $item['section'], $item['section_title'], $item['severity'], $item['blocking'], [
+          'pid' => $item['row']['pid'] ?? NULL,
+          'app_title' => $title,
+          'source_title' => $title,
+          'count' => count($everyApp),
+          'rule' => (string) ($item['row']['rule'] ?? ''),
+          'summary' => (string) ($item['row']['summary'] ?? ''),
+        ]);
+        foreach (array_keys($appLists) as $i) {
+          if ($i !== $from) {
+            $appLists[$i]['items'][] = $reference;
           }
         }
       }

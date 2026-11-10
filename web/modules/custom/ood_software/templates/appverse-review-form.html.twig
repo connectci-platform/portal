@@ -157,9 +157,17 @@
   {% elseif item.kind == 'reference' %}
     <div class="finding finding--reference" data-section="{{ item.section }}">
       <div class="frow">
-        <div class="rule">{{ item.row.rule }}</div>
-        <div>
-          <div class="sum"><a href="#finding-{{ item.row.pid }}">{{ item.row.summary }}</a><span class="arv-sep" aria-hidden="true"> · </span>{{ 'Blocks every app'|t }}<span class="arv-sep" aria-hidden="true"> · </span>{{ 'in @app'|t({'@app': item.row.app_title}) }}</div>
+        {# Two or more from the same list read as one row (ReviewWorklist),
+           linking to the most severe. #}
+        {% if item.row.count > 1 %}
+          <div class="rule"></div>
+          <div>
+            <div class="sum"><a href="#finding-{{ item.row.pid }}">{{ '@n blocking findings in @source apply to every app'|t({'@n': item.row.count, '@source': item.row.source_title}) }}</a></div>
+        {% else %}
+          <div class="rule">{{ item.row.rule }}</div>
+          <div>
+            <div class="sum"><a href="#finding-{{ item.row.pid }}">{{ item.row.summary }}</a><span class="arv-sep" aria-hidden="true"> · </span>{{ 'Blocks every app'|t }}<span class="arv-sep" aria-hidden="true"> · </span>{{ 'in @app'|t({'@app': item.row.app_title}) }}</div>
+        {% endif %}
           {{ m.item_details(item, labels) }}
         </div>
       </div>
@@ -375,14 +383,15 @@
           {# The reviewer's duplicate check for this app (A4). Required to
              accept the app. #}
           {% if app %}
+            {# No whitespace when there is nothing in it, so :empty hides it. #}
             <div class="duplicate-check-block" id="duplicate-{{ app.pid }}">
-              {% if can_edit or form['#updating'] %}
+              {%- if can_edit or form['#updating'] -%}
                 {{ attribute(form.duplicate, app.pid) }}
-              {% elseif app.duplicate.outcome %}
+              {%- elseif app.duplicate.outcome -%}
                 <div class="catalog-checks-title">{{ 'Duplicate check'|t }}</div>
                 <div>{{ app.duplicate.label }}</div>
                 {% if app.duplicate.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ app.duplicate.note }}</div>{% endif %}
-              {% endif %}
+              {%- endif -%}
             </div>
           {% endif %}
 
@@ -408,11 +417,7 @@
           {% endfor %}
 
           {{ m.section_anchors(list, null) }}
-          {# The repo gates' evidence and the report's catalog text (older
-             reviews) are the repo's, so they fold with its passes. #}
-          {% set gates = not app ? page.repo_gate_block : null %}
-          {% set repo_extra = gates and (gates.rows or gates.catalog_html or gates.catalog_read) %}
-          {% if list.passed is not empty or repo_extra %}
+          {% if list.passed is not empty %}
             <details class="checked-rows" id="fold-{{ list.key }}-passed">
               <summary>{{ 'Passed checks'|t }}</summary>
               {% for entry in list.passed %}
@@ -423,25 +428,32 @@
                   {% endfor %}
                 </details>
               {% endfor %}
-              {% if repo_extra %}
-                {% if gates.rows %}
-                  <ul class="gate-rows">
-                    {% for row in gates.rows %}
-                      <li>
-                        <span class="gate-result gate-result--{{ row.result|lower }}">{{ row.result }}</span>
-                        {% if row.rule %}<span class="rule">{{ row.rule }}</span>{% endif %}
-                        <span class="gate-evidence">{{ row.evidence_html }}</span>
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% endif %}
-                {% if gates.catalog_html or gates.catalog_read %}
-                  <div class="catalog-checks">
-                    <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
-                    {% if gates.catalog_read %}<div class="catalog-read">{{ gates.catalog_read }}</div>{% endif %}
-                    {{ gates.catalog_html }}
-                  </div>
-                {% endif %}
+            </details>
+          {% endif %}
+          {# What the tool recorded for the repo gates, failures included, and
+             an older review's catalog checks text. The repo's, so its list
+             carries it. #}
+          {% set gates = not app ? page.repo_gate_block : null %}
+          {% if gates and (gates.rows or gates.catalog_html or gates.catalog_read) %}
+            <details class="checked-rows" id="fold-repo-evidence">
+              <summary>{{ 'Tool evidence'|t }}</summary>
+              {% if gates.rows %}
+                <ul class="gate-rows">
+                  {% for row in gates.rows %}
+                    <li>
+                      <span class="gate-result gate-result--{{ row.result|lower }}">{{ row.result }}</span>
+                      {% if row.rule %}<span class="rule">{{ row.rule }}</span>{% endif %}
+                      <span class="gate-evidence">{{ row.evidence_html }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+              {% if gates.catalog_html or gates.catalog_read %}
+                <div class="catalog-checks">
+                  <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
+                  {% if gates.catalog_read %}<div class="catalog-read">{{ gates.catalog_read }}</div>{% endif %}
+                  {{ gates.catalog_html }}
+                </div>
               {% endif %}
             </details>
           {% endif %}

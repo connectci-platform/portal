@@ -255,6 +255,41 @@ class ReviewWorklistTest extends UnitTestCase {
   /**
    * @covers ::build
    */
+  public function testEveryAppBlockersFromOneListCollapseToOneReference(): void {
+    $page = self::page([
+      self::app(5, 'App A', [
+        'security' => [
+          self::row(['pid' => 77, 'rule' => 'OODT-01', 'aspect' => 'security', 'severity' => 'high']),
+          self::row(['pid' => 79, 'rule' => 'OODT-02', 'aspect' => 'security', 'severity' => 'high']),
+        ],
+      ]),
+      self::app(6, 'App B'),
+      self::app(7, 'App C'),
+    ]);
+    $lists = ReviewWorklist::build($page, []);
+    foreach ([2, 3] as $i) {
+      $items = $lists[$i]['items'];
+      $this->assertCount(1, $items);
+      $this->assertSame('reference', $items[0]['kind']);
+      $this->assertSame(2, $items[0]['row']['count']);
+      $this->assertSame('App A', $items[0]['row']['source_title']);
+      // Links to the first of them.
+      $this->assertSame(77, $items[0]['row']['pid']);
+      $this->assertSame('request_changes', $items[0]['blocking']['decision']);
+    }
+    // The single case is unchanged, and says so.
+    $single = ReviewWorklist::build(self::page([
+      self::app(5, 'App A', [
+        'security' => [self::row(['pid' => 77, 'rule' => 'OODT-01', 'aspect' => 'security', 'severity' => 'high'])],
+      ]),
+      self::app(6, 'App B'),
+    ]), []);
+    $this->assertSame(1, $single[2]['items'][0]['row']['count']);
+  }
+
+  /**
+   * @covers ::build
+   */
   public function testRepoLevelEveryAppItemIsReferencedInEveryApp(): void {
     $page = self::page(
       [self::app(5, 'App A'), self::app(6, 'App B')],

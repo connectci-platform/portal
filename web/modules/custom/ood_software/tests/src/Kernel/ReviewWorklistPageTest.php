@@ -343,6 +343,64 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
+   * Several every-app blockers from one app read as one row elsewhere.
+   */
+  public function testRepeatedBlockersCollapseToOneReference(): void {
+    $first = $this->finding('OODT-01', 'critical', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $second = $this->finding('OODT-02', 'high', 'fail', 'Token in the repo.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['alpha' => [$first, $second], 'beta' => []]);
+    $html = $this->renderAs($this->reviewer, $review);
+    foreach ([$first, $second] as $finding) {
+      $this->assertSame(1, substr_count($html, 'id="finding-' . $finding->id() . '"'));
+      $this->assertSame(1, substr_count($html, 'name="prose[' . $finding->id() . ']"'));
+    }
+    $this->assertSame(1, substr_count($html, 'finding--reference'));
+    $this->assertStringContainsString('<a href="#finding-' . $first->id() . '">2 blocking findings in App alpha apply to every app</a>', $html);
+    $this->assertStringNotContainsString('href="#finding-' . $second->id() . '"', $html);
+  }
+
+  /**
+   * The repo gates' evidence, failures included, is its own fold.
+   */
+  public function testToolEvidenceIsNotPassedChecks(): void {
+    $review = $this->makeReview(['root' => []]);
+    $review->set('field_arv_repo_criteria', json_encode(['license' => 'fail', 'public' => 'pass']));
+    $review->set('field_arv_gate_evidence', json_encode([
+      ['result' => 'FAIL', 'rule' => 'STR-01', 'evidence' => 'No LICENSE file at the root'],
+      ['result' => 'PASS', 'evidence' => 'Repository public'],
+    ]));
+    $review->save();
+    $html = $this->renderAs($this->reviewer, $review);
+    $passed = $this->fold($html, 'fold-repo-passed');
+    $evidence = $this->fold($html, 'fold-repo-evidence');
+    $this->assertStringContainsString('<summary>Tool evidence</summary>', $evidence);
+    $this->assertStringContainsString('No LICENSE file at the root', $evidence);
+    $this->assertStringContainsString('gate-result--fail', $evidence);
+    $this->assertStringNotContainsString('No LICENSE file at the root', $passed);
+    $this->assertStringNotContainsString('gate-result', $passed);
+    $this->assertLessThan($this->at($html, 'fold-repo-evidence'), $this->at($html, 'fold-repo-passed'));
+  }
+
+  /**
+   * The HTML of one top-level fold, by id.
+   */
+  protected function fold(string $html, string $id): string {
+    $start = $this->at($html, $id);
+    // The id sits inside the fold's opening tag, so the fold is open at
+    // depth 1; its own </details> takes it back to 0.
+    $depth = 1;
+    $offset = $start;
+    while (preg_match('/<details\b|<\/details>/', $html, $m, PREG_OFFSET_CAPTURE, $offset)) {
+      $depth += $m[0][0] === '</details>' ? -1 : 1;
+      $offset = $m[0][1] + strlen($m[0][0]);
+      if ($depth === 0) {
+        break;
+      }
+    }
+    return substr($html, $start, $offset - $start);
+  }
+
+  /**
    * Every anchor the catalog links to is on the page, once.
    */
   public function testSectionAnchorsStay(): void {
@@ -397,9 +455,12 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
-   * A section the list does not offer is refused, and nothing is added.
+   * A full post of a section the select never offered adds nothing.
+   *
+   * Drupal's illegal-choice check stops it before the list's own guard,
+   * which ReviewPageAddFindingTest covers.
    */
-  public function testAddFindingRefusesSectionNotInList(): void {
+  public function testFullPostOfSectionNotOfferedAddsNothing(): void {
     $review = $this->makeReview(['root' => []]);
     $pid = $this->verdictPids($review)[0];
     $key = 'app-' . $pid;
@@ -501,6 +562,8 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertStringNotContainsString('delete_finding__', $html);
     $this->assertStringNotContainsString('arv-add-here', $html);
     $this->assertStringNotContainsString('name="prose[', $html);
+    // No duplicate check recorded: the slot is empty, so it draws nothing.
+    $this->assertMatchesRegularExpression('/<div class="duplicate-check-block" id="duplicate-' . $pid . '"><\/div>/', $html);
   }
 
   /**
