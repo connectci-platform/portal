@@ -261,4 +261,94 @@ describe('Appverse review worklist', () => {
       });
     });
   });
+
+  // The text of a duplicate check's line, without its Change button and
+  // with its whitespace collapsed, so the copy can be compared exactly.
+  function lineText($line) {
+    const clone = $line.clone();
+    clone.find('button').remove();
+    return clone.text().replace(/\s+/g, ' ').trim();
+  }
+
+  it('confirms the duplicate check in one click', () => {
+    seedReview('Review Worklist Confirm', 'single').then((seed) => {
+      const pid = seed.apps[0];
+      const slot = `#duplicate-${pid}`;
+      const finding = seed.findings['OODT-01'];
+      const row = `#finding-${finding}`;
+      const line = `Assigned software: ${seed.software}. No other published app implements it.`;
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.window().then((win) => { win.arvNoReload = true; });
+      // The app's software has no other published app, so the slot says so
+      // and offers Confirm. The check is not a worklist item.
+      cy.get(slot).find('.duplicate-line').then(($l) => {
+        expect(lineText($l)).to.equal(`Duplicate check: ${line}`);
+      });
+      cy.get(slot).find(`[name="confirm_duplicate__${pid}"]`).should('exist');
+      cy.get(`#worklist-app-${pid} .finding--duplicate`).should('not.exist');
+      // Lower the only floor so Accept is possible.
+      cy.get(row).find('.expand-hint').click();
+      cy.get(row).find(`select[name="override[${finding}][severity]"]`).select('low');
+      cy.get(row).find(`textarea[name="prose[${finding}]"]`).type('Only reachable by the reviewer.');
+      cy.get(row).find('[name^="save_finding__"]').click();
+      cy.get(row).find('.arv-saved').should('have.text', 'Saved.');
+      // One click records "No other app" with the line as its rationale.
+      cy.get(slot).find(`[name="confirm_duplicate__${pid}"]`).click();
+      cy.get(slot).find('.duplicate-line').should(($l) => {
+        expect(lineText($l)).to.equal('Duplicate check: No other app for this software');
+      });
+      cy.get(slot).find('.finding-note').then(($n) => {
+        expect($n.text().replace(/\s+/g, ' ').trim()).to.equal(`Rationale Confirmed: ${line}`);
+      });
+      // The rationale already says what the check found, so the basis line
+      // is not repeated, and Confirm is gone.
+      cy.get(slot).find('.duplicate-basis').should('not.exist');
+      cy.get(slot).find(`[name="confirm_duplicate__${pid}"]`).should('not.exist');
+      cy.get(slot).find(`input[name="duplicate[${pid}][outcome]"][value="none"]`).should('be.checked');
+      cy.window().its('arvNoReload').should('equal', true);
+      // Accepting the app with its check recorded is allowed to send.
+      cy.get(`select[name="conclusion[${pid}]"]`).select('accept');
+      cy.get('textarea[name="response"]').type('Thanks, this is accepted as is.');
+      cy.get('input[name="send_decision"]').should('not.be.disabled');
+      cy.get('#arv-send-reason').should('have.text', '');
+    });
+  });
+
+  it('asks for a reason when other apps exist', () => {
+    seedReview('Review Worklist Compare', 'multi').then((seed) => {
+      const pid = seed.apps[1];
+      const list = `#worklist-app-${pid}`;
+      const item = `${list} #duplicate-${pid}`;
+      const line = `Duplicate check: Assigned software: ${seed.software}. 1 other published app implements it:`;
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      // Another published app implements app 2's software, so its check is
+      // a worklist item that links the other app.
+      cy.get(item).should('have.class', 'finding--duplicate');
+      cy.get(item).find('.duplicate-line').then(($l) => {
+        expect(lineText($l)).to.equal(line);
+      });
+      // Domain Access may put the site's host on either URL, so the paths
+      // are compared.
+      const path = (url) => url.replace(/^https?:\/\/[^/]+/, '');
+      cy.get(item).find('.duplicate-apps a')
+        .should('have.length', 1)
+        .and('have.text', seed.other_app.title)
+        .and('have.attr', 'href')
+        .then((href) => {
+          expect(path(href)).to.equal(path(seed.other_app.url));
+        });
+      // "No other app" with no rationale is refused.
+      cy.get(item).find(`input[name="duplicate[${pid}][outcome]"][value="none"]`).check();
+      cy.get('input[value="Save draft"]').click();
+      cy.get(item).contains('Give the rationale for the duplicate check').should('be.visible');
+      cy.get(item).find(`textarea[name="duplicate[${pid}][note]"]`).should('have.attr', 'aria-invalid', 'true');
+      // Nothing was stored: a fresh page has no outcome, and the item is
+      // still in the list.
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.get(item).find(`input[name="duplicate[${pid}][outcome]"]`).should('have.length', 3).and('not.be.checked');
+      cy.get(item).find('.duplicate-line').then(($l) => {
+        expect(lineText($l)).to.equal(line);
+      });
+    });
+  });
 });
