@@ -441,8 +441,9 @@
                 </div>
                 {% if dup.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ dup.note }}</div>{% endif %}
                 {#- What the check found stays with the outcome, so the apps
-                    compared are still a click away. -#}
-                {%- if dup.basis.mode != 'legacy' -%}
+                    compared are still a click away. A one-click Confirm's
+                    note already says it, so it isn't repeated. -#}
+                {%- if dup.basis.mode != 'legacy' and dup.note != 'Confirmed: ' ~ dup.basis.line -%}
                   <div class="duplicate-basis">{{ m.duplicate_line(dup.basis.segments, page.catalog_url) }}</div>
                   {{ m.duplicate_apps(dup.basis.apps) }}
                 {%- endif -%}
