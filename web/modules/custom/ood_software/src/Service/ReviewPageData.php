@@ -596,9 +596,10 @@ final class ReviewPageData {
    * @param array<string, mixed> $checks
    *   The app's catalog checks (field_rvv_catalog), or [].
    *
-   * @return array{mode: string, source: ?string, entry: ?string, line: string, apps: array<int, array{title: string, url: string}>}
+   * @return array{mode: string, source: ?string, entry: ?string, line: string, segments: array<int, array{text: string, link?: string}>, apps: array<int, array{title: string, url: string}>}
    *   The mode; assigned, declared, readme or NULL; the Software entry; the
-   *   line the page shows; and the apps to compare.
+   *   line the page shows, as plain text and as segments (a segment with a
+   *   link names what it links to: "catalog"); and the apps to compare.
    */
   public static function duplicateBasis(?array $assigned, array $checks): array {
     $sw = (array) ($checks['software'] ?? []);
@@ -660,13 +661,25 @@ final class ReviewPageData {
     }
     else {
       $mode = 'unknown';
-      $parts[] = "The software couldn't be identified. Check the catalog for an existing app.";
+    }
+    // The line as segments, so a page can link one without parsing the copy.
+    $segments = [];
+    foreach ($parts as $i => $part) {
+      $segments[] = ['text' => ($i > 0 ? ' ' : '') . $part];
+    }
+    if ($mode === 'unknown') {
+      $segments = [
+        ['text' => "The software couldn't be identified. Check the "],
+        ['text' => 'catalog', 'link' => 'catalog'],
+        ['text' => ' for an existing app.'],
+      ];
     }
     return [
       'mode' => $mode,
       'source' => $source,
       'entry' => $entry,
-      'line' => implode(' ', $parts),
+      'line' => implode('', array_column($segments, 'text')),
+      'segments' => $segments,
       'apps' => $apps,
     ];
   }

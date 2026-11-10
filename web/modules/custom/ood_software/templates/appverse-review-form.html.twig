@@ -155,15 +155,16 @@
 {% endmacro %}
 
 {# The duplicate check's line: what the check compared against and found
-   (ReviewPageData::duplicateBasis()). With nothing to go on, "catalog"
-   links to the catalog. #}
-{% macro duplicate_line(mode, line, catalog_url) %}
-  {%- if mode == 'unknown' and ' catalog ' in line -%}
-    {%- set parts = line|split(' catalog ', 2) -%}
-    {{ parts[0] }} <a href="{{ catalog_url }}" target="_blank" rel="noopener">{{ 'catalog'|t }}</a> {{ parts[1] }}
-  {%- else -%}
-    {{ line }}
-  {%- endif -%}
+   (ReviewPageData::duplicateBasis()), as its segments. A segment linking to
+   "catalog" links to the catalog. #}
+{% macro duplicate_line(segments, catalog_url) %}
+  {%- for seg in segments -%}
+    {%- if seg.link is defined and seg.link == 'catalog' -%}
+      <a href="{{ catalog_url }}" target="_blank" rel="noopener">{{ seg.text }}</a>
+    {%- else -%}
+      {{ seg.text }}
+    {%- endif -%}
+  {%- endfor -%}
 {% endmacro %}
 
 {# The other published apps a duplicate check compares against. #}
@@ -196,7 +197,7 @@
     {{ m.finding_row(item.row, form, can_edit, item, labels) }}
   {% elseif item.kind == 'duplicate' %}
     <div class="finding finding--duplicate duplicate-check-block" id="duplicate-{{ item.row.pid }}" data-section="{{ item.section }}">
-      <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(item.row.mode, item.row.line, form['#page'].catalog_url) }}</div>
+      <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(item.row.segments, form['#page'].catalog_url) }}</div>
       {{ m.duplicate_apps(item.row.apps) }}
       {% if form.duplicate[item.row.pid] is defined %}
         {{ m.duplicate_fields(attribute(form.duplicate, item.row.pid), item.row.pid, false) }}
@@ -439,13 +440,19 @@
                   {%- if control %} <button type="button" class="btn ghost duplicate-change" aria-expanded="true" aria-controls="duplicate-fields-{{ app.pid }}" hidden>{{ 'Change'|t }}</button>{% endif -%}
                 </div>
                 {% if dup.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ dup.note }}</div>{% endif %}
+                {#- What the check found stays with the outcome, so the apps
+                    compared are still a click away. -#}
+                {%- if dup.basis.mode != 'legacy' -%}
+                  <div class="duplicate-basis">{{ m.duplicate_line(dup.basis.segments, page.catalog_url) }}</div>
+                  {{ m.duplicate_apps(dup.basis.apps) }}
+                {%- endif -%}
                 {%- if control -%}
                   {{ m.duplicate_fields(control, app.pid, true) }}
                 {%- endif -%}
               {%- elseif dup.basis.mode == 'legacy' -%}
                 {%- if control -%}{{ control }}{%- endif -%}
               {%- else -%}
-                <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(dup.basis.mode, dup.basis.line, page.catalog_url) }}</div>
+                <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(dup.basis.segments, page.catalog_url) }}</div>
                 {{ m.duplicate_apps(dup.basis.apps) }}
                 {%- if control -%}
                   <div class="duplicate-actions">

@@ -1225,7 +1225,14 @@
 .arv-page .duplicate-label {
   font-weight: 700;
 }
+/* What the check found, under a recorded outcome. */
+.arv-page .duplicate-basis {
+  margin-top: 4px;
+  font-size: .78rem;
+  color: var(--gray-700);
+}
 .arv-page .duplicate-line a,
+.arv-page .duplicate-basis a,
 .arv-page .duplicate-apps a {
   color: var(--ink);
   text-decoration: underline;

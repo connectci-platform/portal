@@ -473,6 +473,7 @@ class ReviewWorklistTest extends UnitTestCase {
         $basis = [
           'mode' => $mode,
           'line' => 'Line for ' . $mode,
+          'segments' => [['text' => 'Line for ' . $mode]],
           'apps' => $mode === 'compare' ? $apps : [],
         ];
         $app['duplicate'] = ['outcome' => $outcome, 'basis' => $basis];
@@ -491,6 +492,7 @@ class ReviewWorklistTest extends UnitTestCase {
         $this->assertSame(['high', NULL], [$item['severity'], $item['blocking']]);
         $this->assertSame(5, $item['row']['pid']);
         $this->assertSame('Line for ' . $mode, $item['row']['line']);
+        $this->assertSame($basis['segments'], $item['row']['segments']);
         $this->assertSame($basis['apps'], $item['row']['apps']);
         // High, so ahead of the medium finding; never under Blocking.
         $this->assertSame(['duplicate', 'finding'], array_column($items, 'kind'));

@@ -75,7 +75,7 @@ final class ReviewWorklist {
           'pid' => $app['pid'] ?? NULL,
           'line' => (string) ($basis['line'] ?? ''),
           'apps' => (array) ($basis['apps'] ?? []),
-          'mode' => (string) ($basis['mode'] ?? ''),
+          'segments' => (array) ($basis['segments'] ?? []),
         ]);
       }
       $appLists[] = ['app' => $app, 'blocks' => $blocks] + $collected;

@@ -83,7 +83,15 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    * Form state storage is cached with the form after an AJAX rebuild, so
    * these are cleared when each request's handling starts.
    */
-  const REQUEST_STATE = ['arv_stamp', 'arv_announce', 'arv_focus', 'arv_stale', 'arv_confirm', 'arv_deleted_from'];
+  const REQUEST_STATE = [
+    'arv_stamp',
+    'arv_announce',
+    'arv_focus',
+    'arv_stale',
+    'arv_confirm',
+    'arv_deleted_from',
+    'arv_duplicate_lines',
+  ];
 
   // No security axis: security is findings only (schema 1.2), so there is no
   // level for a reviewer to override.
@@ -599,7 +607,6 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
           '#value' => $this->t('Confirm'),
           '#name' => 'confirm_duplicate__' . $pid,
           '#duplicate_pid' => $pid,
-          '#duplicate_line' => $basis['line'],
           '#submit' => $updating
             ? ['::confirmDuplicate', '::saveUpdate', '::backToDuplicate']
             : ['::confirmDuplicate', '::submitForm'],
@@ -636,7 +643,10 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       self::setInputValue($form_state, ['duplicate', $pid, 'outcome'], 'none');
     }
     if (trim((string) ($posted['note'] ?? '')) === '') {
-      self::setInputValue($form_state, ['duplicate', $pid, 'note'], (string) $this->t('Confirmed: @line', ['@line' => (string) ($trigger['#duplicate_line'] ?? '')]));
+      // The line from the review as it is now (validatePage()), never the
+      // cached form's. It is plain text, and so is the note.
+      $line = (string) ($form_state->get('arv_duplicate_lines')[$pid] ?? '');
+      self::setInputValue($form_state, ['duplicate', $pid, 'note'], 'Confirmed: ' . $line);
     }
     $form_state->set('arv_stamp', sprintf('Review page: %s recorded the duplicate check', $this->currentUser->getDisplayName()));
     $form_state->set('arv_announce', (string) $this->t('Duplicate check recorded.'));
@@ -1298,6 +1308,8 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     // Once a decision is sent, the page shows what was sent, not what the
     // fields hold now (appverse-planning#51).
     $sent = ReviewDecisionApplier::sent($node);
+    // Once per page, for every app's same-software query.
+    $unpublishedRepos = $this->unpublishedRepoIds();
     $apps = [];
     foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $levels = [];
@@ -1326,7 +1338,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       $checks = $verdict->hasField('field_rvv_catalog') ? (json_decode((string) ($verdict->get('field_rvv_catalog')->value ?? ''), TRUE) ?: []) : [];
       // What the duplicate check compares against: the software staff
       // assigned on the app, else what the checks found.
-      $basis = ReviewPageData::duplicateBasis($this->assignedSoftware($verdict, $repo), $checks);
+      $basis = ReviewPageData::duplicateBasis($this->assignedSoftware($verdict, $repo, $unpublishedRepos), $checks);
       $app['catalog'] = [
         'rows' => ReviewPageData::catalogRows($checks),
         // "No other app" stands without a rationale only when the check found
@@ -1513,12 +1525,14 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    *   The review_verdict paragraph.
    * @param \Drupal\node\NodeInterface|null $repo
    *   The reviewed repo.
+   * @param array<int, int> $unpublishedRepos
+   *   The unpublished repos' ids (unpublishedRepoIds()).
    *
    * @return array{entry: string, apps: array<int, array{title: string, url: string}>}|null
    *   The Software entry's title and the other published apps with it, or
    *   NULL when the app has none assigned.
    */
-  protected function assignedSoftware(ParagraphInterface $verdict, ?NodeInterface $repo): ?array {
+  protected function assignedSoftware(ParagraphInterface $verdict, ?NodeInterface $repo, array $unpublishedRepos): ?array {
     $app = $verdict->get('field_rvv_app_ref')->entity;
     if (!$app instanceof NodeInterface && $repo !== NULL) {
       $app = $this->memberApps->appFor($repo, (string) ($verdict->get('field_rvv_app_id')->value ?? 'root'));
@@ -1532,8 +1546,22 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     }
     return [
       'entry' => (string) $software->label(),
-      'apps' => $this->sameSoftwareApps((int) $software->id(), $repo !== NULL ? (int) $repo->id() : 0),
+      'apps' => $this->sameSoftwareApps((int) $software->id(), $repo !== NULL ? (int) $repo->id() : 0, $unpublishedRepos),
     ];
+  }
+
+  /**
+   * The ids of the unpublished repos, whose apps the catalog hides.
+   *
+   * @return array<int, int>
+   *   Node ids.
+   */
+  protected function unpublishedRepoIds(): array {
+    return array_map('intval', array_values($this->entityTypeManager->getStorage('node')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_repo')
+      ->condition('status', 0)
+      ->execute()));
   }
 
   /**
@@ -1547,17 +1575,16 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    *   The appverse_software node id.
    * @param int $repoNid
    *   The reviewed repo, whose own apps are not others.
+   * @param array<int, int>|null $unpublishedRepos
+   *   The unpublished repos' ids, when the caller has them; else they are
+   *   looked up.
    *
    * @return array<int, array{title: string, url: string}>
    *   The apps by title, each with its page's URL.
    */
-  public function sameSoftwareApps(int $softwareNid, int $repoNid): array {
+  public function sameSoftwareApps(int $softwareNid, int $repoNid, ?array $unpublishedRepos = NULL): array {
     $storage = $this->entityTypeManager->getStorage('node');
-    $exclude = array_map('intval', array_values($storage->getQuery()
-      ->accessCheck(FALSE)
-      ->condition('type', 'appverse_repo')
-      ->condition('status', 0)
-      ->execute()));
+    $exclude = $unpublishedRepos ?? $this->unpublishedRepoIds();
     if ($repoNid > 0) {
       $exclude[] = $repoNid;
     }
@@ -2521,9 +2548,13 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     }
     // From the review as it is now, never the cached form's #page.
     $backed = [];
+    $lines = [];
     foreach ($this->buildPage($this->node)['apps'] ?? [] as $app) {
       $backed[$app['pid']] = $app['catalog']['backed'] ?? TRUE;
+      $lines[(string) $app['pid']] = (string) ($app['duplicate']['basis']['line'] ?? '');
     }
+    // For Confirm's note.
+    $form_state->set('arv_duplicate_lines', $lines);
     foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
       if (DuplicateCheck::needsNote((string) ($input['outcome'] ?? ''), (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {
         $form_state->setErrorByName('duplicate][' . $pid . '][note', $this->t('Give the rationale for the duplicate check: which apps you compared, and how this one differs or which one it duplicates.'));

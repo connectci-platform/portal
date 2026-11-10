@@ -502,6 +502,65 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
+   * Confirm's note is plain text: a title with & and ' is stored as typed.
+   */
+  public function testConfirmedNoteIsPlainText(): void {
+    $review = $this->inferredReview($this->software("R&D O'Brien"));
+    $pid = $this->verdictPids($review)[0];
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'duplicate' => [$pid => ['note' => '']],
+    ], 'confirm_duplicate__' . $pid, 'Confirm', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertSame("Confirmed: Assigned software: R&D O'Brien. No other published app implements it.", Paragraph::load($pid)->get('field_rvv_duplicate_note')->value);
+    $check = $this->duplicateHtml($this->renderAs($this->reviewer, $review), $pid);
+    // Escaped once, as any text is, never twice.
+    $this->assertStringContainsString('Confirmed: Assigned software: R&amp;D O&#039;Brien. No other published app implements it.', $check);
+    $this->assertStringNotContainsString('&amp;amp;', $check);
+    $this->assertStringNotContainsString('&amp;#039;', $check);
+  }
+
+  /**
+   * Confirm's note says what the review shows now, not the cached form.
+   */
+  public function testConfirmUsesTheFreshLine(): void {
+    $software = $this->software('Old name');
+    $review = $this->inferredReview($software);
+    $pid = $this->verdictPids($review)[0];
+    $keys = $this->keys($review);
+    // Renamed after the page was loaded; the review itself is unchanged.
+    $software->setTitle('New name')->save();
+    // The next request starts with no entities in memory; the cached form
+    // still says "Old name".
+    $this->container->get('entity.memory_cache')->deleteAll();
+    [, $formState] = $this->post($review, $keys + [
+      'duplicate' => [$pid => ['note' => '']],
+    ], 'confirm_duplicate__' . $pid, 'Confirm', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertSame('Confirmed: Assigned software: New name. No other published app implements it.', Paragraph::load($pid)->get('field_rvv_duplicate_note')->value);
+  }
+
+  /**
+   * A recorded outcome keeps what the check found, with the apps' links.
+   */
+  public function testSettledCheckKeepsItsBasis(): void {
+    $software = $this->software('S');
+    $other = $this->otherApp('Other S', $software, TRUE);
+    foreach ([FALSE, TRUE] as $sent) {
+      $review = $this->inferredReview($software, $sent);
+      $pid = $this->verdictPids($review)[0];
+      Paragraph::load($pid)
+        ->set('field_rvv_duplicate', 'distinct')
+        ->set('field_rvv_duplicate_note', 'Runs S in a container.')
+        ->save();
+      $check = $this->duplicateHtml($this->renderAs($this->reviewer, $review), $pid);
+      $label = $sent ? 'sent' : 'editable';
+      $this->assertStringContainsString('Same software, a meaningfully different approach', $check, $label);
+      $this->assertStringContainsString('Assigned software: S. 1 other published app implements it:', $check, $label);
+      $this->assertStringContainsString('<a href="' . $other->toUrl()->toString() . '" target="_blank" rel="noopener">Other S</a>', $check, $label);
+    }
+  }
+
+  /**
    * An outcome the reviewer picked before Confirm is the one kept.
    */
   public function testConfirmKeepsPickedOutcome(): void {
@@ -1669,7 +1728,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     // From the start of the element that carries the id.
     $start = (int) strrpos(substr($html, 0, $this->at($html, 'duplicate-' . $pid)), '<');
     $ends = array_filter([
-      strpos($html, '<div class="finding', $start + 1),
+      preg_match('/<div class="finding[ "]/', $html, $m, PREG_OFFSET_CAPTURE, $start + 1) ? (int) $m[0][1] : FALSE,
       strpos($html, '<h3', $start + 1),
       strpos($html, '<details', $start + 1),
     ]);

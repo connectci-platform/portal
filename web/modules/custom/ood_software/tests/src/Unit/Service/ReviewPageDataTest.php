@@ -199,6 +199,11 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame('RStudio', $b['entry']);
     $this->assertSame('Assigned software: RStudio. No other published app implements it.', $b['line']);
     $this->assertSame([], $b['apps']);
+    // No links: the segments read as the line.
+    $this->assertSame([
+      ['text' => 'Assigned software: RStudio.'],
+      ['text' => ' No other published app implements it.'],
+    ], $b['segments']);
   }
 
   /**
@@ -331,10 +336,17 @@ class ReviewPageDataTest extends UnitTestCase {
     $unknown = ReviewPageData::duplicateBasis(NULL, ['software' => ['status' => 'inferred']]);
     $this->assertSame('unknown', $unknown['mode']);
     $this->assertSame("The software couldn't be identified. Check the catalog for an existing app.", $unknown['line']);
+    // The same copy in segments, with "catalog" marked as the link.
+    $this->assertSame([
+      ['text' => "The software couldn't be identified. Check the "],
+      ['text' => 'catalog', 'link' => 'catalog'],
+      ['text' => ' for an existing app.'],
+    ], $unknown['segments']);
     $noClosest = ['software' => ['status' => 'no_match', 'value' => 'Fooviz', 'closest' => NULL]];
     $this->assertSame('unknown', ReviewPageData::duplicateBasis(NULL, $noClosest)['mode']);
     $legacy = ReviewPageData::duplicateBasis(NULL, []);
     $this->assertSame(['legacy', ''], [$legacy['mode'], $legacy['line']]);
+    $this->assertSame([], $legacy['segments']);
   }
 
   /**
