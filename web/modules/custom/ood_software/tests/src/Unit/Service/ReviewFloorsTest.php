@@ -38,6 +38,57 @@ class ReviewFloorsTest extends UnitTestCase {
   }
 
   /**
+   * @covers ::findingFloor
+   */
+  public function testFindingFloorGateFailAtLowIsBlocking(): void {
+    $f = self::finding('STR-01', 'low', 'fail');
+    $this->assertSame('request_changes', ReviewFloors::findingFloor($f, FALSE, FALSE)['decision']);
+    $this->assertFalse(ReviewFloors::findingFloor($f, FALSE, FALSE)['every_app']);
+  }
+
+  /**
+   * @covers ::findingFloor
+   */
+  public function testFindingFloorHighSecurityFailBlocksEveryApp(): void {
+    $f = self::finding('OODT-01', 'high', 'fail', 'security');
+    $floor = ReviewFloors::findingFloor($f, FALSE, TRUE);
+    $this->assertSame('request_changes', $floor['decision']);
+    $this->assertTrue($floor['every_app']);
+    $this->assertStringEndsWith('(applies to every app)', $floor['reason']);
+  }
+
+  /**
+   * @covers ::findingFloor
+   */
+  public function testFindingFloorDismissedIsNotBlocking(): void {
+    $f = ['dismissed' => TRUE] + self::finding('OODT-01', 'critical', 'fail', 'security');
+    $this->assertNull(ReviewFloors::findingFloor($f, FALSE, FALSE));
+  }
+
+  /**
+   * @covers ::findingFloor
+   */
+  public function testFindingFloorGateWithNoStoredResultNeedsHigh(): void {
+    $this->assertNull(ReviewFloors::findingFloor(self::finding('STR-01', 'low', ''), FALSE, FALSE));
+    $this->assertNotNull(ReviewFloors::findingFloor(self::finding('STR-01', 'high', ''), FALSE, FALSE));
+  }
+
+  /**
+   * @covers ::findingFloor
+   */
+  public function testFindingFloorDocumentationNeverBlocks(): void {
+    $this->assertNull(ReviewFloors::findingFloor(self::finding('QUA-01', 'critical', 'fail', 'documentation'), FALSE, FALSE));
+  }
+
+  /**
+   * @covers ::repoGateFloors
+   */
+  public function testRepoGateFloors(): void {
+    $floors = ReviewFloors::repoGateFloors(['not_archived' => 'pass', 'public' => 'fail']);
+    $this->assertSame(['public'], array_column($floors, 'gate'));
+  }
+
+  /**
    * @covers ::floors
    * @dataProvider floorCases
    *

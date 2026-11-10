@@ -276,7 +276,7 @@ final class ContributorReviewView {
    * @param bool $sent
    *   Whether the decision has been sent.
    */
-  private static function gateExplained(string $gate, string $value, array $rows, bool $sent): bool {
+  public static function gateExplained(string $gate, string $value, array $rows, bool $sent): bool {
     [$rules, $tags] = ReviewPageData::GATE_RULES[$gate] ?? [[], NULL];
     $results = $value === 'fail' ? ['FAIL'] : ['FAIL', 'WARN'];
     foreach ($rows as $row) {
