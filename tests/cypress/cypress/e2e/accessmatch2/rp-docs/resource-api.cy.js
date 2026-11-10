@@ -349,4 +349,54 @@ describe("Resource Documentation API", () => {
     });
   });
 
+  it("GET /api/1.0/resource-groups populated_sections matches the member detail responses", () => {
+    const groupTitle = "Test Resource Group";
+    const nonEmpty = (v) => Array.isArray(v) && v.length > 0;
+    // Mirrors the per-section rules: a section counts only when the detail
+    // response has content for it.
+    const sectionsFromDetail = (body) => {
+      const sections = new Set();
+      if (
+        nonEmpty(body.ssh_logins) ||
+        !!body.ondemand_url ||
+        (body.login_text || "").trim() !== "" ||
+        nonEmpty(body.login_help_links)
+      ) {
+        sections.add("login");
+      }
+      ["file_transfer", "storage", "queue_specs", "datasets"].forEach((key) => {
+        if (nonEmpty(body[key])) sections.add(key);
+      });
+      if (nonEmpty(body.top_software)) sections.add("top_software");
+      return sections;
+    };
+
+    cy.request("/api/1.0/resource-groups").then((listing) => {
+      const group = listing.body.groups.find((g) => g.title === groupTitle);
+      expect(group, `"${groupTitle}" in /resource-groups`).to.exist;
+      const resourceIds = group.variants.map((v) => v.resource_id);
+      expect(resourceIds).to.include.members([
+        FIXTURES.alpha.resource_id,
+        FIXTURES.beta.resource_id,
+      ]);
+
+      const expected = new Set();
+      cy.wrap(resourceIds).each((resourceId) => {
+        cy.request(`/api/1.0/resources/${resourceId}`).then((detail) => {
+          sectionsFromDetail(detail.body).forEach((s) => expected.add(s));
+        });
+      }).then(() => {
+        const listed = group.populated_sections;
+        // Every section a member has content for must be listed.
+        expected.forEach((section) => {
+          expect(listed, `populated_sections includes ${section}`).to.include(section);
+        });
+        // And no section may be listed that no member has content for.
+        listed.forEach((section) => {
+          expect(expected.has(section), `populated_sections lists ${section} with no content`).to.be.true;
+        });
+      });
+    });
+  });
+
 });
