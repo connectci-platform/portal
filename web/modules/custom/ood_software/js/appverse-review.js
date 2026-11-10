@@ -99,6 +99,19 @@
         delete field.dataset.arvLocked;
       }
     });
+    // Nothing else can be pressed or changed while the save is out. The
+    // request is serialized before beforeSend runs, so disabling here does
+    // not drop any value, and the pressed button travels as extra data.
+    wrapper.querySelectorAll('select, input[type="checkbox"], input[type="radio"], input[type="submit"], button[type="submit"]').forEach((control) => {
+      if (busy && !control.disabled) {
+        control.disabled = true;
+        control.dataset.arvDisabled = 'true';
+      }
+      else if (!busy && control.dataset.arvDisabled) {
+        control.disabled = false;
+        delete control.dataset.arvDisabled;
+      }
+    });
   }
 
   /**
@@ -270,7 +283,9 @@
           box.classList.toggle('collapsed', !open);
           hint.setAttribute('aria-expanded', open ? 'true' : 'false');
         };
-        setOpen(box.querySelector(ERROR) !== null || reopen.has(finding.id));
+        // A save that went through leaves its own row's box closed (.arv-saved
+        // renders only there); a refused one keeps it open.
+        setOpen(box.querySelector(ERROR) !== null || (reopen.has(finding.id) && !finding.querySelector('.arv-saved')));
         hint.addEventListener('click', (e) => {
           e.stopPropagation();
           const open = box.classList.contains('collapsed');

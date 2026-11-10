@@ -137,6 +137,9 @@ describe('Appverse review worklist', () => {
       cy.get(`#fold-app-${seed.apps[0]}-passed > summary`).click();
       cy.get(row).find('.expand-hint').click();
       cy.get(row).find('textarea[name^="prose["]').type('Please document the setup steps.');
+      // A second finding's box is open too, and stays open.
+      const second = `#finding-${seed.findings['OODT-01']}`;
+      cy.get(second).find('.expand-hint').click();
       cy.get(row).find('[name^="save_finding__"]').click();
       cy.get(row).find('.finding-note').should('contain.text', 'Please document the setup steps.');
       // Seen as well as announced.
@@ -147,11 +150,34 @@ describe('Appverse review worklist', () => {
       cy.get('#fold-repo-add .arv-add-summary').should('have.value', 'half typed');
       cy.get(`#fold-app-${seed.apps[0]}-passed`).should('have.attr', 'open');
       cy.get('textarea[name="response"]').should('have.value', letter);
-      // The edit box that was open is open again.
-      cy.get(row).find('.fnote').should('not.have.class', 'collapsed');
+      // The saved finding's box is closed and focus is on its Edit control;
+      // the other open box stays open.
+      cy.get(row).find('.fnote').should('have.class', 'collapsed');
+      cy.focused().should('have.class', 'expand-hint').closest(row).should('exist');
+      cy.get(second).find('.fnote').should('not.have.class', 'collapsed');
       // The letter was saved with the finding.
       cy.reload();
       cy.get('textarea[name="response"]').should('have.value', letter);
+    });
+  });
+
+  it('locks the rest of the page while a save is out', () => {
+    seedReview('Review Worklist Lock', 'single').then((seed) => {
+      const row = `#finding-${seed.findings['QUA-01']}`;
+      const other = `#finding-${seed.findings['OODT-01']}`;
+      cy.intercept('POST', '**/appverse/review/*?ajax_form=1*', (req) => {
+        req.on('response', (res) => { res.setDelay(1500); });
+      }).as('save');
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.get(row).find('.expand-hint').click();
+      cy.get(row).find('textarea[name^="prose["]').type('Please document the setup steps.');
+      cy.get(other).find('.expand-hint').click();
+      cy.get(row).find('[name^="save_finding__"]').click();
+      cy.get(other).find('[name^="save_finding__"]').should('be.disabled');
+      cy.get('#arv-review-form').should('have.attr', 'aria-busy', 'true');
+      cy.wait('@save');
+      cy.get(row).find('.arv-saved').should('have.text', 'Saved.');
+      cy.get(other).find('[name^="save_finding__"]').should('not.be.disabled');
     });
   });
 
@@ -164,9 +190,12 @@ describe('Appverse review worklist', () => {
       cy.get(row).find('.expand-hint').click();
       cy.get(row).find(`select[name="override[${pid}][severity]"]`).select('low');
       cy.get(row).find('[name^="save_finding__"]').click();
-      cy.get('#arv-review-form .messages--error, #arv-review-form [role="alert"]')
+      cy.get('#arv-review-form .alert-danger, #arv-review-form .messages--error')
         .should('contain.text', 'Add a note saying why');
       cy.window().its('arvNoReload').should('equal', true);
+      // The announcement speaks the error, so the inserted message is not an alert too.
+      cy.get('#arv-review-form .alert-danger, #arv-review-form .messages--error').should('exist');
+      cy.get('#arv-review-form [role="alert"]').should('not.exist');
       // The box stays open on the field to fix, and the error is in the row.
       cy.get(row).find('.fnote').should('not.have.class', 'collapsed');
       cy.get(row).find(`textarea[name="prose[${pid}]"]`).should('have.attr', 'aria-invalid', 'true');
@@ -197,6 +226,8 @@ describe('Appverse review worklist', () => {
       cy.get(fold).should('have.attr', 'open');
       cy.get(`${fold} #finding-${pid}`).contains('Add a note saying why').should('be.visible');
       cy.get(other).find('.finding-note').should('not.exist');
+      // Focus goes to the error that blocked the save, inside QUA-04's finding.
+      cy.focused().closest(`#finding-${pid}`).should('exist');
     });
   });
 

@@ -941,6 +941,22 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
+   * Without JavaScript a finding's Delete lands on its list's add form.
+   */
+  public function testNonAjaxDeleteRedirectsToTheListsAddForm(): void {
+    $mine = $this->finding('QUA-03', 'low', 'fail', 'No error handling.', [
+      'field_rvf_aspect' => 'quality',
+      'field_rvf_source' => 'reviewer',
+    ]);
+    $review = $this->makeReview(['root' => [$mine]]);
+    $pid = $this->verdictPids($review)[0];
+    [, $form_state, $response] = $this->post($review, $this->keys($review), 'delete_finding__' . $mine->id(), 'Delete finding', FALSE);
+    $this->assertSame([], Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities());
+    $target = $response instanceof RedirectResponse ? $response->getTargetUrl() : (string) $this->fragmentUrl($form_state);
+    $this->assertStringEndsWith('#fold-app-' . $pid . '-add', $target);
+  }
+
+  /**
    * An add's state does not carry over to the next save from the cached form.
    */
   public function testCachedFormStartsEachSaveAfresh(): void {
@@ -1168,6 +1184,13 @@ class ReviewWorklistPageTest extends KernelTestBase {
    */
   protected function addInput(string $section, string $rule, string $severity, string $summary): array {
     return ['section' => $section, 'rule' => $rule, 'severity' => $severity, 'summary' => $summary, 'evidence' => ''];
+  }
+
+  /**
+   * The redirect a submit set, as a string.
+   */
+  protected function fragmentUrl(FormStateInterface $form_state): string {
+    return '#' . $this->fragment($form_state);
   }
 
   /**

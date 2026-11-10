@@ -7,6 +7,7 @@ namespace Drupal\Tests\ood_software\Unit\Form;
 use Drupal\Component\Render\MarkupInterface;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Form\FormState;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
@@ -21,6 +22,11 @@ use Drupal\Tests\UnitTestCase;
  * @coversDefaultClass \Drupal\ood_software\Form\ReviewPageForm
  */
 class ReviewPageAjaxTest extends UnitTestCase {
+
+  /**
+   * The stand-in renderer.
+   */
+  private RendererInterface $renderer;
 
   /**
    * {@inheritdoc}
@@ -143,8 +149,12 @@ class ReviewPageAjaxTest extends UnitTestCase {
       }
 
     };
+    $this->renderer = $renderer;
     $container = new ContainerBuilder();
     $container->set('renderer', $renderer);
+    $messenger = $this->createStub(MessengerInterface::class);
+    $messenger->method('deleteByType')->willReturn([]);
+    $container->set('messenger', $messenger);
     \Drupal::setContainer($container);
   }
 
@@ -153,6 +163,7 @@ class ReviewPageAjaxTest extends UnitTestCase {
    */
   private function pageForm(): ReviewPageForm {
     $form = (new \ReflectionClass(ReviewPageForm::class))->newInstanceWithoutConstructor();
+    (new \ReflectionProperty(ReviewPageForm::class, 'renderer'))->setValue($form, $this->renderer);
     $form->setStringTranslation($this->getStringTranslationStub());
     return $form;
   }
@@ -184,6 +195,43 @@ class ReviewPageAjaxTest extends UnitTestCase {
       'announce:polite:Saved.',
       'focusFirst::#finding-5',
     ], $this->summary($response->getCommands()));
+  }
+
+  /**
+   * A finding's own Save puts focus on its Edit control.
+   *
+   * @covers ::ajaxRefresh
+   */
+  public function testSavedFindingFocusesItsEditControl(): void {
+    $form = ['#type' => 'form'];
+    $form_state = (new FormState())
+      ->set('arv_focus', 'finding-5')
+      ->setTriggeringElement(['#finding_pid' => 5]);
+    $commands = $this->pageForm()->ajaxRefresh($form, $form_state)->getCommands();
+    $this->assertSame('#finding-5 .expand-hint', $commands[2]['selector']);
+  }
+
+  /**
+   * With no error inside what was pressed, focus goes to the first one.
+   *
+   * @covers ::ajaxRefresh
+   * @covers ::errorField
+   */
+  public function testErrorElsewhereFocusesTheFirstErroredField(): void {
+    $form = [
+      '#type' => 'form',
+      'prose' => [
+        5 => ['#id' => 'edit-prose-5--x', '#parents' => ['prose', 5]],
+        7 => ['#id' => 'edit-prose-7--x', '#parents' => ['prose', 7]],
+      ],
+    ];
+    $form_state = (new FormState())
+      ->set('arv_focus', 'finding-5')
+      ->setTriggeringElement(['#finding_pid' => 5]);
+    $form_state->setErrorByName('prose][7', 'Add a note saying why.');
+    $commands = $this->pageForm()->ajaxRefresh($form, $form_state)->getCommands();
+    $this->assertSame('focusFirst', $commands[2]['command']);
+    $this->assertSame('#edit-prose-7--x', $commands[2]['selector']);
   }
 
   /**

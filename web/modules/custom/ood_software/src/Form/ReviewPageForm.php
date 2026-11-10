@@ -19,7 +19,9 @@ use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\EnforcedResponseException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
+use Drupal\Core\Render\Element\StatusMessages;
 use Drupal\Core\Render\Markup;
+use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
@@ -135,6 +137,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     protected ClassResolverInterface $classResolver,
     protected ReviewDecisionApplier $applier,
     protected RepoMemberApps $memberApps,
+    protected RendererInterface $renderer,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -149,6 +152,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       $container->get('class_resolver'),
       $container->get('ood_software.review_decision_applier'),
       $container->get('ood_software.repo_member_apps'),
+      $container->get('renderer'),
     );
   }
 
@@ -988,7 +992,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       $build = [
         '#prefix' => $form['#prefix'] ?? '',
         '#suffix' => $form['#suffix'] ?? '',
-        'messages' => ['#type' => 'status_messages'],
+        'messages' => $this->quietMessages(),
         'form' => $build,
       ];
       if (!$stale && ($field = $this->errorField($form, $form_state)) !== NULL) {
@@ -998,6 +1002,12 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     else {
       $announce = (string) ($form_state->get('arv_announce') ?? $this->t('Saved.'));
       $priority = AnnounceCommand::PRIORITY_POLITE;
+      // A finding's own Save leaves focus on its Edit control, not on the
+      // first link in the row.
+      $trigger = $form_state->getTriggeringElement() ?? [];
+      if (isset($trigger['#finding_pid']) && $focus === 'finding-' . $trigger['#finding_pid']) {
+        $focus .= ' .expand-hint';
+      }
     }
     $response = new AjaxResponse();
     $response->addCommand(new ReplaceCommand('#arv-review-form', $build));
@@ -1007,9 +1017,27 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   }
 
   /**
-   * The id of the first field with an error inside what was pressed.
+   * The page's messages without the alert role.
    *
-   * That is the finding whose Save or Delete it was, or the add form.
+   * The announcement already speaks the error assertively, and the theme's
+   * role="alert" around an error would speak it again.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  protected function quietMessages(): array {
+    // Built directly: the element's lazy builder leaves only a placeholder.
+    $messages = StatusMessages::renderMessages(NULL);
+    $html = (string) $this->renderer->renderInIsolation($messages);
+    return ['#markup' => Markup::create(preg_replace('/\s+role=(["\'])alert\1/', '', $html))];
+  }
+
+  /**
+   * The id of the field to focus after a refused save.
+   *
+   * The first field with an error inside what was pressed (the finding whose
+   * Save or Delete it was, or the add form), else the first errored field
+   * anywhere in the form, so a save blocked by another finding lands on it.
    *
    * @param array<string, mixed> $form
    *   The processed form.
@@ -1017,12 +1045,13 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    *   The form state.
    *
    * @return string|null
-   *   The element id, or NULL when the errors are elsewhere.
+   *   The element id, or NULL when no errored field has one.
    */
   protected function errorField(array $form, FormStateInterface $form_state): ?string {
     $trigger = $form_state->getTriggeringElement() ?? [];
     $pid = isset($trigger['#finding_pid']) ? (string) $trigger['#finding_pid'] : NULL;
     $list = isset($trigger['#finding_list']) ? (string) $trigger['#finding_list'] : NULL;
+    $anywhere = NULL;
     foreach (array_keys($form_state->getErrors()) as $name) {
       $parents = explode('][', (string) $name);
       $inside = ($pid !== NULL && in_array($parents[0], ['prose', 'override', 'edit_finding'], TRUE) && ($parents[1] ?? NULL) === $pid)
@@ -1031,8 +1060,12 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       if (is_array($element) && !empty($element['#id'])) {
         return (string) $element['#id'];
       }
+      $any = NestedArray::getValue($form, $parents);
+      if ($anywhere === NULL && is_array($any) && !empty($any['#id'])) {
+        $anywhere = (string) $any['#id'];
+      }
     }
-    return NULL;
+    return $anywhere;
   }
 
   /**
