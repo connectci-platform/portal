@@ -18,7 +18,9 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\EnforcedResponseException;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
 use Drupal\Core\Render\Markup;
+use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
@@ -62,7 +64,7 @@ use Drupal\Core\Entity\FieldableEntityInterface;
  * in") lives in ReviewPageData and is unit-tested; this class only moves data
  * between entities and arrays.
  */
-final class ReviewPageForm extends FormBase {
+final class ReviewPageForm extends FormBase implements TrustedCallbackInterface {
 
   /**
    * The month-name date formats, unambiguous in any locale.
@@ -299,6 +301,7 @@ final class ReviewPageForm extends FormBase {
       return $form;
     }
     // What the findings' Save, Add and Delete replace in place.
+    $form['#pre_render'][] = [self::class, 'showFieldErrors'];
     $form['#prefix'] = '<div id="arv-review-form">';
     $form['#suffix'] = '</div>';
     // The revision this page was built from: validateForm() refuses a save
@@ -853,6 +856,54 @@ final class ReviewPageForm extends FormBase {
     }
     $this->messenger()->addStatus($this->t('Review saved.'));
     $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], $focus ? ['fragment' => $focus] : []);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function trustedCallbacks(): array {
+    return ['showFieldErrors'];
+  }
+
+  /**
+   * Shows a refused save's error beside the field it names.
+   *
+   * Inline form errors is off, so the findings' and add forms' fields carry
+   * their message here: under the field, tied to it with aria-describedby.
+   * The messages at the top of the form stay.
+   *
+   * @param array<string, mixed> $form
+   *   The form, after validation set each field's errors.
+   *
+   * @return array<string, mixed>
+   *   The form with each errored field's message after it.
+   */
+  public static function showFieldErrors(array $form): array {
+    foreach (['prose', 'override', 'edit_finding', 'add_finding'] as $key) {
+      if (isset($form[$key]) && is_array($form[$key])) {
+        self::markFieldErrors($form[$key]);
+      }
+    }
+    return $form;
+  }
+
+  /**
+   * Puts each errored field's message after it, below $tree.
+   *
+   * @param array<string, mixed> $tree
+   *   A group of elements, changed in place.
+   */
+  protected static function markFieldErrors(array &$tree): void {
+    foreach (Element::children($tree) as $name) {
+      $element = &$tree[$name];
+      $message = trim(strip_tags((string) ($element['#errors'] ?? '')));
+      if ($message !== '' && !empty($element['#id']) && ($element['#type'] ?? '') !== 'container') {
+        $id = $element['#id'] . '--error';
+        $element['#suffix'] = ($element['#suffix'] ?? '') . '<p class="arv-field-error" id="' . Html::escape($id) . '">' . Html::escape(Html::decodeEntities($message)) . '</p>';
+        $element['#attributes']['aria-describedby'] = trim(($element['#attributes']['aria-describedby'] ?? '') . ' ' . $id);
+      }
+      self::markFieldErrors($element);
+    }
   }
 
   /**

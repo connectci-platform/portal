@@ -1334,6 +1334,16 @@
 }
 /* What an AJAX save just did, in the row or the list: a pass tint, since it
    reports a save that went through. */
+.arv-page .arv-field-error {
+  margin: .25rem 0 .5rem;
+  padding: .1rem .5rem;
+  border-radius: 3px;
+  background: var(--tint-fail);
+  color: var(--ink);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
 .arv-page .arv-saved {
   display: inline-block;
   margin: 0 0 .3rem;

@@ -196,7 +196,7 @@ describe('Appverse review worklist', () => {
       // Nothing was saved: the fold is open and its error is showing.
       cy.get(fold).should('have.attr', 'open');
       cy.get(`${fold} #finding-${pid}`).contains('Add a note saying why').should('be.visible');
-      cy.get(other).find('.finding-note').should('not.contain.text', 'A note on another finding.');
+      cy.get(other).find('.finding-note').should('not.exist');
     });
   });
 

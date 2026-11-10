@@ -246,4 +246,41 @@ class ReviewPageAjaxTest extends UnitTestCase {
     parent::tearDown();
   }
 
+
+  /**
+   * A refused save's error is put beside the field it names.
+   *
+   * @covers ::showFieldErrors
+   */
+  public function testRefusedSaveErrorIsShownBesideTheField(): void {
+    $form = [
+      'prose' => [
+        '41' => [
+          '#type' => 'textarea',
+          '#id' => 'edit-prose-41',
+          '#errors' => 'Add a note saying why: it is required.',
+          '#attributes' => ['aria-describedby' => 'edit-prose-41--description'],
+        ],
+        '42' => ['#type' => 'textarea', '#id' => 'edit-prose-42'],
+      ],
+      'override' => [
+        '41' => [
+          '#type' => 'container',
+          'summary' => [
+            '#type' => 'textfield',
+            '#id' => 'edit-override-41-summary',
+            '#errors' => 'Summary is required.',
+          ],
+        ],
+      ],
+    ];
+    $out = ReviewPageForm::showFieldErrors($form);
+    $this->assertSame('<p class="arv-field-error" id="edit-prose-41--error">Add a note saying why: it is required.</p>', $out['prose']['41']['#suffix']);
+    $this->assertSame('edit-prose-41--description edit-prose-41--error', $out['prose']['41']['#attributes']['aria-describedby']);
+    $this->assertArrayNotHasKey('#suffix', $out['prose']['42']);
+    $this->assertStringContainsString('Summary is required.', $out['override']['41']['summary']['#suffix']);
+    $this->assertArrayNotHasKey('#suffix', $out['override']['41']);
+    $this->assertSame(['showFieldErrors'], ReviewPageForm::trustedCallbacks());
+  }
+
 }
