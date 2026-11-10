@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Session\AnonymousUserSession;
+use Drupal\flag\FlagServiceInterface;
+use Drupal\flag\FlaggingInterface;
+use Drupal\ood_software\Controller\AppverseFlagController;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
 use Drupal\user\UserInterface;
+use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /**
  * The JSON endpoint behind the "We use this App" button.
@@ -162,15 +168,15 @@ class AppverseFlagEndpointTest extends KernelTestBase {
    */
   public function testFlagIsIdempotent(): void {
     $this->setCurrentUser($this->userA);
-    $expected = ['flagged' => TRUE, 'nid' => (int) $this->app->id()];
+    $nid = (int) $this->app->id();
     $response = $this->send('POST', $this->app, $this->token());
     $this->assertSame(200, $response->getStatusCode());
-    $this->assertSame($expected, $this->body($response));
+    $this->assertSame(['flagged' => TRUE, 'changed' => TRUE, 'nid' => $nid], $this->body($response));
     $this->assertSame(1, $this->flaggingCount($this->userA));
 
     $response = $this->send('POST', $this->app, $this->token());
     $this->assertSame(200, $response->getStatusCode());
-    $this->assertSame($expected, $this->body($response));
+    $this->assertSame(['flagged' => TRUE, 'changed' => FALSE, 'nid' => $nid], $this->body($response));
     $this->assertSame(1, $this->flaggingCount($this->userA));
   }
 
@@ -180,15 +186,15 @@ class AppverseFlagEndpointTest extends KernelTestBase {
   public function testUnflagIsIdempotent(): void {
     $this->setCurrentUser($this->userA);
     $this->send('POST', $this->app, $this->token());
-    $expected = ['flagged' => FALSE, 'nid' => (int) $this->app->id()];
+    $nid = (int) $this->app->id();
     $response = $this->send('DELETE', $this->app, $this->token());
     $this->assertSame(200, $response->getStatusCode());
-    $this->assertSame($expected, $this->body($response));
+    $this->assertSame(['flagged' => FALSE, 'changed' => TRUE, 'nid' => $nid], $this->body($response));
     $this->assertSame(0, $this->flaggingCount());
 
     $response = $this->send('DELETE', $this->app, $this->token());
     $this->assertSame(200, $response->getStatusCode());
-    $this->assertSame($expected, $this->body($response));
+    $this->assertSame(['flagged' => FALSE, 'changed' => FALSE, 'nid' => $nid], $this->body($response));
     $this->assertSame(0, $this->flaggingCount());
   }
 
@@ -324,6 +330,135 @@ class AppverseFlagEndpointTest extends KernelTestBase {
     $response = $this->get();
     $this->assertSame(200, $response->getStatusCode());
     $this->assertSame(['flagged' => []], $this->body($response));
+  }
+
+  /**
+   * Builds the controller around a mocked flag service and lock.
+   *
+   * @param \Drupal\flag\FlagServiceInterface $flag_service
+   *   The mocked flag service. getFlagById() is stubbed with the real flag.
+   * @param \Drupal\Core\Lock\LockBackendInterface $lock
+   *   The mocked lock.
+   */
+  protected function controller(FlagServiceInterface $flag_service, LockBackendInterface $lock): AppverseFlagController {
+    $this->setCurrentUser($this->userA);
+    return new AppverseFlagController($flag_service, $lock);
+  }
+
+  /**
+   * Mocks the flag service with a scripted sequence of getFlagging() results.
+   *
+   * @param array<int, \Drupal\flag\FlaggingInterface|null> $flaggings
+   *   The results to return in order. The last one repeats.
+   */
+  protected function flagService(array $flaggings): FlagServiceInterface&MockObject {
+    $service = $this->createMock(FlagServiceInterface::class);
+    $service->method('getFlagById')
+      ->willReturn($this->container->get('flag')->getFlagById('appverse_apps'));
+    $calls = 0;
+    $service->method('getFlagging')->willReturnCallback(function () use ($flaggings, &$calls) {
+      return $flaggings[min($calls++, count($flaggings) - 1)];
+    });
+    return $service;
+  }
+
+  /**
+   * Mocks a lock that is always acquired and released exactly once.
+   */
+  protected function freeLock(): LockBackendInterface&MockObject {
+    $lock = $this->createMock(LockBackendInterface::class);
+    $lock->method('acquire')->willReturn(TRUE);
+    $lock->expects($this->once())->method('release');
+    return $lock;
+  }
+
+  /**
+   * A concurrent flag request that wins the race gets flagged, unchanged.
+   */
+  public function testFlagRaceReturnsFlagged(): void {
+    $service = $this->flagService([NULL, $this->createMock(FlaggingInterface::class)]);
+    $service->method('flag')->willThrowException(new \LogicException('already flagged'));
+    $response = $this->controller($service, $this->freeLock())->flag($this->app);
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => TRUE, 'changed' => FALSE, 'nid' => (int) $this->app->id()], $this->body($response));
+  }
+
+  /**
+   * A LogicException with no flagging behind it is a real error.
+   */
+  public function testFlagRethrowsUnrelatedLogicException(): void {
+    $service = $this->flagService([NULL]);
+    $service->method('flag')->willThrowException(new \LogicException('does not apply'));
+    $this->expectException(\LogicException::class);
+    $this->expectExceptionMessage('does not apply');
+    $this->controller($service, $this->freeLock())->flag($this->app);
+  }
+
+  /**
+   * A concurrent unflag request that wins the race gets unflagged, unchanged.
+   */
+  public function testUnflagRaceReturnsUnflagged(): void {
+    $service = $this->flagService([$this->createMock(FlaggingInterface::class), NULL]);
+    $service->method('unflag')->willThrowException(new \LogicException('not flagged'));
+    $response = $this->controller($service, $this->freeLock())->unflag($this->app);
+    $this->assertSame(200, $response->getStatusCode());
+    $this->assertSame(['flagged' => FALSE, 'changed' => FALSE, 'nid' => (int) $this->app->id()], $this->body($response));
+  }
+
+  /**
+   * A LogicException while the flagging still exists is a real error.
+   */
+  public function testUnflagRethrowsUnrelatedLogicException(): void {
+    $service = $this->flagService([$this->createMock(FlaggingInterface::class)]);
+    $service->method('unflag')->willThrowException(new \LogicException('does not apply'));
+    $this->expectException(\LogicException::class);
+    $this->expectExceptionMessage('does not apply');
+    $this->controller($service, $this->freeLock())->unflag($this->app);
+  }
+
+  /**
+   * The lock is released when the write throws.
+   */
+  public function testLockReleasedWhenWriteThrows(): void {
+    $service = $this->flagService([NULL]);
+    $service->method('flag')->willThrowException(new \LogicException('boom'));
+    // freeLock() expects exactly one release().
+    $lock = $this->freeLock();
+    try {
+      $this->controller($service, $lock)->flag($this->app);
+      $this->fail('The exception should propagate.');
+    }
+    catch (\LogicException $e) {
+      $this->assertSame('boom', $e->getMessage());
+    }
+  }
+
+  /**
+   * A lock that stays busy gives a 503 and never writes or releases.
+   */
+  public function testBusyLockReturnsServiceUnavailable(): void {
+    $service = $this->flagService([NULL]);
+    $service->expects($this->never())->method('flag');
+    $lock = $this->createMock(LockBackendInterface::class);
+    $lock->method('acquire')->willReturn(FALSE);
+    $lock->expects($this->once())->method('wait')->with($this->stringContains('ood_software.appverse_flag:appverse_apps:'), 5)->willReturn(TRUE);
+    $lock->expects($this->never())->method('release');
+    $this->expectException(ServiceUnavailableHttpException::class);
+    $this->controller($service, $lock)->flag($this->app);
+  }
+
+  /**
+   * A lock freed during the wait is acquired and the write runs.
+   */
+  public function testLockAcquiredAfterWait(): void {
+    $service = $this->flagService([NULL]);
+    $service->expects($this->once())->method('flag');
+    $lock = $this->createMock(LockBackendInterface::class);
+    $lock->expects($this->exactly(2))->method('acquire')->willReturnOnConsecutiveCalls(FALSE, TRUE);
+    $lock->expects($this->once())->method('wait')->willReturn(FALSE);
+    $lock->expects($this->once())->method('release');
+    $response = $this->controller($service, $lock)->flag($this->app);
+    $this->assertSame(['flagged' => TRUE, 'changed' => TRUE, 'nid' => (int) $this->app->id()], $this->body($response));
   }
 
 }

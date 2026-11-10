@@ -2,11 +2,12 @@
  * Appverse "We use this App" flag endpoint.
  *
  * Covers the custom flag API:
- *   POST   /appverse/api/flag/{nid}  (X-CSRF-Token) → 200 {"flagged": true,  "nid": N}
- *   DELETE /appverse/api/flag/{nid}  (X-CSRF-Token) → 200 {"flagged": false, "nid": N}
+ *   POST   /appverse/api/flag/{nid}  (X-CSRF-Token) → 200 {"flagged": true,  "changed": bool, "nid": N}
+ *   DELETE /appverse/api/flag/{nid}  (X-CSRF-Token) → 200 {"flagged": false, "changed": bool, "nid": N}
  *   GET    /appverse/api/flags                      → 200 {"flagged": [{"uuid": U, "nid": N}]}
  *
- * Writes are idempotent. Anonymous requests → 403, missing X-CSRF-Token → 403,
+ * Writes are idempotent; "changed" is true only if the request changed state.
+ * Anonymous requests → 403, missing X-CSRF-Token → 403,
  * a node that is not an appverse_app → 404. The flagging--appverse_apps
  * JSON:API resource is disabled, so /jsonapi/flagging/appverse_apps → 404.
  *
@@ -86,7 +87,8 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
     it('POST /appverse/api/flag/{nid} returns 403', () => {
       cy.request({
         method: 'POST',
-        url: `/appverse/api/flag/${app.nid}`,
+        url: `/appverse/api/flag/${app.nid}?_format=json`,
+        headers: { Accept: 'application/json' },
         failOnStatusCode: false,
       }).then((response) => {
         expect(response.status).to.eq(403);
@@ -166,13 +168,13 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
         // First flag.
         cy.request({ method: 'POST', url: flagUrl, headers: flagHeaders }).then((response) => {
           expect(response.status).to.eq(200);
-          expect(response.body).to.deep.include({ flagged: true, nid: app.nid });
+          expect(response.body).to.deep.include({ flagged: true, changed: true, nid: app.nid });
         });
 
         // Second flag is a no-op and still succeeds (idempotent).
         cy.request({ method: 'POST', url: flagUrl, headers: flagHeaders }).then((response) => {
           expect(response.status).to.eq(200);
-          expect(response.body).to.deep.include({ flagged: true, nid: app.nid });
+          expect(response.body).to.deep.include({ flagged: true, changed: false, nid: app.nid });
         });
 
         isFlagged().should('eq', true);
@@ -180,7 +182,7 @@ describe('Appverse flag endpoint (/appverse/api/flag/{nid})', () => {
         // Unflag.
         cy.request({ method: 'DELETE', url: flagUrl, headers: flagHeaders }).then((response) => {
           expect(response.status).to.eq(200);
-          expect(response.body).to.deep.include({ flagged: false, nid: app.nid });
+          expect(response.body).to.deep.include({ flagged: false, changed: true, nid: app.nid });
         });
 
         isFlagged().should('eq', false);
