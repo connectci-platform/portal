@@ -246,7 +246,6 @@ class ReviewPageAjaxTest extends UnitTestCase {
     parent::tearDown();
   }
 
-
   /**
    * A refused save's error is put beside the field it names.
    *
