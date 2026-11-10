@@ -239,6 +239,25 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
+   * A declared alias of the assigned entry is noted, and is one software.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisDeclaredAliasOfTheAssignedEntry(): void {
+    $checks = [
+      'software' => self::match('rstudio-server', 'RStudio'),
+      'same_software_apps' => [
+        ['title' => 'X RStudio', 'github_url' => 'https://github.com/x/rs', 'this_repo' => FALSE],
+      ],
+    ];
+    $b = ReviewPageData::duplicateBasis(self::assigned('RStudio', [['title' => 'OSC RStudio', 'url' => '']]), $checks);
+    $this->assertSame('compare', $b['mode']);
+    // Not merged: the assigned entry's apps are the ones compared.
+    $this->assertSame(['OSC RStudio'], array_column($b['apps'], 'title'));
+    $this->assertSame('Assigned software: RStudio. appverse.yml declares rstudio-server. 1 other published app implements it:', $b['line']);
+  }
+
+  /**
    * The apps the declared entry found join the assigned ones.
    *
    * @covers ::duplicateBasis

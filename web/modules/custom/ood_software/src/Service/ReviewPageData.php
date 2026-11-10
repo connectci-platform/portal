@@ -617,9 +617,13 @@ final class ReviewPageData {
       $entry = (string) $assigned['entry'];
       $apps = array_values($assigned['apps']);
       $parts[] = sprintf('Assigned software: %s.', $entry);
-      if ($value !== '' && mb_strtolower($value) !== mb_strtolower($entry)) {
+      // A different Software entry, not just another spelling of this one
+      // (a declared alias that matched it).
+      $declaredEntry = $status === 'match' ? trim((string) ($sw['entry'] ?? $value)) : '';
+      $otherEntry = $declaredEntry !== '' && mb_strtolower($declaredEntry) !== mb_strtolower($entry);
+      if ($value !== '' && (mb_strtolower($value) !== mb_strtolower($entry) || $otherEntry)) {
         $parts[] = sprintf('appverse.yml declares %s.', $value);
-        if ($status === 'match') {
+        if ($otherEntry) {
           // A duplicate the review tool found is never hidden.
           $both = TRUE;
           $titles = array_column($apps, 'title');

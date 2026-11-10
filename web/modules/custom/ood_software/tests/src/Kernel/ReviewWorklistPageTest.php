@@ -561,6 +561,74 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
+   * Confirm on a check that is no longer clear records nothing.
+   *
+   * Another app with the software published after the page loaded does not
+   * change the review's revision, so only the fresh check can tell.
+   */
+  public function testStaleConfirmIsRefused(): void {
+    $software = $this->software('S');
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->inferredReview($software, FALSE, [$high]);
+    $pid = $this->verdictPids($review)[0];
+    $hid = (string) $high->id();
+    // An AJAX save caches the form, Confirm and all.
+    $input = $this->keys($review) + ['duplicate' => [$pid => ['note' => '']]];
+    [$form] = $this->post($review, ['prose' => [$hid => 'Noted.']] + $input, 'save_finding__' . $hid, 'Save', TRUE);
+    $this->assertArrayHasKey('confirm', $form['duplicate'][$pid]);
+    $input = $this->nextInput($form, $input);
+    $this->otherApp('Newly published S', $software, TRUE);
+    $message = 'The duplicate check changed since this page loaded. Compare the apps listed.';
+    foreach ([TRUE, FALSE] as $ajax) {
+      \Drupal::messenger()->deleteAll();
+      [$form, $formState] = $this->post($review, $input, 'confirm_duplicate__' . $pid, 'Confirm', $ajax);
+      $label = $ajax ? 'AJAX' : 'no JS';
+      $this->assertNull(Paragraph::load($pid)->get('field_rvv_duplicate')->value, $label);
+      $this->assertNull(Paragraph::load($pid)->get('field_rvv_duplicate_note')->value, $label);
+      $this->assertSame((string) $pid, (string) $formState->get('arv_duplicate_changed'), $label);
+      $this->assertSame('duplicate-' . $pid, $formState->get('arv_focus'), $label);
+      // Rebuilt from the review as it is now: the apps to compare, the
+      // message inside the check, and no Confirm.
+      $this->assertTrue($formState->isRebuilding(), $label);
+      $check = $this->duplicateHtml($this->renderForm($form), $pid);
+      $this->assertStringContainsString('finding--duplicate', $check, $label);
+      $this->assertStringContainsString('>Newly published S</a>', $check, $label);
+      $this->assertMatchesRegularExpression('/<p class="arv-field-error" id="[^"]+--error">' . preg_quote($message, '/') . '<\/p>/', $check, $label);
+      $this->assertStringNotContainsString('confirm_duplicate__', $check, $label);
+      if ($ajax) {
+        $this->assertSame('Not saved: ' . $message, $formState->get('arv_announce'));
+      }
+      else {
+        $this->assertContains($message, array_map('strval', \Drupal::messenger()->messagesByType('error')));
+      }
+    }
+  }
+
+  /**
+   * The app itself is never one of the other apps.
+   *
+   * Its repo can be empty, or not the reviewed one; it is still left out.
+   */
+  public function testSameSoftwareNeverListsTheAppItself(): void {
+    $software = $this->software('S');
+    $form = $this->container->get('class_resolver')->getInstanceFromDefinition(ReviewPageForm::class);
+    // No repo to exclude by.
+    $loose = $this->otherApp('Loose S', $software, TRUE);
+    $this->assertSame([], $form->sameSoftwareApps((int) $software->id(), 0, (int) $loose->id()));
+    // The verdict's app sits under another, published repo.
+    $review = $this->inferredReview($software);
+    $app = Paragraph::load($this->verdictPids($review)[0])->get('field_rvv_app_ref')->entity;
+    $this->assertInstanceOf(NodeInterface::class, $app);
+    $elsewhere = $this->makeRepo('published');
+    $app->set('field_appverse_repo', $elsewhere->id());
+    $app->set('moderation_state', 'published');
+    $app->save();
+    $loose->set('moderation_state', 'draft')->save();
+    $basis = $this->page($review)['apps'][0]['duplicate']['basis'];
+    $this->assertSame(['clear', []], [$basis['mode'], $basis['apps']]);
+  }
+
+  /**
    * An outcome the reviewer picked before Confirm is the one kept.
    */
   public function testConfirmKeepsPickedOutcome(): void {
@@ -727,7 +795,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertSame([
       ['title' => 'a with no repo', 'url' => $a->toUrl()->toString()],
       ['title' => 'C under a published repo', 'url' => $c->toUrl()->toString()],
-    ], $form->sameSoftwareApps((int) $software->id(), $repo));
+    ], $form->sameSoftwareApps((int) $software->id(), $repo, 0));
   }
 
   /**

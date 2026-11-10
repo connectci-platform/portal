@@ -91,6 +91,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     'arv_confirm',
     'arv_deleted_from',
     'arv_duplicate_lines',
+    'arv_duplicate_changed',
   ];
 
   // No security axis: security is findings only (schema 1.2), so there is no
@@ -210,7 +211,8 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     $mode = self::viewModeFor($isReviewer, $isContributor, $this->getRequest()->query->get('view'));
     $reviewerView = $mode === self::MODE_EDIT;
 
-    $page = $this->buildPage($node);
+    // The duplicate check is the reviewer's alone.
+    $page = $this->buildPage($node, $reviewerView);
     // Once the decision is sent the review is a record of it: the reviewer
     // keeps the internal notes, the assignee and the actions, and the rest is
     // read-only (the decision-sent view, appverse-planning#51, #56).
@@ -326,6 +328,8 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     // row, or the list's add form for a delete). Only on the rebuild that
     // follows the save; the next action takes it away.
     $form['#arv_confirm'] = $form_state->get('arv_confirm');
+    // A Confirm refused because the check changed (validatePage()).
+    $form['#arv_duplicate_changed'] = $form_state->get('arv_duplicate_changed');
     // The reviewer's worklists: the repo's, then one per app, blocking first.
     $form['#worklist'] = ReviewWorklist::build($page, json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
     if ($canEdit) {
@@ -601,6 +605,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
           },
         ],
       ];
+      // A Confirm refused because the check changed: its message sits with
+      // the outcome, as a refused save's error does (showFieldErrors()).
+      if ((string) ($form['#arv_duplicate_changed'] ?? '') === (string) $pid) {
+        $form['duplicate'][$pid]['outcome']['#errors'] = $this->duplicateChangedMessage();
+      }
       if ($basis['mode'] === 'clear' && empty($app['duplicate']['outcome'])) {
         $form['duplicate'][$pid]['confirm'] = [
           '#type' => 'submit',
@@ -645,7 +654,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     if (trim((string) ($posted['note'] ?? '')) === '') {
       // The line from the review as it is now (validatePage()), never the
       // cached form's. It is plain text, and so is the note.
-      $line = (string) ($form_state->get('arv_duplicate_lines')[$pid] ?? '');
+      $line = (string) ($form_state->get('arv_duplicate_lines')[$pid]['line'] ?? '');
       self::setInputValue($form_state, ['duplicate', $pid, 'note'], 'Confirmed: ' . $line);
     }
     $form_state->set('arv_stamp', sprintf('Review page: %s recorded the duplicate check', $this->currentUser->getDisplayName()));
@@ -1092,7 +1101,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     }
     else {
       $announce = (string) ($form_state->get('arv_announce') ?? $this->t('Saved.'));
-      $priority = AnnounceCommand::PRIORITY_POLITE;
+      $priority = $form_state->get('arv_duplicate_changed') ? AnnounceCommand::PRIORITY_ASSERTIVE : AnnounceCommand::PRIORITY_POLITE;
       // A finding's own Save leaves focus on its Edit control, not on the
       // first link in the row.
       $trigger = $form_state->getTriggeringElement() ?? [];
@@ -1158,6 +1167,13 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       }
     }
     return $anywhere;
+  }
+
+  /**
+   * What a Confirm on a check that changed since the page loaded is told.
+   */
+  protected function duplicateChangedMessage(): MarkupInterface {
+    return $this->t('The duplicate check changed since this page loaded. Compare the apps listed.');
   }
 
   /**
@@ -1278,7 +1294,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    *
    * @return array<mixed>
    */
-  protected function buildPage(NodeInterface $node): array {
+  protected function buildPage(NodeInterface $node, bool $duplicateCheck = TRUE): array {
     $repo = $node->get('field_arv_repo')->entity;
     $repo = $repo instanceof NodeInterface ? $repo : NULL;
     $sha = (string) ($node->get('field_arv_sha')->value ?? '');
@@ -1308,8 +1324,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     // Once a decision is sent, the page shows what was sent, not what the
     // fields hold now (appverse-planning#51).
     $sent = ReviewDecisionApplier::sent($node);
-    // Once per page, for every app's same-software query.
-    $unpublishedRepos = $this->unpublishedRepoIds();
+    // Once per page, for every app's same-software query; only the
+    // reviewer's page compares the apps.
+    $unpublishedRepos = $duplicateCheck ? $this->unpublishedRepoIds() : [];
     $apps = [];
     foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
       $levels = [];
@@ -1338,7 +1355,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       $checks = $verdict->hasField('field_rvv_catalog') ? (json_decode((string) ($verdict->get('field_rvv_catalog')->value ?? ''), TRUE) ?: []) : [];
       // What the duplicate check compares against: the software staff
       // assigned on the app, else what the checks found.
-      $basis = ReviewPageData::duplicateBasis($this->assignedSoftware($verdict, $repo, $unpublishedRepos), $checks);
+      $basis = ReviewPageData::duplicateBasis($duplicateCheck ? $this->assignedSoftware($verdict, $repo, $unpublishedRepos) : NULL, $checks);
       $app['catalog'] = [
         'rows' => ReviewPageData::catalogRows($checks),
         // "No other app" stands without a rationale only when the check found
@@ -1546,7 +1563,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     }
     return [
       'entry' => (string) $software->label(),
-      'apps' => $this->sameSoftwareApps((int) $software->id(), $repo !== NULL ? (int) $repo->id() : 0, $unpublishedRepos),
+      'apps' => $this->sameSoftwareApps((int) $software->id(), $repo !== NULL ? (int) $repo->id() : 0, (int) $app->id(), $unpublishedRepos),
     ];
   }
 
@@ -1574,7 +1591,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    * @param int $softwareNid
    *   The appverse_software node id.
    * @param int $repoNid
-   *   The reviewed repo, whose own apps are not others.
+   *   The reviewed repo, whose own apps are not others; 0 for none.
+   * @param int $appNid
+   *   The app itself, never another, whatever its repo says.
    * @param array<int, int>|null $unpublishedRepos
    *   The unpublished repos' ids, when the caller has them; else they are
    *   looked up.
@@ -1582,7 +1601,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    * @return array<int, array{title: string, url: string}>
    *   The apps by title, each with its page's URL.
    */
-  public function sameSoftwareApps(int $softwareNid, int $repoNid, ?array $unpublishedRepos = NULL): array {
+  public function sameSoftwareApps(int $softwareNid, int $repoNid, int $appNid, ?array $unpublishedRepos = NULL): array {
     $storage = $this->entityTypeManager->getStorage('node');
     $exclude = $unpublishedRepos ?? $this->unpublishedRepoIds();
     if ($repoNid > 0) {
@@ -1593,6 +1612,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       ->condition('type', 'appverse_app')
       ->condition('status', 1)
       ->condition('field_appverse_software_implemen', $softwareNid);
+    if ($appNid > 0) {
+      $query->condition('nid', $appNid, '<>');
+    }
     if ($exclude !== []) {
       $query->condition($query->orConditionGroup()
         ->notExists('field_appverse_repo')
@@ -2551,10 +2573,33 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     $lines = [];
     foreach ($this->buildPage($this->node)['apps'] ?? [] as $app) {
       $backed[$app['pid']] = $app['catalog']['backed'] ?? TRUE;
-      $lines[(string) $app['pid']] = (string) ($app['duplicate']['basis']['line'] ?? '');
+      $lines[(string) $app['pid']] = [
+        'line' => (string) ($app['duplicate']['basis']['line'] ?? ''),
+        'mode' => (string) ($app['duplicate']['basis']['mode'] ?? ''),
+      ];
     }
     // For Confirm's note.
     $form_state->set('arv_duplicate_lines', $lines);
+    // Confirm records "No other app" only while the check is still clear:
+    // software assigned, or another app with it published, since the page
+    // loaded does not change the review's revision.
+    $confirm = (string) ($form_state->getTriggeringElement()['#duplicate_pid'] ?? '');
+    if ($confirm !== '' && ($lines[$confirm]['mode'] ?? '') !== 'clear') {
+      // Nothing is saved: a rebuild set while validating skips the submit
+      // handlers. It is not a form error, because core rebuilds a form only
+      // when there is none, and the rebuild is what lists the apps to
+      // compare. The message goes on the outcome (addDuplicateElements())
+      // and at the top of the page.
+      $form_state->set('arv_duplicate_changed', $confirm);
+      $form_state->set('arv_focus', 'duplicate-' . $confirm);
+      $form_state->set('arv_announce', (string) $this->t('Not saved: @error', ['@error' => $this->duplicateChangedMessage()]));
+      if (!$this->isAjax()) {
+        // Over AJAX the announcement says it, and nothing is left behind
+        // for the next page.
+        $this->messenger()->addError($this->duplicateChangedMessage());
+      }
+      $form_state->setRebuild();
+    }
     foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
       if (DuplicateCheck::needsNote((string) ($input['outcome'] ?? ''), (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {
         $form_state->setErrorByName('duplicate][' . $pid . '][note', $this->t('Give the rationale for the duplicate check: which apps you compared, and how this one differs or which one it duplicates.'));
