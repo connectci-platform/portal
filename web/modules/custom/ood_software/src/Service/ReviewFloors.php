@@ -30,6 +30,8 @@ use Drupal\node\NodeInterface;
  * stored result (seeded before results were) counts as a FAIL, as it does on
  * the review page, but only at High or Critical: most such rows are passes
  * at Info, so a gate needs a stored FAIL to set its any-severity floor.
+ *
+ * findingFloor() is the per-finding view the review page sorts by.
  */
 final class ReviewFloors {
 
@@ -66,48 +68,22 @@ final class ReviewFloors {
     }
     foreach ($sources as [$app, $findings]) {
       foreach ($findings as $f) {
-        $result = strtoupper(trim((string) ($f['result'] ?? '')));
-        // A finding the reviewer dismissed sets no floor (A1).
-        if (($result !== '' && $result !== 'FAIL') || !empty($f['dismissed'])) {
+        $floor = self::findingFloor($f, $app === NULL, $multi);
+        if ($floor === NULL) {
           continue;
         }
-        $severity = strtolower(trim((string) ($f['severity'] ?? '')));
-        $decision = self::SEVERITY_FLOOR[$severity] ?? NULL;
-        $rule = strtoupper(trim((string) ($f['rule'] ?? '')));
-        $gate = self::isGate($f);
-        // A gate row the security aspect filed (a shellcheck code that maps
-        // to STR-04, say) is still a gate, so its floor matches its pill.
-        $security = !$gate && (strtolower(trim((string) ($f['aspect'] ?? ''))) === 'security' || str_starts_with($rule, 'OODT'));
-        if (!$security && !str_starts_with($rule, 'STR')) {
-          continue;
-        }
-        // A gate: Request changes when it failed (a row seeded before results
-        // were stored still needs High to count), never Reject.
-        if ($gate) {
-          $decision = $decision !== NULL || $result === 'FAIL' ? 'request_changes' : NULL;
-        }
-        if ($decision === NULL) {
-          continue;
-        }
-        $repoWide = $security || $app === NULL;
-        // Evidence is markdown (backticked values); the reason is plain text.
-        $evidence = str_replace('`', '', (string) ($f['evidence'] ?? ''));
-        $reason = sprintf('%s %s FAIL at %s%s',
-          $f['rule'] ?? '?', ucfirst($severity), $evidence !== '' ? $evidence : 'the repo',
-          $repoWide && $multi ? ' (applies to every app)' : '');
-        if ($repoWide) {
-          $raise($everyApp, $decision, $reason);
+        $reason = $floor['reason'];
+        if ($floor['every_app']) {
+          $raise($everyApp, $floor['decision'], $reason);
         }
         else {
           $own[$app] ??= NULL;
-          $raise($own[$app], $decision, $reason);
+          $raise($own[$app], $floor['decision'], $reason);
         }
       }
     }
-    foreach (self::REPO_GATES as $gate) {
-      if (strtolower((string) ($repoCriteria[$gate] ?? '')) === 'fail') {
-        $raise($everyApp, 'request_changes', sprintf('the %s repo gate failed', str_replace('_', ' ', $gate)));
-      }
+    foreach (self::repoGateFloors($repoCriteria) as $gateFloor) {
+      $raise($everyApp, $gateFloor['decision'], $gateFloor['reason']);
     }
 
     $floors = [];
@@ -120,6 +96,77 @@ final class ReviewFloors {
       }
       if ($floor !== NULL) {
         $floors[$app] = $floor;
+      }
+    }
+    return $floors;
+  }
+
+  /**
+   * The floor one finding sets by itself.
+   *
+   * @param array<string, mixed> $finding
+   *   Rule, aspect, severity, result (as stored, empty when none was),
+   *   evidence, defect_key and dismissed.
+   * @param bool $repoLevel
+   *   Whether the finding is a repo-level one.
+   * @param bool $multi
+   *   Whether the review has more than one app.
+   *
+   * @return array{decision: string, reason: string, every_app: bool}|null
+   *   NULL when the finding sets no floor.
+   */
+  public static function findingFloor(array $finding, bool $repoLevel, bool $multi): ?array {
+    $f = $finding;
+    $result = strtoupper(trim((string) ($f['result'] ?? '')));
+    // A finding the reviewer dismissed sets no floor (A1).
+    if (($result !== '' && $result !== 'FAIL') || !empty($f['dismissed'])) {
+      return NULL;
+    }
+    $severity = strtolower(trim((string) ($f['severity'] ?? '')));
+    $decision = self::SEVERITY_FLOOR[$severity] ?? NULL;
+    $rule = strtoupper(trim((string) ($f['rule'] ?? '')));
+    $gate = self::isGate($f);
+    // A gate row the security aspect filed (a shellcheck code that maps to
+    // STR-04, say) is still a gate, so its floor matches its pill.
+    $security = !$gate && (strtolower(trim((string) ($f['aspect'] ?? ''))) === 'security' || str_starts_with($rule, 'OODT'));
+    if (!$security && !str_starts_with($rule, 'STR')) {
+      return NULL;
+    }
+    // A gate: Request changes when it failed (a row seeded before results
+    // were stored still needs High to count), never Reject.
+    if ($gate) {
+      $decision = $decision !== NULL || $result === 'FAIL' ? 'request_changes' : NULL;
+    }
+    if ($decision === NULL) {
+      return NULL;
+    }
+    $repoWide = $security || $repoLevel;
+    // Evidence is markdown (backticked values); the reason is plain text.
+    $evidence = str_replace('`', '', (string) ($f['evidence'] ?? ''));
+    $reason = sprintf('%s %s FAIL at %s%s',
+      $f['rule'] ?? '?', ucfirst($severity), $evidence !== '' ? $evidence : 'the repo',
+      $repoWide && $multi ? ' (applies to every app)' : '');
+    return ['decision' => $decision, 'reason' => $reason, 'every_app' => $repoWide];
+  }
+
+  /**
+   * The floor each failed repo gate sets for every app.
+   *
+   * @param array<string, string> $repoCriteria
+   *   The repo gates, gate => pass / fail.
+   *
+   * @return array<int, array{gate: string, decision: string, reason: string}>
+   *   One entry per failed gate.
+   */
+  public static function repoGateFloors(array $repoCriteria): array {
+    $floors = [];
+    foreach (self::REPO_GATES as $gate) {
+      if (strtolower((string) ($repoCriteria[$gate] ?? '')) === 'fail') {
+        $floors[] = [
+          'gate' => $gate,
+          'decision' => 'request_changes',
+          'reason' => sprintf('the %s repo gate failed', str_replace('_', ' ', $gate)),
+        ];
       }
     }
     return $floors;
