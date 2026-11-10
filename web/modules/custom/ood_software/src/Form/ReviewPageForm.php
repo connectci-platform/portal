@@ -1017,10 +1017,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   }
 
   /**
-   * The page's messages without the alert role.
+   * The page's messages with a group role instead of the alert role.
    *
    * The announcement already speaks the error assertively, and the theme's
-   * role="alert" around an error would speak it again.
+   * role="alert" around an error would speak it again. A group keeps the
+   * theme's aria-label valid.
    *
    * @return array<string, mixed>
    *   A render array.
@@ -1029,7 +1030,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     // Built directly: the element's lazy builder leaves only a placeholder.
     $messages = StatusMessages::renderMessages(NULL);
     $html = (string) $this->renderer->renderInIsolation($messages);
-    return ['#markup' => Markup::create(preg_replace('/\s+role=(["\'])alert\1/', '', $html))];
+    return ['#markup' => Markup::create(preg_replace('/\brole=(["\'])alert\1/', 'role="group"', $html))];
   }
 
   /**
