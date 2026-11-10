@@ -29,6 +29,7 @@ use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
 use Drupal\ood_software\Service\ReleaseWatcher;
 use Drupal\ood_software\Service\ReviewSignals;
+use Drupal\ood_software\Service\ReviewWorklist;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
@@ -275,6 +276,8 @@ final class ReviewPageForm extends FormBase {
     if (!$reviewerView) {
       return $form;
     }
+    // The reviewer's worklists: the repo's, then one per app, blocking first.
+    $form['#worklist'] = ReviewWorklist::build($page, json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
     if ($canEdit) {
       $this->addContentElements($form, $page, $node);
     }
@@ -443,8 +446,7 @@ final class ReviewPageForm extends FormBase {
           '#attributes' => ['placeholder' => $this->t('Reason for changing the automated rating…')],
         ];
       }
-      foreach ($app['blocks'] as $key => $block) {
-        $this->addNewFindingElements($form, $block['target'], $key);
+      foreach ($app['blocks'] as $block) {
         foreach ($block['groups'] as $group) {
           foreach ($group['findings'] as $finding) {
             $this->addProseElement($form, $finding);
@@ -457,8 +459,7 @@ final class ReviewPageForm extends FormBase {
         }
       }
     }
-    foreach ($page['repo_blocks'] as $key => $block) {
-      $this->addNewFindingElements($form, $block['target'], $key);
+    foreach ($page['repo_blocks'] as $block) {
       foreach ($block['groups'] as $group) {
         foreach ($group['findings'] as $finding) {
           $this->addProseElement($form, $finding);
@@ -468,7 +469,10 @@ final class ReviewPageForm extends FormBase {
         $this->addProseElement($form, $finding);
       }
     }
-    $this->addNewFindingElements($form, $page['maintenance']['target'], 'maintenance');
+    // One add form per list, which picks the section.
+    foreach ($form['#worklist'] ?? [] as $list) {
+      $this->addNewFindingElements($form, $list);
+    }
     $maint = $page['maintenance'];
     $form['maint_level'] = [
       '#type' => 'select',
@@ -774,9 +778,11 @@ final class ReviewPageForm extends FormBase {
       return;
     }
     $this->messenger()->addStatus($this->t('Review saved.'));
-    // A finding's own Save returns to that finding.
+    // Back to what the reviewer was working on: what a handler put in
+    // arv_focus, else a finding's own Save returns to that finding.
     $pid = $form_state->getTriggeringElement()['#finding_pid'] ?? NULL;
-    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], $pid ? ['fragment' => 'finding-' . $pid] : []);
+    $focus = $form_state->get('arv_focus') ?? ($pid ? 'finding-' . $pid : NULL);
+    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], $focus ? ['fragment' => $focus] : []);
   }
 
   /**
@@ -961,10 +967,6 @@ final class ReviewPageForm extends FormBase {
         'label' => (string) ($this->duplicateOptions()[$outcome ?? ''] ?? ''),
         'note' => $verdict->hasField('field_rvv_duplicate_note') ? (string) ($verdict->get('field_rvv_duplicate_note')->value ?? '') : '',
       ];
-      // Where an "Add finding" in each block puts the new finding.
-      foreach (array_keys($app['blocks']) as $key) {
-        $app['blocks'][$key]['target'] = 'app:' . $verdict->id() . ':' . $key;
-      }
       $apps[] = $app;
     }
 
@@ -1001,10 +1003,6 @@ final class ReviewPageForm extends FormBase {
       ],
       $previous,
     );
-    foreach (array_keys($repoSection['blocks']) as $key) {
-      $repoSection['blocks'][$key]['target'] = 'repo:' . $key;
-    }
-    $repoSection['maintenance']['target'] = 'repo:maintenance';
 
     $notes = [];
     foreach ($node->get('field_arv_internal_notes')->referencedEntities() as $note) {
@@ -1626,23 +1624,80 @@ final class ReviewPageForm extends FormBase {
   }
 
   /**
-   * The "Add finding" form for one block: the fields the automated review
-   * fills that need a reviewer's judgment. Its button validates only its own
-   * fields, so an empty add form elsewhere never blocks Save draft.
+   * The sections a list's add form offers, key => title.
+   *
+   * An app's list offers the app's blocks. The repo's offers the sections
+   * its list has (ReviewWorklist): its blocks, Structure when a repo gate
+   * stands there, and Upkeep.
+   *
+   * @param array<string, mixed> $list
+   *   A list from ReviewWorklist::build().
+   *
+   * @return array<string, string>
+   *   Section key => title.
+   */
+  public static function addSections(array $list): array {
+    if (($list['key'] ?? '') !== 'repo') {
+      return ReviewPageData::APP_BLOCKS;
+    }
+    $sections = [];
+    foreach ((array) ($list['sections'] ?? []) as $section) {
+      $key = (string) ($section['key'] ?? '');
+      $sections[$key] = $key === 'maintenance' ? 'Upkeep' : (ReviewPageData::APP_BLOCKS[$key] ?? $key);
+    }
+    return $sections;
+  }
+
+  /**
+   * Where a finding added in a list's form is stored: app:<pid>:<section>
+   * for an app's list, repo:<section> for the repo's.
+   */
+  public static function addTarget(string $listKey, string $section): string {
+    return $listKey === 'repo' ? 'repo:' . $section : 'app:' . substr($listKey, strlen('app-')) . ':' . $section;
+  }
+
+  /**
+   * The "Add finding" form for one list: the section it goes in, and the
+   * fields the automated review fills that need a reviewer's judgment. Its
+   * button validates only its own fields, so an empty add form elsewhere
+   * never blocks Save draft.
    *
    * @param array<string, mixed> $form
+   * @param array<string, mixed> $list
+   *   A list from ReviewWorklist::build().
    */
-  protected function addNewFindingElements(array &$form, string $target, string $blockKey): void {
+  protected function addNewFindingElements(array &$form, array $list): void {
+    $key = (string) $list['key'];
+    $sections = self::addSections($list);
+    // The rules grouped by section, and which section each belongs to, so
+    // the page's script can move the section along with the rule.
     $rules = [];
-    foreach (ReviewPageData::BLOCK_RULES[$blockKey] ?? [] as $code => $title) {
-      $rules[$code] = $code . ' — ' . $title;
+    $ruleSections = [];
+    foreach ($sections as $section => $title) {
+      foreach (ReviewPageData::BLOCK_RULES[$section] ?? [] as $code => $ruleTitle) {
+        $rules[$title][$code] = $code . ' — ' . $ruleTitle;
+        $ruleSections[$code] = $section;
+      }
     }
     $rules['_other'] = $this->t('Other…');
-    $selector = ':input[name="add_finding[' . $target . '][rule]"]';
-    $form['add_finding'][$target] = [
+    $default = (string) ($list['default_section'] ?? '');
+    $selector = ':input[name="add_finding[' . $key . '][rule]"]';
+    $form['add_finding'][$key] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['finding-fields']],
-      'rule' => ['#type' => 'select', '#title' => $this->t('Rule'), '#options' => $rules],
+      'section' => [
+        '#type' => 'select',
+        '#title' => $this->t('Section'),
+        '#options' => $sections,
+        '#default_value' => isset($sections[$default]) ? $default : array_key_first($sections),
+        '#attributes' => ['class' => ['arv-add-section']],
+      ],
+      'rule' => [
+        '#type' => 'select',
+        '#title' => $this->t('Rule'),
+        '#options' => $rules,
+        '#attributes' => ['data-rule-sections' => json_encode($ruleSections)],
+      ],
       'rule_other' => [
         '#type' => 'textfield',
         '#title' => $this->t('Rule code'),
@@ -1651,29 +1706,45 @@ final class ReviewPageForm extends FormBase {
         '#states' => ['visible' => [$selector => ['value' => '_other']]],
       ],
       'severity' => ['#type' => 'select', '#title' => $this->t('Severity'), '#options' => $this->severityOptions(), '#default_value' => 'medium'],
-      'summary' => ['#type' => 'textfield', '#title' => $this->t('Summary'), '#maxlength' => 255],
+      'summary' => ['#type' => 'textfield', '#title' => $this->t('Summary'), '#maxlength' => 255, '#attributes' => ['class' => ['arv-add-summary']]],
       'evidence' => ['#type' => 'textfield', '#title' => $this->t('Evidence'), '#maxlength' => 255, '#attributes' => ['placeholder' => 'path/to/file:line — what is there']],
       'add' => [
         '#type' => 'submit',
         '#value' => $this->t('Add finding'),
-        '#name' => 'add_finding__' . $target,
-        '#finding_target' => $target,
+        '#name' => 'add_finding__' . $key,
+        '#finding_list' => $key,
         '#validate' => ['::validateAddFinding'],
         '#submit' => ['::addFinding'],
-        '#limit_validation_errors' => [['add_finding', $target]],
+        '#limit_validation_errors' => [['add_finding', $key]],
         '#attributes' => ['class' => ['btn']],
       ],
     ];
   }
 
   /**
-   * The finding a reviewer typed into one block's add form, as paragraph
-   * values, or NULL with the error set on the form.
+   * The finding a reviewer typed into one list's add form, as paragraph
+   * values plus the target it is stored under, or NULL with the error set on
+   * the form.
    *
    * @param array<mixed> $input
-   * @return array<mixed>
+   *   The add form's values.
+   * @param string $listKey
+   *   The list's key: repo, or app-<pid>.
+   * @param array<string, string> $sections
+   *   The sections the list's form offers.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state, for the error.
+   *
+   * @return array<mixed>|null
+   *   The values, with target, or NULL.
    */
-  protected function newFindingFromInput(array $input, string $target, FormStateInterface $form_state): ?array {
+  protected function newFindingFromInput(array $input, string $listKey, array $sections, FormStateInterface $form_state): ?array {
+    $section = (string) ($input['section'] ?? '');
+    if (!isset($sections[$section])) {
+      $form_state->setErrorByName('add_finding][' . $listKey . '][section', $this->t('Choose a section for the new finding.'));
+      return NULL;
+    }
+    $target = self::addTarget($listKey, $section);
     [$kind, $first, $second] = array_pad(explode(':', $target), 3, NULL);
     $blockKey = $kind === 'app' ? $second : $first;
     $appId = 'root';
@@ -1686,35 +1757,49 @@ final class ReviewPageForm extends FormBase {
     }
     $rule = ($input['rule'] ?? '') === '_other' ? ($input['rule_other'] ?? '') : ($input['rule'] ?? '');
     try {
-      return ReviewPageData::reviewerFinding(['rule' => $rule] + $input, (string) $blockKey, $appId, 'manual-' . bin2hex(random_bytes(4)));
+      return ['target' => $target] + ReviewPageData::reviewerFinding(['rule' => $rule] + $input, (string) $blockKey, $appId, 'manual-' . bin2hex(random_bytes(4)));
     }
     catch (\InvalidArgumentException $e) {
-      $form_state->setErrorByName('add_finding][' . $target . '][summary', $this->t('A new finding needs a rule, a severity and a summary.'));
+      $form_state->setErrorByName('add_finding][' . $listKey . '][summary', $this->t('A new finding needs a rule, a severity and a summary.'));
       return NULL;
     }
+  }
+
+  /**
+   * The finding the pressed add button's form holds, or NULL.
+   *
+   * @param array<string, mixed> $form
+   *
+   * @return array<mixed>|null
+   *   As newFindingFromInput() returns it.
+   */
+  protected function pressedAddFinding(array $form, FormStateInterface $form_state): ?array {
+    $listKey = (string) $form_state->getTriggeringElement()['#finding_list'];
+    $sections = (array) ($form['add_finding'][$listKey]['section']['#options'] ?? []);
+    return $this->newFindingFromInput($form_state->getValue(['add_finding', $listKey]) ?? [], $listKey, $sections, $form_state);
   }
 
   /**
    * @param array<string, mixed> $form
    */
   public function validateAddFinding(array &$form, FormStateInterface $form_state): void {
-    $target = $form_state->getTriggeringElement()['#finding_target'];
-    $this->newFindingFromInput($form_state->getValue(['add_finding', $target]) ?? [], $target, $form_state);
+    $this->pressedAddFinding($form, $form_state);
   }
 
   /**
-   * Submit handler for a block's "Add finding": a review_finding paragraph
+   * Submit handler for a list's "Add finding": a review_finding paragraph
    * marked as the reviewer's, appended to that app's verdict (or the repo's
-   * findings), saved as a new revision of the review.
+   * findings) under the section picked, saved as a new revision of the
+   * review.
    *
    * @param array<string, mixed> $form
    */
   public function addFinding(array &$form, FormStateInterface $form_state): void {
-    $target = $form_state->getTriggeringElement()['#finding_target'];
-    $values = $this->newFindingFromInput($form_state->getValue(['add_finding', $target]) ?? [], $target, $form_state);
+    $values = $this->pressedAddFinding($form, $form_state);
     if ($values === NULL) {
       return;
     }
+    $target = (string) $values['target'];
     $node = $this->node;
     $finding = Paragraph::create([
       'type' => 'review_finding',
@@ -1754,7 +1839,9 @@ final class ReviewPageForm extends FormBase {
     $this->stampRevision($node, sprintf('Review page: %s added finding %s', $this->currentUser->getDisplayName(), $values['rule']));
     $node->save();
     $this->messenger()->addStatus($this->t('Finding @rule added.', ['@rule' => $values['rule']]));
-    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
+    // Back on the new finding.
+    $form_state->set('arv_focus', 'finding-' . $finding->id());
+    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], ['fragment' => $form_state->get('arv_focus')]);
   }
 
   /**

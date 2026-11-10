@@ -192,8 +192,9 @@ final class ReviewWorklist {
       foreach ((array) ($block['checked']['rows'] ?? []) as $row) {
         $out['passed'][$key][] = (array) $row;
       }
+      // A dismissed row keeps its section, for the page's data-section.
       foreach ((array) ($block['dismissed'] ?? []) as $row) {
-        $out['dismissed'][] = (array) $row;
+        $out['dismissed'][] = (array) $row + ['section' => (string) $key];
       }
     }
     // A block's gate stands only when no listed finding accounts for it. The

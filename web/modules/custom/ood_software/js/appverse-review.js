@@ -1,8 +1,9 @@
 /**
  * @file
- * Review page: collapsible severity groups, per-finding note boxes, and the
- * per-axis override box. Mirrors the wireframe's interactions; everything is
- * plain markup that works without JS (all boxes open), JS only collapses.
+ * Review page: per-finding note boxes, the per-axis override box, and the
+ * worklists' add forms. Everything is plain markup that works without JS (all
+ * boxes open, each add form at the end of its list); JS only collapses and
+ * moves.
  */
 (function (Drupal, once) {
   'use strict';
@@ -76,21 +77,6 @@
         update();
       });
 
-      once('arv-sev', '.arv-page .sev-head', context).forEach((head) => {
-        const body = head.nextElementSibling;
-        if (!body) {
-          return;
-        }
-        // Collapse everything but the worst group by default, as the wireframe.
-        if (!head.classList.contains('sev-head--open')) {
-          body.classList.add('collapsed');
-        }
-        head.addEventListener('click', () => {
-          body.classList.toggle('collapsed');
-          head.classList.toggle('sev-head--open');
-        });
-      });
-
       // Long evidence clamps to two lines with a toggle. OODT-05 cites a
       // dozen file:line references and filled a third of its card
       // (appverse-planning#53). The threshold is characters rather than
@@ -162,7 +148,8 @@
       // swaps in the dropdown and the note (appverse-planning#54). The markup
       // carries both and starts with the dropdown shown, so without this the
       // page still works; the class added here is what hides one of them.
-      once('arv-override', '.arv-page .catblock', context).forEach((block) => {
+      // Each rating in a list's ratings line has its own icon.
+      once('arv-override', '.arv-page .arv-ratings .arv-rating', context).forEach((block) => {
         const btn = block.querySelector('.edit-icon-btn');
         const box = block.querySelector('.override-box');
         const readonly = block.querySelector('.level-readonly');
@@ -192,6 +179,47 @@
           const select = control ? control.querySelector('select') : null;
           if (select && !block.classList.contains('level-collapsed')) {
             select.focus();
+          }
+        });
+      });
+
+      // Picking a rule moves the add form's section to the rule's own, so an
+      // OODT code is not filed under Code quality by accident.
+      once('arv-add-rule', '.arv-page select[data-rule-sections]', context).forEach((select) => {
+        const map = JSON.parse(select.dataset.ruleSections || '{}');
+        const fields = select.closest('.finding-fields');
+        const section = fields ? fields.querySelector('select.arv-add-section') : null;
+        if (!section) {
+          return;
+        }
+        select.addEventListener('change', () => {
+          if (map[select.value]) {
+            section.value = map[select.value];
+          }
+        });
+      });
+
+      // "Add a finding here": the list's add form moves under the row, on the
+      // row's section, open, with the summary focused. Without JS the button
+      // stays hidden and the form sits at the end of the list.
+      once('arv-add-here', '.arv-page .arv-add-here', context).forEach((btn) => {
+        const list = btn.closest('.arv-worklist');
+        const fold = list ? list.querySelector('details.add-finding') : null;
+        const row = btn.closest('.finding');
+        if (!fold || !row) {
+          return;
+        }
+        btn.hidden = false;
+        btn.addEventListener('click', () => {
+          const section = fold.querySelector('select.arv-add-section');
+          if (section && Array.from(section.options).some((o) => o.value === btn.dataset.section)) {
+            section.value = btn.dataset.section;
+          }
+          row.after(fold);
+          fold.open = true;
+          const summary = fold.querySelector('.arv-add-summary');
+          if (summary) {
+            summary.focus();
           }
         });
       });

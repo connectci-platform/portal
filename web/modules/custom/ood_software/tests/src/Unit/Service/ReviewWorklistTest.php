@@ -457,6 +457,7 @@ class ReviewWorklistTest extends UnitTestCase {
     $list = ReviewWorklist::build($page, [])[1];
     $this->assertSame([], $list['items']);
     $this->assertSame([4, 5], array_column($list['dismissed'], 'pid'));
+    $this->assertSame(['security', 'code_quality'], array_column($list['dismissed'], 'section'));
   }
 
   /**
