@@ -23,7 +23,13 @@ const FIXTURES = {
   gamma: {
     resource_id: "test-gamma-9997",
   },
+  noCider: {
+    // No field_cider_resource_id or field_access_global_resource_id, like the
+    // real Fabric and Sage resources, so it is only reachable by nid.
+    title: "Test Resource Delta-NoCider",
+  },
   group: {
+    title: "Test Resource Group",
     support_link_titles: ["Group User Guide", "Group Ticket System"],
     office_hours_url_fragment: "group.test.example.edu/office-hours",
     software_list_url_fragment: "group.test.example.edu/software",
@@ -346,6 +352,78 @@ describe("Resource Documentation API", () => {
       if (r.headers.etag) {
         expect(r.headers.etag).to.match(/^(W\/)?"\d+-\d+"$/);
       }
+    });
+  });
+
+  it("every listing entry has a boolean listed property", () => {
+    cy.request("/api/1.0/resources").then((response) => {
+      response.body.resources.forEach((r) => {
+        expect(r.listed, `listed on ${r.title}`).to.be.a("boolean");
+      });
+    });
+  });
+
+  it("listed is true for own-listed fixtures and for members of a listed group", () => {
+    cy.request("/api/1.0/resources").then((response) => {
+      const byId = (id) => response.body.resources.find((r) => r.resource_id === id);
+      // Alpha and Gamma are checked field_rp_listing on the AMP domain.
+      expect(byId(FIXTURES.alpha.resource_id).listed, "Alpha own listing").to.eq(true);
+      expect(byId(FIXTURES.gamma.resource_id).listed, "Gamma own listing").to.eq(true);
+      // Beta is not listed itself but belongs to the listed Test Resource Group.
+      expect(byId(FIXTURES.beta.resource_id).listed, "Beta via group").to.eq(true);
+      const delta = response.body.resources.find((r) => r.title === FIXTURES.noCider.title);
+      expect(delta.listed, "Delta-NoCider own listing").to.eq(true);
+    });
+  });
+
+  it("GET /api/1.0/resources/node/{nid} returns the same body as the resource_id route", () => {
+    cy.request("/api/1.0/resources").then((list) => {
+      const alpha = list.body.resources.find((r) => r.resource_id === FIXTURES.alpha.resource_id);
+      cy.request(`/api/1.0/resources/node/${alpha.nid}`).then((byNid) => {
+        cy.request(`/api/1.0/resources/${FIXTURES.alpha.resource_id}`).then((byId) => {
+          expect(byNid.status).to.eq(200);
+          expect(byNid.body.listed).to.be.a("boolean");
+          expect(byNid.body).to.deep.eq(byId.body);
+        });
+      });
+    });
+  });
+
+  it("GET /api/1.0/resources/node/{nid} serves a resource with no CiDeR or global ID", () => {
+    cy.request("/api/1.0/resources").then((list) => {
+      const delta = list.body.resources.find((r) => r.title === FIXTURES.noCider.title);
+      expect(delta, "Delta-NoCider in listing").to.exist;
+      cy.request(`/api/1.0/resources/node/${delta.nid}`).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body.resource_id).to.be.null;
+        expect(response.body.global_resource_id).to.be.null;
+        expect(response.body.title).to.eq(FIXTURES.noCider.title);
+        expect(response.body.listed).to.eq(true);
+      });
+    });
+  });
+
+  it("GET /api/1.0/resources/node/{nid} returns 404 for a nonexistent nid", () => {
+    cy.request({
+      url: "/api/1.0/resources/node/999999999",
+      failOnStatusCode: false,
+    }).then((response) => {
+      expect(response.status).to.eq(404);
+      expect(response.body).to.have.property("error");
+    });
+  });
+
+  it("GET /api/1.0/resources/node/{nid} returns 404 for a resource_group nid", () => {
+    cy.request("/api/1.0/resource-groups").then((groups) => {
+      const group = groups.body.groups.find((g) => g.title === FIXTURES.group.title);
+      expect(group, "Test Resource Group in resource-groups").to.exist;
+      cy.request({
+        url: `/api/1.0/resources/node/${group.nid}`,
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status).to.eq(404);
+        expect(response.body).to.have.property("error");
+      });
     });
   });
 
