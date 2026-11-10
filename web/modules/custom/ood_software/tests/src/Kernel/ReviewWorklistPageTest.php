@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ood_software\Kernel;
 
+use Drupal\Core\Form\EnforcedResponseException;
+use Drupal\Core\Form\FormAjaxException;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\BubbleableMetadata;
@@ -20,7 +22,9 @@ use Drupal\paragraphs\ParagraphInterface;
 use Drupal\Tests\ood_software\Kernel\Traits\AppverseModerationTestTrait;
 use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
+use Drupal\user\Entity\Role;
 use Drupal\user\UserInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
@@ -55,6 +59,11 @@ class ReviewWorklistPageTest extends KernelTestBase {
    * A reviewer.
    */
   protected UserInterface $reviewer;
+
+  /**
+   * The test's browser session.
+   */
+  protected ?Session $session = NULL;
 
   /**
    * {@inheritdoc}
@@ -201,7 +210,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
    */
   protected function pushRequest(NodeInterface $review, string $method = 'GET'): void {
     $request = Request::create('/appverse/review/' . $review->id(), $method);
-    $request->setSession(new Session(new MockArraySessionStorage()));
+    $request->setSession($this->session());
     $this->container->get('request_stack')->push($request);
   }
 
@@ -610,6 +619,437 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertStringNotContainsString('name="prose[', $html);
     // No duplicate check recorded: the slot is empty, so it draws nothing.
     $this->assertMatchesRegularExpression('/<div class="duplicate-check-block" id="duplicate-' . $pid . '"><\/div>/', $html);
+  }
+
+  /**
+   * An AJAX Save rebuilds the page in place rather than redirecting.
+   */
+  public function testAjaxSaveRebuildsInsteadOfRedirecting(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $keys = $this->keys($review);
+    \Drupal::messenger()->deleteAll();
+    [, $formState] = $this->post($review, $keys + [
+      'prose' => [$pid => 'Noted.'],
+    ], 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertTrue($formState->isRebuilding());
+    // Rebuilding: no redirect at all.
+    $this->assertFalse($formState->getRedirect());
+    $this->assertSame('Saved.', $formState->get('arv_announce'));
+    $this->assertSame('finding-' . $pid, $formState->get('arv_focus'));
+    $this->assertSame('Noted.', Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
+    $this->assertSame([], \Drupal::messenger()->messagesByType('status'), 'An AJAX save leaves no message for the next page.');
+  }
+
+  /**
+   * An add saves the rest of the posted page too, in one revision.
+   */
+  public function testAjaxAddSavesTheRestOfThePage(): void {
+    $review = $this->makeReview(['root' => []]);
+    $pid = $this->verdictPids($review)[0];
+    $key = 'app-' . $pid;
+    $before = $this->revisionCount($review);
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'add_finding' => [$key => $this->addInput('code_quality', 'QUA-03', 'low', 'No error handling.')],
+      'response' => 'Thanks for the app.',
+      'conclusion' => [$pid => 'request_changes'],
+    ], 'add_finding__' . $key, 'Add finding', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $added = Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities();
+    $this->assertCount(1, $added);
+    $this->assertSame('QUA-03', $added[0]->get('field_rvf_rule')->value);
+    $this->assertSame('request_changes', Paragraph::load($pid)->get('field_rvv_conclusion')->value);
+    $node = Node::load($review->id());
+    $this->assertSame('Thanks for the app.', $node->get('field_arv_contributor_response')->value);
+    $this->assertSame($before + 1, $this->revisionCount($review));
+    $this->assertStringContainsString('added finding QUA-03', (string) $node->getRevisionLogMessage());
+    $this->assertSame('Finding added.', $formState->get('arv_announce'));
+    $this->assertSame('finding-' . $added[0]->id(), $formState->get('arv_focus'));
+  }
+
+  /**
+   * What is typed elsewhere on the page is still there after a save.
+   */
+  public function testAjaxSaveKeepsOtherInput(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high], 'other' => []]);
+    [, $other] = $this->verdictPids($review);
+    $pid = (string) $high->id();
+    [$form] = $this->post($review, $this->keys($review) + [
+      'prose' => [$pid => 'Noted.'],
+      'add_finding' => ['app-' . $other => ['summary' => 'half typed']],
+    ], 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertSame('half typed', $form['add_finding']['app-' . $other]['summary']['#value']);
+    $this->assertSame('Noted.', $form['prose'][$pid]['#value']);
+  }
+
+  /**
+   * An add empties its own add form and no other.
+   */
+  public function testAjaxAddClearsOnlyItsOwnAddForm(): void {
+    $review = $this->makeReview(['root' => [], 'other' => []]);
+    [$pid, $other] = $this->verdictPids($review);
+    [$form, $formState] = $this->post($review, $this->keys($review) + [
+      'add_finding' => [
+        'app-' . $pid => $this->addInput('code_quality', 'QUA-03', 'low', 'No error handling.'),
+        'app-' . $other => ['summary' => 'half typed'],
+      ],
+    ], 'add_finding__app-' . $pid, 'Add finding', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertCount(1, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities());
+    $this->assertSame('', $form['add_finding']['app-' . $pid]['summary']['#value']);
+    $this->assertSame('half typed', $form['add_finding']['app-' . $other]['summary']['#value']);
+  }
+
+  /**
+   * Add saves the whole page, so an error anywhere on it blocks the add.
+   */
+  public function testAddWithUnnotedOverrideElsewhereSavesNothing(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = $this->verdictPids($review)[0];
+    $key = 'app-' . $pid;
+    $before = $this->revisionCount($review);
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'override' => [(string) $high->id() => ['severity' => 'low']],
+      'add_finding' => [$key => $this->addInput('code_quality', 'QUA-03', 'low', 'No error handling.')],
+    ], 'add_finding__' . $key, 'Add finding', TRUE);
+    $this->assertNotSame([], $formState->getErrors());
+    $this->assertCount(1, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities(), 'No finding was added.');
+    $this->assertEmpty(Paragraph::load($high->id())->get('field_rvf_override_severity')->value, 'No override was stored.');
+    $this->assertSame($before, $this->revisionCount($review));
+  }
+
+  /**
+   * A new severity with no note saves nothing and keeps the finding in focus.
+   */
+  public function testAjaxOverrideWithoutNoteSavesNothing(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $before = $this->revisionCount($review);
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'override' => [$pid => ['severity' => 'low']],
+    ], 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertArrayHasKey('prose][' . $pid, $formState->getErrors());
+    $this->assertEmpty(Paragraph::load($pid)->get('field_rvf_override_severity')->value);
+    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertSame('finding-' . $pid, $formState->get('arv_focus'));
+  }
+
+  /**
+   * A window opened before the review changed elsewhere saves nothing.
+   *
+   * Sending a decision of Request changes hands the repo back to its
+   * contributor, so the sent page offers "Start the next round" as its first
+   * button: the stale press must not fall through to it.
+   */
+  public function testStaleWindowSavesNothing(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $keys = $this->keys($review);
+    // Sent in another window.
+    $node = Node::load($review->id());
+    $node->set('field_arv_decision_sent_at', 1700000100);
+    $node->set('field_arv_decision_sent_by', $this->reviewer->id());
+    $node->set('field_arv_sent_decisions', json_encode([
+      'apps' => [$this->verdictPids($review)[0] => 'request_changes'],
+      'response' => 'Sent.',
+    ]));
+    $node->setNewRevision(TRUE);
+    $node->save();
+    $repo = Node::load($node->get('field_arv_repo')->target_id);
+    $repo->set('moderation_state', 'needs_adjustment')->save();
+    $sent = (int) Node::load($review->id())->getRevisionId();
+    foreach ([TRUE, FALSE] as $ajax) {
+      \Drupal::messenger()->deleteAll();
+      [, $formState] = $this->post($review, $keys + ['prose' => [$pid => 'Late note.']], 'save_finding__' . $pid, 'Save', $ajax);
+      $this->assertContains('This review changed in another window. Reload the page to see the latest version.', array_map('strval', \Drupal::messenger()->messagesByType('error')), $ajax ? 'AJAX' : 'no JS');
+      $this->assertSame($sent, (int) Node::load($review->id())->getRevisionId());
+      $this->assertEmpty(Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
+      $this->assertSame('needs_adjustment', Node::load($repo->id())->get('moderation_state')->value, 'No next round was started.');
+      if ($ajax) {
+        $this->assertSame('arv-review-form', $formState->get('arv_focus'));
+      }
+    }
+  }
+
+  /**
+   * The page's own saves move its revision along, so they never look stale.
+   */
+  public function testOwnSavesDoNotTripTheStaleCheck(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $input = $this->keys($review);
+    $before = $this->revisionCount($review);
+    foreach (['One.', 'Two.', 'Three.'] as $i => $note) {
+      [$form, $formState] = $this->post($review, ['prose' => [$pid => $note]] + $input, 'save_finding__' . $pid, 'Save', TRUE);
+      $this->assertSame([], $formState->getErrors(), "Save $i");
+      $this->assertSame($note, Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
+      $input = $this->nextInput($form, $input);
+    }
+    $this->assertSame($before + 3, $this->revisionCount($review));
+  }
+
+  /**
+   * A save from the cached form works on the review as it is now.
+   */
+  public function testRebuildUsesFreshReview(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $input = $this->keys($review);
+    [$form] = $this->post($review, ['prose' => [$pid => 'One.']] + $input, 'save_finding__' . $pid, 'Save', TRUE);
+    $input = $this->nextInput($form, $input);
+    // Changed by something else, in the same revision.
+    $node = Node::load($review->id());
+    $node->set('field_arv_contributor_response', ['value' => 'Written elsewhere.', 'format' => 'plain_text']);
+    $node->setTitle('Renamed elsewhere');
+    // Saved as a sync, so not as a new revision: the page is not stale.
+    $node->setSyncing(TRUE);
+    $node->setNewRevision(FALSE);
+    $node->save();
+    unset($input['response']);
+    [, $formState] = $this->post($review, ['prose' => [$pid => 'Two.']] + $input, 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $object = $formState->getFormObject();
+    $property = new \ReflectionProperty($object, 'node');
+    $this->assertSame('Renamed elsewhere', $property->getValue($object)->label());
+    // The save went onto that review, rather than writing back the copy the
+    // cached form was built from.
+    $this->assertSame('Renamed elsewhere', Node::load($review->id())->label());
+  }
+
+  /**
+   * A note saved over AJAX is saved once, and its box empties.
+   */
+  public function testAjaxSaveDoesNotRepeatTheNote(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $input = $this->keys($review) + ['new_note' => 'Called them.'];
+    [$form] = $this->post($review, $input, 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertSame('', $form['new_note']['#value']);
+    $input = $this->nextInput($form, $input);
+    $this->post($review, $input, 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertCount(1, Node::load($review->id())->get('field_arv_internal_notes')->referencedEntities());
+  }
+
+  /**
+   * The first save assigns the saver, and the rebuilt select says so.
+   */
+  public function testAjaxSaveShowsTheAutoAssignee(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $this->importProdConfig([
+      'field.storage.node.field_repo_assigned_reviewer',
+      'field.field.node.appverse_repo.field_repo_assigned_reviewer',
+    ]);
+    // Only a PM can be assigned.
+    Role::create(['id' => 'appverse_pm', 'label' => 'Appverse PM'])->save();
+    $this->reviewer->addRole('appverse_pm');
+    $this->reviewer->save();
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    [$form] = $this->post($review, $this->keys($review) + ['assignee' => ''], 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertSame((string) $this->reviewer->id(), (string) $form['assignee']['#value']);
+  }
+
+  /**
+   * A reviewer's finding left blank can still be deleted.
+   */
+  public function testDeleteSkipsTheDeletedFindingsErrors(): void {
+    $mine = $this->finding('QUA-03', 'low', 'fail', 'No error handling.', [
+      'field_rvf_aspect' => 'quality',
+      'field_rvf_source' => 'reviewer',
+    ]);
+    $review = $this->makeReview(['root' => [$mine]]);
+    $pid = $this->verdictPids($review)[0];
+    $mid = (string) $mine->id();
+    [$form, $formState] = $this->post($review, $this->keys($review) + [
+      'edit_finding' => [$mid => ['rule' => 'QUA-03', 'severity' => 'low', 'summary' => '', 'evidence' => '']],
+    ], 'delete_finding__' . $mid, 'Delete finding', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertSame([], Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities());
+    $this->assertSame('Finding deleted.', $formState->get('arv_announce'));
+    $this->assertSame('fold-app-' . $pid . '-add', $formState->get('arv_focus'));
+    $this->assertArrayNotHasKey($mid, $form['edit_finding'] ?? []);
+    $this->assertStringContainsString('deleted finding QUA-03', (string) Node::load($review->id())->getRevisionLogMessage());
+  }
+
+  /**
+   * Delete saves the whole page, so an error elsewhere blocks it.
+   */
+  public function testDeleteBlockedByAnUnnotedOverrideElsewhere(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $mine = $this->finding('QUA-03', 'low', 'fail', 'No error handling.', [
+      'field_rvf_aspect' => 'quality',
+      'field_rvf_source' => 'reviewer',
+    ]);
+    $review = $this->makeReview(['root' => [$high, $mine]]);
+    $pid = $this->verdictPids($review)[0];
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'override' => [(string) $high->id() => ['severity' => 'low']],
+    ], 'delete_finding__' . $mine->id(), 'Delete finding', TRUE);
+    $this->assertArrayHasKey('prose][' . $high->id(), $formState->getErrors());
+    $this->assertCount(2, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities());
+  }
+
+  /**
+   * Only a reviewer's own finding is deleted.
+   *
+   * The button is only built for one, so this posts from a cached form
+   * whose finding has since become the tool's.
+   */
+  public function testDeleteOfToolFindingSavesNothing(): void {
+    $mine = $this->finding('QUA-03', 'low', 'fail', 'No error handling.', [
+      'field_rvf_aspect' => 'quality',
+      'field_rvf_source' => 'reviewer',
+    ]);
+    $review = $this->makeReview(['root' => [$mine]]);
+    $pid = $this->verdictPids($review)[0];
+    $mid = (string) $mine->id();
+    $input = $this->keys($review);
+    [$form] = $this->post($review, $input, 'save_finding__' . $mid, 'Save', TRUE);
+    $input = $this->nextInput($form, $input);
+    $p = Paragraph::load($mid);
+    $p->set('field_rvf_source', 'tool')->save();
+    $before = $this->revisionCount($review);
+    \Drupal::messenger()->deleteAll();
+    [, $formState] = $this->post($review, $input, 'delete_finding__' . $mid, 'Delete finding', TRUE);
+    $this->assertContains('Only a finding a reviewer added can be deleted.', array_map('strval', $formState->getErrors()));
+    $this->assertCount(1, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities());
+    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertNotContains('Review saved.', array_map('strval', \Drupal::messenger()->messagesByType('status')));
+  }
+
+  /**
+   * Without JavaScript a finding's Save is a full post back to the finding.
+   */
+  public function testNonAjaxSaveStillRedirectsToFinding(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $input = $this->keys($review) + ['prose' => [$pid => 'Noted.']];
+    [, , $response] = $this->post($review, $input, 'save_finding__' . $pid, 'Save', FALSE);
+    $this->assertInstanceOf(RedirectResponse::class, $response);
+    $this->assertStringEndsWith('/appverse/review/' . $review->id() . '#finding-' . $pid, $response->getTargetUrl());
+    $this->assertSame('Noted.', Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
+  }
+
+  /**
+   * What a browser posts back from a freshly loaded page.
+   *
+   * @return array<string, string>
+   *   The form's id, build id, token and revision.
+   */
+  protected function keys(NodeInterface $review): array {
+    $this->setCurrentUser($this->reviewer);
+    $this->pushRequest($review);
+    $form = $this->container->get('form_builder')->getForm(ReviewPageForm::class, Node::load($review->id()));
+    $this->container->get('request_stack')->pop();
+    return [
+      'form_id' => 'appverse_review_page_form',
+      'form_build_id' => (string) $form['#build_id'],
+      // The page renders the token from a placeholder; this is its value.
+      'form_token' => $this->container->get('csrf_token')->get((string) $form['#token']),
+      'arv_revision' => (string) $form['arv_revision']['#value'],
+    ];
+  }
+
+  /**
+   * What the browser posts next from a page an AJAX response replaced.
+   *
+   * @param array<string, mixed> $form
+   *   The rebuilt form.
+   * @param array<string, mixed> $input
+   *   What was posted.
+   *
+   * @return array<string, mixed>
+   *   The input, with the values the rebuild changed.
+   */
+  protected function nextInput(array $form, array $input): array {
+    $input['form_build_id'] = (string) $form['#build_id'];
+    $input['arv_revision'] = (string) $form['arv_revision']['#value'];
+    $input['new_note'] = (string) ($form['new_note']['#value'] ?? '');
+    return $input;
+  }
+
+  /**
+   * Posts the page as a browser does.
+   *
+   * With JavaScript that is Drupal's AJAX submit, which names the button
+   * pressed; without, a plain POST carrying the button's name and label.
+   *
+   * @param \Drupal\node\NodeInterface $review
+   *   The review.
+   * @param array<string, mixed> $input
+   *   The posted input.
+   * @param string $button
+   *   The pressed button's #name.
+   * @param string $label
+   *   Its label.
+   * @param bool $ajax
+   *   Whether JavaScript posts it.
+   *
+   * @return array{0: array<string, mixed>|null, 1: \Drupal\Core\Form\FormStateInterface, 2: \Symfony\Component\HttpFoundation\Response|null}
+   *   The processed (or rebuilt) form, its state, and the response a full
+   *   post ends in.
+   */
+  protected function post(NodeInterface $review, array $input, string $button, string $label, bool $ajax): array {
+    $this->setCurrentUser($this->reviewer);
+    $input[$button] = $label;
+    $uri = '/appverse/review/' . $review->id();
+    if ($ajax) {
+      $uri .= '?ajax_form=1&_wrapper_format=drupal_ajax';
+      $input += ['_triggering_element_name' => $button, '_triggering_element_value' => $label, '_drupal_ajax' => '1'];
+    }
+    $request = Request::create($uri, 'POST', $input);
+    $request->setSession($this->session());
+    $this->container->get('request_stack')->push($request);
+    $form_state = new FormState();
+    $form_state->addBuildInfo('args', [Node::load($review->id())]);
+    $form = NULL;
+    $response = NULL;
+    try {
+      $form = $this->container->get('form_builder')->buildForm(ReviewPageForm::class, $form_state);
+    }
+    catch (FormAjaxException $e) {
+      $form = $e->getForm();
+      $form_state = $e->getFormState();
+    }
+    catch (EnforcedResponseException $e) {
+      $response = $e->getResponse();
+    }
+    $this->container->get('request_stack')->pop();
+    return [$form, $form_state, $response];
+  }
+
+  /**
+   * One browser session across the test's requests, so a form's token holds.
+   */
+  protected function session(): Session {
+    if ($this->session === NULL) {
+      $this->session = new Session(new MockArraySessionStorage('MOCKSESSID', $this->container->get('session_manager.metadata_bag')));
+      // Started up front: starting later would reload the token seed empty.
+      $this->session->start();
+    }
+    return $this->session;
+  }
+
+  /**
+   * How many revisions the review has.
+   */
+  protected function revisionCount(NodeInterface $review): int {
+    return (int) $this->container->get('entity_type.manager')->getStorage('node')->getQuery()
+      ->allRevisions()
+      ->accessCheck(FALSE)
+      ->condition('nid', $review->id())
+      ->count()
+      ->execute();
   }
 
   /**

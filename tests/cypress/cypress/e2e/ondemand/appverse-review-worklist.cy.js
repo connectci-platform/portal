@@ -68,22 +68,87 @@ describe('Appverse review worklist', () => {
     seedReview('Review Worklist Add', 'single').then((seed) => {
       const list = `#worklist-app-${seed.apps[0]}`;
       const summary = 'Cypress added finding about the docs';
+      const near = `#finding-${seed.findings['QUA-01']}`;
       cy.visit(`/appverse/review/${seed.reviewNid}`);
-      cy.get(`#finding-${seed.findings['QUA-01']}`).within(() => {
+      // Set on the page: a full reload would lose it.
+      cy.window().then((win) => { win.arvNoReload = true; });
+      cy.get(near).within(() => {
         cy.contains('button', 'Add a finding here').click();
       });
       cy.get(`${list} details.add-finding`).should('have.attr', 'open');
       cy.get(`${list} select.arv-add-section`).find('option:selected').should('have.text', 'Documentation');
       cy.get(`${list} .arv-add-summary`).type(summary);
       cy.get(`${list} [name="add_finding__app-${seed.apps[0]}"]`).click();
-      cy.url().should('match', /#finding-\d+$/);
-      cy.location('hash').then((hash) => {
-        cy.get(hash).should('have.class', 'finding').and('contain.text', summary);
+      cy.get(list).contains('.finding', summary).as('added');
+      cy.window().its('arvNoReload').should('equal', true);
+      cy.get('@added').then(($row) => {
+        // Focus is on the new finding.
+        cy.focused().should(($el) => {
+          expect($row[0].contains($el[0]) || $row[0] === $el[0], 'focus in the new finding').to.equal(true);
+        });
         // The rule followed the section: a documentation finding, which
         // blocks nothing, not the first rule of all (STR-01, a gate).
-        cy.get(hash).find('.rule').should('have.text', 'QUA-01');
-        cy.get(hash).prevAll('h3.arv-worklist__heading').first().should('have.text', 'Findings');
+        cy.wrap($row).find('.rule').should('have.text', 'QUA-01');
+        cy.wrap($row).prevAll('h3.arv-worklist__heading').first().should('have.text', 'Findings');
       });
+      // The add form is back where it was, open and empty.
+      cy.get(near).next('details.add-finding').should('have.attr', 'open');
+      cy.get(`${list} .arv-add-summary`).should('have.value', '');
+    });
+  });
+
+  it('saves a finding in place, keeping what was typed', () => {
+    seedReview('Review Worklist Save', 'single').then((seed) => {
+      const row = `#finding-${seed.findings['QUA-03']}`;
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.window().then((win) => { win.arvNoReload = true; });
+      // Half-typed elsewhere: the repo's add form.
+      cy.get('#fold-repo-add summary').click();
+      cy.get('#fold-repo-add .arv-add-summary').type('half typed');
+      cy.get(row).find('.expand-hint').click();
+      cy.get(row).find('textarea[name^="prose["]').type('Please handle the error.');
+      cy.get(row).find('[name^="save_finding__"]').click();
+      cy.get(row).find('.finding-note').should('contain.text', 'Please handle the error.');
+      cy.window().its('arvNoReload').should('equal', true);
+      cy.get('#arv-review-form').should('not.have.attr', 'aria-busy');
+      cy.get('#fold-repo-add').should('have.attr', 'open');
+      cy.get('#fold-repo-add .arv-add-summary').should('have.value', 'half typed');
+      // The edit box that was open is open again.
+      cy.get(row).find('.fnote').should('not.have.class', 'collapsed');
+    });
+  });
+
+  it('refuses a new severity with no note, and shows why', () => {
+    seedReview('Review Worklist Error', 'single').then((seed) => {
+      const pid = seed.findings['QUA-03'];
+      const row = `#finding-${pid}`;
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.get(row).find('.expand-hint').click();
+      cy.get(row).find(`select[name="override[${pid}][severity]"]`).select('low');
+      cy.get(row).find('[name^="save_finding__"]').click();
+      cy.get('#arv-review-form .messages--error, #arv-review-form [role="alert"]')
+        .should('contain.text', 'Add a note saying why');
+      cy.get(row).find('.fnote').should('not.have.class', 'collapsed');
+      cy.get(row).find(`textarea[name="prose[${pid}]"]`).should('have.attr', 'aria-invalid', 'true');
+      cy.focused().should('have.attr', 'name', `prose[${pid}]`);
+    });
+  });
+
+  it('deletes a finding it added, in place', () => {
+    seedReview('Review Worklist Delete', 'single').then((seed) => {
+      const list = `#worklist-app-${seed.apps[0]}`;
+      const summary = 'Cypress finding to delete';
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.get(`#fold-app-${seed.apps[0]}-add summary`).click();
+      cy.get(`${list} .arv-add-summary`).type(summary);
+      cy.get(`${list} [name="add_finding__app-${seed.apps[0]}"]`).click();
+      cy.get(list).contains('.finding', summary).then(($row) => {
+        const id = $row.attr('id');
+        cy.get(`#${id} .expand-hint`).click();
+        cy.get(`#${id} [name^="delete_finding__"]`).click();
+        cy.get(`#${id}`).should('not.exist');
+      });
+      cy.focused().closest(`#fold-app-${seed.apps[0]}-add`).should('exist');
     });
   });
 

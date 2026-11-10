@@ -4,12 +4,168 @@
  * worklists' add forms. Everything is plain markup that works without JS (all
  * boxes open, each add form at the end of its list); JS only collapses and
  * moves.
+ *
+ * A finding's Save, Add and Delete post over AJAX and replace the whole form
+ * (#arv-review-form). What the reviewer had open is recorded when one is
+ * pressed and put back on the new form, and while the request is out the
+ * text fields are read-only, so nothing typed meanwhile is lost.
  */
 (function (Drupal, once) {
   'use strict';
 
+  const WRAPPER = 'arv-review-form';
+  const ERROR = '.error, [aria-invalid="true"]';
+
+  // What was open when a save was pressed, for the form that replaces it.
+  let pending = null;
+  // The findings whose edit box the arv-note behavior opens on this attach.
+  let reopen = new Set();
+
+  /**
+   * The open folds and edit boxes, and where a moved add form sits.
+   *
+   * @param {HTMLElement} wrapper
+   *   The form's wrapper.
+   *
+   * @return {object}
+   *   The state, by element id.
+   */
+  function record(wrapper) {
+    const state = { folds: [], boxes: [], after: {} };
+    wrapper.querySelectorAll('details[id^="fold-"]').forEach((fold) => {
+      if (fold.open) {
+        state.folds.push(fold.id);
+      }
+      // Moved by "Add a finding here": put back after the same row.
+      if (fold.dataset.arvAfter) {
+        state.after[fold.id] = fold.dataset.arvAfter;
+      }
+    });
+    wrapper.querySelectorAll('.finding[id]').forEach((finding) => {
+      const box = finding.querySelector('.fnote');
+      if (box && !box.classList.contains('collapsed')) {
+        state.boxes.push(finding.id);
+      }
+    });
+    return state;
+  }
+
+  /**
+   * Puts the recorded state back on the form that replaced it.
+   *
+   * @param {object} state
+   *   From record().
+   */
+  function restore(state) {
+    Object.keys(state.after).forEach((id) => {
+      const fold = document.getElementById(id);
+      const row = document.getElementById(state.after[id]);
+      if (fold && row) {
+        row.after(fold);
+        fold.dataset.arvAfter = row.id;
+      }
+    });
+    state.folds.forEach((id) => {
+      const fold = document.getElementById(id);
+      if (fold) {
+        fold.open = true;
+      }
+    });
+    reopen = new Set(state.boxes);
+  }
+
+  /**
+   * Marks the form busy and its text read-only while a save is out.
+   *
+   * @param {HTMLElement} wrapper
+   *   The form's wrapper.
+   * @param {boolean} busy
+   *   Whether a save is in flight.
+   */
+  function lock(wrapper, busy) {
+    if (busy) {
+      wrapper.setAttribute('aria-busy', 'true');
+    }
+    else {
+      wrapper.removeAttribute('aria-busy');
+    }
+    wrapper.querySelectorAll('input[type="text"], textarea').forEach((field) => {
+      if (busy && !field.readOnly) {
+        field.readOnly = true;
+        field.dataset.arvLocked = 'true';
+      }
+      else if (!busy && field.dataset.arvLocked) {
+        field.readOnly = false;
+        delete field.dataset.arvLocked;
+      }
+    });
+  }
+
+  /**
+   * Hooks Drupal's AJAX for the form's own buttons, once per page.
+   */
+  function hookAjax() {
+    if (!Drupal.Ajax || Drupal.Ajax.prototype.arvHooked) {
+      return;
+    }
+    const proto = Drupal.Ajax.prototype;
+    const { beforeSend, success, error } = proto;
+    proto.arvHooked = true;
+    proto.beforeSend = function arvBeforeSend(...args) {
+      const wrapper = this.element && this.element.closest ? this.element.closest(`#${WRAPPER}`) : null;
+      if (wrapper) {
+        pending = record(wrapper);
+        lock(wrapper, true);
+        this.arvWrapper = wrapper;
+      }
+      return beforeSend.apply(this, args);
+    };
+    proto.success = function arvSuccess(...args) {
+      const result = success.apply(this, args);
+      if (this.arvWrapper) {
+        const old = this.arvWrapper;
+        this.arvWrapper = null;
+        // The form is normally replaced; if it was not, unlock it.
+        const done = () => {
+          lock(old, false);
+          pending = null;
+        };
+        Promise.resolve(result).then(done, done);
+      }
+      return result;
+    };
+    proto.error = function arvError(...args) {
+      if (this.arvWrapper) {
+        lock(this.arvWrapper, false);
+        this.arvWrapper = null;
+        pending = null;
+      }
+      return error.apply(this, args);
+    };
+  }
+
   Drupal.behaviors.appverseReview = {
     attach(context) {
+      hookAjax();
+      // The form a save replaced: open what was open.
+      const wrapper = context.id === WRAPPER ? context : (context.querySelector && context.querySelector(`#${WRAPPER}`));
+      reopen = new Set();
+      if (pending && wrapper) {
+        restore(pending);
+        pending = null;
+      }
+      // An error is never hidden: open every fold that holds one. The edit
+      // boxes holding one open below.
+      if (context.querySelectorAll) {
+        context.querySelectorAll(ERROR).forEach((field) => {
+          let fold = field.closest('details');
+          while (fold) {
+            fold.open = true;
+            fold = fold.parentElement ? fold.parentElement.closest('details') : null;
+          }
+        });
+      }
+
       // The send button names the decision it will send and waits until every
       // app has one and, unless all are Accept, a response is written
       // (appverse-planning#52). The server sets the same from the saved page;
@@ -101,7 +257,8 @@
       });
 
       // A finding's edit box starts closed; the note and any change show in
-      // the row itself. It stays open when it holds a validation error.
+      // the row itself. It stays open when it holds a validation error, or
+      // was open when a save replaced the form.
       once('arv-note', '.arv-page .finding', context).forEach((finding) => {
         const box = finding.querySelector('.fnote');
         const hint = finding.querySelector('.expand-hint');
@@ -113,7 +270,7 @@
           box.classList.toggle('collapsed', !open);
           hint.setAttribute('aria-expanded', open ? 'true' : 'false');
         };
-        setOpen(box.querySelector('.error') !== null);
+        setOpen(box.querySelector(ERROR) !== null || reopen.has(finding.id));
         hint.addEventListener('click', (e) => {
           e.stopPropagation();
           const open = box.classList.contains('collapsed');
@@ -229,6 +386,8 @@
             section.dispatchEvent(new Event('change', { bubbles: true }));
           }
           row.after(fold);
+          // So a save that replaces the form puts it back here.
+          fold.dataset.arvAfter = row.id;
           fold.open = true;
           const summary = fold.querySelector('.arv-add-summary');
           if (summary) {

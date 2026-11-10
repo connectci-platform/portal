@@ -3,12 +3,18 @@
 namespace Drupal\ood_software\Form;
 
 use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\Xss;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\AnnounceCommand;
+use Drupal\Core\Ajax\FocusFirstCommand;
+use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\DependencyInjection\ClassResolverInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\EnforcedResponseException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Markup;
@@ -165,6 +171,13 @@ final class ReviewPageForm extends FormBase {
       // Any other node id is simply not a review: 404, not a server error.
       throw new NotFoundHttpException();
     }
+    // Always the review as it is now. A rebuild after an AJAX save passes the
+    // node the route loaded for the first request, which is out of date.
+    $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($node->id());
+    if (!$fresh instanceof NodeInterface) {
+      throw new NotFoundHttpException();
+    }
+    $node = $fresh;
     $this->node = $node;
     $isReviewer = $this->currentUser->hasPermission(self::REVIEWER_PERMISSION);
     $repo = $node->get('field_arv_repo')->entity;
@@ -276,6 +289,15 @@ final class ReviewPageForm extends FormBase {
     if (!$reviewerView) {
       return $form;
     }
+    // What the findings' Save, Add and Delete replace in place.
+    $form['#prefix'] = '<div id="arv-review-form">';
+    $form['#suffix'] = '</div>';
+    // The revision this page was built from: validateForm() refuses a save
+    // from a page the review has moved on from in another window.
+    $form['arv_revision'] = [
+      '#type' => 'hidden',
+      '#default_value' => (string) $node->getRevisionId(),
+    ];
     // The reviewer's worklists: the repo's, then one per app, blocking first.
     $form['#worklist'] = ReviewWorklist::build($page, json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
     if ($canEdit) {
@@ -688,6 +710,8 @@ final class ReviewPageForm extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $node = $this->node;
     $values = $form_state->getValues();
+    // An AJAX save leaves no message for the next page to show.
+    $messages = $this->messenger()->messagesByType('status');
     // Changes to automated findings, for the revision log.
     $changes = [];
     // Once the decision is sent only the notes and the assignee are saved:
@@ -769,7 +793,9 @@ final class ReviewPageForm extends FormBase {
     }
     $node->setNewRevision(TRUE);
     $changes = array_values(array_filter($changes));
-    $this->stampRevision($node, 'Review page: saved by ' . $this->currentUser->getDisplayName() . ($changes !== [] ? '; ' . implode('; ', $changes) : ''));
+    // An add or a delete names itself; it is the same one revision.
+    $log = $form_state->get('arv_stamp') ?? 'Review page: saved by ' . $this->currentUser->getDisplayName();
+    $this->stampRevision($node, $log . ($changes !== [] ? '; ' . implode('; ', $changes) : ''));
     $node->save();
     // The send button saves, then goes on to the email preview.
     if (($form_state->getTriggeringElement()['#name'] ?? '') === 'send_decision') {
@@ -777,12 +803,169 @@ final class ReviewPageForm extends FormBase {
       $form_state->setRedirect('ood_software.review_decision', ['node' => $node->id()]);
       return;
     }
-    $this->messenger()->addStatus($this->t('Review saved.'));
     // Back to what the reviewer was working on: what a handler put in
     // arv_focus, else a finding's own Save returns to that finding.
     $pid = $form_state->getTriggeringElement()['#finding_pid'] ?? NULL;
     $focus = $form_state->get('arv_focus') ?? ($pid ? 'finding-' . $pid : NULL);
+    if ($this->isAjax()) {
+      // The page is rebuilt from what was posted, so everything typed stays.
+      // What the save itself changed is brought into line: the note is saved
+      // (posting it again would add it twice), the first save assigned the
+      // saver, and the review has a new revision.
+      $form_state->setRebuild();
+      self::setInputValue($form_state, ['new_note'], '');
+      if ($repo instanceof NodeInterface && array_key_exists('assignee', $form)) {
+        // assign() saves its own copy of the repo.
+        $saved = $this->entityTypeManager->getStorage('node')->loadUnchanged($repo->id());
+        $assignee = $saved instanceof NodeInterface ? $this->reviewAssignment->assignee($saved) : NULL;
+        self::setInputValue($form_state, ['assignee'], $assignee ? (string) $assignee->id() : '');
+      }
+      self::setInputValue($form_state, ['arv_revision'], (string) $node->getRevisionId());
+      $form_state->set('arv_announce', $form_state->get('arv_announce') ?? (string) $this->t('Saved.'));
+      $form_state->set('arv_focus', $focus);
+      $this->messenger()->deleteByType('status');
+      foreach ($messages as $message) {
+        $this->messenger()->addStatus($message);
+      }
+      return;
+    }
+    $this->messenger()->addStatus($this->t('Review saved.'));
     $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], $focus ? ['fragment' => $focus] : []);
+  }
+
+  /**
+   * Whether the request is one of the page's AJAX saves.
+   */
+  public function isAjax(): bool {
+    return $this->getRequest()->query->has(FormBuilderInterface::AJAX_FORM_REQUEST);
+  }
+
+  /**
+   * Sets a value in both the form's values and the user input.
+   *
+   * A rebuild shows the user input, not #default_value, so a value a save
+   * changed on the server is changed in both.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param array<int, string|int> $parents
+   *   The element's #parents.
+   * @param mixed $value
+   *   The value.
+   */
+  public static function setInputValue(FormStateInterface $form_state, array $parents, mixed $value): void {
+    $form_state->setValue($parents, $value);
+    $input = &$form_state->getUserInput();
+    NestedArray::setValue($input, $parents, $value);
+  }
+
+  /**
+   * Drops what was posted for an element, so a rebuild shows its default.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param array<int, string|int> $parents
+   *   The element's #parents.
+   */
+  protected static function unsetInputValue(FormStateInterface $form_state, array $parents): void {
+    $input = &$form_state->getUserInput();
+    NestedArray::unsetValue($input, $parents);
+  }
+
+  /**
+   * The #ajax of the findings' Save, Add and Delete.
+   *
+   * @return array<string, mixed>
+   *   The settings.
+   */
+  protected function ajaxSettings(): array {
+    return [
+      'callback' => '::ajaxRefresh',
+      'wrapper' => 'arv-review-form',
+      'progress' => ['type' => 'throbber', 'message' => $this->t('Saving…')],
+    ];
+  }
+
+  /**
+   * AJAX callback for the findings' Save, Add and Delete.
+   *
+   * Replaces the whole page's form, so every list, count and button reflects
+   * the save, says what happened to a screen reader, and puts focus back on
+   * what the reviewer was working on. A refused save shows its messages at
+   * the top of the form and focuses the field to fix.
+   *
+   * @param array<string, mixed> $form
+   *   The form, rebuilt after a save or as posted after an error.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function ajaxRefresh(array &$form, FormStateInterface $form_state): AjaxResponse {
+    $errors = $form_state->getErrors();
+    $stale = (bool) $form_state->get('arv_stale');
+    $focus = (string) ($form_state->get('arv_focus') ?: 'arv-review-form');
+    $build = $form;
+    if ($errors !== [] || $stale) {
+      $first = $errors !== [] ? reset($errors) : $this->staleMessage();
+      $announce = (string) $this->t('Not saved: @error', ['@error' => strip_tags((string) $first)]);
+      $priority = AnnounceCommand::PRIORITY_ASSERTIVE;
+      // The messages go inside the wrapper, so the next replace takes them
+      // away again.
+      unset($build['#prefix'], $build['#suffix']);
+      $build = [
+        '#prefix' => $form['#prefix'] ?? '',
+        '#suffix' => $form['#suffix'] ?? '',
+        'messages' => ['#type' => 'status_messages'],
+        'form' => $build,
+      ];
+      if (!$stale && ($field = $this->errorField($form, $form_state)) !== NULL) {
+        $focus = $field;
+      }
+    }
+    else {
+      $announce = (string) ($form_state->get('arv_announce') ?? $this->t('Saved.'));
+      $priority = AnnounceCommand::PRIORITY_POLITE;
+    }
+    $response = new AjaxResponse();
+    $response->addCommand(new ReplaceCommand('#arv-review-form', $build));
+    $response->addCommand(new AnnounceCommand($announce, $priority));
+    $response->addCommand(new FocusFirstCommand('#' . $focus));
+    return $response;
+  }
+
+  /**
+   * The id of the first field with an error inside what was pressed.
+   *
+   * That is the finding whose Save or Delete it was, or the add form.
+   *
+   * @param array<string, mixed> $form
+   *   The processed form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return string|null
+   *   The element id, or NULL when the errors are elsewhere.
+   */
+  protected function errorField(array $form, FormStateInterface $form_state): ?string {
+    $trigger = $form_state->getTriggeringElement() ?? [];
+    $pid = isset($trigger['#finding_pid']) ? (string) $trigger['#finding_pid'] : NULL;
+    $list = isset($trigger['#finding_list']) ? (string) $trigger['#finding_list'] : NULL;
+    foreach (array_keys($form_state->getErrors()) as $name) {
+      $parents = explode('][', (string) $name);
+      $inside = ($pid !== NULL && in_array($parents[0], ['prose', 'override', 'edit_finding'], TRUE) && ($parents[1] ?? NULL) === $pid)
+        || ($list !== NULL && $parents[0] === 'add_finding' && ($parents[1] ?? NULL) === $list);
+      $element = $inside ? NestedArray::getValue($form, $parents) : NULL;
+      if (is_array($element) && !empty($element['#id'])) {
+        return (string) $element['#id'];
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * What a save from an out-of-date window is told.
+   */
+  protected function staleMessage(): MarkupInterface {
+    return $this->t('This review changed in another window. Reload the page to see the latest version.');
   }
 
   /**
@@ -1573,6 +1756,7 @@ final class ReviewPageForm extends FormBase {
       '#value' => $this->t('Save'),
       '#name' => 'save_finding__' . $pid,
       '#finding_pid' => $pid,
+      '#ajax' => $this->ajaxSettings(),
       // The box's own action: the page's default button, so it reads above
       // Cancel without competing with Send decision, the one red button.
       '#attributes' => ['class' => ['btn', 'btn-save-finding']],
@@ -1617,8 +1801,11 @@ final class ReviewPageForm extends FormBase {
       '#value' => $this->t('Delete finding'),
       '#name' => 'delete_finding__' . $pid,
       '#finding_pid' => $pid,
-      '#submit' => ['::deleteFinding'],
-      '#limit_validation_errors' => [],
+      // It saves the whole page, as Save does, so the page's checks run,
+      // except on the finding going away.
+      '#validate' => ['::validateDeleteFinding'],
+      '#submit' => ['::deleteFinding', '::submitForm'],
+      '#ajax' => $this->ajaxSettings(),
       '#attributes' => ['class' => ['btn', 'ghost', 'btn-delete-finding']],
     ];
   }
@@ -1658,9 +1845,9 @@ final class ReviewPageForm extends FormBase {
 
   /**
    * The "Add finding" form for one list: the section it goes in, and the
-   * fields the automated review fills that need a reviewer's judgment. Its
-   * button validates only its own fields, so an empty add form elsewhere
-   * never blocks Save draft.
+   * fields the automated review fills that need a reviewer's judgment. Of
+   * the add forms, its button checks only its own, so an empty add form
+   * elsewhere never blocks it or Save draft.
    *
    * @param array<string, mixed> $form
    * @param array<string, mixed> $list
@@ -1717,9 +1904,12 @@ final class ReviewPageForm extends FormBase {
         '#value' => $this->t('Add finding'),
         '#name' => 'add_finding__' . $key,
         '#finding_list' => $key,
-        '#validate' => ['::validateAddFinding'],
-        '#submit' => ['::addFinding'],
-        '#limit_validation_errors' => [['add_finding', $key]],
+        // It saves the whole page, as Save does, so the page's checks run
+        // too. They never look at the add forms, so one left empty elsewhere
+        // blocks nothing.
+        '#validate' => ['::validateForm', '::validateAddFinding'],
+        '#submit' => ['::addFinding', '::submitForm'],
+        '#ajax' => $this->ajaxSettings(),
         '#attributes' => ['class' => ['btn']],
       ],
     ];
@@ -1787,14 +1977,18 @@ final class ReviewPageForm extends FormBase {
    * @param array<string, mixed> $form
    */
   public function validateAddFinding(array &$form, FormStateInterface $form_state): void {
+    if ($form_state->get('arv_stale')) {
+      return;
+    }
     $this->pressedAddFinding($form, $form_state);
+    $this->noteErrorFocus($form_state);
   }
 
   /**
    * Submit handler for a list's "Add finding": a review_finding paragraph
    * marked as the reviewer's, appended to that app's verdict (or the repo's
-   * findings) under the section picked, saved as a new revision of the
-   * review.
+   * findings) under the section picked. submitForm() runs next and saves the
+   * rest of the page with it, in one new revision of the review.
    *
    * @param array<string, mixed> $form
    */
@@ -1839,54 +2033,93 @@ final class ReviewPageForm extends FormBase {
       $finding->save();
       $node->get('field_arv_repo_findings')->appendItem($finding);
     }
-    $node->setNewRevision(TRUE);
-    $this->stampRevision($node, sprintf('Review page: %s added finding %s', $this->currentUser->getDisplayName(), $values['rule']));
-    $node->save();
-    $this->messenger()->addStatus($this->t('Finding @rule added.', ['@rule' => $values['rule']]));
+    $form_state->set('arv_stamp', sprintf('Review page: %s added finding %s', $this->currentUser->getDisplayName(), $values['rule']));
+    $form_state->set('arv_announce', (string) $this->t('Finding added.'));
     // Back on the new finding.
     $form_state->set('arv_focus', 'finding-' . $finding->id());
-    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()], ['fragment' => $form_state->get('arv_focus')]);
+    // Its add form starts empty again; any other keeps what was typed.
+    self::unsetInputValue($form_state, ['add_finding', (string) $form_state->getTriggeringElement()['#finding_list']]);
   }
 
   /**
-   * Submit handler for "Delete finding" on a reviewer's finding. Removes the
-   * reference (earlier revisions keep theirs); automated findings are never
-   * deleted here.
+   * A reviewer's own finding on the review, with the list it is in.
+   *
+   * @return array{0: \Drupal\paragraphs\ParagraphInterface, 1: \Drupal\paragraphs\ParagraphInterface|null}|null
+   *   The finding and its verdict (NULL for the repo's own findings), or NULL
+   *   when the review has no reviewer's finding by that id.
+   */
+  protected function reviewerFinding(string $pid): ?array {
+    $own = static fn ($p): bool => (string) $p->id() === $pid && ($p->get('field_rvf_source')->value ?? '') === 'reviewer';
+    foreach ($this->node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
+      foreach ($verdict->get('field_rvv_findings')->referencedEntities() as $p) {
+        if ($own($p)) {
+          return [$p, $verdict];
+        }
+      }
+    }
+    foreach ($this->node->get('field_arv_repo_findings')->referencedEntities() as $p) {
+      if ($own($p)) {
+        return [$p, NULL];
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * Validates "Delete finding".
+   *
+   * The page's checks, except on the finding being deleted, and only a
+   * reviewer's own finding.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function validateDeleteFinding(array &$form, FormStateInterface $form_state): void {
+    $pid = (string) ($form_state->getTriggeringElement()['#finding_pid'] ?? '');
+    if (!$this->validatePage($form, $form_state, $pid)) {
+      return;
+    }
+    if ($this->reviewerFinding($pid) === NULL) {
+      $form_state->setErrorByName('delete_finding][' . $pid, $this->t('Only a finding a reviewer added can be deleted.'));
+    }
+    $this->noteErrorFocus($form_state);
+  }
+
+  /**
+   * Submit handler for "Delete finding" on a reviewer's finding.
+   *
+   * Removes the reference (earlier revisions keep theirs); automated findings
+   * are never deleted here (validateDeleteFinding()). submitForm() runs next
+   * and saves the rest of the page with it, in one new revision.
    *
    * @param array<string, mixed> $form
    */
   public function deleteFinding(array &$form, FormStateInterface $form_state): void {
     $pid = (string) $form_state->getTriggeringElement()['#finding_pid'];
-    $node = $this->node;
-    $removed = NULL;
-    $drop = function ($list) use ($pid, &$removed): bool {
-      foreach ($list->referencedEntities() as $delta => $p) {
-        if ((string) $p->id() === $pid && ($p->get('field_rvf_source')->value ?? '') === 'reviewer') {
-          $removed = $p;
-          $list->removeItem($delta);
-          return TRUE;
-        }
-      }
-      return FALSE;
-    };
-    foreach ($node->get('field_arv_verdicts')->referencedEntities() as $verdict) {
-      if ($drop($verdict->get('field_rvv_findings'))) {
-        $verdict->save();
+    $found = $this->reviewerFinding($pid);
+    if ($found === NULL) {
+      return;
+    }
+    [$removed, $verdict] = $found;
+    $list = $verdict ? $verdict->get('field_rvv_findings') : $this->node->get('field_arv_repo_findings');
+    foreach ($list->referencedEntities() as $delta => $p) {
+      if ((string) $p->id() === $pid) {
+        $list->removeItem($delta);
         break;
       }
     }
-    if ($removed === NULL) {
-      $drop($node->get('field_arv_repo_findings'));
+    if ($verdict) {
+      $verdict->save();
     }
-    if ($removed === NULL) {
-      $this->messenger()->addError($this->t('Only a finding a reviewer added can be deleted.'));
-      return;
+    $form_state->set('arv_stamp', sprintf('Review page: %s deleted finding %s', $this->currentUser->getDisplayName(), $removed->get('field_rvf_rule')->value));
+    $form_state->set('arv_announce', (string) $this->t('Finding deleted.'));
+    // The finding is gone, so focus goes to its list's add form.
+    $form_state->set('arv_focus', 'fold-' . ($verdict ? 'app-' . $verdict->id() : 'repo') . '-add');
+    foreach (['prose', 'override', 'edit_finding'] as $key) {
+      self::unsetInputValue($form_state, [$key, $pid]);
     }
-    $node->setNewRevision(TRUE);
-    $this->stampRevision($node, sprintf('Review page: %s deleted finding %s', $this->currentUser->getDisplayName(), $removed->get('field_rvf_rule')->value));
-    $node->save();
-    $this->messenger()->addStatus($this->t('Finding deleted.'));
-    $form_state->setRedirect('ood_software.review_page', ['node' => $node->id()]);
   }
 
   /**
@@ -1943,13 +2176,50 @@ final class ReviewPageForm extends FormBase {
    * @param array<string, mixed> $form
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
+    if ($this->validatePage($form, $form_state)) {
+      $this->noteErrorFocus($form_state);
+    }
+  }
+
+  /**
+   * The page's checks, on the review as it is now.
+   *
+   * Every handler after this one works on the review this loads. A cached
+   * form (after an AJAX save) carries the form object it was built with, and
+   * that object's review is out of date.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param string|null $skip
+   *   A finding to leave out: the one being deleted.
+   *
+   * @return bool
+   *   FALSE when the save was refused as coming from an out-of-date window,
+   *   and nothing else was checked.
+   */
+  protected function validatePage(array $form, FormStateInterface $form_state, ?string $skip = NULL): bool {
+    $fresh = $this->entityTypeManager->getStorage('node')->loadUnchanged($this->node->id());
+    if ($fresh instanceof NodeInterface) {
+      $this->node = $fresh;
+    }
+    $posted = $form_state->getValue('arv_revision');
+    if (!$this->buttonPressed($form_state) || (is_scalar($posted) && (string) $posted !== '' && (string) $posted !== (string) $this->node->getRevisionId())) {
+      $this->refuseStale($form, $form_state);
+      return FALSE;
+    }
     foreach ($form_state->getValue('edit_finding') ?? [] as $pid => $input) {
+      if ((string) $pid === $skip) {
+        continue;
+      }
       if (trim((string) ($input['summary'] ?? '')) === '' || trim((string) ($input['rule'] ?? '')) === '') {
         $form_state->setErrorByName('edit_finding][' . $pid . '][summary', $this->t('A finding needs a rule and a summary.'));
       }
     }
+    // From the review as it is now, never the cached form's #page.
     $backed = [];
-    foreach ($form['#page']['apps'] ?? [] as $app) {
+    foreach ($this->buildPage($this->node)['apps'] ?? [] as $app) {
       $backed[$app['pid']] = $app['catalog']['backed'] ?? TRUE;
     }
     foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
@@ -1969,13 +2239,81 @@ final class ReviewPageForm extends FormBase {
       }
       $notes = $form_state->getValue('prose') ?? [];
       foreach ($overrides as $pid => $input) {
-        if (!isset($tool[$pid])) {
+        if (!isset($tool[$pid]) || (string) $pid === $skip) {
           continue;
         }
         if (FindingOverride::needsNote(FindingOverride::normalize((array) $input, $tool[$pid]), (string) ($notes[$pid] ?? ''))) {
           $form_state->setErrorByName('prose][' . $pid, $this->t('Add a note saying why: it is required to change the severity of an automated finding or dismiss it.'));
         }
       }
+    }
+    return TRUE;
+  }
+
+  /**
+   * Whether the triggering element is the button the reviewer pressed.
+   *
+   * When the pressed button is not on the form as built from the review now
+   * (the review was sent in another window, so its findings have no Save),
+   * Drupal falls back to the form's first button, which can be "Start the
+   * next round". That is never what was pressed.
+   */
+  protected function buttonPressed(FormStateInterface $form_state): bool {
+    $element = $form_state->getTriggeringElement();
+    if ($form_state->isProgrammed() || !is_array($element) || !isset($element['#name'])) {
+      return TRUE;
+    }
+    $input = $form_state->getUserInput();
+    if (($input['_triggering_element_name'] ?? NULL) === $element['#name']) {
+      return TRUE;
+    }
+    return isset($input[$element['#name']]) && (string) $input[$element['#name']] === (string) ($element['#value'] ?? '');
+  }
+
+  /**
+   * Refuses a save from a window the review has moved on from.
+   *
+   * Nothing is saved: an error blocks the submit handlers, and so does the
+   * rebuild for a button whose own errors are limited away. The rebuilt page
+   * is the review as it is now.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  protected function refuseStale(array $form, FormStateInterface $form_state): void {
+    $form_state->set('arv_stale', TRUE);
+    $form_state->set('arv_focus', 'arv-review-form');
+    $form_state->setError($form, $this->staleMessage());
+    if ($form_state->getErrors() === []) {
+      $this->messenger()->addError($this->staleMessage());
+    }
+    $form_state->setRebuild();
+    // The fallback button has no #ajax, and an AJAX request needs a callback
+    // to answer it.
+    $trigger = $form_state->getTriggeringElement();
+    if ($this->isAjax() && is_array($trigger) && empty($trigger['#ajax'])) {
+      $trigger['#ajax'] = $this->ajaxSettings();
+      $form_state->setTriggeringElement($trigger);
+    }
+  }
+
+  /**
+   * After a refused save, focus goes to what was pressed.
+   *
+   * That is the finding whose button it was, or the add form.
+   */
+  protected function noteErrorFocus(FormStateInterface $form_state): void {
+    if ($form_state->getErrors() === [] || $form_state->get('arv_stale')) {
+      return;
+    }
+    $trigger = $form_state->getTriggeringElement() ?? [];
+    if (isset($trigger['#finding_pid'])) {
+      $form_state->set('arv_focus', 'finding-' . $trigger['#finding_pid']);
+    }
+    elseif (isset($trigger['#finding_list'])) {
+      $form_state->set('arv_focus', 'fold-' . $trigger['#finding_list'] . '-add');
     }
   }
 
