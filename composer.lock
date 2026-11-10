@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f8261742e5ddec2133bfcbc3fd9418ee",
+    "content-hash": "166bbb1296759f260f0fa3d3a90b801c",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -679,18 +679,17 @@
         },
         {
             "name": "connectci/access",
-            "version": "3.0.x-dev",
+            "version": "dev-d8-2976",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "7f4883b2ea6708446ba36ea69b20ccf2e182f0eb"
+                "reference": "cb6eabbc643d43650bfac7b5c88cf1a45e1cd791"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
-            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -706,7 +705,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-11-09T02:27:05+00:00"
+            "time": "2026-11-10T16:23:13+00:00"
         },
         {
             "name": "connectci/asp-theme",
