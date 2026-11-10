@@ -20,12 +20,12 @@ const FINDINGS_SCRIPT = '/var/www/html/tests/cypress/cypress/fixtures/scripts/ap
 // the findings script's result: {apps: [verdict pid], findings: {rule: pid}}.
 function seedReview(title, shape) {
   const apps = shape === 'single' ? 1 : 2;
-  const seedCmd = `ddev drush php:script ${SEED_SCRIPT} -- '${title}' ready_for_review ${apps} draft review`;
+  const seedCmd = `ddev drush php:script ${SEED_SCRIPT} -- '${title}' ready_for_review ${apps} draft review < /dev/null`;
   return cy.exec(seedCmd, { timeout: 90000 }).then((res) => {
     const match = (res.stdout || '').match(/^APPVERSE_SEED_RESULT:(\{.*\})\s*$/m);
     expect(match, `seed output: ${res.stdout} ${res.stderr}`).to.not.equal(null);
     const seeded = JSON.parse(match[1]);
-    const cmd = `ddev drush php:script ${FINDINGS_SCRIPT} -- ${seeded.review_nid} ${shape}`;
+    const cmd = `ddev drush php:script ${FINDINGS_SCRIPT} -- ${seeded.review_nid} ${shape} < /dev/null`;
     return cy.exec(cmd, { timeout: 60000 }).then((out) => {
       const found = (out.stdout || '').match(/^APPVERSE_REVIEW_FINDINGS:(\{.*\})\s*$/m);
       expect(found, `findings output: ${out.stdout} ${out.stderr}`).to.not.equal(null);
@@ -90,6 +90,8 @@ describe('Appverse review worklist', () => {
         // blocks nothing, not the first rule of all (STR-01, a gate).
         cy.wrap($row).find('.rule').should('have.text', 'QUA-01');
         cy.wrap($row).prevAll('h3.arv-worklist__heading').first().should('have.text', 'Findings');
+        // The confirmation is seen as well as announced.
+        cy.wrap($row).find('.arv-saved').should('have.text', 'Finding added.').and('have.attr', 'aria-hidden', 'true');
       });
       // The add form is back where it was, open and empty.
       cy.get(near).next('details.add-finding').should('have.attr', 'open');
@@ -97,42 +99,104 @@ describe('Appverse review worklist', () => {
     });
   });
 
-  it('saves a finding in place, keeping what was typed', () => {
+  it('saves a severity change in place', () => {
+    seedReview('Review Worklist Severity', 'single').then((seed) => {
+      const pid = seed.findings['OODT-01'];
+      const row = `#finding-${pid}`;
+      const list = `#worklist-app-${seed.apps[0]}`;
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.location('href').then((url) => {
+        cy.window().then((win) => { win.arvNoReload = true; });
+        cy.get(row).find('.expand-hint').click();
+        cy.get(row).find(`select[name="override[${pid}][severity]"]`).select('low');
+        cy.get(row).find(`textarea[name="prose[${pid}]"]`).type('Only reachable by the reviewer.');
+        cy.get(row).find('[name^="save_finding__"]').click();
+        cy.get(row).find('.arv-saved').should('have.text', 'Saved.');
+        // No reload: same address, and what the page held before is still there.
+        cy.window().its('arvNoReload').should('equal', true);
+        cy.location('href').should('equal', url);
+        // The finding no longer blocks, so it is not under "Blocking".
+        cy.get(list).contains('h3', 'Blocking').should('not.exist');
+        cy.get(`${list} ${row}`).prevAll('h3.arv-worklist__heading').first().should('have.text', 'Findings');
+        // With nothing blocking, the sidebar offers Accept.
+        cy.get(`select[name="conclusion[${seed.apps[0]}]"] option[value="accept"]`).should('exist');
+      });
+    });
+  });
+
+  it('keeps what was typed elsewhere when a finding saves', () => {
     seedReview('Review Worklist Save', 'single').then((seed) => {
-      const row = `#finding-${seed.findings['QUA-03']}`;
+      const row = `#finding-${seed.findings['QUA-01']}`;
+      const letter = 'Thanks for submitting, a few things to fix.';
       cy.visit(`/appverse/review/${seed.reviewNid}`);
       cy.window().then((win) => { win.arvNoReload = true; });
-      // Half-typed elsewhere: the repo's add form.
+      // Half-typed elsewhere: the letter, the repo's add form, an open fold.
+      cy.get('textarea[name="response"]').type(letter);
       cy.get('#fold-repo-add summary').click();
       cy.get('#fold-repo-add .arv-add-summary').type('half typed');
+      cy.get(`#fold-app-${seed.apps[0]}-passed > summary`).click();
       cy.get(row).find('.expand-hint').click();
-      cy.get(row).find('textarea[name^="prose["]').type('Please handle the error.');
+      cy.get(row).find('textarea[name^="prose["]').type('Please document the setup steps.');
       cy.get(row).find('[name^="save_finding__"]').click();
-      cy.get(row).find('.finding-note').should('contain.text', 'Please handle the error.');
+      cy.get(row).find('.finding-note').should('contain.text', 'Please document the setup steps.');
       // Seen as well as announced.
       cy.get(row).find('.arv-saved').should('have.text', 'Saved.').and('have.attr', 'aria-hidden', 'true');
       cy.window().its('arvNoReload').should('equal', true);
       cy.get('#arv-review-form').should('not.have.attr', 'aria-busy');
       cy.get('#fold-repo-add').should('have.attr', 'open');
       cy.get('#fold-repo-add .arv-add-summary').should('have.value', 'half typed');
+      cy.get(`#fold-app-${seed.apps[0]}-passed`).should('have.attr', 'open');
+      cy.get('textarea[name="response"]').should('have.value', letter);
       // The edit box that was open is open again.
       cy.get(row).find('.fnote').should('not.have.class', 'collapsed');
+      // The letter was saved with the finding.
+      cy.reload();
+      cy.get('textarea[name="response"]').should('have.value', letter);
     });
   });
 
-  it('refuses a new severity with no note, and shows why', () => {
+  it('shows the error in place', () => {
     seedReview('Review Worklist Error', 'single').then((seed) => {
-      const pid = seed.findings['QUA-03'];
+      const pid = seed.findings['OODT-01'];
       const row = `#finding-${pid}`;
       cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.window().then((win) => { win.arvNoReload = true; });
       cy.get(row).find('.expand-hint').click();
       cy.get(row).find(`select[name="override[${pid}][severity]"]`).select('low');
       cy.get(row).find('[name^="save_finding__"]').click();
       cy.get('#arv-review-form .messages--error, #arv-review-form [role="alert"]')
         .should('contain.text', 'Add a note saying why');
+      cy.window().its('arvNoReload').should('equal', true);
+      // The box stays open on the field to fix, and the error is in the row.
       cy.get(row).find('.fnote').should('not.have.class', 'collapsed');
       cy.get(row).find(`textarea[name="prose[${pid}]"]`).should('have.attr', 'aria-invalid', 'true');
+      cy.get(row).contains('Add a note saying why').should('be.visible');
       cy.focused().should('have.attr', 'name', `prose[${pid}]`);
+      cy.focused().closest(row).should('exist');
+    });
+  });
+
+  it('shows an error inside a closed fold', () => {
+    seedReview('Review Worklist Fold', 'single').then((seed) => {
+      const pid = seed.findings['QUA-04'];
+      const fold = `#fold-app-${seed.apps[0]}-dismissed`;
+      const other = `#finding-${seed.findings['QUA-01']}`;
+      cy.visit(`/appverse/review/${seed.reviewNid}`);
+      cy.get(`${fold} summary`).click();
+      cy.get(`${fold} #finding-${pid} .expand-hint`).click();
+      cy.get(`${fold} select[name="override[${pid}][severity]"]`).select('medium');
+      // The dismissal's own note is cleared, so the change has no note.
+      cy.get(`${fold} textarea[name="prose[${pid}]"]`).clear();
+      // The fold is closed again with the unsaved change inside it.
+      cy.get(`${fold} summary`).click();
+      cy.get(fold).should('not.have.attr', 'open');
+      cy.get(other).find('.expand-hint').click();
+      cy.get(other).find('textarea[name^="prose["]').type('A note on another finding.');
+      cy.get(other).find('[name^="save_finding__"]').click();
+      // Nothing was saved: the fold is open and its error is showing.
+      cy.get(fold).should('have.attr', 'open');
+      cy.get(`${fold} #finding-${pid}`).contains('Add a note saying why').should('be.visible');
+      cy.get(other).find('.finding-note').should('not.contain.text', 'A note on another finding.');
     });
   });
 

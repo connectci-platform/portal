@@ -20,7 +20,8 @@
  *
  * Shapes:
  *   - single: one app. OODT-01 high FAIL (security), QUA-01 low WARN
- *     (documentation) and QUA-03 medium WARN (code quality). OODT-01 is the
+ *     (documentation) and QUA-03 medium WARN (code quality), plus QUA-04 low WARN (code quality)
+ *     already dismissed by the reviewer, and STR-02 a PASS. OODT-01 is the
  *     only finding that sets a floor, so Accept is possible once it is lowered.
  *   - multi: two apps. OODT-01 high FAIL (security) in app 1, a floor for
  *     every app.
@@ -67,7 +68,7 @@ if (count($app_ids) !== $want) {
 /**
  * Creates one review_finding paragraph.
  */
-function appverse_review_findings_make(string $rule, string $severity, string $result, string $aspect, ?string $category, string $summary, string $app_id): Paragraph {
+function appverse_review_findings_make(string $rule, string $severity, string $result, string $aspect, ?string $category, string $summary, string $app_id, bool $dismissed = FALSE): Paragraph {
   $finding = Paragraph::create([
     'type' => 'review_finding',
     'field_rvf_stable_id' => strtolower($rule) . '-' . $app_id,
@@ -83,6 +84,9 @@ function appverse_review_findings_make(string $rule, string $severity, string $r
     'field_rvf_line' => 3,
     'field_rvf_source' => 'ai',
     'field_rvf_result' => $result,
+    'field_rvf_dismissed' => $dismissed,
+    // A dismissal is always backed by a note, or every save would refuse it.
+    'field_rvf_reviewer_prose' => $dismissed ? 'Not worth raising for this app.' : '',
   ]);
   $finding->save();
   return $finding;
@@ -100,6 +104,10 @@ foreach (array_values($app_ids) as $app_nid) {
     if ($shape === 'single') {
       $own[] = $findings['QUA-01'] = appverse_review_findings_make('QUA-01', 'low', 'warn', 'quality', 'documentation', 'README leaves out the setup steps', $app_id);
       $own[] = $findings['QUA-03'] = appverse_review_findings_make('QUA-03', 'medium', 'warn', 'quality', NULL, 'Script ignores a failed download', $app_id);
+      // Dismissed by the reviewer, so it is listed in the closed fold.
+      $own[] = $findings['QUA-04'] = appverse_review_findings_make('QUA-04', 'low', 'warn', 'quality', NULL, 'Script leaves a temp file behind', $app_id, TRUE);
+      // A passed check, so "Passed checks" has a fold to open.
+      $own[] = $findings['STR-02'] = appverse_review_findings_make('STR-02', 'low', 'pass', 'structure', NULL, 'Manifest has every required field', $app_id);
     }
   }
   $verdict = Paragraph::create([
