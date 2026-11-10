@@ -211,6 +211,19 @@ class ReviewPageAjaxTest extends UnitTestCase {
   }
 
   /**
+   * An error's entities are not encoded twice in the announcement.
+   *
+   * @covers ::ajaxRefresh
+   */
+  public function testAjaxRefreshDecodesTheError(): void {
+    $form = ['#type' => 'form'];
+    $form_state = (new FormState())->set('arv_focus', 'finding-5');
+    $form_state->setErrorByName('prose][5', 'It&#039;s <em>needed</em>.');
+    $commands = $this->pageForm()->ajaxRefresh($form, $form_state)->getCommands();
+    $this->assertSame('Not saved: It&#039;s needed.', $commands[1]['text']);
+  }
+
+  /**
    * The stale-window refusal focuses the page, with nothing else to fix.
    *
    * @covers ::ajaxRefresh

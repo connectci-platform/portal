@@ -1332,6 +1332,18 @@
   background: #fff8ec;
   border-left: 3px solid var(--status-amber);
 }
+/* What an AJAX save just did, in the row or the list: a pass tint, since it
+   reports a save that went through. */
+.arv-page .arv-saved {
+  display: inline-block;
+  margin: 0 0 .3rem;
+  padding: .1rem .5rem;
+  border-radius: 3px;
+  background: var(--tint-pass);
+  color: var(--ink);
+  font-size: .78rem;
+  font-weight: 600;
+}
 .arv-page .finding-note {
   font-size: .82rem;
   color: var(--gray-900);

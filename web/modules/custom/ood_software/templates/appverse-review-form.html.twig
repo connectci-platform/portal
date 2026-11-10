@@ -40,6 +40,12 @@
   {% set editable = can_edit and form.save_finding[finding.pid] is defined %}
   {% set section = item.section ?? finding.section ?? '' %}
   <div class="finding" id="finding-{{ finding.pid }}"{% if section %} data-section="{{ section }}"{% endif %}>
+    {# What an AJAX save just did here. The announcement already speaks it,
+       so this line is hidden from screen readers. #}
+    {% set confirm = form['#arv_confirm'] ?? null %}
+    {% if confirm and confirm.finding and confirm.finding ~ '' == finding.pid ~ '' %}
+      <p class="arv-saved" aria-hidden="true">{{ confirm.text }}</p>
+    {% endif %}
     <div class="frow">
       <div class="rule">{{ finding.rule }}</div>
       <div>
@@ -472,6 +478,10 @@
                 {{ m.finding_row(finding, form, can_edit, null, page.conclusion_labels) }}
               {% endfor %}
             </details>
+          {% endif %}
+          {% set confirm = form['#arv_confirm'] ?? null %}
+          {% if confirm and confirm.list and confirm.list == list.key %}
+            <p class="arv-saved" aria-hidden="true">{{ confirm.text }}</p>
           {% endif %}
           {% if can_edit and form.add_finding[list.key] is defined %}
             <details class="add-finding" id="fold-{{ list.key }}-add">

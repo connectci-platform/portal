@@ -3,6 +3,7 @@
 namespace Drupal\ood_software\Form;
 
 use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Ajax\AjaxResponse;
@@ -71,6 +72,14 @@ final class ReviewPageForm extends FormBase {
   const DATE_TIME = 'M j, Y g:i A';
 
   const REVIEWER_PERMISSION = 'administer appverse content';
+
+  /**
+   * Form state one request's handlers set for the next step of that request.
+   *
+   * Form state storage is cached with the form after an AJAX rebuild, so
+   * these are cleared when each request's handling starts.
+   */
+  const REQUEST_STATE = ['arv_stamp', 'arv_announce', 'arv_focus', 'arv_stale', 'arv_confirm', 'arv_deleted_from'];
 
   // No security axis: security is findings only (schema 1.2), so there is no
   // level for a reviewer to override.
@@ -298,6 +307,10 @@ final class ReviewPageForm extends FormBase {
       '#type' => 'hidden',
       '#default_value' => (string) $node->getRevisionId(),
     ];
+    // What the AJAX save just did, shown where it happened (in the finding's
+    // row, or the list's add form for a delete). Only on the rebuild that
+    // follows the save; the next action takes it away.
+    $form['#arv_confirm'] = $form_state->get('arv_confirm');
     // The reviewer's worklists: the repo's, then one per app, blocking first.
     $form['#worklist'] = ReviewWorklist::build($page, json_decode((string) ($node->get('field_arv_repo_criteria')->value ?? ''), TRUE) ?: []);
     if ($canEdit) {
@@ -823,6 +836,15 @@ final class ReviewPageForm extends FormBase {
       self::setInputValue($form_state, ['arv_revision'], (string) $node->getRevisionId());
       $form_state->set('arv_announce', $form_state->get('arv_announce') ?? (string) $this->t('Saved.'));
       $form_state->set('arv_focus', $focus);
+      // A delete is confirmed at its list's add form, anything else in the
+      // finding's row.
+      $list = $form_state->get('arv_deleted_from');
+      $finding = is_string($focus) && str_starts_with($focus, 'finding-') ? substr($focus, strlen('finding-')) : NULL;
+      $form_state->set('arv_confirm', [
+        'finding' => $list === NULL ? $finding : NULL,
+        'list' => $list,
+        'text' => $form_state->get('arv_announce'),
+      ]);
       $this->messenger()->deleteByType('status');
       foreach ($messages as $message) {
         $this->messenger()->addStatus($message);
@@ -906,11 +928,12 @@ final class ReviewPageForm extends FormBase {
     $build = $form;
     if ($errors !== [] || $stale) {
       $first = $errors !== [] ? reset($errors) : $this->staleMessage();
-      $announce = (string) $this->t('Not saved: @error', ['@error' => strip_tags((string) $first)]);
+      $announce = (string) $this->t('Not saved: @error', ['@error' => Html::decodeEntities(strip_tags((string) $first))]);
       $priority = AnnounceCommand::PRIORITY_ASSERTIVE;
       // The messages go inside the wrapper, so the next replace takes them
       // away again.
-      unset($build['#prefix'], $build['#suffix']);
+      // Nothing was saved, so no confirmation from an earlier save.
+      unset($build['#prefix'], $build['#suffix'], $build['#arv_confirm']);
       $build = [
         '#prefix' => $form['#prefix'] ?? '',
         '#suffix' => $form['#suffix'] ?? '',
@@ -2077,6 +2100,7 @@ final class ReviewPageForm extends FormBase {
    *   The form state.
    */
   public function validateDeleteFinding(array &$form, FormStateInterface $form_state): void {
+    $this->startRequest($form, $form_state);
     $pid = (string) ($form_state->getTriggeringElement()['#finding_pid'] ?? '');
     if (!$this->validatePage($form, $form_state, $pid)) {
       return;
@@ -2116,7 +2140,9 @@ final class ReviewPageForm extends FormBase {
     $form_state->set('arv_stamp', sprintf('Review page: %s deleted finding %s', $this->currentUser->getDisplayName(), $removed->get('field_rvf_rule')->value));
     $form_state->set('arv_announce', (string) $this->t('Finding deleted.'));
     // The finding is gone, so focus goes to its list's add form.
-    $form_state->set('arv_focus', 'fold-' . ($verdict ? 'app-' . $verdict->id() : 'repo') . '-add');
+    $listKey = $verdict ? 'app-' . $verdict->id() : 'repo';
+    $form_state->set('arv_focus', 'fold-' . $listKey . '-add');
+    $form_state->set('arv_deleted_from', $listKey);
     foreach (['prose', 'override', 'edit_finding'] as $key) {
       self::unsetInputValue($form_state, [$key, $pid]);
     }
@@ -2176,9 +2202,28 @@ final class ReviewPageForm extends FormBase {
    * @param array<string, mixed> $form
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
+    $this->startRequest($form, $form_state);
     if ($this->validatePage($form, $form_state)) {
       $this->noteErrorFocus($form_state);
     }
+  }
+
+  /**
+   * Starts a request's handling with none of the last request's state.
+   *
+   * A form restored from the cache brings the form state storage and the
+   * confirmation it was rebuilt with; neither belongs to this request.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  protected function startRequest(array &$form, FormStateInterface $form_state): void {
+    foreach (self::REQUEST_STATE as $key) {
+      $form_state->set($key, NULL);
+    }
+    unset($form['#arv_confirm']);
   }
 
   /**
@@ -2204,8 +2249,14 @@ final class ReviewPageForm extends FormBase {
     if ($fresh instanceof NodeInterface) {
       $this->node = $fresh;
     }
-    $posted = $form_state->getValue('arv_revision');
-    if (!$this->buttonPressed($form_state) || (is_scalar($posted) && (string) $posted !== '' && (string) $posted !== (string) $this->node->getRevisionId())) {
+    // What was posted, not the element's value: a missing input would take the
+    // element's default, which is the fresh revision. A programmed submit
+    // (and a page without the element, the contributor's) has nothing to
+    // compare.
+    $posted = $form_state->getUserInput()['arv_revision'] ?? NULL;
+    $stale = !$form_state->isProgrammed() && isset($form['arv_revision'])
+      && (!is_scalar($posted) || (string) $posted !== (string) $this->node->getRevisionId());
+    if (!$this->buttonPressed($form_state) || $stale) {
       $this->refuseStale($form, $form_state);
       return FALSE;
     }
@@ -2267,15 +2318,18 @@ final class ReviewPageForm extends FormBase {
     if (($input['_triggering_element_name'] ?? NULL) === $element['#name']) {
       return TRUE;
     }
-    return isset($input[$element['#name']]) && (string) $input[$element['#name']] === (string) ($element['#value'] ?? '');
+    // As core's buttonWasClicked() compares it.
+    return isset($input[$element['#name']]) && (string) $input[$element['#name']] === Html::decodeEntities((string) ($element['#value'] ?? ''));
   }
 
   /**
    * Refuses a save from a window the review has moved on from.
    *
    * Nothing is saved: an error blocks the submit handlers, and so does the
-   * rebuild for a button whose own errors are limited away. The rebuilt page
-   * is the review as it is now.
+   * rebuild for a button whose own errors are limited away. The page shown
+   * keeps what was typed, which is the stale page's input, so it still
+   * carries the old revision and later saves from it stay refused until the
+   * reviewer reloads.
    *
    * @param array<string, mixed> $form
    *   The form.

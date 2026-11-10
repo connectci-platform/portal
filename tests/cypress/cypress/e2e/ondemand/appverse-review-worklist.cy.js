@@ -109,6 +109,8 @@ describe('Appverse review worklist', () => {
       cy.get(row).find('textarea[name^="prose["]').type('Please handle the error.');
       cy.get(row).find('[name^="save_finding__"]').click();
       cy.get(row).find('.finding-note').should('contain.text', 'Please handle the error.');
+      // Seen as well as announced.
+      cy.get(row).find('.arv-saved').should('have.text', 'Saved.').and('have.attr', 'aria-hidden', 'true');
       cy.window().its('arvNoReload').should('equal', true);
       cy.get('#arv-review-form').should('not.have.attr', 'aria-busy');
       cy.get('#fold-repo-add').should('have.attr', 'open');
@@ -147,6 +149,7 @@ describe('Appverse review worklist', () => {
         cy.get(`#${id} .expand-hint`).click();
         cy.get(`#${id} [name^="delete_finding__"]`).click();
         cy.get(`#${id}`).should('not.exist');
+        cy.get(list).find('.arv-saved').should('have.text', 'Finding deleted.');
       });
       cy.focused().closest(`#fold-app-${seed.apps[0]}-add`).should('exist');
     });

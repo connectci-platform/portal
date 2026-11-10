@@ -941,6 +941,114 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
+   * An add's state does not carry over to the next save from the cached form.
+   */
+  public function testCachedFormStartsEachSaveAfresh(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = $this->verdictPids($review)[0];
+    $key = 'app-' . $pid;
+    $hid = (string) $high->id();
+    $input = $this->keys($review);
+    [$form, $formState] = $this->post($review, $input + [
+      'add_finding' => [$key => $this->addInput('code_quality', 'QUA-03', 'low', 'No error handling.')],
+    ], 'add_finding__' . $key, 'Add finding', TRUE);
+    $this->assertSame('Finding added.', $formState->get('arv_announce'));
+    $input = $this->nextInput($form, $input);
+    [, $formState] = $this->post($review, ['prose' => [$hid => 'Noted.']] + $input, 'save_finding__' . $hid, 'Save', TRUE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertSame('Saved.', $formState->get('arv_announce'));
+    $this->assertSame('finding-' . $hid, $formState->get('arv_focus'));
+    $log = (string) Node::load($review->id())->getRevisionLogMessage();
+    $this->assertStringStartsWith('Review page: saved by ', $log);
+    $this->assertStringNotContainsString('added finding', $log);
+  }
+
+  /**
+   * Save on one finding, then another: focus follows the second.
+   */
+  public function testSecondSaveFocusesItsOwnFinding(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $low = $this->finding('QUA-03', 'low', 'warn', 'No error handling.', ['field_rvf_aspect' => 'quality']);
+    $review = $this->makeReview(['root' => [$high, $low]]);
+    $a = (string) $high->id();
+    $b = (string) $low->id();
+    $input = $this->keys($review);
+    [$form] = $this->post($review, ['prose' => [$a => 'One.']] + $input, 'save_finding__' . $a, 'Save', TRUE);
+    $input = $this->nextInput($form, $input);
+    [, $formState] = $this->post($review, ['prose' => [$b => 'Two.']] + $input, 'save_finding__' . $b, 'Save', TRUE);
+    $this->assertSame('finding-' . $b, $formState->get('arv_focus'));
+  }
+
+  /**
+   * A save is confirmed on the page, in the finding's row, until the next.
+   */
+  public function testAjaxSaveShowsConfirmation(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $this->assertStringNotContainsString('arv-saved', $this->renderAs($this->reviewer, $review));
+    [$form] = $this->post($review, $this->keys($review) + ['prose' => [$pid => 'Noted.']], 'save_finding__' . $pid, 'Save', TRUE);
+    $row = $this->row($this->renderForm($form), 'finding-' . $pid);
+    $this->assertStringContainsString('<p class="arv-saved" aria-hidden="true">Saved.</p>', $row);
+  }
+
+  /**
+   * A delete is confirmed at its list's add form.
+   */
+  public function testAjaxDeleteShowsConfirmationInList(): void {
+    $mine = $this->finding('QUA-03', 'low', 'fail', 'No error handling.', [
+      'field_rvf_aspect' => 'quality',
+      'field_rvf_source' => 'reviewer',
+    ]);
+    $review = $this->makeReview(['root' => [$mine]]);
+    $pid = $this->verdictPids($review)[0];
+    [$form] = $this->post($review, $this->keys($review), 'delete_finding__' . $mine->id(), 'Delete finding', TRUE);
+    $html = $this->renderForm($form);
+    $this->assertMatchesRegularExpression('/<p class="arv-saved" aria-hidden="true">Finding deleted\.<\/p>\s*<details class="add-finding" id="fold-app-' . $pid . '-add"/', $html);
+  }
+
+  /**
+   * A post that does not say which revision it came from saves nothing.
+   */
+  public function testPostWithoutRevisionIsRefused(): void {
+    $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
+    $review = $this->makeReview(['root' => [$high]]);
+    $pid = (string) $high->id();
+    $input = $this->keys($review);
+    unset($input['arv_revision']);
+    $before = $this->revisionCount($review);
+    \Drupal::messenger()->deleteAll();
+    $this->post($review, $input + ['prose' => [$pid => 'Noted.']], 'save_finding__' . $pid, 'Save', TRUE);
+    $this->assertContains('This review changed in another window. Reload the page to see the latest version.', array_map('strval', \Drupal::messenger()->messagesByType('error')));
+    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertEmpty(Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
+  }
+
+  /**
+   * Renders a form a post returned.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   */
+  protected function renderForm(array $form): string {
+    $this->pushRequest(Node::load($form['#page']['nid']));
+    $renderer = $this->container->get('renderer');
+    $html = (string) $renderer->executeInRenderContext(new RenderContext(), fn () => $renderer->render($form));
+    $this->container->get('request_stack')->pop();
+    return $html;
+  }
+
+  /**
+   * One finding row's HTML, up to the next row.
+   */
+  protected function row(string $html, string $id): string {
+    $start = $this->at($html, $id);
+    $next = strpos($html, '<div class="finding"', $start + 1);
+    return substr($html, $start, $next === FALSE ? NULL : $next - $start);
+  }
+
+  /**
    * What a browser posts back from a freshly loaded page.
    *
    * @return array<string, string>
