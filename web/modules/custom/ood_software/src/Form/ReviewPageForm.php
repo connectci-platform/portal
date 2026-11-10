@@ -1681,6 +1681,7 @@ final class ReviewPageForm extends FormBase {
     }
     $rules['_other'] = $this->t('Other…');
     $default = (string) ($list['default_section'] ?? '');
+    $default = isset($sections[$default]) ? $default : (string) array_key_first($sections);
     $selector = ':input[name="add_finding[' . $key . '][rule]"]';
     $form['add_finding'][$key] = [
       '#type' => 'container',
@@ -1689,13 +1690,16 @@ final class ReviewPageForm extends FormBase {
         '#type' => 'select',
         '#title' => $this->t('Section'),
         '#options' => $sections,
-        '#default_value' => isset($sections[$default]) ? $default : array_key_first($sections),
+        '#default_value' => $default,
         '#attributes' => ['class' => ['arv-add-section']],
       ],
       'rule' => [
         '#type' => 'select',
         '#title' => $this->t('Rule'),
         '#options' => $rules,
+        // The section's own first rule: the first option of all would be
+        // STR-01, a gate that blocks the decision, under any section.
+        '#default_value' => array_key_first(ReviewPageData::BLOCK_RULES[$default] ?? []) ?? '_other',
         '#attributes' => ['data-rule-sections' => json_encode($ruleSections)],
       ],
       'rule_other' => [

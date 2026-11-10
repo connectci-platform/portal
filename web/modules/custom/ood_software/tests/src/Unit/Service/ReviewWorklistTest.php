@@ -476,6 +476,44 @@ class ReviewWorklistTest extends UnitTestCase {
   /**
    * @covers ::build
    */
+  public function testNotCheckedGatesJoinPassedAsNotChecked(): void {
+    $page = self::page(
+      [self::app(5, 'App A', [], [self::pill('license', 'pass'), self::pill('metadata', 'not_checked')])],
+      [],
+      [self::pill('public', 'pass'), self::pill('not_archived', 'not_checked')],
+    );
+    $lists = ReviewWorklist::build($page, ['public' => 'pass', 'not_archived' => 'not_checked']);
+    // Neither is a worklist item.
+    $this->assertSame([], $lists[0]['items']);
+    $this->assertSame([], $lists[1]['items']);
+    $this->assertSame('Repo: 1 of 2 passed · 1 not checked', $lists[0]['passed'][0]['line']);
+    $this->assertSame(['pass', 'not_checked'], array_column($lists[0]['passed'][0]['rows'], 'value'));
+    $this->assertSame('Structure: 1 passed · 1 not checked', $lists[1]['passed'][0]['line']);
+    $byValue = array_column($lists[1]['passed'][0]['rows'], NULL, 'value');
+    $this->assertSame('NOT CHECKED', $byValue['not_checked']['result']);
+    $this->assertArrayHasKey('pass', $byValue);
+  }
+
+  /**
+   * @covers ::build
+   */
+  public function testItemsSayWhetherTheyBlock(): void {
+    $page = self::page([
+      self::app(5, 'App A', [
+        'security' => [self::row(['pid' => 77, 'rule' => 'OODT-01', 'aspect' => 'security', 'severity' => 'high'])],
+        'code_quality' => [self::row(['pid' => 78, 'rule' => 'QUA-03', 'severity' => 'low'])],
+      ]),
+      self::app(6, 'App B'),
+    ]);
+    $lists = ReviewWorklist::build($page, []);
+    $this->assertSame([TRUE, FALSE], array_column($lists[1]['items'], 'blocks'));
+    // A reference always blocks.
+    $this->assertSame([TRUE], array_column($lists[2]['items'], 'blocks'));
+  }
+
+  /**
+   * @covers ::build
+   */
   public function testDismissedLeaveItemsAndJoinDismissed(): void {
     $page = self::page([self::app(5, 'App A', [
       'security' => [self::row([

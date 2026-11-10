@@ -79,6 +79,10 @@ describe('Appverse review worklist', () => {
       cy.url().should('match', /#finding-\d+$/);
       cy.location('hash').then((hash) => {
         cy.get(hash).should('have.class', 'finding').and('contain.text', summary);
+        // The rule followed the section: a documentation finding, which
+        // blocks nothing, not the first rule of all (STR-01, a gate).
+        cy.get(hash).find('.rule').should('have.text', 'QUA-01');
+        cy.get(hash).prevAll('h3.arv-worklist__heading').first().should('have.text', 'Findings');
       });
     });
   });

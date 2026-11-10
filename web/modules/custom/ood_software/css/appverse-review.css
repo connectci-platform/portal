@@ -1216,9 +1216,23 @@
 .arv-page .duplicate-check-block:empty {
   display: none;
 }
+/* The "Same software" check above the duplicate check's control. */
+.arv-page .duplicate-same-software {
+  margin-bottom: 8px;
+}
 @media (max-width: 600px) {
   .arv-page .finding--check .arv-check-details {
     margin-left: 0;
+  }
+  /* At phone width the actions drop under the text rather than squeezing
+     it: rule, then text, then Edit and Add a finding here. */
+  .arv-page .finding > .frow {
+    grid-template-columns: 56px 1fr;
+  }
+  .arv-page .frow-actions {
+    grid-column: 2 / -1;
+    justify-self: start;
+    flex-wrap: wrap;
   }
 }
 

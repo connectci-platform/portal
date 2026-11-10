@@ -183,19 +183,30 @@
         });
       });
 
-      // Picking a rule moves the add form's section to the rule's own, so an
-      // OODT code is not filed under Code quality by accident.
-      once('arv-add-rule', '.arv-page select[data-rule-sections]', context).forEach((select) => {
-        const map = JSON.parse(select.dataset.ruleSections || '{}');
-        const fields = select.closest('.finding-fields');
+      // The add form's rule and section follow each other. Picking a rule
+      // moves the section to the rule's own, so an OODT code is not filed
+      // under Code quality by accident; moving the section (by hand or by
+      // "Add a finding here") starts the rule on that section's first, unless
+      // the rule is already one of its own or Other.
+      once('arv-add-rule', '.arv-page select[data-rule-sections]', context).forEach((rule) => {
+        const map = JSON.parse(rule.dataset.ruleSections || '{}');
+        const fields = rule.closest('.finding-fields');
         const section = fields ? fields.querySelector('select.arv-add-section') : null;
         if (!section) {
           return;
         }
-        select.addEventListener('change', () => {
-          if (map[select.value]) {
-            section.value = map[select.value];
+        rule.addEventListener('change', () => {
+          if (map[rule.value]) {
+            section.value = map[rule.value];
           }
+        });
+        section.addEventListener('change', () => {
+          if (!map[rule.value] || map[rule.value] === section.value) {
+            return;
+          }
+          const first = Object.keys(map).find((code) => map[code] === section.value);
+          rule.value = first || '_other';
+          rule.dispatchEvent(new Event('change', { bubbles: true }));
         });
       });
 
@@ -214,6 +225,8 @@
           const section = fold.querySelector('select.arv-add-section');
           if (section && Array.from(section.options).some((o) => o.value === btn.dataset.section)) {
             section.value = btn.dataset.section;
+            // So the rule follows the section.
+            section.dispatchEvent(new Event('change', { bubbles: true }));
           }
           row.after(fold);
           fold.open = true;

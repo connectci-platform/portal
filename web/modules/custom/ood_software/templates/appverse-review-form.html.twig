@@ -87,8 +87,9 @@
         <div class="frow-actions">
           <button type="button" class="expand-hint" aria-expanded="false">{{ 'Edit'|t }}</button>
           {# Moves the list's add form here, on this row's section. Only the
-             script can do that, so it is hidden until the script shows it. #}
-          {% if section %}
+             script can do that, so it is hidden until the script shows it.
+             Not on a dismissed row (no item), which sits in its own fold. #}
+          {% if item and section %}
             <button type="button" class="arv-add-here" data-section="{{ section }}" hidden>{{ 'Add a finding here'|t }}</button>
           {% endif %}
         </div>
@@ -368,9 +369,7 @@
         {% set app = list.key == 'repo' ? null : page.apps|filter(a => a.pid ~ '' == list.pid ~ '')|first %}
         <section class="arv-worklist app-section" id="worklist-{{ list.key }}">
           <span class="arv-anchor" id="{{ list.anchor }}"></span>
-          {% if not app or page.apps|length > 1 %}
-            <h2 class="app-name">{{ app ? app.name : 'Repository'|t }}</h2>
-          {% endif %}
+          <h2 class="app-name">{{ app ? app.name : 'Repository'|t }}</h2>
           <div class="arv-ratings">
             {% if app %}
               {% for axis in ['portability', 'documentation'] %}
@@ -383,8 +382,15 @@
           {# The reviewer's duplicate check for this app (A4). Required to
              accept the app. #}
           {% if app %}
-            {# No whitespace when there is nothing in it, so :empty hides it. #}
+            {# The catalog's "Same software" check, with its links to the other
+               published apps, then the control. No whitespace when there is
+               nothing in it, so :empty hides it. #}
             <div class="duplicate-check-block" id="duplicate-{{ app.pid }}">
+              {%- for row in app.catalog.rows ?? [] -%}
+                {%- if row.check == 'Same software' -%}
+                  <div class="duplicate-same-software">{{ m.check_row(row, can_edit) }}</div>
+                {%- endif -%}
+              {%- endfor -%}
               {%- if can_edit or form['#updating'] -%}
                 {{ attribute(form.duplicate, app.pid) }}
               {%- elseif app.duplicate.outcome -%}
@@ -395,11 +401,11 @@
             </div>
           {% endif %}
 
-          {% set blocking = list.items|filter(i => i.blocking or i.kind == 'reference') %}
+          {% set blocking = list.items|filter(i => i.blocks) %}
           {% if blocking is not empty %}
             <h3 class="arv-worklist__heading">{{ 'Blocking'|t }}</h3>
             {% for i, item in list.items %}
-              {% if item.blocking or item.kind == 'reference' %}
+              {% if item.blocks %}
                 {{ m.section_anchors(list, i) }}
                 {{ m.worklist_item(item, form, can_edit, page.conclusion_labels) }}
               {% endif %}
@@ -407,10 +413,10 @@
           {% endif %}
           <h3 class="arv-worklist__heading">{{ 'Findings'|t }}</h3>
           {% if list.items|length == blocking|length %}
-            <p class="arv-worklist__none">{{ 'No findings'|t }}</p>
+            <p class="arv-worklist__none">{{ blocking is empty ? 'No findings'|t : 'No other findings'|t }}</p>
           {% endif %}
           {% for i, item in list.items %}
-            {% if not (item.blocking or item.kind == 'reference') %}
+            {% if not item.blocks %}
               {{ m.section_anchors(list, i) }}
               {{ m.worklist_item(item, form, can_edit, page.conclusion_labels) }}
             {% endif %}

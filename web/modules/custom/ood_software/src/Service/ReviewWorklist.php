@@ -117,11 +117,21 @@ final class ReviewWorklist {
 
     $repoGatePassed = NULL;
     $gatePasses = array_values((array) ($repoGates['passes'] ?? []));
-    if ($gatePasses !== []) {
+    $gateNotChecked = [];
+    foreach ((array) ($repoGates['others'] ?? []) as $pill) {
+      if (self::isNotChecked((array) $pill)) {
+        $gateNotChecked[] = self::notChecked((array) $pill);
+      }
+    }
+    if ($gatePasses !== [] || $gateNotChecked !== []) {
+      $line = sprintf('Repo: %d of %d passed', count($gatePasses), (int) ($repoGates['total'] ?? count($gatePasses)));
+      if ($gateNotChecked !== []) {
+        $line .= sprintf(' · %d not checked', count($gateNotChecked));
+      }
       $repoGatePassed = [
         'section_title' => 'Structure',
-        'line' => sprintf('Repo: %d of %d passed', count($gatePasses), (int) ($repoGates['total'] ?? count($gatePasses))),
-        'rows' => $gatePasses,
+        'line' => $line,
+        'rows' => array_merge($gatePasses, $gateNotChecked),
       ];
     }
 
@@ -172,7 +182,12 @@ final class ReviewWorklist {
     foreach ($blocks as $key => $block) {
       $title = (string) ($block['title'] ?? $key);
       foreach ((array) ($block['gate_summary']['others'] ?? []) as $pill) {
-        $gatePills[] = [$key, $title, (array) $pill];
+        if (self::isNotChecked((array) $pill)) {
+          $out['passed'][$key][] = self::notChecked((array) $pill);
+        }
+        else {
+          $gatePills[] = [$key, $title, (array) $pill];
+        }
       }
       foreach ((array) ($block['gate_summary']['passes'] ?? []) as $pill) {
         $out['passed'][$key][] = (array) $pill;
@@ -305,6 +320,11 @@ final class ReviewWorklist {
       return [self::blocks($a) ? 0 : 1, self::severityRank($a['severity']), $order[$a['section']] ?? count($order)]
         <=> [self::blocks($b) ? 0 : 1, self::severityRank($b['severity']), $order[$b['section']] ?? count($order)];
     });
+    // Whether each item goes under "Blocking", for the page.
+    foreach ($items as &$item) {
+      $item['blocks'] = self::blocks($item);
+    }
+    unset($item);
 
     $sectionList = [];
     foreach ($sections as $key) {
@@ -340,6 +360,31 @@ final class ReviewWorklist {
       'dismissed' => (array) $collected['dismissed'],
       'default_section' => $items !== [] ? (string) end($items)['section'] : $fallback,
     ];
+  }
+
+  /**
+   * Whether a gate pill was neither passed, failed nor warned about.
+   *
+   * An older review's not_checked, say. It is listed as not checked.
+   *
+   * @param array<mixed> $pill
+   *   A gate pill.
+   */
+  private static function isNotChecked(array $pill): bool {
+    return !in_array(strtolower((string) ($pill['value'] ?? '')), ['pass', 'fail', 'warn'], TRUE);
+  }
+
+  /**
+   * A gate pill as a passed-checks row that was not checked.
+   *
+   * @param array<mixed> $pill
+   *   A gate pill.
+   *
+   * @return array<mixed>
+   *   The row.
+   */
+  private static function notChecked(array $pill): array {
+    return ['result' => 'NOT CHECKED'] + $pill;
   }
 
   /**

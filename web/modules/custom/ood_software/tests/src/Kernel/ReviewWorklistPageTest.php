@@ -273,6 +273,8 @@ class ReviewWorklistPageTest extends KernelTestBase {
     // Each row says its section.
     $this->assertMatchesRegularExpression('/id="finding-' . $doc->id() . '"[^>]*data-section="documentation"/', $html);
     $this->assertStringContainsString('worklist-repo', $html);
+    // A single app's list is headed by its name too.
+    $this->assertStringContainsString('<h2 class="app-name">App root</h2>', $html);
   }
 
   /**
@@ -322,6 +324,40 @@ class ReviewWorklistPageTest extends KernelTestBase {
     // Out of the list itself, so the list has nothing in it.
     $list = substr($html, $this->at($html, 'worklist-app-' . $pid), $fold - $this->at($html, 'worklist-app-' . $pid));
     $this->assertStringContainsString('No findings', $list);
+    // Add a finding here would move the add form into the fold.
+    $this->assertStringNotContainsString('arv-add-here', $html);
+  }
+
+  /**
+   * The duplicate check shows the other published apps for the software.
+   */
+  public function testSameSoftwareAppsShowInDuplicateCheck(): void {
+    $review = $this->makeReview(['root' => []]);
+    $verdict = Paragraph::load($this->verdictPids($review)[0]);
+    $verdict->set('field_rvv_catalog', json_encode([
+      'shape' => 'declared',
+      'software' => ['status' => 'match', 'entry' => 'jupyter'],
+      'same_software_apps' => [
+        ['title' => 'Other Jupyter', 'github_url' => 'https://github.com/other/jupyter'],
+        ['title' => 'This one', 'github_url' => 'https://github.com/example/app', 'this_repo' => TRUE],
+      ],
+    ]));
+    $verdict->save();
+    foreach ([FALSE, TRUE] as $sent) {
+      if ($sent) {
+        $node = Node::load($review->id());
+        $node->set('field_arv_decision_sent_at', 1700000100);
+        $sentApps = [(string) $verdict->id() => 'request_changes'];
+        $node->set('field_arv_sent_decisions', json_encode(['apps' => $sentApps, 'response' => 'Sent.']));
+        $node->save();
+      }
+      $html = $this->renderAs($this->reviewer, $review);
+      $this->assertSame(1, preg_match('/<div class="duplicate-check-block" id="duplicate-' . $verdict->id() . '">(.*?)<\/div>\s*<h3/s', $html, $m), $sent ? 'sent' : 'editable');
+      $this->assertStringContainsString('<a href="https://github.com/other/jupyter" target="_blank" rel="noopener">Other Jupyter</a>', $m[1]);
+      $this->assertStringContainsString('1 published app from other repos implements jupyter', $m[1]);
+      // Not a worklist item as well.
+      $this->assertSame(1, substr_count($html, 'Other Jupyter'));
+    }
   }
 
   /**
@@ -340,6 +376,8 @@ class ReviewWorklistPageTest extends KernelTestBase {
     // Two apps, so each list is headed by its app.
     $this->assertStringContainsString('<h2 class="app-name">App alpha</h2>', $html);
     $this->assertStringContainsString('<h2 class="app-name">App beta</h2>', $html);
+    // Each app list holds a blocker and nothing else.
+    $this->assertSame(2, substr_count($html, 'No other findings'));
   }
 
   /**
@@ -508,6 +546,14 @@ class ReviewWorklistPageTest extends KernelTestBase {
     // The rule is grouped by section.
     $this->assertStringContainsString('<optgroup label="Security">', $html);
     $this->assertStringContainsString('id="fold-app-' . $pid . '-add"', $html);
+    // Each form's rule starts on a rule of its default section, never on
+    // the first of all (STR-01, a gate that blocks the decision).
+    $sections = ['app-' . $pid => 'code_quality', 'repo' => 'maintenance'];
+    foreach ($sections as $key => $section) {
+      $rule = $this->selectHtml($html, 'add_finding[' . $key . '][rule]');
+      $this->assertSame(1, preg_match('/<option value="([^"]+)" selected="selected">/', $rule, $m), "$key rule has a default");
+      $this->assertArrayHasKey($m[1], ReviewPageData::BLOCK_RULES[$section], "$key starts on a $section rule");
+    }
   }
 
   /**
