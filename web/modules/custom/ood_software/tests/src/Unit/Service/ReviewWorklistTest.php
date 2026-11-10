@@ -91,7 +91,8 @@ class ReviewWorklistTest extends UnitTestCase {
       'app_id' => strtolower(str_replace(' ', '_', $name)),
       'name' => $name,
       'blocks' => $blocks,
-      'catalog' => ['rows' => $catalog, 'suggestion' => NULL, 'backed' => TRUE],
+      'catalog' => ['rows' => $catalog, 'backed' => TRUE],
+      'duplicate' => ['outcome' => NULL, 'basis' => ['mode' => 'legacy', 'line' => '', 'apps' => []]],
     ];
   }
 
@@ -455,6 +456,47 @@ class ReviewWorklistTest extends UnitTestCase {
     $this->assertSame('Security: 1 passed', $lists[1]['passed'][1]['line']);
     $this->assertCount(2, $lists[1]['passed']);
     $this->assertSame([], $lists[1]['items']);
+  }
+
+  /**
+   * A duplicate check left to the reviewer is a high item until recorded.
+   *
+   * @covers ::build
+   * @covers ::duplicateIsItem
+   */
+  public function testUnsettledDuplicateCheckIsAnItem(): void {
+    $apps = [['title' => 'OSC RStudio', 'url' => 'https://example.org/node/1']];
+    foreach (['compare', 'misspelled', 'unknown', 'clear', 'legacy'] as $mode) {
+      foreach ([NULL, 'none'] as $outcome) {
+        $medium = self::row(['pid' => 2, 'rule' => 'QUA-03', 'severity' => 'medium']);
+        $app = self::app(5, 'App A', ['code_quality' => [$medium]]);
+        $basis = [
+          'mode' => $mode,
+          'line' => 'Line for ' . $mode,
+          'apps' => $mode === 'compare' ? $apps : [],
+        ];
+        $app['duplicate'] = ['outcome' => $outcome, 'basis' => $basis];
+        $items = ReviewWorklist::build(self::page([$app]), [])[1]['items'];
+        $duplicates = array_values(array_filter($items, static fn (array $i): bool => $i['kind'] === 'duplicate'));
+        $expected = $outcome === NULL && in_array($mode, ['compare', 'misspelled', 'unknown'], TRUE);
+        $this->assertSame($expected, ReviewWorklist::duplicateIsItem($app), "$mode, " . ($outcome ?? 'nothing stored'));
+        if (!$expected) {
+          $this->assertSame([], $duplicates, "$mode, " . ($outcome ?? 'nothing stored'));
+          continue;
+        }
+        $this->assertCount(1, $duplicates, $mode);
+        $item = $duplicates[0];
+        $this->assertSame('duplicate', $item['kind']);
+        $this->assertSame(['structure', 'Duplicate check'], [$item['section'], $item['section_title']]);
+        $this->assertSame(['high', NULL], [$item['severity'], $item['blocking']]);
+        $this->assertSame(5, $item['row']['pid']);
+        $this->assertSame('Line for ' . $mode, $item['row']['line']);
+        $this->assertSame($basis['apps'], $item['row']['apps']);
+        // High, so ahead of the medium finding; never under Blocking.
+        $this->assertSame(['duplicate', 'finding'], array_column($items, 'kind'));
+        $this->assertFalse($item['blocks']);
+      }
+    }
   }
 
   /**

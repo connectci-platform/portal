@@ -1216,9 +1216,39 @@
 .arv-page .duplicate-check-block:empty {
   display: none;
 }
-/* The "Same software" check above the duplicate check's control. */
-.arv-page .duplicate-same-software {
-  margin-bottom: 8px;
+/* The duplicate check's line: what it compared against and found, then the
+   apps to compare, Confirm and Change. */
+.arv-page .duplicate-line {
+  font-size: .86rem;
+  color: var(--ink);
+}
+.arv-page .duplicate-label {
+  font-weight: 700;
+}
+.arv-page .duplicate-line a,
+.arv-page .duplicate-apps a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.arv-page .duplicate-apps {
+  margin: 4px 0 0;
+  padding-left: 1.2rem;
+  font-size: .86rem;
+}
+.arv-page .duplicate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.arv-page .duplicate-line .duplicate-change {
+  margin-left: 8px;
+}
+.arv-page .duplicate-fields {
+  margin-top: 10px;
+}
+.arv-page .duplicate-fields.collapsed {
+  display: none;
 }
 @media (max-width: 600px) {
   .arv-page .finding--check .arv-check-details {

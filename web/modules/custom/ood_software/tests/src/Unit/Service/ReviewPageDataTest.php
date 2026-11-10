@@ -126,7 +126,6 @@ class ReviewPageDataTest extends UnitTestCase {
    * A matched app's catalog checks, as rows in the gates' style (A4b).
    *
    * @covers ::catalogRows
-   * @covers ::duplicateSuggestion
    */
   public function testCatalogRowsForAMatchedApp(): void {
     $checks = [
@@ -140,16 +139,13 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame(['Software', 'App type', 'Implementation tags', 'Same software'], array_column($rows, 'check'));
     $this->assertSame(['PASS', 'PASS', 'WARN', 'PASS'], array_column($rows, 'result'));
     $this->assertSame('Not in the vocabulary: gpu (known: modules)', $rows[2]['text']);
-    $this->assertSame(['outcome' => 'none', 'reason' => 'The catalog lists no other app for HiGlass.'], ReviewPageData::duplicateSuggestion($checks));
   }
 
   /**
-   * Other repos' apps for the same software are listed as links, and nothing
-   * is suggested: telling a different approach from a duplicate takes a
-   * reviewer. The reviewed repo's own published apps are not others.
+   * Other repos' apps for the same software are listed as links. The
+   * reviewed repo's own published apps are not others.
    *
    * @covers ::catalogRows
-   * @covers ::duplicateSuggestion
    */
   public function testCatalogRowsListTheSameSoftwareApps(): void {
     $checks = [
@@ -168,20 +164,17 @@ class ReviewPageDataTest extends UnitTestCase {
     $this->assertSame('2 published apps from other repos implement Abaqus', $rows[3]['text']);
     $this->assertSame(['Abaqus', 'Abaqus CAE'], array_column($rows[3]['links'], 'title'));
     $this->assertSame('https://github.com/b/ood/tree/HEAD/abaqus', $rows[3]['links'][1]['url']);
-    $this->assertNull(ReviewPageData::duplicateSuggestion($checks));
   }
 
   /**
    * Without a Software entry there is nothing to compare by.
    *
    * @covers ::catalogRows
-   * @covers ::duplicateSuggestion
    */
   public function testCatalogRowsWithoutASoftwareEntry(): void {
     $inferred = ['shape' => 'inferred', 'software' => ['status' => 'inferred'], 'app_type' => ['status' => 'inferred'],
       'implementation_tags' => ['declared' => [], 'known' => [], 'unknown' => [], 'note' => NULL], 'same_software_apps' => []];
     $this->assertSame(['N/A', 'N/A', 'N/A', 'N/A'], array_column(ReviewPageData::catalogRows($inferred), 'result'));
-    $this->assertNull(ReviewPageData::duplicateSuggestion($inferred));
     $missing = ['software' => ['status' => 'no_match', 'value' => 'Higlas', 'closest' => 'HiGlass']] + $inferred;
     $missing['shape'] = 'declared';
     $rows = ReviewPageData::catalogRows($missing);
@@ -193,6 +186,200 @@ class ReviewPageDataTest extends UnitTestCase {
     $bad = $missing;
     $bad['implementation_tags']['note'] = 'implementation_tags is a string, not a list';
     $this->assertSame(['WARN', 'Not read: implementation_tags is a string, not a list'], [ReviewPageData::catalogRows($bad)[2]['result'], ReviewPageData::catalogRows($bad)[2]['text']]);
+  }
+
+  /**
+   * The software staff assigned on the app comes first.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisPrefersAssignedSoftware(): void {
+    $b = ReviewPageData::duplicateBasis(self::assigned('RStudio'), ['software' => ['status' => 'inferred']]);
+    $this->assertSame(['clear', 'assigned'], [$b['mode'], $b['source']]);
+    $this->assertSame('RStudio', $b['entry']);
+    $this->assertSame('Assigned software: RStudio. No other published app implements it.', $b['line']);
+    $this->assertSame([], $b['apps']);
+  }
+
+  /**
+   * Other published apps with the assigned software are there to compare.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisAssignedWithOtherApps(): void {
+    $apps = [['title' => 'OSC RStudio', 'url' => 'https://example.org/node/1']];
+    $b = ReviewPageData::duplicateBasis(self::assigned('RStudio', $apps), []);
+    $this->assertSame(['compare', 'assigned'], [$b['mode'], $b['source']]);
+    $this->assertSame('Assigned software: RStudio. 1 other published app implements it:', $b['line']);
+    $this->assertSame($apps, $b['apps']);
+    $apps[] = ['title' => 'Another', 'url' => ''];
+    $two = ReviewPageData::duplicateBasis(self::assigned('RStudio', $apps), []);
+    $this->assertSame('Assigned software: RStudio. 2 other published apps implement it:', $two['line']);
+  }
+
+  /**
+   * A declaration that disagrees with the assignment is said, not obeyed.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisNotesDisagreeingDeclaration(): void {
+    $checks = ['software' => self::match('RStudio Server')];
+    $b = ReviewPageData::duplicateBasis(self::assigned('RStudio'), $checks);
+    $this->assertStringContainsString('appverse.yml declares RStudio Server.', $b['line']);
+    $this->assertSame('assigned', $b['source']);
+    $this->assertSame('RStudio', $b['entry']);
+    // The same name in another case is no disagreement.
+    $same = ReviewPageData::duplicateBasis(self::assigned('RStudio'), ['software' => self::match('rstudio', 'RStudio')]);
+    $this->assertSame('Assigned software: RStudio. No other published app implements it.', $same['line']);
+  }
+
+  /**
+   * The apps the declared entry found join the assigned ones.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisKeepsDeclaredDuplicatesOnMismatch(): void {
+    $checks = [
+      'software' => self::match('RStudio Server'),
+      'same_software_apps' => [
+        ['title' => 'X RStudio Server', 'github_url' => 'https://github.com/x/rs', 'this_repo' => FALSE],
+      ],
+    ];
+    $b = ReviewPageData::duplicateBasis(self::assigned('RStudio'), $checks);
+    $this->assertSame('compare', $b['mode']);
+    $this->assertSame(['X RStudio Server'], array_column($b['apps'], 'title'));
+    $this->assertSame('Assigned software: RStudio. appverse.yml declares RStudio Server. 1 other published app implements one of them:', $b['line']);
+    // A title both lists name is listed once.
+    $assigned = self::assigned('RStudio', [
+      ['title' => 'X RStudio Server', 'url' => 'https://example.org/node/9'],
+      ['title' => 'OSC RStudio', 'url' => ''],
+    ]);
+    $both = ReviewPageData::duplicateBasis($assigned, $checks);
+    $this->assertSame(['X RStudio Server', 'OSC RStudio'], array_column($both['apps'], 'title'));
+    $this->assertStringEndsWith('2 other published apps implement one of them:', $both['line']);
+  }
+
+  /**
+   * Without an assignment, a declared entry that matched is the basis.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisDeclaredMatch(): void {
+    $checks = [
+      'software' => self::match('jupyter', 'Jupyter'),
+      'same_software_apps' => [
+        ['title' => 'Ours', 'github_url' => 'https://github.com/o/j', 'this_repo' => TRUE],
+      ],
+    ];
+    $b = ReviewPageData::duplicateBasis(NULL, $checks);
+    $this->assertSame(['clear', 'declared', 'Jupyter'], [$b['mode'], $b['source'], $b['entry']]);
+    $this->assertSame('appverse.yml declares Jupyter. No other published app implements it.', $b['line']);
+    $checks['same_software_apps'][] = [
+      'title' => 'Theirs',
+      'github_url' => 'https://github.com/t/j',
+      'subpath' => 'jupyter',
+      'this_repo' => FALSE,
+    ];
+    $b = ReviewPageData::duplicateBasis(NULL, $checks);
+    $this->assertSame('compare', $b['mode']);
+    $this->assertSame([['title' => 'Theirs', 'url' => 'https://github.com/t/j/tree/HEAD/jupyter']], $b['apps']);
+    $this->assertSame('appverse.yml declares Jupyter. 1 other published app implements it:', $b['line']);
+  }
+
+  /**
+   * The README's software, when the review tool matched it to an entry.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisReadmeSuggestion(): void {
+    $checks = [
+      'software' => [
+        'status' => 'inferred',
+        'suggested' => ['value' => 'llama.cpp', 'source' => 'readme', 'entry' => 'llama.cpp'],
+      ],
+      'suggested_same_software_apps' => [],
+    ];
+    $b = ReviewPageData::duplicateBasis(NULL, $checks);
+    $this->assertSame(['clear', 'readme'], [$b['mode'], $b['source']]);
+    $this->assertSame('The README names llama.cpp, which matches the Software entry llama.cpp. No other published app implements it.', $b['line']);
+    $checks['suggested_same_software_apps'] = [
+      ['title' => 'Llama', 'github_url' => 'https://github.com/l/l', 'this_repo' => FALSE],
+    ];
+    $b = ReviewPageData::duplicateBasis(NULL, $checks);
+    $this->assertSame(['compare', ['Llama']], [$b['mode'], array_column($b['apps'], 'title')]);
+  }
+
+  /**
+   * A declared name with no entry, and a close one.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisMisspelled(): void {
+    $checks = ['software' => ['status' => 'no_match', 'value' => 'Jupiterlab', 'closest' => 'JupyterLab']];
+    $b = ReviewPageData::duplicateBasis(NULL, $checks);
+    $this->assertSame('misspelled', $b['mode']);
+    $this->assertNull($b['source']);
+    $this->assertSame('appverse.yml declares Jupiterlab, which has no Software entry. It may mean JupyterLab.', $b['line']);
+  }
+
+  /**
+   * Nothing to compare by, and a review with no catalog data at all.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisUnknownAndLegacy(): void {
+    $unknown = ReviewPageData::duplicateBasis(NULL, ['software' => ['status' => 'inferred']]);
+    $this->assertSame('unknown', $unknown['mode']);
+    $this->assertSame("The software couldn't be identified. Check the catalog for an existing app.", $unknown['line']);
+    $noClosest = ['software' => ['status' => 'no_match', 'value' => 'Fooviz', 'closest' => NULL]];
+    $this->assertSame('unknown', ReviewPageData::duplicateBasis(NULL, $noClosest)['mode']);
+    $legacy = ReviewPageData::duplicateBasis(NULL, []);
+    $this->assertSame(['legacy', ''], [$legacy['mode'], $legacy['line']]);
+  }
+
+  /**
+   * The artifact is not trusted: only a web link is a link.
+   *
+   * @covers ::duplicateBasis
+   */
+  public function testDuplicateBasisDropsNonWebLinks(): void {
+    $checks = [
+      'software' => self::match('Jupyter'),
+      'same_software_apps' => [
+        ['title' => 'Bad', 'github_url' => 'javascript:x', 'subpath' => 'a', 'this_repo' => FALSE],
+      ],
+    ];
+    $this->assertSame([['title' => 'Bad', 'url' => '']], ReviewPageData::duplicateBasis(NULL, $checks)['apps']);
+  }
+
+  /**
+   * An assigned Software entry, as buildPage() passes it.
+   *
+   * @param string $entry
+   *   The entry's title.
+   * @param array<int, array{title: string, url: string}> $apps
+   *   The other published apps with it.
+   *
+   * @return array{entry: string, apps: array<int, array{title: string, url: string}>}
+   *   The assignment.
+   */
+  private static function assigned(string $entry, array $apps = []): array {
+    return ['entry' => $entry, 'apps' => $apps];
+  }
+
+  /**
+   * A software check that matched an entry.
+   *
+   * @param string $value
+   *   What appverse.yml declares.
+   * @param string|null $entry
+   *   The entry it matched; the value when NULL.
+   *
+   * @return array<string, string>
+   *   The check.
+   */
+  private static function match(string $value, ?string $entry = NULL): array {
+    return ['status' => 'match', 'value' => $value, 'entry' => $entry ?? $value];
   }
 
   /**

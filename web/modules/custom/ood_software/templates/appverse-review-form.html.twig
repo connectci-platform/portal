@@ -154,13 +154,54 @@
   </div>
 {% endmacro %}
 
+{# The duplicate check's line: what the check compared against and found
+   (ReviewPageData::duplicateBasis()). With nothing to go on, "catalog"
+   links to the catalog. #}
+{% macro duplicate_line(mode, line, catalog_url) %}
+  {%- if mode == 'unknown' and ' catalog ' in line -%}
+    {%- set parts = line|split(' catalog ', 2) -%}
+    {{ parts[0] }} <a href="{{ catalog_url }}" target="_blank" rel="noopener">{{ 'catalog'|t }}</a> {{ parts[1] }}
+  {%- else -%}
+    {{ line }}
+  {%- endif -%}
+{% endmacro %}
+
+{# The other published apps a duplicate check compares against. #}
+{% macro duplicate_apps(apps) %}
+  {%- if apps -%}
+    <ul class="duplicate-apps">
+      {%- for link in apps -%}
+        <li>{% if link.url %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% else %}{{ link.title }}{% endif %}</li>
+      {%- endfor -%}
+    </ul>
+  {%- endif -%}
+{% endmacro %}
+
+{# A duplicate check's radios and note. Behind Change when the check has
+   an outcome or a one-click Confirm; open otherwise, and without JS. #}
+{% macro duplicate_fields(control, pid, toggle) %}
+  <div class="duplicate-fields" id="duplicate-fields-{{ pid }}"{% if toggle %} data-duplicate-toggle{% endif %}>
+    {{ control.outcome }}
+    {{ control.note }}
+  </div>
+{% endmacro %}
+
 {# One worklist item. A finding is the full row with its controls; a
-   reference points at an every-app blocker listed in another list; a gate
-   or catalog check is a row with no controls. #}
+   reference points at an every-app blocker listed in another list; a
+   duplicate check left to the reviewer carries its control; a gate or
+   catalog check is a row with no controls. #}
 {% macro worklist_item(item, form, can_edit, labels) %}
   {% import _self as m %}
   {% if item.kind == 'finding' %}
     {{ m.finding_row(item.row, form, can_edit, item, labels) }}
+  {% elseif item.kind == 'duplicate' %}
+    <div class="finding finding--duplicate duplicate-check-block" id="duplicate-{{ item.row.pid }}" data-section="{{ item.section }}">
+      <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(item.row.mode, item.row.line, form['#page'].catalog_url) }}</div>
+      {{ m.duplicate_apps(item.row.apps) }}
+      {% if form.duplicate[item.row.pid] is defined %}
+        {{ m.duplicate_fields(attribute(form.duplicate, item.row.pid), item.row.pid, false) }}
+      {% endif %}
+    </div>
   {% elseif item.kind == 'reference' %}
     <div class="finding finding--reference" data-section="{{ item.section }}">
       <div class="frow">
@@ -386,23 +427,33 @@
             {% endif %}
           </div>
           {# The reviewer's duplicate check for this app (A4). Required to
-             accept the app. #}
-          {% if app %}
-            {# The catalog's "Same software" check, with its links to the other
-               published apps, then the control. No whitespace when there is
-               nothing in it, so :empty hides it. #}
+             accept the app. One the reviewer has to look at is a worklist
+             item instead (ReviewWorklist::duplicateIsItem()). No whitespace
+             when there is nothing in it, so :empty hides it. #}
+          {% if app and not app.duplicate.in_worklist %}
+            {% set dup = app.duplicate %}
+            {% set control = (can_edit or form['#updating']) and form.duplicate[app.pid] is defined ? attribute(form.duplicate, app.pid) : null %}
             <div class="duplicate-check-block" id="duplicate-{{ app.pid }}">
-              {%- for row in app.catalog.rows ?? [] -%}
-                {%- if row.check == 'Same software' -%}
-                  <div class="duplicate-same-software">{{ m.check_row(row, can_edit) }}</div>
+              {%- if dup.outcome -%}
+                <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ dup.label }}
+                  {%- if control %} <button type="button" class="btn ghost duplicate-change" aria-expanded="true" aria-controls="duplicate-fields-{{ app.pid }}" hidden>{{ 'Change'|t }}</button>{% endif -%}
+                </div>
+                {% if dup.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ dup.note }}</div>{% endif %}
+                {%- if control -%}
+                  {{ m.duplicate_fields(control, app.pid, true) }}
                 {%- endif -%}
-              {%- endfor -%}
-              {%- if can_edit or form['#updating'] -%}
-                {{ attribute(form.duplicate, app.pid) }}
-              {%- elseif app.duplicate.outcome -%}
-                <div class="catalog-checks-title">{{ 'Duplicate check'|t }}</div>
-                <div>{{ app.duplicate.label }}</div>
-                {% if app.duplicate.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ app.duplicate.note }}</div>{% endif %}
+              {%- elseif dup.basis.mode == 'legacy' -%}
+                {%- if control -%}{{ control }}{%- endif -%}
+              {%- else -%}
+                <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(dup.basis.mode, dup.basis.line, page.catalog_url) }}</div>
+                {{ m.duplicate_apps(dup.basis.apps) }}
+                {%- if control -%}
+                  <div class="duplicate-actions">
+                    {{ control.confirm }}
+                    <button type="button" class="btn ghost duplicate-change" aria-expanded="true" aria-controls="duplicate-fields-{{ app.pid }}" hidden>{{ 'Change'|t }}</button>
+                  </div>
+                  {{ m.duplicate_fields(control, app.pid, true) }}
+                {%- endif -%}
               {%- endif -%}
             </div>
           {% endif %}

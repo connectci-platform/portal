@@ -56,6 +56,38 @@ class RepoMemberApps {
   }
 
   /**
+   * The repo's appverse_app node for a review's app id.
+   *
+   * "root" matches an app with an empty subpath (or the repo's only app);
+   * anything else matches field_appverse_app_subpath.
+   *
+   * @param \Drupal\node\NodeInterface $repo
+   *   The appverse_repo node.
+   * @param string $app_id
+   *   The review artifact's app_id.
+   *
+   * @return \Drupal\node\NodeInterface|null
+   *   The app, or NULL when none matches.
+   */
+  public function appFor(NodeInterface $repo, string $app_id): ?NodeInterface {
+    /** @var \Drupal\node\NodeInterface[] $apps */
+    $apps = $this->entityTypeManager->getStorage('node')->loadMultiple($this->queryMemberAppIds($repo));
+    if ($apps === []) {
+      return NULL;
+    }
+    if ($app_id === 'root' && count($apps) === 1) {
+      return reset($apps);
+    }
+    foreach ($apps as $app) {
+      $subpath = $app->hasField('field_appverse_app_subpath') ? ($app->get('field_appverse_app_subpath')->value ?? '') : '';
+      if ($app_id === 'root' ? $subpath === '' : $subpath === $app_id) {
+        return $app;
+      }
+    }
+    return NULL;
+  }
+
+  /**
    * How many of a repo's apps were sent back and wait on changes.
    *
    * A live monorepo can have an app sent back while the others stay listed;

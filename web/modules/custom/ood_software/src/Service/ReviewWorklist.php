@@ -67,6 +67,17 @@ final class ReviewWorklist {
           $collected['passed']['structure'][] = (array) $row;
         }
       }
+      // A duplicate check with apps to compare, or nothing to compare by,
+      // waits in the list until the reviewer records it.
+      if (self::duplicateIsItem($app)) {
+        $basis = (array) $app['duplicate']['basis'];
+        $collected['items'][] = self::item('duplicate', 'structure', 'Duplicate check', 'high', NULL, [
+          'pid' => $app['pid'] ?? NULL,
+          'line' => (string) ($basis['line'] ?? ''),
+          'apps' => (array) ($basis['apps'] ?? []),
+          'mode' => (string) ($basis['mode'] ?? ''),
+        ]);
+      }
       $appLists[] = ['app' => $app, 'blocks' => $blocks] + $collected;
     }
 
@@ -160,6 +171,22 @@ final class ReviewWorklist {
       ], $list, $list['blocks'], array_keys(ReviewPageData::APP_BLOCKS), 'structure', NULL);
     }
     return $lists;
+  }
+
+  /**
+   * Whether an app's duplicate check is a worklist item.
+   *
+   * It is while nothing is recorded and the check has apps to compare
+   * (compare), or a declared name with no entry (misspelled), or nothing to
+   * go on (unknown). The item then carries the control, and the slot under
+   * the app's ratings shows nothing.
+   *
+   * @param array<mixed> $app
+   *   An app as ReviewPageForm::buildPage() lists it.
+   */
+  public static function duplicateIsItem(array $app): bool {
+    return empty($app['duplicate']['outcome'])
+      && in_array($app['duplicate']['basis']['mode'] ?? NULL, ['compare', 'misspelled', 'unknown'], TRUE);
   }
 
   /**
@@ -267,7 +294,7 @@ final class ReviewWorklist {
    * One worklist item.
    *
    * @param string $kind
-   *   Finding, gate, catalog or reference.
+   *   Finding, gate, catalog, duplicate or reference.
    * @param string $section
    *   The section key.
    * @param string $title

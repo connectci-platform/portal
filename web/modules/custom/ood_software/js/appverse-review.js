@@ -26,11 +26,13 @@
    *
    * @param {HTMLElement} wrapper
    *   The form's wrapper.
+   * @param {HTMLElement} [pressed]
+   *   The button pressed. A duplicate check it confirms closes again.
    *
    * @return {object}
    *   The state, by element id.
    */
-  function record(wrapper) {
+  function record(wrapper, pressed) {
     const state = { folds: [], boxes: [], after: {} };
     wrapper.querySelectorAll('details[id^="fold-"]').forEach((fold) => {
       if (fold.open) {
@@ -45,6 +47,13 @@
       const box = finding.querySelector('.fnote');
       if (box && !box.classList.contains('collapsed')) {
         state.boxes.push(finding.id);
+      }
+    });
+    // A duplicate check opened with Change.
+    wrapper.querySelectorAll('.duplicate-check-block[id]').forEach((block) => {
+      const fields = block.querySelector('[data-duplicate-toggle]');
+      if (fields && !fields.classList.contains('collapsed') && !(pressed && block.contains(pressed))) {
+        state.boxes.push(block.id);
       }
     });
     return state;
@@ -127,7 +136,7 @@
     proto.beforeSend = function arvBeforeSend(...args) {
       const wrapper = this.element && this.element.closest ? this.element.closest(`#${WRAPPER}`) : null;
       if (wrapper) {
-        pending = record(wrapper);
+        pending = record(wrapper, this.element);
         lock(wrapper, true);
         this.arvWrapper = wrapper;
       }
@@ -314,6 +323,32 @@
             hint.focus();
           });
         }
+      });
+
+      // A duplicate check with an outcome, or a one-click Confirm, shows its
+      // line; Change reveals the radios and the note. Without JS they show
+      // under the line and Change stays hidden. They stay open when they
+      // hold an error, or were open when a save replaced the form.
+      once('arv-duplicate', '.arv-page .duplicate-check-block', context).forEach((block) => {
+        const fields = block.querySelector('[data-duplicate-toggle]');
+        const change = block.querySelector('.duplicate-change');
+        if (!fields || !change) {
+          return;
+        }
+        const setOpen = (open) => {
+          fields.classList.toggle('collapsed', !open);
+          change.setAttribute('aria-expanded', String(open));
+        };
+        change.removeAttribute('hidden');
+        setOpen(Boolean(fields.querySelector(ERROR)) || reopen.has(block.id));
+        change.addEventListener('click', () => {
+          const open = fields.classList.contains('collapsed');
+          setOpen(open);
+          const first = fields.querySelector('input:checked, input, textarea');
+          if (open && first) {
+            first.focus();
+          }
+        });
       });
 
       // The rating shows as a badge until the edit icon is clicked, which

@@ -559,12 +559,18 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    * Each app's duplicate check (A4): on the editable page, and while a sent
    * decision is updated, since changing it to Accept needs one.
    *
+   * Nothing is filled in for the reviewer: the radios and the note start as
+   * stored. When the check found a Software entry no other published app
+   * implements (clear), Confirm records "No other app" in one press.
+   *
    * @param array<string, mixed> $form
    * @param array<string, mixed> $page
    */
   protected function addDuplicateElements(array &$form, array $page): void {
+    $updating = !empty($form['#updating']);
     foreach ($page['apps'] as $app) {
       $pid = $app['pid'];
+      $basis = $app['duplicate']['basis'];
       $form['duplicate'][$pid] = [
         '#type' => 'container',
         '#attributes' => ['class' => ['duplicate-check']],
@@ -573,24 +579,99 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
           '#title' => $this->t('Duplicate check'),
           '#options' => $this->duplicateOptions(),
           '#default_value' => $app['duplicate']['outcome'],
-          '#description' => $app['catalog']['suggestion']
-            ? $this->t('Automated suggestion: @outcome. @reason Required to accept the app; it does not limit the decision.', [
-              '@outcome' => $this->duplicateOptions()[$app['catalog']['suggestion']['outcome']],
-              '@reason' => $app['catalog']['suggestion']['reason'],
-            ])
-            : $this->t('Compare the published apps for this software. Required to accept the app; it does not limit the decision.'),
+          '#description' => $this->t('Compare the published apps for this software. Required to accept the app; it does not limit the decision.'),
         ],
         'note' => [
           '#type' => 'textarea',
           '#title' => $this->t('Rationale'),
           '#rows' => 2,
           '#default_value' => $app['duplicate']['note'],
-          '#description' => $app['catalog']['backed']
-            ? $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.')
-            : $this->t('Required: no Software entry matched, so say which apps you compared by name, and how this one differs or which one it duplicates.'),
+          '#description' => match (TRUE) {
+            !empty($app['catalog']['backed']) => $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.'),
+            $basis['mode'] === 'compare' => $this->t('Required: which apps you compared, and how this one differs or which one it duplicates.'),
+            default => $this->t('Required: no Software entry matched, so say which apps you compared by name, and how this one differs or which one it duplicates.'),
+          },
         ],
       ];
+      if ($basis['mode'] === 'clear' && empty($app['duplicate']['outcome'])) {
+        $form['duplicate'][$pid]['confirm'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Confirm'),
+          '#name' => 'confirm_duplicate__' . $pid,
+          '#duplicate_pid' => $pid,
+          '#duplicate_line' => $basis['line'],
+          '#submit' => $updating
+            ? ['::confirmDuplicate', '::saveUpdate', '::backToDuplicate']
+            : ['::confirmDuplicate', '::submitForm'],
+          '#ajax' => $this->ajaxSettings(),
+          '#attributes' => [
+            'class' => ['btn', 'btn-confirm-duplicate'],
+            'title' => $this->t('Record "No other app for this software"'),
+          ],
+        ];
+      }
     }
+  }
+
+  /**
+   * First submit handler for a duplicate check's Confirm.
+   *
+   * Records "No other app" unless the reviewer picked an outcome, and the
+   * check's line as the note unless they wrote one. Both are set in the
+   * input too, so the rebuilt page shows them and the next save keeps them.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function confirmDuplicate(array &$form, FormStateInterface $form_state): void {
+    $trigger = $form_state->getTriggeringElement() ?? [];
+    $pid = (string) ($trigger['#duplicate_pid'] ?? '');
+    if ($pid === '') {
+      return;
+    }
+    $posted = (array) ($form_state->getValue(['duplicate', $pid]) ?? []);
+    if ((string) ($posted['outcome'] ?? '') === '') {
+      self::setInputValue($form_state, ['duplicate', $pid, 'outcome'], 'none');
+    }
+    if (trim((string) ($posted['note'] ?? '')) === '') {
+      self::setInputValue($form_state, ['duplicate', $pid, 'note'], (string) $this->t('Confirmed: @line', ['@line' => (string) ($trigger['#duplicate_line'] ?? '')]));
+    }
+    $form_state->set('arv_stamp', sprintf('Review page: %s recorded the duplicate check', $this->currentUser->getDisplayName()));
+    $form_state->set('arv_announce', (string) $this->t('Duplicate check recorded.'));
+    $form_state->set('arv_focus', 'duplicate-' . $pid);
+  }
+
+  /**
+   * Last submit handler for Confirm while a sent decision is updated.
+   *
+   * Back on the duplicate check, still updating: not the send page that
+   * "Send updated decision…" goes on to.
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function backToDuplicate(array &$form, FormStateInterface $form_state): void {
+    $focus = (string) $form_state->get('arv_focus');
+    if ($this->isAjax()) {
+      // As submitForm() does: the rebuilt page carries the new revision.
+      $form_state->setRebuild();
+      self::setInputValue($form_state, ['arv_revision'], (string) $this->node->getRevisionId());
+      $form_state->set('arv_confirm', [
+        'finding' => NULL,
+        'list' => NULL,
+        'text' => $form_state->get('arv_announce'),
+      ]);
+      return;
+    }
+    $this->messenger()->addStatus($this->t('Duplicate check recorded.'));
+    $form_state->setRedirect('ood_software.review_page', ['node' => $this->node->id()], [
+      'query' => ['update' => 1],
+      'fragment' => $focus,
+    ]);
   }
 
   /**
@@ -872,9 +953,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   /**
    * Shows a refused save's error beside the field it names.
    *
-   * Inline form errors is off, so the findings' and add forms' fields carry
-   * their message here: under the field, tied to it with aria-describedby.
-   * The messages at the top of the form stay.
+   * Inline form errors is off, so the findings', add forms' and duplicate
+   * checks' fields carry their message here: under the field, tied to it
+   * with aria-describedby. The messages at the top of the form stay.
    *
    * @param array<string, mixed> $form
    *   The form, after validation set each field's errors.
@@ -883,7 +964,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
    *   The form with each errored field's message after it.
    */
   public static function showFieldErrors(array $form): array {
-    foreach (['prose', 'override', 'edit_finding', 'add_finding'] as $key) {
+    foreach (['prose', 'override', 'edit_finding', 'add_finding', 'duplicate'] as $key) {
       if (isset($form[$key]) && is_array($form[$key])) {
         self::markFieldErrors($form[$key]);
       }
@@ -1243,13 +1324,15 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       // The app's catalog checks as rows (A4b, schema 1.5); none on a review
       // from an older tool, which keeps the report's Catalog checks text.
       $checks = $verdict->hasField('field_rvv_catalog') ? (json_decode((string) ($verdict->get('field_rvv_catalog')->value ?? ''), TRUE) ?: []) : [];
+      // What the duplicate check compares against: the software staff
+      // assigned on the app, else what the checks found.
+      $basis = ReviewPageData::duplicateBasis($this->assignedSoftware($verdict, $repo), $checks);
       $app['catalog'] = [
         'rows' => ReviewPageData::catalogRows($checks),
-        'suggestion' => ReviewPageData::duplicateSuggestion($checks),
-        // "No other app" stands on the catalog only when a Software entry
-        // matched. An app without checks is settled below: backed only on a
-        // review from an older tool, which carries no catalog data at all.
-        'backed' => ($checks['software']['status'] ?? '') === 'match' || $checks === [],
+        // "No other app" stands without a rationale only when the check found
+        // a Software entry no other published app implements. An app with
+        // nothing to go on is settled below.
+        'backed' => $basis['mode'] === 'clear',
       ];
       // The reviewer's duplicate check (A4, DuplicateCheck).
       $outcome = $verdict->hasField('field_rvv_duplicate') ? $verdict->get('field_rvv_duplicate')->value : NULL;
@@ -1257,7 +1340,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
         'outcome' => $outcome,
         'label' => (string) ($this->duplicateOptions()[$outcome ?? ''] ?? ''),
         'note' => $verdict->hasField('field_rvv_duplicate_note') ? (string) ($verdict->get('field_rvv_duplicate_note')->value ?? '') : '',
+        'basis' => $basis,
       ];
+      // Whether the worklist carries the check rather than the slot under
+      // the app's ratings.
+      $app['duplicate']['in_worklist'] = ReviewWorklist::duplicateIsItem($app);
       $apps[] = $app;
     }
 
@@ -1266,12 +1353,13 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     // The report's text stands unless every app has rows: an app whose
     // checks did not attach (an app id spelled differently) still needs it.
     $catalogRows = $apps !== [] && $withRows === count($apps);
-    // On a review that carries catalog data, an app without checks is not
-    // backed by the catalog: its "No other app" needs a rationale.
-    if ($catalogSource !== [] || $withRows > 0) {
+    // An app with nothing to go on (legacy) is backed only on a review from
+    // an older tool, which carries no catalog data for any app. On a review
+    // that does, its "No other app" needs a rationale.
+    if ($catalogSource === [] && $withRows === 0) {
       foreach ($apps as &$a) {
-        if ($a['catalog']['rows'] === []) {
-          $a['catalog']['backed'] = FALSE;
+        if ($a['duplicate']['basis']['mode'] === 'legacy') {
+          $a['catalog']['backed'] = TRUE;
         }
       }
       unset($a);
@@ -1314,6 +1402,8 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
 
     return [
       'nid' => $node->id(),
+      // The catalog, where a duplicate check with nothing to go on looks.
+      'catalog_url' => Url::fromUserInput('/appverse')->toString(),
       'title' => $repo ? $repo->label() : $node->label(),
       'repo_label' => $repo ? $repo->label() : '',
       'repo_url' => $repoUrl,
@@ -1411,6 +1501,82 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       'full_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()])->toString(),
       'public_url' => Url::fromRoute('ood_software.review_page', ['node' => $node->id()], ['query' => ['view' => self::MODE_PUBLIC]])->toString(),
     ];
+  }
+
+  /**
+   * The software assigned on the verdict's app, for duplicateBasis().
+   *
+   * The app is the verdict's app_ref, or, on a verdict seeded without one,
+   * the repo's app with the verdict's app id.
+   *
+   * @param \Drupal\paragraphs\ParagraphInterface $verdict
+   *   The review_verdict paragraph.
+   * @param \Drupal\node\NodeInterface|null $repo
+   *   The reviewed repo.
+   *
+   * @return array{entry: string, apps: array<int, array{title: string, url: string}>}|null
+   *   The Software entry's title and the other published apps with it, or
+   *   NULL when the app has none assigned.
+   */
+  protected function assignedSoftware(ParagraphInterface $verdict, ?NodeInterface $repo): ?array {
+    $app = $verdict->get('field_rvv_app_ref')->entity;
+    if (!$app instanceof NodeInterface && $repo !== NULL) {
+      $app = $this->memberApps->appFor($repo, (string) ($verdict->get('field_rvv_app_id')->value ?? 'root'));
+    }
+    if (!$app instanceof NodeInterface || !$app->hasField('field_appverse_software_implemen')) {
+      return NULL;
+    }
+    $software = $app->get('field_appverse_software_implemen')->entity;
+    if (!$software instanceof NodeInterface) {
+      return NULL;
+    }
+    return [
+      'entry' => (string) $software->label(),
+      'apps' => $this->sameSoftwareApps((int) $software->id(), $repo !== NULL ? (int) $repo->id() : 0),
+    ];
+  }
+
+  /**
+   * The published apps of other repos that implement a Software entry.
+   *
+   * As the catalog lists them: published, and not under an unpublished repo
+   * (AppverseCacheService::applyRepoCascadeFilter()). An app with no repo
+   * counts. Access is not checked, so Domain Access hides none.
+   *
+   * @param int $softwareNid
+   *   The appverse_software node id.
+   * @param int $repoNid
+   *   The reviewed repo, whose own apps are not others.
+   *
+   * @return array<int, array{title: string, url: string}>
+   *   The apps by title, each with its page's URL.
+   */
+  public function sameSoftwareApps(int $softwareNid, int $repoNid): array {
+    $storage = $this->entityTypeManager->getStorage('node');
+    $exclude = array_map('intval', array_values($storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_repo')
+      ->condition('status', 0)
+      ->execute()));
+    if ($repoNid > 0) {
+      $exclude[] = $repoNid;
+    }
+    $query = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_app')
+      ->condition('status', 1)
+      ->condition('field_appverse_software_implemen', $softwareNid);
+    if ($exclude !== []) {
+      $query->condition($query->orConditionGroup()
+        ->notExists('field_appverse_repo')
+        ->condition('field_appverse_repo', $exclude, 'NOT IN'));
+    }
+    $apps = [];
+    foreach ($storage->loadMultiple($query->execute()) as $app) {
+      $apps[] = ['title' => (string) $app->label(), 'url' => $app->toUrl()->toString()];
+    }
+    usort($apps, static fn (array $a, array $b): int => strnatcasecmp($a['title'], $b['title']));
+    return $apps;
   }
 
   /**
