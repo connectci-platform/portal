@@ -89,7 +89,8 @@ describe("test individual tags page", () => {
     cy.contains('big-data');
     cy.contains('Knowledge Base Resources');
     cy.contains('Mentors and Regional Facilitators');
-    cy.contains('Tony Elam');
+    // A mentor listed by name with a profile link (names are sanitized).
+    cy.contains('a', 'Lux Rivers');
     cy.contains('Kentucky');
     cy.contains('Skills');
     cy.contains('Interest');
