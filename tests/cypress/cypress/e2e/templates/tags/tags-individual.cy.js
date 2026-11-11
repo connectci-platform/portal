@@ -4,7 +4,9 @@ describe("test individual tags page", () => {
     cy.visit('/tags/bioinformatics');
     cy.contains('bioinformatics');
     cy.contains('Mentors and Regional Facilitators');
-    cy.contains('Brett Milash');
+    // Test databases sanitize every name to Lux Rivers, so check a mentor is
+    // listed by name with a profile link rather than for a real person.
+    cy.contains('a', 'Lux Rivers');
     cy.contains('Campus Champions');
     cy.contains('Topics from Ask.CI');
     cy.contains('There are no Blog Entries associated with this topic.');
