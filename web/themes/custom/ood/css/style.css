@@ -193,6 +193,21 @@ body {
 }
 
 .open-ondemand {
+  font-size: 1.15rem;
+
+  /* Page intro text: the same size, weight and spacing on every page.
+     .page-intro is the opt-in class for new pages. The other selectors cover
+     intros whose markup is shared with other sites and cannot be edited. */
+  .page-intro,
+  #block-ood-oodaffinitygroupintro p,
+  #block-ood-oodpeopletext p,
+  .text-2xl.prose {
+    font-size: 1.5rem;
+    font-weight: 400;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+
   .hide-open-ondemand {
       display: none !important;
   }
@@ -246,7 +261,6 @@ body {
     align-items: center;
     justify-content: center;
   }
-  font-size: 1.15em;
 
   .graybox {
     padding: 1em 4em;
