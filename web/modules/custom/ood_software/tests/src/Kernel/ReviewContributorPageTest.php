@@ -136,6 +136,7 @@ class ReviewContributorPageTest extends KernelTestBase {
       'field_rvf_result' => 'fail',
       'field_rvf_summary' => 'Runs user input through a shell.',
       'field_rvf_evidence' => 'template/script.sh.erb:14',
+      'field_rvf_reviewer_prose' => 'Note to the owner text.',
     ]);
     $high->save();
     $dismissed = Paragraph::create([
@@ -191,9 +192,9 @@ class ReviewContributorPageTest extends KernelTestBase {
   /**
    * Renders the review page as a user.
    */
-  protected function renderAs(UserInterface $user, NodeInterface $review): string {
+  protected function renderAs(UserInterface $user, NodeInterface $review, string $query = ''): string {
     $this->setCurrentUser($user);
-    $request = Request::create('/appverse/review/' . $review->id());
+    $request = Request::create('/appverse/review/' . $review->id() . $query);
     $request->setSession(new Session(new MockArraySessionStorage()));
     $this->container->get('request_stack')->push($request);
     // A page is built inside a render context, which is where the CSRF
@@ -218,21 +219,171 @@ class ReviewContributorPageTest extends KernelTestBase {
     ['review' => $review] = $this->makeReview(FALSE);
     $html = $this->renderAs($this->owner, $review);
     $this->assertStringContainsString('Automated check', $html);
-    $this->assertStringContainsString('A reviewer will confirm, change or remove these.', $html);
+    $this->assertStringContainsString('A reviewer will confirm, change or remove these before sending a decision.', $html);
     $this->assertStringContainsString('Runs user input through a shell.', $html);
     $this->assertStringContainsString('Dismissed finding summary.', $html, 'A dismissal is the reviewer\'s until sent, so the tool\'s finding still shows.');
     $this->assertStringContainsString('Changes you push to GitHub now will be reviewed in the next round.', $html);
-    $this->assertStringContainsString('Checked ', $html);
-    $this->assertStringContainsString('github.com/example/app', $html);
+    $this->assertStringContainsString('example/app', $html);
+    // The public summary's layout: categories as headings, findings open.
+    $this->assertStringContainsString('<h3 class="summary-row-title">', $html);
+    $this->assertStringContainsString('<details class="summary-findings" open>', $html);
+    $this->assertStringContainsString('arv-contributor__progress', $html);
+    $this->assertStringContainsString('arv-owner-band', $html);
+    $this->assertStringContainsString('2 findings</summary>', $html, 'An open list is named, not offered.');
+    $this->assertStringNotContainsString('<summary>Show ', $html);
     $this->assertStringNotContainsString('Reviewed by', $html);
     $this->assertStringNotContainsString('Unsent response text.', $html);
     $this->assertStringNotContainsString('Internal note text.', $html);
+    $this->assertStringNotContainsString('Note to the owner text.', $html);
     $this->assertStringNotContainsString('data-review-rerun', $html);
     $this->assertStringNotContainsString('Response from the reviewer', $html);
   }
 
   /**
-   * After the decision the contributor sees the response and what to fix.
+   * Before the decision none of the reviewer's work in progress shows.
+   */
+  public function testPrecheckHidesReviewerDrafts(): void {
+    ['review' => $review] = $this->makeReview(FALSE);
+    $verdict = $review->get('field_arv_verdicts')->entity;
+    $this->assertInstanceOf(Paragraph::class, $verdict);
+    $verdict->set('field_rvv_conclusion', 'accept');
+    $verdict->set('field_rvv_port_level', 'some_notes');
+    $verdict->set('field_rvv_port_level_note', 'Rating note text.');
+    $verdict->set('field_rvv_indicators_default', json_encode(['portability' => ['level' => 'solid']]));
+    $findings = $verdict->get('field_rvv_findings')->referencedEntities();
+    $high = $findings[0];
+    $tool = [
+      'severity' => 'high',
+      'summary' => 'Runs user input through a shell.',
+      'evidence' => 'template/script.sh.erb:14',
+    ];
+    $change = ['severity' => 'low', 'summary' => 'Reworded by the reviewer.'] + $tool;
+    FindingOverride::apply($high, FindingOverride::normalize($change, $tool), (int) $this->reviewer->id(), 1700000000);
+    $high->save();
+    $added = Paragraph::create([
+      'type' => 'review_finding',
+      'field_rvf_source' => 'reviewer',
+      'field_rvf_author' => $this->reviewer->id(),
+      'field_rvf_rule' => 'QUA-01',
+      'field_rvf_severity' => 'medium',
+      'field_rvf_result' => 'fail',
+      'field_rvf_aspect' => 'quality',
+      'field_rvf_summary' => 'Finding the reviewer added.',
+    ]);
+    $added->save();
+    $verdict->set('field_rvv_findings', [$high, $findings[1], $added]);
+    $verdict->save();
+    $repoAdded = Paragraph::create([
+      'type' => 'review_finding',
+      'field_rvf_source' => 'reviewer',
+      'field_rvf_author' => $this->reviewer->id(),
+      'field_rvf_rule' => 'STR-01',
+      'field_rvf_severity' => 'medium',
+      'field_rvf_result' => 'fail',
+      'field_rvf_aspect' => 'structure',
+      'field_rvf_summary' => 'Repo finding the reviewer added.',
+    ]);
+    $repoAdded->save();
+    $review->set('field_arv_repo_findings', [$repoAdded]);
+    $review->set('field_arv_assessment', 'Draft assessment text.');
+    $review->set('field_arv_maint_level', 'needs_attention');
+    $review->set('field_arv_indicators_default', json_encode(['maintenance' => ['level' => 'solid']]));
+    $review->set('field_arv_verdicts', [$verdict]);
+    $review->save();
+
+    $html = $this->renderAs($this->owner, $review);
+    $this->assertStringContainsString('Runs user input through a shell.', $html, "The tool's wording.");
+    $this->assertStringContainsString('High <span class="n">(1)</span>', $html, "The tool's severity.");
+    $this->assertStringContainsString('Not decided', $html);
+    $this->assertStringNotContainsString('Reworded by the reviewer.', $html);
+    $this->assertStringNotContainsString('Reviewer changed the severity', $html);
+    $this->assertStringNotContainsString('Finding the reviewer added.', $html);
+    $this->assertStringNotContainsString('Draft assessment text.', $html);
+    $this->assertStringNotContainsString('decision-pill--accept', $html);
+    $this->assertStringNotContainsString('Repo finding the reviewer added.', $html);
+    // The tool rated Portability and Upkeep solid; the reviewer's some_notes
+    // (medium) and needs_attention (low) are drafts.
+    $this->assertStringContainsString('level-high', $html, "The tool's ratings.");
+    $this->assertStringNotContainsString('level-medium', $html, "The reviewer's Portability rating.");
+    $this->assertStringNotContainsString('level-low', $html, "The reviewer's Upkeep rating.");
+    $this->assertStringNotContainsString('Reviewer changed the rating', $html);
+    $this->assertStringNotContainsString('Rating note text.', $html);
+
+    // The same layout built from the live fields (the reviewer's preview of
+    // the public page) shows every draft, so the checks above mean something.
+    $draftHtml = $this->renderAs($this->reviewer, $review, '?view=public');
+    $this->assertStringContainsString('Reworded by the reviewer.', $draftHtml);
+    $this->assertStringContainsString('Finding the reviewer added.', $draftHtml);
+    $this->assertStringContainsString('Repo finding the reviewer added.', $draftHtml);
+    $this->assertStringContainsString('Draft assessment text.', $draftHtml);
+    $this->assertStringContainsString('decision-pill--accept', $draftHtml);
+    $this->assertStringContainsString('level-medium', $draftHtml);
+    $this->assertStringContainsString('level-low', $draftHtml);
+    $this->assertStringContainsString('Reviewer changed the rating', $draftHtml);
+    $this->assertStringNotContainsString('Rating note text.', $draftHtml, 'The reason is a note to the owner, not visitors.');
+  }
+
+  /**
+   * Once sent, a re-rated category says so, and the owner gets the reason.
+   */
+  public function testSentReratedCategoryShowsReasonToOwnerOnly(): void {
+    ['review' => $review] = $this->makeReview(TRUE);
+    $verdict = $review->get('field_arv_verdicts')->entity;
+    $this->assertInstanceOf(Paragraph::class, $verdict);
+    $verdict->set('field_rvv_port_level', 'solid');
+    $verdict->set('field_rvv_port_level_note', 'The README explains the site settings.');
+    $verdict->set('field_rvv_indicators_default', json_encode(['portability' => ['level' => 'needs_attention']]));
+    $verdict->save();
+    $review->set('field_arv_verdicts', [$verdict]);
+    $review->setPublished()->save();
+
+    $html = $this->renderAs($this->owner, $review);
+    $this->assertStringContainsString('Reviewer changed the rating from', $html);
+    $this->assertStringContainsString('Note from the reviewer: The README explains the site settings.', $html);
+
+    $visitorHtml = $this->renderAs($this->createUser(['access content'], 'visitor'), $review);
+    $this->assertStringContainsString('Reviewer changed the rating from', $visitorHtml);
+    $this->assertStringNotContainsString('The README explains the site settings.', $visitorHtml);
+  }
+
+  /**
+   * A failed check no finding explains reaches the owner as a finding.
+   */
+  public function testUnexplainedGateIsListedForOwner(): void {
+    ['review' => $review] = $this->makeReview(TRUE);
+    $verdict = $review->get('field_arv_verdicts')->entity;
+    $this->assertInstanceOf(Paragraph::class, $verdict);
+    $verdict->set('field_rvv_criteria', json_encode(['template_syntax' => 'fail', 'metadata' => 'pass']));
+    $verdict->save();
+    $review->set('field_arv_verdicts', [$verdict]);
+    $review->save();
+    $html = $this->renderAs($this->owner, $review);
+    $this->assertStringContainsString('The &quot;Template syntax&quot; check failed.', $html);
+    $this->assertStringNotContainsString('Metadata', $html, 'A passed check adds nothing.');
+  }
+
+  /**
+   * While a sent decision is being updated, the owner still sees what was sent.
+   */
+  public function testOwnerSeesSentDecisionDuringUpdate(): void {
+    ['review' => $review] = $this->makeReview(TRUE, 'request_changes');
+    $verdict = $review->get('field_arv_verdicts')->entity;
+    $this->assertInstanceOf(Paragraph::class, $verdict);
+    // What ReviewPageForm::saveUpdate() writes before the update is sent.
+    $verdict->set('field_rvv_conclusion', 'accept');
+    $verdict->save();
+    $review->set('field_arv_verdicts', [$verdict]);
+    $review->set('field_arv_contributor_response', 'Drafted update text.');
+    $review->save();
+    $html = $this->renderAs($this->owner, $review);
+    $this->assertStringContainsString('decision-pill--request_changes', $html);
+    $this->assertStringContainsString('Sent response text.', $html);
+    $this->assertStringNotContainsString('decision-pill--accept', $html);
+    $this->assertStringNotContainsString('Drafted update text.', $html);
+  }
+
+  /**
+   * After the decision the contributor sees the response and the report.
    */
   public function testDecidedRendersResponseAndDropsDismissed(): void {
     ['review' => $review] = $this->makeReview(TRUE);
@@ -240,16 +391,33 @@ class ReviewContributorPageTest extends KernelTestBase {
     $this->assertStringContainsString('Changes requested', $html);
     $this->assertStringContainsString('Response from the reviewer', $html);
     $this->assertStringContainsString('Sent response text.', $html);
-    $this->assertStringContainsString('What to fix', $html);
+    $this->assertStringContainsString('<h3 class="summary-row-title">', $html);
     $this->assertStringContainsString('Runs user input through a shell.', $html);
-    $this->assertStringContainsString('<summary>Progress</summary>', $html);
+    $this->assertStringContainsString('Note from the reviewer: Note to the owner text.', $html);
+    $this->assertStringContainsString('arv-contributor__progress', $html);
     $this->assertStringContainsString('<p>Read the review, fix the repo on GitHub, then click Re-submit. Questions? Reply to the review email.</p>', $html);
     $this->assertStringNotContainsString('Changes requested. Read', $html);
     $this->assertStringContainsString('Reviewed by reviewer, ', $html);
-    $this->assertStringContainsString('github.com/example/app', $html);
+    $this->assertStringContainsString('example/app', $html);
     $this->assertStringNotContainsString('Dismissed finding summary.', $html);
     $this->assertStringNotContainsString('Internal note text.', $html);
     $this->assertStringNotContainsString('Automated check', $html);
+  }
+
+  /**
+   * Visitors get the summary without the owner's band or notes.
+   */
+  public function testVisitorGetsNoBandOrNotes(): void {
+    ['review' => $review] = $this->makeReview(TRUE);
+    $review->setPublished()->save();
+    $visitor = $this->createUser(['access content'], 'visitor');
+    $html = $this->renderAs($visitor, $review);
+    $this->assertStringContainsString('Runs user input through a shell.', $html);
+    $this->assertStringContainsString('<h3 class="summary-row-title">', $html);
+    $this->assertStringContainsString('<details class="summary-findings">', $html, 'Findings start closed for visitors.');
+    $this->assertStringNotContainsString('arv-owner-band', $html);
+    $this->assertStringNotContainsString('Sent response text.', $html);
+    $this->assertStringNotContainsString('Note to the owner text.', $html);
   }
 
   /**
@@ -305,7 +473,7 @@ class ReviewContributorPageTest extends KernelTestBase {
     ]);
     $newer->save();
     $html = $this->renderAs($this->owner, $older);
-    $this->assertStringContainsString('A newer review replaced this one.', $html);
+    $this->assertStringContainsString('A newer review of this repo exists', $html);
     $this->assertStringContainsString('/appverse/review/' . $newer->id(), $html);
   }
 
@@ -382,7 +550,7 @@ class ReviewContributorPageTest extends KernelTestBase {
       'field_arv_reviewed_at' => 1700000500,
     ])->save();
     $html = $this->renderAs($this->owner, $older);
-    $this->assertStringContainsString('A newer review replaced this one.', $html);
+    $this->assertStringContainsString('A newer review of this repo exists', $html);
     $this->assertStringNotContainsString('Re-submit for review', $html);
   }
 
