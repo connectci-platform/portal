@@ -1,3 +1,5 @@
+import { seedInheritanceFixture } from "../../../support/rp-fixtures";
+
 // Expected values seeded by amp_dev_install_create_rp_docs_test_data().
 // Edit in lockstep with amp_dev/amp_dev.install when fixtures change.
 const FIXTURES = {
@@ -23,11 +25,83 @@ const FIXTURES = {
   gamma: {
     resource_id: "test-gamma-9997",
   },
+  // Owns only storage; its group supplies file transfer and datasets.
+  delta: {
+    resource_id: "test-delta-9996",
+  },
   group: {
     support_link_titles: ["Group User Guide", "Group Ticket System"],
     office_hours_url_fragment: "group.test.example.edu/office-hours",
     software_list_url_fragment: "group.test.example.edu/software",
   },
+};
+
+const nonEmpty = (v) => Array.isArray(v) && v.length > 0;
+const hasText = (v) => typeof v === "string" && v.trim() !== "";
+
+// Mirrors the per-section rules: a section counts only when the detail
+// response has content for it.
+const sectionsFromDetail = (body) => {
+  const sections = new Set();
+  if (
+    nonEmpty(body.ssh_logins) ||
+    !!body.ondemand_url ||
+    hasText(body.login_text) ||
+    nonEmpty(body.login_help_links)
+  ) {
+    sections.add("login");
+  }
+  if (nonEmpty(body.file_transfer) || hasText(body.file_transfer_text)) {
+    sections.add("file_transfer");
+  }
+  if (
+    nonEmpty(body.storage) ||
+    hasText(body.storage_text) ||
+    hasText(body.external_storage)
+  ) {
+    sections.add("storage");
+  }
+  if (nonEmpty(body.queue_specs) || hasText(body.jobs_info)) {
+    sections.add("queue_specs");
+  }
+  if (nonEmpty(body.datasets) || hasText(body.datasets_text)) {
+    sections.add("datasets");
+  }
+  if (nonEmpty(body.top_software)) sections.add("top_software");
+  return sections;
+};
+
+// Asserts a group's populated_sections is exactly the union of the sections
+// its members' detail responses have content for.
+const checkPopulatedSections = (groupTitle, memberIds, exactMembers) => {
+  cy.request("/api/1.0/resource-groups").then((listing) => {
+    const group = listing.body.groups.find((g) => g.title === groupTitle);
+    expect(group, `"${groupTitle}" in /resource-groups`).to.exist;
+    const resourceIds = group.variants.map((v) => v.resource_id);
+    if (exactMembers) {
+      expect(resourceIds).to.deep.equal(memberIds);
+    }
+    else {
+      expect(resourceIds).to.include.members(memberIds);
+    }
+
+    const expected = new Set();
+    cy.wrap(resourceIds).each((resourceId) => {
+      cy.request(`/api/1.0/resources/${resourceId}`).then((detail) => {
+        sectionsFromDetail(detail.body).forEach((s) => expected.add(s));
+      });
+    }).then(() => {
+      const listed = group.populated_sections;
+      // Every section a member has content for must be listed.
+      expected.forEach((section) => {
+        expect(listed, `populated_sections includes ${section}`).to.include(section);
+      });
+      // And no section may be listed that no member has content for.
+      listed.forEach((section) => {
+        expect(expected.has(section), `populated_sections lists ${section} with no content`).to.be.true;
+      });
+    });
+  });
 };
 
 describe("Resource Documentation API", () => {
@@ -350,51 +424,35 @@ describe("Resource Documentation API", () => {
   });
 
   it("GET /api/1.0/resource-groups populated_sections matches the member detail responses", () => {
-    const groupTitle = "Test Resource Group";
-    const nonEmpty = (v) => Array.isArray(v) && v.length > 0;
-    // Mirrors the per-section rules: a section counts only when the detail
-    // response has content for it.
-    const sectionsFromDetail = (body) => {
-      const sections = new Set();
-      if (
-        nonEmpty(body.ssh_logins) ||
-        !!body.ondemand_url ||
-        (body.login_text || "").trim() !== "" ||
-        nonEmpty(body.login_help_links)
-      ) {
-        sections.add("login");
-      }
-      ["file_transfer", "storage", "queue_specs", "datasets"].forEach((key) => {
-        if (nonEmpty(body[key])) sections.add(key);
+    checkPopulatedSections(
+      "Test Resource Group",
+      [FIXTURES.alpha.resource_id, FIXTURES.beta.resource_id],
+      false
+    );
+  });
+
+  describe("sections inherited from a Resource Group", () => {
+    before(() => {
+      seedInheritanceFixture();
+    });
+
+    it("GET /api/1.0/resource-groups populated_sections matches the member detail responses for the inheritance group", () => {
+      checkPopulatedSections("Test Inheritance Group", [FIXTURES.delta.resource_id], true);
+    });
+
+    it("GET /api/1.0/resource-groups lists sections a member inherits only from its group", () => {
+      cy.request("/api/1.0/resource-groups").then((listing) => {
+        const group = listing.body.groups.find((g) => g.title === "Test Inheritance Group");
+        expect(group, '"Test Inheritance Group" in /resource-groups').to.exist;
+        expect(group.variants.map((v) => v.resource_id)).to.deep.equal([FIXTURES.delta.resource_id]);
+        // The API's fixed section order.
+        expect(group.populated_sections).to.deep.equal(["file_transfer", "storage", "datasets"]);
       });
-      if (nonEmpty(body.top_software)) sections.add("top_software");
-      return sections;
-    };
 
-    cy.request("/api/1.0/resource-groups").then((listing) => {
-      const group = listing.body.groups.find((g) => g.title === groupTitle);
-      expect(group, `"${groupTitle}" in /resource-groups`).to.exist;
-      const resourceIds = group.variants.map((v) => v.resource_id);
-      expect(resourceIds).to.include.members([
-        FIXTURES.alpha.resource_id,
-        FIXTURES.beta.resource_id,
-      ]);
-
-      const expected = new Set();
-      cy.wrap(resourceIds).each((resourceId) => {
-        cy.request(`/api/1.0/resources/${resourceId}`).then((detail) => {
-          sectionsFromDetail(detail.body).forEach((s) => expected.add(s));
-        });
-      }).then(() => {
-        const listed = group.populated_sections;
-        // Every section a member has content for must be listed.
-        expected.forEach((section) => {
-          expect(listed, `populated_sections includes ${section}`).to.include(section);
-        });
-        // And no section may be listed that no member has content for.
-        listed.forEach((section) => {
-          expect(expected.has(section), `populated_sections lists ${section} with no content`).to.be.true;
-        });
+      // Delta owns none of these, so the detail response proves it inherits them.
+      cy.request(`/api/1.0/resources/${FIXTURES.delta.resource_id}`).then((detail) => {
+        expect(detail.body.file_transfer, "file_transfer").to.be.an("array").and.have.length.of.at.least(1);
+        expect(hasText(detail.body.datasets_text), "datasets_text is non-blank").to.be.true;
       });
     });
   });
