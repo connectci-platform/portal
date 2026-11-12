@@ -34,8 +34,8 @@ When an item is resolved, delete it from this file.
   `composer.json`, change the requirement back to a normal constraint (for example
   `^2.0.2`), run `composer update drupal/domain_menu_access`, and verify domain-specific
   menu visibility still works.
-- **Last checked:** 2026-11-03 — issue status is Needs review (`8`); latest release is
-  2.0.1. Not triggered.
+- **Last checked:** 2026-11-12 — issue status still Needs review (`8`); latest release
+  is 2.0.1; no upstream commits since 2025-04-08. Not triggered.
 
 ## email_change_verification — waiting on a Drupal 11 release (or deprecation)
 
@@ -61,5 +61,6 @@ When an item is resolved, delete it from this file.
   migrate to `drupal/email_confirmer` + `email_confirmer_user`: port the subject, body,
   message, and 8-hour timeout from `email_change_verification.config`, and decide how to
   handle pending `mail_change` values at cutover.
-- **Last checked:** 2026-10-27 — latest release is 1.0.0 (`^9.1 || ^10`); MR !7 (D11)
-  open and unmerged; issue #3337087 open. Not triggered.
+- **Last checked:** 2026-11-12 — latest release is still 1.0.0 (`^9.1 || ^10`); MR !7
+  (D11) open and unmerged; issue #3337087 is Postponed (`4`), no deprecation. Not
+  triggered.
