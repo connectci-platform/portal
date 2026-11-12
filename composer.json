@@ -124,6 +124,7 @@
         "drupal/jquery_ui_touch_punch": "^1.1",
         "drupal/jsonapi_extras": "^3.28",
         "drupal/jsonapi_views": "^1.1",
+        "drupal/key": "^1",
         "drupal/kint-kint": "^2.3.0",
         "drupal/label_help": "^2.0@beta",
         "drupal/layout_builder_styles": "^2.0",
