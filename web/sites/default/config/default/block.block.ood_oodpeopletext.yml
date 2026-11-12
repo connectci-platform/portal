@@ -11,7 +11,7 @@ dependencies:
     - ood
 id: ood_oodpeopletext
 theme: ood
-region: header
+region: below_title_page_top
 weight: 0
 provider: null
 plugin: 'block_content:dcb991f7-62ee-4462-8f31-65001f68de0e'
