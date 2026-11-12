@@ -62,10 +62,10 @@
         "access/drupal_seamless_cilogon": "3.0.x-dev",
         "access/infrastructure_news": "1.0.x-dev",
         "composer/installers": "^2.3.0",
-        "connectci/access": "3.0.x-dev",
+        "connectci/access": "d8-2975-dev",
         "connectci/asp-theme": "dev-main",
         "connectci/campus-champions-theme": "main-dev",
-        "connectci/operations_cider": "dev-main",
+        "connectci/operations_cider": "dev-d8-2975",
         "connectci/webform_submission_search_api": "main-dev",
         "cweagans/composer-patches": "^2.0",
         "drupal/access_by_ref": "^4.0.0",
@@ -205,7 +205,7 @@
         "swagger-api/swagger-ui": "^3.52"
     },
     "require-dev": {
-        "connectci/amp_dev": "dev-main",
+        "connectci/amp_dev": "dev-d8-2975",
         "doctrine/instantiator": "~2.0.0",
         "drupal/core-dev": "^11.4.0",
         "drupal/devel": "^5.4",
