@@ -38,6 +38,19 @@ const FIXTURES = {
 
 describe("Resource Documentation API", () => {
 
+  // CI loads the nightly database from main, built by enabling and then
+  // uninstalling amp_dev, so a fixture added to amp_dev on a branch is not
+  // there yet. Seed Delta here; the install function updates the node in
+  // place when it already exists. Loud by default so a broken seed fails at
+  // setup rather than as a missing row later.
+  before(() => {
+    cy.exec(
+      `ddev drush php:eval 'require_once DRUPAL_ROOT . "/" . \\Drupal::service("extension.list.module")->getPath("amp_dev") . "/amp_dev.install";` +
+        `amp_dev_install_create_rp_no_cider();'`,
+      { timeout: 120000 }
+    );
+  });
+
   it("exposes per-section documentation links, null where unset", () => {
     cy.request(`/api/1.0/resources/${FIXTURES.alpha.resource_id}`).then((response) => {
       const links = response.body.documentation_links;
