@@ -4,9 +4,11 @@
     A resource tagged with an Affinity Group (taxonomy term) is listed on the
     group's page in the "Knowledge Base Resources" block. Unapproved resources
     only appear on PRIVATE groups, and until a coordinator ticks "Resource
-    allowed on Affinity Group" only administrators, AG leaders and match PMs
-    see them (with an "Allow on this Affinity Group" link to the submission
-    edit form).
+    allowed on Affinity Group" only administrators and this group's
+    coordinators see them (with an "Allow on this Affinity Group" link to the
+    submission edit form). Once it is allowed or approved, a private resource
+    is open to the group's members. Only administrators, KB PMs and the
+    group's coordinators can tick the allowed box; the submitter cannot.
 
     This spec creates its own group, coordinator and resource, all named with a
     per-run id, and removes them afterwards:
@@ -44,10 +46,14 @@ const RESOURCE_TITLE = `kbpriv-resource-${RUN}`;
 // looked up by mail in before().
 const PECAN = { login: "pecan@pie.org", password: "Pecan", label: "Pecan Pi" };
 const COORDINATOR = { name: `kbpriv-coord-${RUN}`, password: `Coord-${RUN}-pw!` };
+// "Walnut" (walnut@pie.org): an AG leader of other groups, not in this one.
+const WALNUT = { login: "walnut@pie.org", password: "Walnut" };
 
 const ACCESS_DOMAIN_CHECKBOX = "#edit-field-domain-access-amp-cyberinfrastructure-org";
 const RESOURCE_TABLE = ".block-resources-for-affinity-group #ci-links";
 const SUBMISSION_EDIT = (id) => `/admin/structure/webform/manage/resource/submission/${id}/edit`;
+// The submitter's own edit form (update_own).
+const OWNER_EDIT = (id) => `/webform/resource/submissions/${id}/edit`;
 const ALLOW_LINK = (id) => `a[href$="${SUBMISSION_EDIT(id)}"]`;
 
 let sid;
@@ -242,11 +248,37 @@ describe("KB resources on a private Affinity Group", () => {
       .then(expectAnonymousDenied);
   });
 
+  it("denies the detail page to an authenticated user outside the group", () => {
+    // AUTHENTICATED owns the resource, so use Walnut: an AG leader of other
+    // groups who is not a member of this one.
+    loginAndWait(WALNUT.login, WALNUT.password);
+    cy.request({ url: `/knowledge-base/resources/${sid}`, failOnStatusCode: false, followRedirect: false }).its("status").should("eq", 403);
+    cy.drupalLogout();
+  });
+
+  it("does not let the submitter allow their own resource on the group", () => {
+    loginAndWait(...AUTHENTICATED);
+    cy.visit(OWNER_EDIT(sid));
+    cy.get("#edit-title").should("have.value", RESOURCE_TITLE);
+    cy.get("#edit-resource-allowed-on-affinity-group").should("not.exist");
+
+    // Saving their own edit keeps the coordinator's earlier approval.
+    cy.get('form.webform-submission-resource-form [data-drupal-selector="edit-submit"]').click();
+    cy.get(".messages--error").should("not.exist");
+    phpEval(
+      '$s = \\Drupal\\webform\\Entity\\WebformSubmission::load(' + sid + ');' +
+      'print (int) $s->getElementData("resource_allowed_on_affinity_group");'
+    ).should("eq", "1");
+    cy.drupalLogout();
+  });
+
   it("lets a coordinator open the submission edit form, but not a member", () => {
     loginAndWait(COORDINATOR.name, COORDINATOR.password);
     cy.request({ url: SUBMISSION_EDIT(sid), failOnStatusCode: false, followRedirect: false }).its("status").should("eq", 200);
     cy.visit(SUBMISSION_EDIT(sid));
     cy.get("#edit-title").should("have.value", RESOURCE_TITLE);
+    // The coordinator of the tagged group can set the allowed box.
+    cy.get("#edit-resource-allowed-on-affinity-group").should("exist");
     // A coordinator also opens the resource detail page of their private group.
     cy.request({ url: `/knowledge-base/resources/${sid}`, failOnStatusCode: false, followRedirect: false }).its("status").should("eq", 200);
 
