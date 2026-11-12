@@ -140,76 +140,46 @@ class ContributorReviewViewTest extends UnitTestCase {
   }
 
   /**
-   * A tool finding the reviewer has reworded, re-rated and dismissed.
+   * The summaries of a block's findings, in the order the page lists them.
+   *
+   * @param array<string, mixed> $block
+   *   A block.
+   *
+   * @return array<int, string>
+   *   The summaries.
+   */
+  private static function summaries(array $block): array {
+    $out = [];
+    foreach ($block['groups'] as $group) {
+      foreach ($group['findings'] as $finding) {
+        $out[] = $finding['summary'];
+      }
+    }
+    return $out;
+  }
+
+  /**
+   * Before the decision is sent: the precheck state, no decision or response.
    *
    * @covers ::build
    */
-  public function testPrecheckUsesToolValuesAndHidesReviewerWork(): void {
-    $edited = self::row([
-      'pid' => 1,
-      'severity' => 'low',
-      'dismissed' => TRUE,
-      'override' => ['severity' => 'low', 'edited' => TRUE],
-      'original' => ['summary' => 'Tool summary', 'evidence' => 'form.yml:4'],
-      'summary' => 'Reviewer wording',
-      'prose' => 'Note to contributor',
-    ]);
-    $added = self::row([
-      'pid' => 2,
-      'source' => 'reviewer',
-      'summary' => 'Added',
-      'severity' => 'high',
-      'tool_severity' => '',
-    ]);
-    $page = self::page(['structure' => self::block('Structure', [$edited, $added])]);
+  public function testPrecheckHasNoDecisionOrResponse(): void {
+    $page = self::page(['structure' => self::block('Structure', [self::row()])]);
     $view = ContributorReviewView::build($page, FALSE);
     $this->assertSame('precheck', $view['state']);
-    $this->assertCount(1, $view['findings']);
-    $this->assertSame('medium', $view['findings'][0]['severity']);
-    $this->assertSame('Tool summary', $view['findings'][0]['summary']);
-    $this->assertSame('tool', $view['findings'][0]['source']);
-    $this->assertSame('', $view['findings'][0]['note']);
-    $this->assertSame('My App', $view['findings'][0]['app']);
-    $this->assertSame('Structure', $view['findings'][0]['section']);
-    $this->assertSame('form.yml', $view['findings'][0]['file']);
-    $this->assertSame(4, $view['findings'][0]['line']);
     $this->assertNull($view['decision']);
     $this->assertSame('', $view['response']);
   }
 
   /**
-   * Once sent, effective values apply and dismissed findings are gone.
+   * Once sent: the decision and the response.
    *
    * @covers ::build
    */
-  public function testDecidedUsesEffectiveValuesAndDropsDismissed(): void {
-    $edited = self::row([
-      'pid' => 1,
-      'severity' => 'low',
-      'original' => ['summary' => 'Tool summary', 'evidence' => 'form.yml:4'],
-      'summary' => 'Reviewer wording',
-      'prose' => 'Please change this.',
-    ]);
-    $dismissed = self::row(['pid' => 2, 'dismissed' => TRUE, 'summary' => 'Gone']);
-    $added = self::row([
-      'pid' => 3,
-      'source' => 'reviewer',
-      'summary' => 'Added',
-      'severity' => 'high',
-      'tool_severity' => '',
-      'prose' => 'Because.',
-    ]);
-    $page = self::page(['structure' => self::block('Structure', [$edited, $dismissed, $added])]);
+  public function testDecidedCarriesDecisionAndResponse(): void {
+    $page = self::page(['structure' => self::block('Structure', [self::row()])]);
     $view = ContributorReviewView::build($page, TRUE);
     $this->assertSame('decided', $view['state']);
-    $this->assertCount(2, $view['findings']);
-    $this->assertSame('Added', $view['findings'][0]['summary']);
-    $this->assertSame('reviewer', $view['findings'][0]['source']);
-    $this->assertSame('high', $view['findings'][0]['severity']);
-    $this->assertSame('Because.', $view['findings'][0]['note']);
-    $this->assertSame('Reviewer wording', $view['findings'][1]['summary']);
-    $this->assertSame('low', $view['findings'][1]['severity']);
-    $this->assertSame('Please change this.', $view['findings'][1]['note']);
     $this->assertSame($page['decision'], $view['decision']);
     $this->assertSame('Please fix these.', $view['response']);
   }
@@ -222,114 +192,63 @@ class ContributorReviewViewTest extends UnitTestCase {
   public function testWaitingBeforeReportLands(): void {
     $page = self::page(['structure' => self::block('Structure', [self::row()])]);
     $page['reviewed_at'] = '';
-    $view = ContributorReviewView::build($page, FALSE);
+    $view = ContributorReviewView::build($page, TRUE);
     $this->assertSame('waiting', $view['state']);
-    $this->assertSame([], $view['findings']);
-    $this->assertSame([], $view['passed']);
+    $this->assertNull($view['decision']);
   }
 
   /**
-   * Most severe first, then the page's own order.
+   * A failing or warning gate no finding explains joins its block.
    *
-   * @covers ::build
+   * @covers ::withGateRows
    */
-  public function testOrderingBySeverityThenSection(): void {
-    $high = self::row(['pid' => 1, 'severity' => 'high', 'tool_severity' => 'high', 'summary' => 'H']);
-    $low = self::row(['pid' => 2, 'severity' => 'low', 'tool_severity' => 'low', 'summary' => 'L']);
-    $crit = self::row(['pid' => 3, 'severity' => 'critical', 'tool_severity' => 'critical', 'summary' => 'C']);
-    $low2 = self::row(['pid' => 4, 'severity' => 'low', 'tool_severity' => 'low', 'summary' => 'L2']);
-    $page = self::page([
-      'structure' => self::block('Structure', [$high]),
-      'security' => self::block('Security', [$low]),
-      'code_quality' => self::block('Code quality', [$crit, $low2]),
-    ]);
-    $summaries = array_column(ContributorReviewView::build($page, FALSE)['findings'], 'summary');
-    $this->assertSame(['C', 'H', 'L', 'L2'], $summaries);
-  }
-
-  /**
-   * Equal severities follow the page: apps in order, repo blocks, Upkeep.
-   *
-   * @covers ::build
-   */
-  public function testTiesFollowPageOrderAcrossApps(): void {
-    $row = static fn (string $s): array => self::row(['pid' => crc32($s), 'summary' => $s]);
-    $page = self::page(['code_quality' => self::block('Code quality', [$row('A1')])]);
-    $page['apps'][] = ['name' => 'Second', 'blocks' => ['structure' => self::block('Structure', [$row('B1')])]];
-    $page['repo_blocks'] = ['structure' => self::block('Structure', [$row('R1')])];
-    $page['maintenance'] = self::block('Upkeep', [$row('M1')]);
-    $summaries = array_column(ContributorReviewView::build($page, FALSE)['findings'], 'summary');
-    $this->assertSame(['A1', 'B1', 'R1', 'M1'], $summaries);
-  }
-
-  /**
-   * Passed checks and passed gates, repo-level and per app.
-   *
-   * @covers ::build
-   */
-  public function testPassedChecksAndGates(): void {
-    $pass = self::row(['pid' => 1, 'result' => 'PASS', 'summary' => 'Has a manifest']);
-    $skipped = self::row(['pid' => 2, 'result' => 'NOT CHECKED', 'summary' => 'Skipped']);
-    $page = self::page([
-      'structure' => self::block('Structure', [], [self::pill('Files', 'pass'), self::pill('Layout', 'fail')]),
-      'security' => self::block('Security', [$pass, $skipped]),
-    ]);
-    $page['repo_gate_block']['passes'] = [self::pill('Metadata', 'pass')];
-    $view = ContributorReviewView::build($page, FALSE);
-    $this->assertSame([
-      ['section' => 'Structure', 'label' => 'Files'],
-      ['section' => 'Security', 'label' => 'Has a manifest'],
-      ['section' => 'Structure', 'label' => 'Metadata'],
-    ], $view['passed']);
-  }
-
-  /**
-   * A check the reviewer added as a pass is shown only once it is sent.
-   *
-   * @covers ::build
-   */
-  public function testReviewerAddedPassAppearsOnlyAfterDecision(): void {
-    $added = self::row([
-      'pid' => 3,
-      'source' => 'reviewer',
-      'result' => 'PASS',
-      'summary' => 'Reviewer confirmed the docs',
-    ]);
-    $tool = self::row(['pid' => 4, 'result' => 'PASS', 'summary' => 'Has a manifest']);
-    $page = self::page(['security' => self::block('Security', [$added, $tool])]);
-    $before = ContributorReviewView::build($page, FALSE);
-    $this->assertSame([['section' => 'Security', 'label' => 'Has a manifest']], $before['passed']);
-    $after = ContributorReviewView::build($page, TRUE);
-    $this->assertContains(['section' => 'Security', 'label' => 'Reviewer confirmed the docs'], $after['passed']);
-    $this->assertContains(['section' => 'Security', 'label' => 'Has a manifest'], $after['passed']);
-  }
-
-  /**
-   * A failing or warning gate reaches the contributor as a finding.
-   *
-   * @covers ::build
-   */
-  public function testFailingGatesAreFindings(): void {
-    $page = self::page([
-      'structure' => self::block('Structure', [], [self::pill('Layout', 'fail'), self::pill('Docs', 'warn')]),
-    ]);
+  public function testUnexplainedGatesJoinTheirBlock(): void {
+    $gates = [self::pill('Layout', 'fail'), self::pill('Docs', 'warn')];
+    $page = self::page(['structure' => self::block('Structure', [self::row(['summary' => 'Medium one'])], $gates)]);
     $page['repo_gate_block']['others'] = [self::pill('YAML valid', 'fail')];
-    foreach ([FALSE, TRUE] as $sent) {
-      $findings = ContributorReviewView::build($page, $sent)['findings'];
-      $this->assertSame([
-        'The "YAML valid" check failed.',
-        'The "Layout" check failed.',
-        'The "Docs" check raised a warning.',
-      ], array_column($findings, 'summary'));
-      $this->assertSame(['high', 'high', 'low'], array_column($findings, 'severity'));
-      $this->assertSame(['', 'My App', 'My App'], array_column($findings, 'app'));
-      $this->assertSame(['Structure', 'Structure', 'Structure'], array_column($findings, 'section'));
-      $this->assertSame(['tool', 'tool', 'tool'], array_column($findings, 'source'));
-      $this->assertSame(['', '', ''], array_column($findings, 'note'));
-    }
-    $page['repo_gate_block']['others'][0]['severity'] = 'critical';
-    $findings = ContributorReviewView::build($page, FALSE)['findings'];
-    $this->assertSame('critical', $findings[0]['severity']);
+    $block = ContributorReviewView::withGateRows($page)['apps'][0]['blocks']['structure'];
+    // Grouped by severity: a failed gate reads as high, a warning as low.
+    $this->assertSame([
+      'The "Layout" check failed.',
+      'The "YAML valid" check failed.',
+      'Medium one',
+      'The "Docs" check raised a warning.',
+    ], self::summaries($block));
+    $this->assertSame(['high', 'medium', 'low'], array_column($block['groups'], 'severity'));
+    $this->assertSame([2, 1, 1], array_column($block['groups'], 'count'));
+    // The block's count line agrees with the findings listed under it.
+    $this->assertSame('4 findings · 2 High · 1 Medium · 1 Low', $block['count_line']);
+  }
+
+  /**
+   * With no app, an unexplained repo gate goes under the repository.
+   *
+   * A repo the tool found no apps in (appverse.yml does not parse) is when a
+   * repo gate is most likely the whole story.
+   *
+   * @covers ::withGateRows
+   */
+  public function testRepoGateWithNoAppsGoesUnderRepository(): void {
+    $page = self::page([], ['apps' => []]);
+    $page['repo_gate_block']['others'] = [self::pill('YAML valid', 'fail')];
+    $out = ContributorReviewView::withGateRows($page);
+    $this->assertSame(['The "YAML valid" check failed.'], self::summaries($out['repo_blocks']['structure']));
+    $this->assertSame('1 finding · 1 High', $out['repo_blocks']['structure']['count_line']);
+
+    // An existing repo Structure block gains the row.
+    $page['repo_blocks']['structure'] = self::block('Structure', [self::row(['summary' => 'Repo finding'])]);
+    $out = ContributorReviewView::withGateRows($page);
+    $this->assertSame(['The "YAML valid" check failed.', 'Repo finding'], self::summaries($out['repo_blocks']['structure']));
+  }
+
+  /**
+   * A page with every gate explained comes back as it was.
+   *
+   * @covers ::withGateRows
+   */
+  public function testNothingToAddLeavesThePage(): void {
+    $page = self::page(['structure' => self::block('Structure', [self::row()], [self::pill('Files', 'pass')])]);
+    $this->assertSame($page, ContributorReviewView::withGateRows($page));
   }
 
   /**
@@ -338,7 +257,7 @@ class ContributorReviewViewTest extends UnitTestCase {
    * Review 12415: structure and references warned, and the STR-07 and STR-04
    * rows behind them were already listed, so the two gate rows said nothing.
    *
-   * @covers ::build
+   * @covers ::withGateRows
    */
   public function testGateExplainedByItsFindingIsNotRepeated(): void {
     $layout = self::row([
@@ -354,25 +273,16 @@ class ContributorReviewViewTest extends UnitTestCase {
       ['key' => 'references', 'label' => 'References resolve', 'value' => 'warn'],
     ];
     $page = self::page(['structure' => self::block('Structure', [$layout], $gates)]);
-    $findings = ContributorReviewView::build($page, FALSE)['findings'];
     $this->assertSame([
-      'The "References resolve" check raised a warning.',
       'pre_render_script.sh is not in the repo',
-    ], array_column($findings, 'summary'));
-
-    // A row the contributor does not see explains nothing: a reviewer's
-    // finding before the decision is sent.
-    $page = self::page(['structure' => self::block('Structure', [['source' => 'reviewer'] + $layout], $gates)]);
-    $this->assertSame([
-      'The "Standard layout" check raised a warning.',
       'The "References resolve" check raised a warning.',
-    ], array_column(ContributorReviewView::build($page, FALSE)['findings'], 'summary'));
+    ], self::summaries(ContributorReviewView::withGateRows($page)['apps'][0]['blocks']['structure']));
   }
 
   /**
    * STR-01 sets two repo gates; each is explained only by its own tag.
    *
-   * @covers ::build
+   * @covers ::withGateRows
    */
   public function testRepoGateExplainedOnlyByItsOwnTag(): void {
     $license = self::row(['rule' => 'STR-01', 'defect_key' => 'LICENSE:missing-license', 'summary' => 'No LICENSE file']);
@@ -384,23 +294,28 @@ class ContributorReviewViewTest extends UnitTestCase {
     $this->assertSame([
       'The "README substantive" check failed.',
       'No LICENSE file',
-    ], array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
+    ], self::summaries(ContributorReviewView::withGateRows($page)['apps'][0]['blocks']['structure']));
 
-    // In a monorepo a repo gate is explained by its row in any app's block.
+    // In a monorepo a repo gate is explained by its row in any app's block,
+    // and an unexplained one goes to the first app's Structure.
     $page['apps'][] = ['name' => 'Other App', 'blocks' => ['structure' => self::block('Structure', [])]];
     $page['apps'] = array_reverse($page['apps']);
-    $this->assertNotContains('The "License" check failed.', array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
+    $out = ContributorReviewView::withGateRows($page);
+    $this->assertSame(['The "README substantive" check failed.'], self::summaries($out['apps'][0]['blocks']['structure']));
+    $this->assertSame(['No LICENSE file'], self::summaries($out['apps'][1]['blocks']['structure']));
   }
 
   /**
-   * A failed gate is explained only by a visible FAIL row of its rule.
+   * A failed gate is accounted for by a FAIL row of its rule, or its dismissal.
    *
-   * The reviewer dismissed the STR-07 FAIL and sent; the WARN note left over
-   * must not stand in for the failed gate at its own low severity.
+   * A WARN row alone must not stand in for a failed gate at its own low
+   * severity. A FAIL row the reviewer dismissed does account for it: they
+   * looked at that failure and cleared it, so a bare "check failed" row
+   * would contradict them.
    *
-   * @covers ::build
+   * @covers ::withGateRows
    */
-  public function testFailedGateNeedsVisibleFailRow(): void {
+  public function testFailedGateNeedsFailRowOrItsDismissal(): void {
     $fail = self::row([
       'rule' => 'STR-07',
       'defect_key' => 'apps/x:missing-entry-point',
@@ -418,21 +333,21 @@ class ContributorReviewViewTest extends UnitTestCase {
     ]);
     $gates = [['key' => 'structure', 'label' => 'Standard layout', 'value' => 'fail']];
 
-    $page = self::page(['structure' => self::block('Structure', [$fail, $note], $gates)]);
-    $this->assertSame(['No entry point', 'Odd layout'], array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
-
-    $page = self::page(['structure' => self::block('Structure', [['dismissed' => TRUE] + $fail, $note], $gates)]);
-    $findings = ContributorReviewView::build($page, TRUE)['findings'];
-    $this->assertSame(['The "Standard layout" check failed.', 'Odd layout'], array_column($findings, 'summary'));
-    $this->assertSame(['high', 'low'], array_column($findings, 'severity'));
-    // Before sending, the dismissed FAIL is still the tool's and is listed.
-    $this->assertSame(['No entry point', 'Odd layout'], array_column(ContributorReviewView::build($page, FALSE)['findings'], 'summary'));
+    $structure = static fn (array $rows): array => self::summaries(
+      ContributorReviewView::withGateRows(self::page(['structure' => self::block('Structure', $rows, $gates)]))['apps'][0]['blocks']['structure'],
+    );
+    $this->assertSame(['No entry point', 'Odd layout'], $structure([$fail, $note]));
+    // Only the WARN row: the failure itself is unexplained.
+    $this->assertSame(['The "Standard layout" check failed.', 'Odd layout'], $structure([$note]));
+    // The FAIL row dismissed: no bare row, and the dismissed finding stays off
+    // the page as it does for visitors.
+    $this->assertSame(['Odd layout'], $structure([['dismissed' => TRUE] + $fail, $note]));
   }
 
   /**
    * The template syntax gate is explained by STR-05 or STR-06.
    *
-   * @covers ::build
+   * @covers ::withGateRows
    */
   public function testTemplateSyntaxGate(): void {
     $syntax = self::row([
@@ -442,7 +357,7 @@ class ContributorReviewViewTest extends UnitTestCase {
     ]);
     $gates = [['key' => 'template_syntax', 'label' => 'Template syntax', 'value' => 'fail']];
     $page = self::page(['structure' => self::block('Structure', [$syntax], $gates)]);
-    $this->assertSame(['bash -n fails'], array_column(ContributorReviewView::build($page, TRUE)['findings'], 'summary'));
+    $this->assertSame(['bash -n fails'], self::summaries(ContributorReviewView::withGateRows($page)['apps'][0]['blocks']['structure']));
   }
 
   /**
