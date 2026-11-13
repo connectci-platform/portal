@@ -230,12 +230,11 @@ module:
   readonlymode: 9999
 theme:
   nect: 0
-  claro: 0
   stable: 0
   champions: 0
   stable9: 0
   aspTheme: 0
   ood: 0
   pascience: 0
-  gin: 0
+  default_admin: 0
 profile: standard
