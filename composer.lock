@@ -766,7 +766,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "7c5f6f09c4a4c84eb0c86899773b8023a4f6690a"
+                "reference": "c15e1b40d4a041ef263f1a351003b0b4a23cf797"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -795,7 +795,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-11-05T16:50:09+00:00"
+            "time": "2026-11-12T23:56:25+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -19704,7 +19704,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "a4aa381dbf4a010968638127def48f6e502c9e20"
+                "reference": "bb93645ae7e0741b78a476c22b0683d1c3c11201"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -19716,7 +19716,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-10-20T22:02:19+00:00"
+            "time": "2026-11-12T23:56:36+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
