@@ -84,6 +84,7 @@ module:
   filter: 0
   filter_perms: 0
   flag: 0
+  gin_toolbar: 0
   gtm: 0
   help: 0
   history: 0
@@ -129,6 +130,7 @@ module:
   mgv: 0
   multiple_registration: 0
   mysql: 0
+  navigation: 0
   node: 0
   ondemand: 0
   ood_contributions: 0
@@ -189,7 +191,6 @@ module:
   ticketing: 0
   token: 0
   token_views_filter: 0
-  toolbar: 0
   twig_tweak: 0
   typed_data: 0
   ultimate_cron: 0
@@ -238,4 +239,5 @@ theme:
   aspTheme: 0
   ood: 0
   pascience: 0
+  gin: 0
 profile: standard
