@@ -4,12 +4,16 @@
  * projects are not visible to anonymous users, and nobody but admins reaches
  * the webform submission URLs.
  *
+ * The raw webform submission pages are staff/owner/member only even for an
+ * approved project: anonymous and ordinary authenticated non-owners are denied
+ * on them while /project/<sid> stays public.
+ *
  * Projects are created through /form/project as administrator (same selectors
  * as pascience-projects-submit-admin.cy.js), so run with
  * CYPRESS_BASE_URL=https://pasciencedmz.ddev.site. Created projects are removed
  * in after() with drush.
  */
-import { ADMIN, deleteSubmissions } from "../../support/kb-resources";
+import { ADMIN, AUTHENTICATED, deleteSubmissions } from "../../support/kb-resources";
 
 const stamp = Date.now();
 const APPROVED_TITLE = `D8-3101 approved project ${stamp}`;
@@ -24,6 +28,13 @@ const expectDenied = (url) => {
     expect(denied, `${url} denied (status ${res.status}, location "${location}")`).to.eq(true);
   });
 };
+
+// The three raw webform submission page URLs for a submission id.
+const submissionUrls = (sid) => [
+  `/webform/project/submissions/${sid}`,
+  `/admin/structure/webform/manage/project/submission/${sid}`,
+  `/admin/structure/webform/manage/project/submission/${sid}/table`,
+];
 
 const createProject = (title, approved) => {
   cy.visit("/form/project");
@@ -88,6 +99,46 @@ describe("D8-3101: project webform submission access", () => {
       }).then((res) => {
         expect(res.body).not.to.contain(UNAPPROVED_TITLE);
       });
+    });
+
+    it("denies the raw webform submission pages of an approved project", () => {
+      submissionUrls(approvedSid).forEach((url) => expectDenied(url));
+    });
+  });
+
+  context("authenticated (non-owner) user", () => {
+    const expectStatus = (url, status) => {
+      cy.request({ url, failOnStatusCode: false, followRedirect: false })
+        .its("status")
+        .should("eq", status);
+    };
+
+    beforeEach(() => {
+      cy.loginUser(...AUTHENTICATED);
+    });
+
+    it("is denied the webform submission page of an approved project", () => {
+      expectStatus(`/webform/project/submissions/${approvedSid}`, 403);
+    });
+
+    it("is denied the webform submission page of an unapproved project", () => {
+      expectStatus(`/webform/project/submissions/${unapprovedSid}`, 403);
+    });
+
+    it("still sees an approved project on its public page", () => {
+      expectStatus(`/project/${approvedSid}`, 200);
+    });
+  });
+
+  context("administrator", () => {
+    it("can view the webform submission page of an approved project", () => {
+      cy.loginUser(...ADMIN);
+      cy.request({
+        url: `/webform/project/submissions/${approvedSid}`,
+        failOnStatusCode: false,
+      })
+        .its("status")
+        .should("eq", 200);
     });
   });
 });
