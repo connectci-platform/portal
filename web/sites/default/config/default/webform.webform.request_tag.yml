@@ -165,7 +165,7 @@ access:
     permissions: {  }
   view_any:
     roles:
-      - authenticated
+      - cnctci_pm
     users: {  }
     permissions: {  }
   update_any:
