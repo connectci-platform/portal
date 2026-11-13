@@ -7,7 +7,6 @@ enabled_entity_types:
   flagging: '0'
   path_alias: '0'
   redirect: '0'
-  shortcut: '0'
   social_auth: '0'
   taxonomy_term: '0'
   user: '0'
