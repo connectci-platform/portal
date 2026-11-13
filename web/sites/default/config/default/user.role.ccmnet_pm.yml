@@ -9,14 +9,12 @@ dependencies:
     - file
     - node
     - shortcut
-    - toolbar
 id: ccmnet_pm
 label: 'CCMNet PM'
 weight: 22
 is_admin: null
 permissions:
   - 'access shortcuts'
-  - 'access toolbar'
   - 'create field_admin_notes'
   - 'delete own files'
   - 'edit any mentorship_engagement content'
