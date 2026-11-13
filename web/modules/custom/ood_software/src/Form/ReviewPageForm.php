@@ -601,6 +601,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
           '#description' => match (TRUE) {
             !empty($app['catalog']['backed']) => $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.'),
             $basis['mode'] === 'compare' => $this->t('Required: which apps you compared, and how this one differs or which one it duplicates.'),
+            $basis['mode'] === 'suggested' => $this->t("Required: the software is the review tool's suggestion, so say whether it is right and which apps you compared. If it is wrong, assign the right Software entry on the app."),
             default => $this->t('Required: no Software entry matched, so say which apps you compared by name, and how this one differs or which one it duplicates.'),
           },
         ],
@@ -2571,9 +2572,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     }
     // From the review as it is now, never the cached form's #page.
     $backed = [];
+    $stored = [];
     $lines = [];
     foreach ($this->buildPage($this->node)['apps'] ?? [] as $app) {
       $backed[$app['pid']] = $app['catalog']['backed'] ?? TRUE;
+      $stored[$app['pid']] = (string) ($app['duplicate']['outcome'] ?? '');
       $lines[(string) $app['pid']] = [
         'line' => (string) ($app['duplicate']['basis']['line'] ?? ''),
         'mode' => (string) ($app['duplicate']['basis']['mode'] ?? ''),
@@ -2605,7 +2608,12 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       return FALSE;
     }
     foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
-      if (DuplicateCheck::needsNote((string) ($input['outcome'] ?? ''), (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {
+      $outcome = (string) ($input['outcome'] ?? '');
+      // A "No other app" saved before the check needed a rationale for it
+      // (a suggestion was once clear) stands while it is left unchanged, so
+      // it doesn't block saving the rest of the review.
+      $kept = $outcome === 'none' && $outcome === ($stored[$pid] ?? NULL);
+      if (!$kept && DuplicateCheck::needsNote($outcome, (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {
         $form_state->setErrorByName('duplicate][' . $pid . '][note', $this->t('Give the rationale for the duplicate check: which apps you compared, and how this one differs or which one it duplicates.'));
       }
     }
