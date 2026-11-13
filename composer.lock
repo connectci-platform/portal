@@ -7145,23 +7145,23 @@
         },
         {
             "name": "drupal/pantheon_advanced_page_cache",
-            "version": "2.4.1",
+            "version": "2.5.0",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/pantheon_advanced_page_cache.git",
-                "reference": "2.4.1"
+                "reference": "2.5.0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/pantheon_advanced_page_cache-2.4.1.zip",
-                "reference": "2.4.1",
-                "shasum": "abcc7e5f0c3a306f19c47b7f1557a932533d7906"
+                "url": "https://ftp.drupal.org/files/projects/pantheon_advanced_page_cache-2.5.0.zip",
+                "reference": "2.5.0",
+                "shasum": "883e041014e52ed73db6ff9288841c71b0dd666e"
             },
             "require": {
-                "drupal/core": "^10 || ^11",
-                "guzzlehttp/psr7": "^2.4.5",
+                "drupal/core": "^10 || ^11 || ^12",
+                "guzzlehttp/psr7": "^2.4.5 || ^3",
                 "php": ">=8.1",
-                "symfony/http-foundation": "^6 || ^7"
+                "symfony/http-foundation": "^6 || ^7 || ^8"
             },
             "require-dev": {
                 "consolidation/robo": "^5.1",
@@ -7172,13 +7172,14 @@
                 "psy/psysh": "@stable",
                 "squizlabs/php_codesniffer": "@stable",
                 "symfony/finder": "^4.4|^5|^6|^7",
-                "symfony/yaml": "^4.4|^5|^6|^7"
+                "symfony/mime": "^6.4|^7|^8",
+                "symfony/yaml": "^5.4.54|^6.4.45|^7.4.18"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "2.4.1",
-                    "datestamp": "1788291954",
+                    "version": "2.5.0",
+                    "datestamp": "1794332287",
                     "security-coverage": {
                         "status": "covered",
                         "message": "Covered by Drupal's security advisory policy"
@@ -7254,7 +7255,8 @@
             "homepage": "https://www.drupal.org/project/pantheon_advanced_page_cache",
             "support": {
                 "source": "https://git.drupalcode.org/project/pantheon_advanced_page_cache"
-            }
+            },
+            "published-time": "2026-11-09T20:00:03+00:00"
         },
         {
             "name": "drupal/paragraphs",
