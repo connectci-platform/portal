@@ -1,15 +1,15 @@
-uuid: 14ec5da2-bb8a-42a0-a5ef-e7c892a635b8
+uuid: 4a273caa-ffc1-4aef-b0cf-078d020a42ad
 langcode: en
 status: true
 dependencies:
   module:
     - help
   theme:
-    - gin
+    - default_admin
 _core:
-  default_config_hash: 8nOAry2oKqJOr0zbrlJ3sZHDFJLIO6j-0vT0K_TYca4
-id: gin_help
-theme: gin
+  default_config_hash: WMumqujKj0N-VVFZK_ombqoMNCvTo1l0xzsbXBV6sjE
+id: default_admin_help
+theme: default_admin
 region: help
 weight: 0
 provider: null
