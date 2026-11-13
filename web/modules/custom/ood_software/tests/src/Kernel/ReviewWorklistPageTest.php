@@ -58,6 +58,19 @@ class ReviewWorklistPageTest extends KernelTestBase {
   ];
 
   /**
+   * Catalog checks of an inferred repo whose software the tool suggested.
+   */
+  const SUGGESTED = [
+    'shape' => 'inferred',
+    'software' => [
+      'status' => 'inferred',
+      'suggested' => ['value' => 'rstudio', 'source' => 'repo_name', 'entry' => 'RStudio'],
+    ],
+    'same_software_apps' => [],
+    'suggested_same_software_apps' => [],
+  ];
+
+  /**
    * Catalog checks of an inferred repo, which declares no software.
    */
   const INFERRED = [
@@ -662,7 +675,9 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->setChecks($misspelled, 0, self::MISSPELLED);
     $unknown = $this->makeReview(['root' => []]);
     $this->setChecks($unknown, 0, ['shape' => 'inferred', 'software' => ['status' => 'inferred']]);
-    foreach (['compare' => $compare, 'misspelled' => $misspelled, 'unknown' => $unknown] as $mode => $review) {
+    $suggested = $this->makeReview(['root' => []]);
+    $this->setChecks($suggested, 0, self::SUGGESTED);
+    foreach (['compare' => $compare, 'misspelled' => $misspelled, 'unknown' => $unknown, 'suggested' => $suggested] as $mode => $review) {
       $html = $this->renderAs($this->reviewer, $review);
       $this->assertStringNotContainsString('confirm_duplicate__', $html, $mode);
       $this->assertStringContainsString('finding--duplicate', $this->duplicateHtml($html, $this->verdictPids($review)[0]), $mode);
@@ -671,8 +686,50 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertStringContainsString('appverse.yml declares Jupiterlab, which has no Software entry. It may mean JupyterLab.', $html);
     $html = $this->renderAs($this->reviewer, $unknown);
     $this->assertMatchesRegularExpression('#The software couldn&\#039;t be identified\. Check the <a href="[^"]*/appverse"[^>]*>catalog</a> for an existing app\.#', $html);
+    $html = $this->renderAs($this->reviewer, $suggested);
+    $this->assertStringContainsString('The review tool suggests the Software entry RStudio from the repository name. No other published app implements it.', $html);
     $clear = $this->inferredReview($this->software('T'));
     $this->assertStringContainsString('confirm_duplicate__' . $this->verdictPids($clear)[0], $this->renderAs($this->reviewer, $clear));
+  }
+
+  /**
+   * A suggested software's "No other app" needs a rationale.
+   */
+  public function testSuggestedSoftwareNeedsNote(): void {
+    $review = $this->makeReview(['root' => []]);
+    [$pid] = $this->verdictPids($review);
+    $this->setChecks($review, 0, self::SUGGESTED);
+    $page = $this->page($review);
+    $this->assertSame('suggested', $page['apps'][0]['duplicate']['basis']['mode']);
+    $this->assertFalse($page['apps'][0]['catalog']['backed']);
+    $this->assertTrue($page['apps'][0]['duplicate']['in_worklist']);
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'duplicate' => [$pid => ['outcome' => 'none', 'note' => '']],
+    ], 'op', 'Save draft', FALSE);
+    $this->assertArrayHasKey('duplicate][' . $pid . '][note', $formState->getErrors());
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'duplicate' => [$pid => ['outcome' => 'none', 'note' => 'RStudio is right; no other RStudio app.']],
+    ], 'op', 'Save draft', FALSE);
+    $this->assertSame([], $formState->getErrors());
+    $this->assertSame('none', Paragraph::load($pid)->get('field_rvv_duplicate')->value);
+
+    // A forged Confirm on a suggestion records nothing.
+    $review = $this->makeReview(['root' => []]);
+    [$pid] = $this->verdictPids($review);
+    $this->setChecks($review, 0, self::SUGGESTED);
+    $this->post($review, $this->keys($review) + [
+      'duplicate' => [$pid => ['note' => '']],
+    ], 'confirm_duplicate__' . $pid, 'Confirm', FALSE);
+    $this->assertNull(Paragraph::load($pid)->get('field_rvv_duplicate')->value);
+
+    // A "No other app" saved without a rationale while suggestions were
+    // clear doesn't block the next save while it is left as it is.
+    $verdict = Paragraph::load($pid);
+    $verdict->set('field_rvv_duplicate', 'none')->save();
+    [, $formState] = $this->post($review, $this->keys($review) + [
+      'duplicate' => [$pid => ['outcome' => 'none', 'note' => '']],
+    ], 'op', 'Save draft', FALSE);
+    $this->assertSame([], $formState->getErrors());
   }
 
   /**
