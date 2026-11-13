@@ -113,7 +113,6 @@
         "drupal/filter_perms": "^2.0.2",
         "drupal/flag": "^5.0.3",
         "drupal/fontawesome": "^3.0.0",
-        "drupal/gin": "^5.0",
         "drupal/gtm": "^1.8",
         "drupal/honeypot": "^2.2.2",
         "drupal/image_captcha": "^2.0",

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b81f285b1b22e961b8a339a98796bceb",
+    "content-hash": "a5e249cf605ba564889a772efdbed499",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -4959,137 +4959,6 @@
                 "source": "https://git.drupalcode.org/project/fontawesome",
                 "issues": "https://drupal.org/project/issues/fontawesome"
             }
-        },
-        {
-            "name": "drupal/gin",
-            "version": "5.0.16",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/gin.git",
-                "reference": "5.0.16"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/gin-5.0.16.zip",
-                "reference": "5.0.16",
-                "shasum": "e6f6d582ccab1f3a5012afcd0a673a1ddaa67312"
-            },
-            "require": {
-                "drupal/core": "^11.2",
-                "drupal/gin_toolbar": "^3.0"
-            },
-            "type": "drupal-theme",
-            "extra": {
-                "drupal": {
-                    "version": "5.0.16",
-                    "datestamp": "1791998634",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "scripts": {
-                "phpcs": [
-                    "phpcs -s --runtime-set ignore_warnings_on_exit 1 --runtime-set ignore_errors_on_exit 0 'web/modules/custom'"
-                ]
-            },
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "Sascha Eggenberger (saschaeggi)",
-                    "homepage": "https://www.drupal.org/u/saschaeggi",
-                    "role": "Maintainer"
-                },
-                {
-                    "name": "saschaeggi",
-                    "homepage": "https://www.drupal.org/user/1999056"
-                }
-            ],
-            "description": "For a better Admin and Content Editor Experience.",
-            "homepage": "https://www.drupal.org/project/gin",
-            "support": {
-                "source": "https://git.drupalcode.org/project/gin",
-                "issues": "https://www.drupal.org/project/issues/gin"
-            },
-            "funding": [
-                {
-                    "type": "github",
-                    "url": "https://github.com/sponsors/saschaeggi"
-                },
-                {
-                    "type": "other",
-                    "url": "https://paypal.me/saschaeggi"
-                }
-            ],
-            "published-time": "2026-10-14T15:17:27+00:00"
-        },
-        {
-            "name": "drupal/gin_toolbar",
-            "version": "3.0.3",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/gin_toolbar.git",
-                "reference": "3.0.3"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/gin_toolbar-3.0.3.zip",
-                "reference": "3.0.3",
-                "shasum": "ee766c18f50de9ab6f616a7543bccde67abfd2cd"
-            },
-            "require": {
-                "drupal/core": "^11.2"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "3.0.3",
-                    "datestamp": "1768553642",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0+"
-            ],
-            "authors": [
-                {
-                    "name": "Sascha Eggenberger (saschaeggi)",
-                    "homepage": "https://www.drupal.org/u/saschaeggi",
-                    "role": "Maintainer"
-                },
-                {
-                    "name": "saschaeggi",
-                    "homepage": "https://www.drupal.org/user/1999056"
-                }
-            ],
-            "description": "Gin Toolbar for Frontend use",
-            "homepage": "https://www.drupal.org/project/gin_toolbar",
-            "keywords": [
-                "Drupal"
-            ],
-            "support": {
-                "source": "http://cgit.drupalcode.org/gin_toolbar",
-                "issues": "https://www.drupal.org/project/issues/gin_toolbar"
-            },
-            "funding": [
-                {
-                    "type": "github",
-                    "url": "https://github.com/sponsors/saschaeggi"
-                },
-                {
-                    "type": "other",
-                    "url": "https://paypal.me/saschaeggi"
-                }
-            ],
-            "published-time": "2026-01-16T08:53:56+00:00"
         },
         {
             "name": "drupal/gtm",
