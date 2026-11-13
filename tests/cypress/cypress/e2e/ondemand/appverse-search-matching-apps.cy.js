@@ -190,7 +190,9 @@ describe('Appverse search: matching apps on software cards', { includeShadowDom:
   it('opens the plain software page when the card itself is clicked', () => {
     const slug = slugify(titleCase.software.title);
     searchFor(titleCase.query);
-    tileFor(titleCase.software.title).click({ position: 'top' });
+    // Click inside the padding. The title link's overlay covers the padding
+    // box but not the 2px border, so a click on the top edge hits nothing.
+    tileFor(titleCase.software.title).click(24, 24);
 
     cy.location('hash').should('contain', `#/${slug}`).and('not.contain', '?app=');
   });
