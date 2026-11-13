@@ -761,8 +761,8 @@ access:
     permissions: {  }
   view_any:
     roles:
-      - anonymous
-      - authenticated
+      - careers_sc
+      - pascience_manager
     users: {  }
     permissions: {  }
   update_any:
