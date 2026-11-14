@@ -33,9 +33,19 @@
   {% endif %}
 {% endmacro %}
 
-{% macro finding_row(finding, form, can_edit) %}
+{# One row of a worklist. item is the worklist item the row shows (section,
+   floor), or null for a dismissed row, which only carries its section. #}
+{% macro finding_row(finding, form, can_edit, item, labels) %}
+  {% import _self as m %}
   {% set editable = can_edit and form.save_finding[finding.pid] is defined %}
-  <div class="finding" id="finding-{{ finding.pid }}">
+  {% set section = item.section ?? finding.section ?? '' %}
+  <div class="finding" id="finding-{{ finding.pid }}"{% if section %} data-section="{{ section }}"{% endif %}>
+    {# What an AJAX save just did here. The announcement already speaks it,
+       so this line is hidden from screen readers. #}
+    {% set confirm = form['#arv_confirm'] ?? null %}
+    {% if confirm and confirm.finding and confirm.finding ~ '' == finding.pid ~ '' %}
+      <p class="arv-saved" aria-hidden="true">{{ confirm.text }}</p>
+    {% endif %}
     <div class="frow">
       <div class="rule">{{ finding.rule }}</div>
       <div>
@@ -50,6 +60,7 @@
           {{ finding.summary }}
           {% if finding.override and finding.override.edited %} <span class="finding-edited">{{ 'Edited by the reviewer'|t }}</span>{% endif %}
         </div>
+        {% if item %}{{ m.item_details(item, labels) }}{% endif %}
         <div class="ev">{% for part in finding.evidence_parts %}{% if part.url %}<a href="{{ part.url }}" target="_blank" rel="noopener" title="{{ 'View on GitHub at the reviewed commit'|t }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>
 
         {# A reviewer's change to the tool's finding (A1). The note below is
@@ -81,6 +92,12 @@
       {% if editable %}
         <div class="frow-actions">
           <button type="button" class="expand-hint" aria-expanded="false">{{ 'Edit'|t }}</button>
+          {# Moves the list's add form here, on this row's section. Only the
+             script can do that, so it is hidden until the script shows it.
+             Not on a dismissed row (no item), which sits in its own fold. #}
+          {% if item and section %}
+            <button type="button" class="arv-add-here" data-section="{{ section }}" hidden>{{ 'Add a finding here'|t }}</button>
+          {% endif %}
         </div>
       {% endif %}
     </div>
@@ -106,221 +123,155 @@
   </div>
 {% endmacro %}
 
-{# A group of gates: the passes as a count behind a toggle, and anything that
-   is not a pass out in full. Both the repo's gates and a block's own use it,
-   so one kind of thing reads one way (appverse-planning#53). #}
-{# A gate's result as a mark rather than the word: a white check on teal for
-   a pass, a white cross on red for a fail, and the value spelled out for
-   anything else. The title and the visually-hidden text carry the meaning,
-   since colour alone must not (appverse-planning#53). #}
-{% macro gate_mark(value) %}
-  {% set label = value == 'pass' ? 'passed'|t : (value == 'fail' ? 'failed'|t : value|replace({'_': ' '})) %}
-  {% if value in ['pass', 'fail'] %}
-    <span class="gate-mark gate-mark--{{ value }}" title="{{ label }}">
-      <span class="visually-hidden">{{ label }}</span>
-      <span aria-hidden="true">{{ value == 'pass' ? '✓' : '✕' }}</span>
-    </span>
-  {% else %}
-    <b class="gate-word">{{ label }}</b>
-  {% endif %}
+{# The line under an item's summary: its section, and for a blocking item
+   the mildest decision it allows, with the reason on hover. #}
+{% macro item_details(item, labels) %}
+  <div class="arv-item-details">
+    <span>{{ item.section_title }}</span>
+    {%- if item.blocking %}<span class="arv-sep" aria-hidden="true"> · </span><span class="arv-floor" title="{{ item.blocking.reason }}">{{ 'At least @d'|t({'@d': labels[item.blocking.decision] ?? item.blocking.decision}) }}</span>{% endif -%}
+  </div>
 {% endmacro %}
 
-{% macro gate_group(summary, label) %}
-  {% import _self as m %}
-  {% if summary and summary.total %}
-    <div class="gates">
-      {% if summary.passes %}
-        <details class="gate-passes">
-          <summary class="gate-passes__count{% if summary.passed == summary.total %} gate-passes__count--all{% endif %}">
-            {{ '@label: @n of @total passed'|t({'@label': label, '@n': summary.passed, '@total': summary.total}) }}
-          </summary>
-          <div class="gate-passes__list">
-            {% for gate in summary.passes %}
-              <span class="gate gate--pass">{{ gate.label }} {{ m.gate_mark('pass') }}</span>
-            {% endfor %}
-          </div>
-        </details>
-      {% endif %}
-      {% for gate in summary.others %}
-        <span class="gate gate--{{ gate.value }}">{{ gate.label }} {{ m.gate_mark(gate.value) }}</span>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endmacro %}
-
-{% macro catblock(block, form, can_edit, page, level_el, note_el, scope, repo_gates, duplicate) %}
-  {% import _self as m %}
-  {# level-changed: the reviewer has moved off the automated rating, so the
-     dropdown and the note stay open rather than collapsing behind the icon. #}
-  {# The id carries its app: a monorepo renders these blocks once per app, and
-     without the scope every one of them was id="block-structure" and the rest,
-     ten duplicate ids on a two-app page. Nothing links to them today, but an
-     anchor that cannot reach the second app's block is not an anchor. #}
-  <div class="catblock{% if block.level and block.tool_level and block.level != block.tool_level %} level-changed{% endif %}" id="block-{{ scope ? scope ~ '-' : '' }}{{ block.key }}">
-    <div class="cat-top">
-      <div class="cat-title-row">
-        <div class="cat-left">
-          <span class="cat-name">{{ block.title }}</span>
-          {# Security carries no rating, so its heading had nothing after the
-             name where the other blocks show a badge. The shield marks it as
-             the one to read first (appverse-planning#53). #}
-          {% if block.key == 'security' %}
-            <i class="bi bi-shield-exclamation cat-icon" aria-hidden="true"></i>
-          {% endif %}
-          {% if block.level is not null or block.key in ['portability', 'documentation', 'maintenance'] %}
-            {# The rating reads as a badge and the dropdown stays hidden until
-               the edit icon is clicked. It was always an editable control with
-               the automated rating captioned under it, which is sidebar
-               clutter on the rows nobody is changing (appverse-planning#54).
-               Both are rendered: the JS swaps which one is shown, so with no
-               JS the dropdown is simply there. #}
-            {% if can_edit and level_el %}
-              {# Literal map: a macro cannot see the template's level_class. #}
-              <span class="level-readonly">{{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}</span>
-              <span class="level-control">{{ level_el }}</span>
-            {% else %}
-              {{ m.level_badge(block.level, page.level_labels[block.key] ?? {}, {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'}) }}
-            {% endif %}
-            {% if can_edit and level_el %}
-              <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-            {% endif %}
-          {% endif %}
-        </div>
-        <div class="cat-count">{{ block.count_line }}</div>
-      </div>
-      {# Like Decision's "Automated suggestion": what the tool rated, and
-         whether the reviewer has changed it. #}
-      {# Only worth saying once the reviewer has moved off the automated
-         rating; otherwise the badge above already is the automated rating
-         (appverse-planning#54). #}
-      {% if can_edit and level_el and block.tool_level and block.level and block.level != block.tool_level %}
-        <div class="concl-caption level-caption">
-          {{ 'Changed from automated rating: @l'|t({'@l': (page.level_labels[block.key] ?? {})[block.tool_level] ?? block.tool_level}) }}
-        </div>
-      {% endif %}
-      {# The note belongs with the rating it explains, so it sits under the
-         dropdown the edit icon reveals rather than below the section summary,
-         where clicking the icon opened a field two elements away
-         (appverse-planning#54). The read-only note keeps its old place: it is
-         prose about the rating, and reads as part of the summary. #}
-      {% if can_edit and note_el %}
-        <div class="override-box">{{ note_el }}</div>
-      {% endif %}
-      {% if block.summary %}<div class="cat-summary">{{ block.summary }}</div>{% endif %}
-      {% if not (can_edit and note_el) and block.note %}
-        <div class="override-note">{{ block.note }}</div>
-      {% endif %}
-      {# The repo's own gates lead, because they decide whether the app belongs
-         in the catalog at all; the block's gates are the per-app file checks
-         that follow. Both render the same way (appverse-planning#53). #}
-      <div class="gate-groups">
-        {{ m.gate_group(repo_gates, 'Repo'|t) }}
-        {{ m.gate_group(block.gate_summary, 'Files'|t) }}
-      </div>
-    </div>
-    {# The gate evidence and the catalog checks come with the gates. #}
-    {% if repo_gates and repo_gates.rows %}
-      <ul class="gate-rows">
-        {% for row in repo_gates.rows %}
-          <li>
-            <span class="gate-result gate-result--{{ row.result|lower }}">{{ row.result }}</span>
-            {% if row.rule %}<span class="rule">{{ row.rule }}</span>{% endif %}
-            <span class="gate-evidence">{{ row.evidence_html }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-    {% if repo_gates and repo_gates.catalog_html %}
-      <div class="catalog-checks">
-        <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
-        {{ repo_gates.catalog_html }}
-      </div>
-    {% endif %}
-    {# The app's catalog checks as rows, when the review carries them (A4b);
-       the report's text above otherwise. #}
-    {% if duplicate and duplicate.catalog.rows %}
-      <div class="catalog-checks catalog-checks--rows">
-        <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
-        {% if repo_gates and repo_gates.catalog_read %}<div class="catalog-read">{{ repo_gates.catalog_read }}</div>{% endif %}
-        <ul class="gate-rows">
-          {% for row in duplicate.catalog.rows %}
-            <li>
-              <span class="gate-result gate-result--{{ row.result == 'N/A' ? 'na' : row.result|lower }}">{{ row.result }}</span>
-              <span class="catalog-check">{{ row.check|t }}</span>
-              <span class="gate-evidence">
-                {{- row.text -}}
-                {%- if row.links %}: {% for link in row.links %}{% if link.url %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% else %}{{ link.title }}{% endif %}{{ not loop.last ? ', ' }}{% endfor %}{% endif -%}
-                {%- if row.add_software and can_edit %} · <a href="{{ path('node.add', {'node_type': 'appverse_software'}) }}" target="_blank" rel="noopener">{{ 'Add the Software entry'|t }}</a>{% endif -%}
-              </span>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
-    {# The reviewer's duplicate check for this app (A4): the decision the
-       catalog checks above leave to them. Required to accept the app. #}
-    {% if duplicate and (duplicate.el or duplicate.data.outcome) %}
-      <div class="duplicate-check-block">
-        {% if duplicate.el %}
-          {{ duplicate.el }}
+{# A check that is not a finding: a gate, a catalog check, or a passed row.
+   Its result as a label, then what it is. No controls. #}
+{% macro check_row(row, can_edit) %}
+  {% set result = row.result ?? (row.value ?? '')|upper|replace({'_': ' '}) %}
+  <div class="frow">
+    <div class="rule">{{ row.rule ?? '' }}</div>
+    <div>
+      <div class="sum">
+        <span class="result-pill result-pill--{{ result|lower|replace({' ': '-', '/': ''}) }}">{{ result }}</span>
+        {% if row.check is defined %}
+          <span class="catalog-check">{{ row.check|t }}</span> {{ row.text -}}
+          {%- if row.links %}: {% for link in row.links %}{% if link.url %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% else %}{{ link.title }}{% endif %}{{ not loop.last ? ', ' }}{% endfor %}{% endif -%}
+          {%- if row.add_software and can_edit %} · <a href="{{ path('node.add', {'node_type': 'appverse_software'}) }}" target="_blank" rel="noopener">{{ 'Add the Software entry'|t }}</a>{% endif -%}
         {% else %}
-          <div class="catalog-checks-title">{{ 'Duplicate check'|t }}</div>
-          <div>{{ duplicate.data.label }}</div>
-          {% if duplicate.data.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ duplicate.data.note }}</div>{% endif %}
+          {{ row.summary ?? row.label ?? '' }}
         {% endif %}
       </div>
-    {% endif %}
-    {% for group in block.groups %}
-      <div class="sev-group">
-        {# The worst group opens, except info, which starts collapsed even when
-           it is the only one: it is the group nobody is reading first
-           (appverse-planning#54). #}
-        {# Open the worst group, and any group small enough that collapsing it
-           hides one or two rows behind a click. Info stays shut unless it is
-           that small (appverse-planning#53). #}
-        <div class="sev-head{% if (loop.first and group.severity != 'info') or group.count <= 2 %} sev-head--open{% endif %}">{{ group.severity|capitalize }} <span class="n">({{ group.count }})</span><span class="car" aria-hidden="true">⌄</span></div>
-        <div class="sev-body">
-          {% for finding in group.findings %}
-            {{ m.finding_row(finding, form, can_edit) }}
-          {% endfor %}
+      {% if row.evidence is defined and row.evidence %}<div class="ev">{% if row.evidence_link %}<a href="{{ row.evidence_link.url }}" target="_blank" rel="noopener">{{ row.evidence_link.text }}</a>{{ row.evidence_link.rest }}{% else %}{{ row.evidence }}{% endif %}</div>{% endif %}
+    </div>
+  </div>
+{% endmacro %}
+
+{# The duplicate check's line: what the check compared against and found
+   (ReviewPageData::duplicateBasis()), as its segments. A segment linking to
+   "catalog" links to the catalog. #}
+{% macro duplicate_line(segments, catalog_url) %}
+  {%- for seg in segments -%}
+    {%- if seg.link is defined and seg.link == 'catalog' -%}
+      <a href="{{ catalog_url }}" target="_blank" rel="noopener">{{ seg.text }}</a>
+    {%- else -%}
+      {{ seg.text }}
+    {%- endif -%}
+  {%- endfor -%}
+{% endmacro %}
+
+{# The other published apps a duplicate check compares against. #}
+{% macro duplicate_apps(apps) %}
+  {%- if apps -%}
+    <ul class="duplicate-apps">
+      {%- for link in apps -%}
+        <li>{% if link.url %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% else %}{{ link.title }}{% endif %}</li>
+      {%- endfor -%}
+    </ul>
+  {%- endif -%}
+{% endmacro %}
+
+{# A duplicate check's radios and note. Behind Change when the check has
+   an outcome or a one-click Confirm; open otherwise, and without JS. #}
+{% macro duplicate_fields(control, pid, toggle) %}
+  <div class="duplicate-fields" id="duplicate-fields-{{ pid }}"{% if toggle %} data-duplicate-toggle{% endif %}>
+    {{ control.outcome }}
+    {{ control.note }}
+  </div>
+{% endmacro %}
+
+{# One worklist item. A finding is the full row with its controls; a
+   reference points at an every-app blocker listed in another list; a
+   duplicate check left to the reviewer carries its control; a gate or
+   catalog check is a row with no controls. #}
+{% macro worklist_item(item, form, can_edit, labels) %}
+  {% import _self as m %}
+  {% if item.kind == 'finding' %}
+    {{ m.finding_row(item.row, form, can_edit, item, labels) }}
+  {% elseif item.kind == 'duplicate' %}
+    <div class="finding finding--duplicate duplicate-check-block" id="duplicate-{{ item.row.pid }}" data-section="{{ item.section }}">
+      <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(item.row.segments, form['#page'].catalog_url) }}</div>
+      {{ m.duplicate_apps(item.row.apps) }}
+      {% if form.duplicate[item.row.pid] is defined %}
+        {{ m.duplicate_fields(attribute(form.duplicate, item.row.pid), item.row.pid, false) }}
+      {% endif %}
+    </div>
+  {% elseif item.kind == 'reference' %}
+    <div class="finding finding--reference" data-section="{{ item.section }}">
+      <div class="frow">
+        {# Two or more from the same list read as one row (ReviewWorklist),
+           linking to the most severe. #}
+        {% if item.row.count > 1 %}
+          <div class="rule"></div>
+          <div>
+            <div class="sum"><a href="#finding-{{ item.row.pid }}">{{ '@n blocking findings in @source apply to every app'|t({'@n': item.row.count, '@source': item.row.source_title}) }}</a></div>
+        {% else %}
+          <div class="rule">{{ item.row.rule }}</div>
+          <div>
+            <div class="sum"><a href="#finding-{{ item.row.pid }}">{{ item.row.summary }}</a><span class="arv-sep" aria-hidden="true"> · </span>{{ 'Blocks every app'|t }}<span class="arv-sep" aria-hidden="true"> · </span>{{ 'in @app'|t({'@app': item.row.app_title}) }}</div>
+        {% endif %}
+          {{ m.item_details(item, labels) }}
         </div>
       </div>
-    {% endfor %}
-    {# The tool's findings the reviewer dismissed (A1): out of the count,
-       listed here with the reason. The public summary leaves them out. #}
-    {% if block.dismissed is not empty %}
-      <details class="dismissed-rows">
-        <summary>{{ 'Dismissed by the reviewer (@n)'|t({'@n': block.dismissed|length}) }}</summary>
-        {% for finding in block.dismissed %}
-          {{ m.finding_row(finding, form, can_edit) }}
-        {% endfor %}
-      </details>
+    </div>
+  {% else %}
+    <div class="finding finding--check" data-section="{{ item.section }}">
+      {{ m.check_row(item.row, can_edit) }}
+      <div class="arv-check-details">{{ m.item_details(item, labels) }}</div>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{# The anchors of the sections whose first item is at index (null: the
+   sections with no items). The catalog and the signals deep-link to them
+   (ReviewSignals): block-<app id>-<section>, or block-<section> for the
+   repo. #}
+{% macro section_anchors(list, index) %}
+  {% for s in list.sections %}
+    {% if s.first is same as(index) %}<span class="arv-anchor" id="block-{{ list.scope ? list.scope ~ '-' : '' }}{{ s.key }}"></span>{% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{# One rating: the badge, the edit icon that swaps in the dropdown and the
+   note, and the axis summary under it. #}
+{% macro rating(block, labels, level_el, note_el, can_edit) %}
+  {% import _self as m %}
+  {# Literal map: a macro cannot see the template's level_class. #}
+  {% set classes = {'solid': 'high', 'some_notes': 'medium', 'needs_attention': 'low'} %}
+  {# level-changed: the reviewer has moved off the automated rating, so the
+     dropdown and the note stay open rather than collapsing behind the icon. #}
+  {% set changed = block.level and block.tool_level and block.level != block.tool_level %}
+  <div class="arv-rating{% if changed %} level-changed{% endif %}">
+    <div class="arv-rating__head">
+      <span class="arv-rating__name">{{ block.title }}</span>
+      {# Both are rendered: the script swaps which one shows, so with no
+         script the dropdown is simply there (appverse-planning#54). #}
+      {% if can_edit and level_el %}
+        <span class="level-readonly">{{ m.level_badge(block.level, labels, classes) }}</span>
+        <span class="level-control">{{ level_el }}</span>
+        <button type="button" class="edit-icon-btn" title="{{ 'Change the automated rating'|t }}" aria-label="{{ 'Change the rating for @b'|t({'@b': block.title}) }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+      {% else %}
+        {{ m.level_badge(block.level, labels, classes) }}
+      {% endif %}
+    </div>
+    {% if can_edit and level_el and changed %}
+      <div class="concl-caption level-caption">
+        {{ 'Changed from automated rating: @l'|t({'@l': labels[block.tool_level] ?? block.tool_level}) }}
+      </div>
     {% endif %}
-    {# PASS and NOT CHECKED rows: not findings, but listed so a reviewer can
-       confirm a cleared check. Full page only; the public summary omits them. #}
-    {% if block.checked.rows is not empty %}
-      {% set parts = [] %}
-      {% for result, n in block.checked.counts %}
-        {% set parts = parts|merge([n ~ ' ' ~ (result == 'PASS' ? 'passed'|t : (result == 'NOT CHECKED' ? 'not checked'|t : result|lower))]) %}
-      {% endfor %}
-      <details class="checked-rows">
-        <summary>{{ 'Checked: @parts'|t({'@parts': parts|join(' · ')}) }}</summary>
-        {% for row in block.checked.rows %}
-          <div class="frow">
-            <div class="rule">{{ row.rule }}</div>
-            <div>
-              <div class="sum"><span class="result-pill result-pill--{{ row.result|lower|replace({' ': '-'}) }}">{{ row.result }}</span> {{ row.summary }}</div>
-              {% if row.evidence %}<div class="ev">{% if row.evidence_link %}<a href="{{ row.evidence_link.url }}" target="_blank" rel="noopener">{{ row.evidence_link.text }}</a>{{ row.evidence_link.rest }}{% else %}{{ row.evidence }}{% endif %}</div>{% endif %}
-            </div>
-          </div>
-        {% endfor %}
-      </details>
+    {% if can_edit and note_el %}
+      <div class="override-box">{{ note_el }}</div>
     {% endif %}
-    {% if can_edit and block.target and form.add_finding[block.target] is defined %}
-      <details class="add-finding">
-        <summary>{{ '+ Add finding'|t }}</summary>
-        {{ attribute(form.add_finding, block.target) }}
-      </details>
+    {% if block.summary %}<div class="arv-rating__summary">{{ block.summary }}</div>{% endif %}
+    {% if not (can_edit and note_el) and block.note %}
+      <div class="override-note">{{ block.note }}</div>
     {% endif %}
   </div>
 {% endmacro %}
@@ -459,33 +410,146 @@
           {{ '@new new'|t({'@new': page.round_delta.new}) }} · {{ '@resolved resolved'|t({'@resolved': page.round_delta.resolved}) }}{% if page.model_changed %} · {{ 'different model'|t }}{% endif %}
         </div>
       {% endif %}
-      {% for app in page.apps %}
-        <div class="app-section" id="app-{{ app.app_id }}">
-          {% if page.apps|length > 1 %}
-            <h2 class="app-name">{{ app.name }} <span class="muted">({{ app.app_id }})</span></h2>
-          {% endif %}
-          <div class="vbody">
-            {% for key, block in app.blocks %}
-              {% set level_el = can_edit and key in ['portability', 'documentation'] ? attribute(attribute(form.level, app.pid), key) : null %}
-              {% set note_el = can_edit and key in ['portability', 'documentation'] ? attribute(attribute(form.level_note, app.pid), key) : null %}
-              {# Repo gates ride on the first app's Structure block: they are
-                 the repo's, so they are shown once however many apps there
-                 are. #}
-              {{ m.catblock(block, form, can_edit, page, level_el, note_el, app.app_id, (loop.parent.loop.first and key == 'structure') ? page.repo_gate_block : null, key == 'structure' ? {'el': (can_edit or form['#updating']) ? attribute(form.duplicate, app.pid) : null, 'data': app.duplicate, 'catalog': app.catalog} : null) }}
-            {% endfor %}
+      {# The worklists (ReviewWorklist): the repo's first, then one per app.
+         Blocking items lead and never fold; passes, dismissals and the add
+         form fold below. #}
+      {% for list in form['#worklist'] ?? [] %}
+        {% set app = list.key == 'repo' ? null : page.apps|filter(a => a.pid ~ '' == list.pid ~ '')|first %}
+        <section class="arv-worklist app-section" id="worklist-{{ list.key }}">
+          <span class="arv-anchor" id="{{ list.anchor }}"></span>
+          <h2 class="app-name">{{ app ? app.name : 'Repository'|t }}</h2>
+          <div class="arv-ratings">
+            {% if app %}
+              {% for axis in ['portability', 'documentation'] %}
+                {{ m.rating(app.blocks[axis], page.level_labels[axis] ?? {}, can_edit ? attribute(attribute(form.level, app.pid), axis) : null, can_edit ? attribute(attribute(form.level_note, app.pid), axis) : null, can_edit) }}
+              {% endfor %}
+            {% else %}
+              {{ m.rating(page.maintenance, page.level_labels.maintenance ?? {}, can_edit ? form.maint_level : null, can_edit ? form.maint_level_note : null, can_edit) }}
+            {% endif %}
           </div>
-        </div>
-      {% endfor %}
+          {# The reviewer's duplicate check for this app (A4). Required to
+             accept the app. One the reviewer has to look at is a worklist
+             item instead (ReviewWorklist::duplicateIsItem()). No whitespace
+             when there is nothing in it, so :empty hides it. #}
+          {% if app and not app.duplicate.in_worklist %}
+            {% set dup = app.duplicate %}
+            {% set control = (can_edit or form['#updating']) and form.duplicate[app.pid] is defined ? attribute(form.duplicate, app.pid) : null %}
+            <div class="duplicate-check-block" id="duplicate-{{ app.pid }}">
+              {%- if dup.outcome -%}
+                <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ dup.label }}
+                  {%- if control %} <button type="button" class="btn ghost duplicate-change" aria-expanded="true" aria-controls="duplicate-fields-{{ app.pid }}" hidden>{{ 'Change'|t }}</button>{% endif -%}
+                </div>
+                {% if dup.note %}<div class="finding-note"><span class="finding-note-label">{{ 'Rationale'|t }}</span> {{ dup.note }}</div>{% endif %}
+                {#- What the check found stays with the outcome, so the apps
+                    compared are still a click away. A one-click Confirm's
+                    note already says it, so it isn't repeated. -#}
+                {%- if dup.basis.mode != 'legacy' and dup.note != 'Confirmed: ' ~ dup.basis.line -%}
+                  <div class="duplicate-basis">{{ m.duplicate_line(dup.basis.segments, page.catalog_url) }}</div>
+                  {{ m.duplicate_apps(dup.basis.apps) }}
+                {%- endif -%}
+                {%- if control -%}
+                  {{ m.duplicate_fields(control, app.pid, true) }}
+                {%- endif -%}
+              {%- elseif dup.basis.mode == 'legacy' -%}
+                {%- if control -%}{{ control }}{%- endif -%}
+              {%- else -%}
+                <div class="duplicate-line"><span class="duplicate-label">{{ 'Duplicate check:'|t }}</span> {{ m.duplicate_line(dup.basis.segments, page.catalog_url) }}</div>
+                {{ m.duplicate_apps(dup.basis.apps) }}
+                {%- if control -%}
+                  <div class="duplicate-actions">
+                    {{ control.confirm }}
+                    <button type="button" class="btn ghost duplicate-change" aria-expanded="true" aria-controls="duplicate-fields-{{ app.pid }}" hidden>{{ 'Change'|t }}</button>
+                  </div>
+                  {{ m.duplicate_fields(control, app.pid, true) }}
+                {%- endif -%}
+              {%- endif -%}
+            </div>
+          {% endif %}
 
-      <div class="app-section app-section--repo" id="maintenance">
-        {% if page.apps|length > 1 %}<h2 class="app-name">{{ 'Repository'|t }}</h2>{% endif %}
-        <div class="vbody">
-          {% for key, block in page.repo_blocks %}
-            {{ m.catblock(block, form, can_edit, page, null, null) }}
+          {% set blocking = list.items|filter(i => i.blocks) %}
+          {% if blocking is not empty %}
+            <h3 class="arv-worklist__heading">{{ 'Blocking'|t }}</h3>
+            {% for i, item in list.items %}
+              {% if item.blocks %}
+                {{ m.section_anchors(list, i) }}
+                {{ m.worklist_item(item, form, can_edit, page.conclusion_labels) }}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          <h3 class="arv-worklist__heading">{{ 'Findings'|t }}</h3>
+          {% if list.items|length == blocking|length %}
+            <p class="arv-worklist__none">{{ blocking is empty ? 'No findings'|t : 'No other findings'|t }}</p>
+          {% endif %}
+          {% for i, item in list.items %}
+            {% if not item.blocks %}
+              {{ m.section_anchors(list, i) }}
+              {{ m.worklist_item(item, form, can_edit, page.conclusion_labels) }}
+            {% endif %}
           {% endfor %}
-          {{ m.catblock(page.maintenance, form, can_edit, page, can_edit ? form.maint_level : null, can_edit ? form.maint_level_note : null) }}
-        </div>
-      </div>
+
+          {{ m.section_anchors(list, null) }}
+          {% if list.passed is not empty %}
+            <details class="checked-rows" id="fold-{{ list.key }}-passed">
+              <summary>{{ 'Passed checks'|t }}</summary>
+              {% for entry in list.passed %}
+                <details class="arv-passed">
+                  <summary>{{ entry.line }}</summary>
+                  {% for row in entry.rows %}
+                    {{ m.check_row(row, can_edit) }}
+                  {% endfor %}
+                </details>
+              {% endfor %}
+            </details>
+          {% endif %}
+          {# What the tool recorded for the repo gates, failures included, and
+             an older review's catalog checks text. The repo's, so its list
+             carries it. #}
+          {% set gates = not app ? page.repo_gate_block : null %}
+          {% if gates and (gates.rows or gates.catalog_html or gates.catalog_read) %}
+            <details class="checked-rows" id="fold-repo-evidence">
+              <summary>{{ 'Tool evidence'|t }}</summary>
+              {% if gates.rows %}
+                <ul class="gate-rows">
+                  {% for row in gates.rows %}
+                    <li>
+                      <span class="gate-result gate-result--{{ row.result|lower }}">{{ row.result }}</span>
+                      {% if row.rule %}<span class="rule">{{ row.rule }}</span>{% endif %}
+                      <span class="gate-evidence">{{ row.evidence_html }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+              {% if gates.catalog_html or gates.catalog_read %}
+                <div class="catalog-checks">
+                  <div class="catalog-checks-title">{{ 'Catalog checks'|t }}</div>
+                  {% if gates.catalog_read %}<div class="catalog-read">{{ gates.catalog_read }}</div>{% endif %}
+                  {{ gates.catalog_html }}
+                </div>
+              {% endif %}
+            </details>
+          {% endif %}
+          {# The tool's findings the reviewer dismissed (A1): out of the list,
+             here with the reason. The public summary leaves them out. #}
+          {% if list.dismissed is not empty %}
+            <details class="dismissed-rows" id="fold-{{ list.key }}-dismissed">
+              <summary>{{ 'Dismissed by the reviewer (@n)'|t({'@n': list.dismissed|length}) }}</summary>
+              {% for finding in list.dismissed %}
+                {{ m.finding_row(finding, form, can_edit, null, page.conclusion_labels) }}
+              {% endfor %}
+            </details>
+          {% endif %}
+          {% set confirm = form['#arv_confirm'] ?? null %}
+          {% if confirm and confirm.list and confirm.list == list.key %}
+            <p class="arv-saved" aria-hidden="true">{{ confirm.text }}</p>
+          {% endif %}
+          {% if can_edit and form.add_finding[list.key] is defined %}
+            <details class="add-finding" id="fold-{{ list.key }}-add">
+              <summary>{{ '+ Add finding'|t }}</summary>
+              {{ attribute(form.add_finding, list.key) }}
+            </details>
+          {% endif %}
+        </section>
+      {% endfor %}
     </div>
 
     <aside class="sidebar">

@@ -62,7 +62,7 @@ services:
 
   ood_software.review_seeder:
     class: Drupal\ood_software\Service\AppverseReviewSeeder
-    arguments: ['@entity_type.manager', '@file.repository', '@file_system', '@logger.factory']
+    arguments: ['@entity_type.manager', '@file.repository', '@file_system', '@logger.factory', '@ood_software.repo_member_apps']
 
   ood_software.repo_notifier:
     class: Drupal\ood_software\Service\RepoNotificationService

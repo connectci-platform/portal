@@ -1,10 +1,23 @@
+// Test databases sanitize everyone's name to the same value, so check that
+// every mentor is listed by a non-empty name, not for a particular person. A
+// blank name is how a missing stored real name shows. A name links to the
+// profile only when the viewer may open it, so at least one link is required.
+const mentorsAreNamed = () => {
+  cy.get('td.views-field-name-1')
+    .should('have.length.greaterThan', 0)
+    .each(($cell) => {
+      expect($cell.text().trim(), 'mentor name').not.to.equal('');
+    });
+  cy.get('td.views-field-name-1 a[href^="/user/"]').should('have.length.greaterThan', 0);
+};
+
 describe("test individual tags page", () => {
 
   it("Verify non-admin content for tag 'bioinformatics'", () => {
     cy.visit('/tags/bioinformatics');
     cy.contains('bioinformatics');
     cy.contains('Mentors and Regional Facilitators');
-    cy.contains('Brett Milash');
+    mentorsAreNamed();
     cy.contains('Campus Champions');
     cy.contains('Topics from Ask.CI');
     cy.contains('There are no Blog Entries associated with this topic.');
@@ -87,7 +100,7 @@ describe("test individual tags page", () => {
     cy.contains('big-data');
     cy.contains('Knowledge Base Resources');
     cy.contains('Mentors and Regional Facilitators');
-    cy.contains('Tony Elam');
+    mentorsAreNamed();
     cy.contains('Kentucky');
     cy.contains('Skills');
     cy.contains('Interest');

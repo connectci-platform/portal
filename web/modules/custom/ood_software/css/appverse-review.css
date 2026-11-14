@@ -415,90 +415,9 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
-.arv-contributor__findings {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--gray-300);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.arv-contributor__finding {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-  padding: 16px 20px;
-}
-.arv-contributor__finding + .arv-contributor__finding {
-  border-top: 1px solid var(--gray-150);
-}
-.arv-contributor__sev {
-  justify-self: start;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: .8rem;
-  font-weight: 700;
-}
-.arv-contributor__sev--critical,
-.arv-contributor__sev--high { background: var(--tint-fail); }
-.arv-contributor__sev--medium { background: var(--tint-medium); }
-.arv-contributor__sev--low { background: var(--tint-warn); }
-.arv-contributor__finding-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.arv-contributor__summary {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.arv-contributor__details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  font-size: .88rem;
-  color: var(--ink);
-}
-.arv-contributor__details code {
-  font-size: .82rem;
-  overflow-wrap: anywhere;
-  background: none;
-  color: inherit;
-  padding: 0;
-}
-.arv-contributor__note {
-  margin: 0;
-  font-size: .94rem;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-.arv-contributor__folds {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.arv-contributor__folds details {
-  padding: 6px 0;
-}
-.arv-contributor__folds summary {
-  cursor: pointer;
-  font-weight: 600;
-  min-height: 32px;
-}
-.arv-contributor__folds ul {
-  margin: 8px 0 0;
-  padding-left: 1.2em;
-}
-.arv-contributor__passed .arv-contributor__details {
-  display: inline;
-  margin-left: 4px;
-}
-.arv-contributor__passed .arv-contributor__details::before {
-  content: "· ";
+/* The owner's band sits between the summary's header and its report. */
+.arv-owner-band {
+  margin: 4px 0 24px;
 }
 @media (max-width: 36rem) {
   .arv-contributor {
@@ -511,11 +430,6 @@
     padding: 16px;
   }
   .arv-contributor__response {
-    padding: 14px 16px;
-  }
-  .arv-contributor__finding {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
     padding: 14px 16px;
   }
   .arv-contributor__resubmit {
@@ -687,7 +601,7 @@
 /* The corner rule: rounded only where the fill is soft grey. Anything with
    a stroke or a solid dark fill is square — cards, inputs, selects,
    textareas, buttons, the black bars (appverse-planning#53). */
-.arv-page .catblock,
+.arv-page .arv-worklist,
 .arv-page .sidebar input[type="text"],
 .arv-page .sidebar select,
 .arv-page .sidebar textarea,
@@ -700,10 +614,7 @@
 /* The grey bar is a soft grey fill, so it rounds with the rest of them. */
 .arv-page .overview-block,
 .arv-page .internal-notes-block,
-.arv-page .rating-badge,
-.arv-page .cat-icon,
-.arv-page .gate,
-.arv-page .gate-passes__count {
+.arv-page .rating-badge {
   border-radius: .25rem;
 }
 
@@ -789,46 +700,6 @@
   font-size: .9em;
 }
 
-/* Category block: rating (optional) + its own findings. */
-.arv-page .catblock {
-  border: 1px solid var(--gray-300);
-  border-radius: 2px;
-  margin-bottom: 14px;
-  overflow: hidden;
-}
-.arv-page .cat-top {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--gray-150);
-}
-.arv-page .cat-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.arv-page .cat-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.arv-page .cat-name {
-  font-weight: 800;
-  font-size: 1.15rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.arv-page .cat-count {
-  font-size: .8rem;
-  color: var(--gray-700);
-}
-.arv-page .cat-summary {
-  font-size: .86rem;
-  color: var(--gray-700);
-  margin-top: .25rem;
-}
-
 /* The same fill and corner as the grey bar, not a full pill: a rounded
    rectangle reads as part of the page's one shape language
    (appverse-planning#53). */
@@ -878,22 +749,6 @@
 /* Changing a rating is rare, so the icon sits back: smaller than the badge it
    follows and grey rather than ink, coming forward only on hover and focus
    (appverse-planning#54). */
-/* The shield on the Security heading, in the slot the rated blocks use for
-   their badge, and on the same grey pill so it reads as one of them
-   (appverse-planning#53). */
-.arv-page .cat-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--gray-150);
-  border-radius: .25rem;
-  width: 26px;
-  height: 26px;
-  color: var(--gray-700);
-  font-size: .9rem;
-  line-height: 1;
-}
-
 .arv-page .edit-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -932,140 +787,17 @@
   border-left: 3px solid var(--status-amber);
 }
 
-/* Gate pills. */
-.arv-page .gates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-  margin-top: .5rem;
-}
-.arv-page .gate {
-  font-size: .76rem;
-  padding: .1rem .5rem;
-  border-radius: 4px;
-  background: var(--gray-100);
-  color: var(--ink);
-}
-.arv-page .gate b {
-  font-weight: 600;
-}
-/* A gate's result as a 16px circle after its label: the words "pass" and
-   "fail" repeated down a row of chips read as noise, and a mark is quicker
-   to scan. Colour is never the only cue, so each carries a title and
-   visually-hidden text (appverse-planning#53). */
-.arv-page .gate-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  margin-left: .2rem;
-  font-size: .62rem;
-  line-height: 1;
-  color: #fff;
-  vertical-align: text-bottom;
-}
-/* On a tinted chip the mark is just the glyph in ink: the chip's tint
-   already says pass or fail. */
-.arv-page .gate-mark--pass,
-.arv-page .gate-mark--fail {
-  width: auto;
-  height: auto;
-  background: transparent;
-  color: var(--ink);
-  font-size: .72rem;
-  font-weight: 700;
-}
-.arv-page .gate-word {
-  font-weight: 600;
-}
-/* Status is the chip's tint under ink text, as on the contributor page. */
-.arv-page .gate--pass { background: var(--tint-pass); }
-.arv-page .gate--fail { background: var(--tint-fail); }
-.arv-page .gate--warn { background: var(--tint-warn); }
-.arv-page .gate--pass b,
-.arv-page .gate--fail b,
-.arv-page .gate--warn b {
-  color: var(--ink);
-}
-.arv-page .gate--not_checked b {
-  color: var(--gray-700);
-}
-
-/* The passes, folded into a count (appverse-planning#54). Closed it is one
-   quiet line; open it lists the gates that passed. A failure never goes in
-   here: it renders as its own pill beside this. */
-/* Repo beside Files. Each group is its own block, so stacked they took two
-   full rows for two short lines and made the Structure card taller than its
-   content. Aligned to the top so an open group grows downward without
-   dragging the other with it (appverse-planning#53). */
-.arv-page .gate-groups {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: .35rem .75rem;
-  margin-top: .5rem;
-}
-/* Inside the row each group is already laid out by .gates; its top margin
-   would double the row's own gap. */
-.arv-page .gate-groups > .gates {
-  margin-top: 0;
-}
-
-.arv-page .gate-passes {
-  display: inline-block;
-}
-.arv-page .gate-passes__count {
-  font-size: .76rem;
-  color: var(--ink);
-  cursor: pointer;
-  list-style: none;
-  padding: .1rem .5rem;
-  border-radius: 4px;
-  background: var(--gray-100);
-}
-/* Only a group with nothing failing reads as passed. */
-.arv-page .gate-passes__count--all {
-  background: var(--tint-pass);
-}
-/* Safari draws its own disclosure triangle through ::-webkit-details-marker
-   rather than list-style. */
-.arv-page .gate-passes__count::-webkit-details-marker {
-  display: none;
-}
-/* One chevron everywhere: down when closed, rotated up when open. It
-   replaced a solid right-pointing triangle here and another in the severity
-   heads (appverse-planning#53). */
-.arv-page .gate-passes__count::before {
-  content: '⌄';
-  display: inline-block;
-  margin-right: .35rem;
-  line-height: 1;
-  transform: translateY(-.15em);
-  transition: transform .15s;
-}
-.arv-page .gate-passes[open] .gate-passes__count::before {
-  transform: translateY(.1em) rotate(180deg);
-}
-.arv-page .gate-passes__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .3rem;
-  margin-top: .3rem;
-}
-
 /* The rating: a badge until the edit icon is clicked (appverse-planning#54).
    Both controls are in the markup and the dropdown is what shows by default,
    so without JS the page still edits; .level-collapsed, which the JS adds, is
    what swaps them. */
-.arv-page .catblock .level-readonly {
+.arv-page .arv-rating .level-readonly {
   display: none;
 }
-.arv-page .catblock.level-collapsed .level-readonly {
+.arv-page .arv-rating.level-collapsed .level-readonly {
   display: inline;
 }
-.arv-page .catblock.level-collapsed .level-control {
+.arv-page .arv-rating.level-collapsed .level-control {
   display: none;
 }
 
@@ -1192,39 +924,6 @@
   margin: 3px 0;
 }
 
-/* Severity groups. */
-.arv-page .sev-group {
-  border-top: 1px solid var(--gray-150);
-}
-.arv-page .sev-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 14px;
-  background: var(--white);
-  cursor: pointer;
-  font-size: .78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  user-select: none;
-}
-.arv-page .sev-head .n {
-  color: var(--gray-700);
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.arv-page .sev-head .car {
-  margin-left: auto;
-  color: var(--gray-700);
-  line-height: 1;
-  transition: transform .15s;
-}
-.arv-page .sev-head--open .car {
-  transform: rotate(180deg);
-}
-
 /* Findings. */
 .arv-page .finding {
   padding: 10px 14px;
@@ -1320,7 +1019,176 @@
   margin-bottom: 4px;
 }
 
-/* Checked rows (PASS / NOT CHECKED) under a block's findings. */
+/* A worklist (ReviewWorklist): one bordered box per list, the repo's first,
+   with the ratings line, the blocking items, the rest, then the folds. */
+.arv-page .arv-worklist {
+  border: 1px solid var(--gray-300);
+  margin-bottom: 14px;
+}
+.arv-page .arv-worklist > h2.app-name {
+  margin: 0;
+  padding: 12px 14px 0;
+}
+/* An empty target for a deep link; the sticky header must not cover what
+   follows it. */
+.arv-page .arv-anchor {
+  display: block;
+  scroll-margin-top: 6rem;
+}
+.arv-page .arv-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  padding: 12px 14px;
+}
+.arv-page .arv-rating {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.arv-page .arv-rating__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.arv-page .arv-rating__name {
+  font-weight: 700;
+  font-size: .9rem;
+}
+.arv-page .arv-rating__summary {
+  font-size: .86rem;
+  color: var(--gray-700);
+  margin-top: .25rem;
+}
+.arv-page .arv-worklist__heading {
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink);
+  margin: 0;
+  padding: 10px 14px 6px;
+  border-top: 1px solid var(--gray-150);
+}
+.arv-page .arv-worklist__none {
+  font-size: .86rem;
+  color: var(--gray-700);
+  margin: 0;
+  padding: 0 14px 10px;
+}
+/* The section and, for a blocking item, the floor it sets. */
+.arv-page .arv-item-details {
+  font-size: .72rem;
+  color: var(--gray-700);
+  margin-top: 2px;
+}
+.arv-page .arv-floor {
+  display: inline-block;
+  background: var(--tint-fail);
+  color: var(--ink);
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: 3px;
+  cursor: help;
+}
+/* A gate or catalog check in the list: the row, then its details under the
+   text column. */
+.arv-page .finding--check .arv-check-details {
+  margin-left: 80px;
+}
+.arv-page .finding--reference .sum a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.arv-page .arv-add-here {
+  font-family: inherit;
+  font-size: .72rem;
+  color: var(--blue);
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.arv-page .arv-add-here:hover,
+.arv-page .arv-add-here:focus-visible {
+  text-decoration: underline;
+}
+.arv-page .arv-add-here[hidden] {
+  display: none;
+}
+/* One line per section inside Passed checks, each opening to its rows. */
+.arv-page .arv-passed {
+  padding: 4px 0 0 1rem;
+}
+.arv-page .arv-passed > summary {
+  font-size: .78rem;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.arv-page .duplicate-check-block:empty {
+  display: none;
+}
+/* The duplicate check's line: what it compared against and found, then the
+   apps to compare, Confirm and Change. */
+.arv-page .duplicate-line {
+  font-size: .86rem;
+  color: var(--ink);
+}
+.arv-page .duplicate-label {
+  font-weight: 700;
+}
+/* What the check found, under a recorded outcome. */
+.arv-page .duplicate-basis {
+  margin-top: 4px;
+  font-size: .78rem;
+  color: var(--gray-700);
+}
+.arv-page .duplicate-line a,
+.arv-page .duplicate-basis a,
+.arv-page .duplicate-apps a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.arv-page .duplicate-apps {
+  margin: 4px 0 0;
+  padding-left: 1.2rem;
+  font-size: .86rem;
+}
+.arv-page .duplicate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.arv-page .duplicate-line .duplicate-change {
+  margin-left: 8px;
+}
+.arv-page .duplicate-fields {
+  margin-top: 10px;
+}
+.arv-page .duplicate-fields.collapsed {
+  display: none;
+}
+@media (max-width: 600px) {
+  .arv-page .finding--check .arv-check-details {
+    margin-left: 0;
+  }
+  /* At phone width the actions drop under the text rather than squeezing
+     it: rule, then text, then Edit and Add a finding here. */
+  .arv-page .finding > .frow {
+    grid-template-columns: 56px 1fr;
+  }
+  .arv-page .frow-actions {
+    grid-column: 2 / -1;
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+}
+
+/* Passed checks (PASS / NOT CHECKED rows, gate and catalog passes) under a
+   list's findings. */
 .arv-page .checked-rows {
   border-top: 1px solid var(--gray-150);
   padding: 8px 14px;
@@ -1334,8 +1202,7 @@
 .arv-page .checked-rows > summary::-webkit-details-marker {
   display: none;
 }
-/* The same chevron as the gate groups and severity heads: this line sits in
-   the same card as them and was still showing the browser's native triangle
+/* One chevron for the folds: down when closed, rotated up when open
    (appverse-planning#53). */
 .arv-page .checked-rows > summary::before {
   content: '\2304';
@@ -1352,7 +1219,7 @@
   padding: 6px 0;
   border-top: 1px solid var(--gray-150);
 }
-/* The reviewer's duplicate check, under Catalog checks (A4). */
+/* The reviewer's duplicate check, under the app's ratings (A4). */
 .arv-page .duplicate-check-block {
   border-top: 1px solid var(--gray-150);
   padding: 10px 14px;
@@ -1415,6 +1282,29 @@
   padding: .3rem .55rem;
   background: #fff8ec;
   border-left: 3px solid var(--status-amber);
+}
+/* A refused save's error, beside the field it names: a fail tint. */
+.arv-page .arv-field-error {
+  margin: .25rem 0 .5rem;
+  padding: .1rem .5rem;
+  border-radius: 3px;
+  background: var(--tint-fail);
+  color: var(--ink);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+/* What an AJAX save just did, in the row or the list: a pass tint, since it
+   reports a save that went through. */
+.arv-page .arv-saved {
+  display: inline-block;
+  margin: 0 0 .3rem;
+  padding: .1rem .5rem;
+  border-radius: 3px;
+  background: var(--tint-pass);
+  color: var(--ink);
+  font-size: .78rem;
+  font-weight: 600;
 }
 .arv-page .finding-note {
   font-size: .82rem;
@@ -1581,8 +1471,16 @@
 .arv-page .add-finding .finding-fields input[type=submit] {
   justify-self: start;
 }
+/* Section, rule, severity on one row; the rule names are the long ones. */
+.arv-page .add-finding .finding-fields {
+  grid-template-columns: 10rem minmax(0, 1fr) 8rem;
+}
+.arv-page .add-finding .finding-fields > [class*="-rule-other"] {
+  grid-column: 1 / -1;
+}
 @media (max-width: 600px) {
-  .arv-page .finding-fields {
+  .arv-page .finding-fields,
+  .arv-page .add-finding .finding-fields {
     grid-template-columns: 1fr;
   }
 }
@@ -1807,23 +1705,22 @@
 .arv-page .summary-rows {
   margin: 0;
 }
+/* Each category is a heading over its rating and findings (D8-3091): a label
+   column took a fifth of the width from every finding under it. */
 .arv-page .summary-row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
   border-top: 1px solid var(--gray-150);
 }
 .arv-page .summary-row:first-child {
   border-top: 0;
 }
-.arv-page .summary-row dt {
-  font-weight: 700;
-  font-size: .9rem;
-}
-.arv-page .summary-row dd {
+.arv-page .summary-row-title {
   margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
 }
 .arv-page .summary-row-head {
   display: flex;
@@ -1851,10 +1748,20 @@
   color: var(--gray-500);
   font-weight: 400;
 }
+/* The rule id sits above the finding rather than in a column beside it. */
 .arv-page .summary-findings .frow {
-  grid-template-columns: 70px 1fr;
+  display: block;
   padding: 6px 0;
   border-top: 1px solid var(--gray-150);
+}
+.arv-page .summary-findings .frow .rule {
+  padding-top: 0;
+}
+.arv-page .summary-row .finding-note {
+  margin-top: 4px;
+  font-size: .86rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 .arv-page .summary-line {
   font-size: .86rem;
@@ -1865,13 +1772,6 @@
   color: var(--gray-500);
   margin-top: 18px;
 }
-@media (max-width: 600px) {
-  .arv-page .summary-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
-
 /* JS collapse (sev groups, finding notes, override boxes). */
 .arv-page .collapsed {
   display: none;
@@ -1895,10 +1795,6 @@
   }
   .arv-page .layout {
     grid-template-columns: 1fr;
-  }
-  /* Print every finding, not just the groups left open on screen. */
-  .arv-page .sev-body.collapsed {
-    display: block;
   }
 }
 
