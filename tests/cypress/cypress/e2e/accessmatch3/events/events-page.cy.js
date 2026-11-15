@@ -10,6 +10,8 @@
 
 */
 
+import { anonEventDate } from '../../../support/event-dates';
+
 const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Unauthenticated user tests the Events Page', () => {
   it('Should test the Events page for unauthenticated user', () => {
@@ -42,8 +44,8 @@ describe('Unauthenticated user tests the Events Page', () => {
         cy.get('.views-field-date-1')
           .find('.text-dark-teal')
           .within(() => {
-            cy.get('div.text-4xl').should('have.text', '15');
-            cy.get('div.text-xl').eq(1).should('have.text', 'Nov');
+            cy.get('div.text-4xl').should('have.text', anonEventDate().day);
+            cy.get('div.text-xl').eq(1).should('have.text', anonEventDate().month);
           });
       });
 
@@ -70,8 +72,8 @@ describe('Unauthenticated user tests the Events Page', () => {
         cy.get('.views-field-date-1')
           .find('.text-dark-teal')
           .within(() => {
-            cy.get('div.text-4xl').should('have.text', '15');
-            cy.get('div.text-xl').eq(1).should('have.text', 'Nov');
+            cy.get('div.text-4xl').should('have.text', anonEventDate().day);
+            cy.get('div.text-xl').eq(1).should('have.text', anonEventDate().month);
           });
       });
     
@@ -83,9 +85,7 @@ describe('Unauthenticated user tests the Events Page', () => {
 
 
     // Event Date
-    cy.get('.field--name-date').contains(
-      '11/15/26'
-    )
+    cy.get('.field--name-date').contains(anonEventDate().short)
 
     // Event Location
     cy.get('.field--name-location').contains('Online')
