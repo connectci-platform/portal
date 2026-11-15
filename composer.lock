@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6f7986e2a8888f1f948750f93b9c9238",
+    "content-hash": "505f9d40ab2cdc9d4771ba9215cd6b51",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -474,17 +474,18 @@
         },
         {
             "name": "connectci/access",
-            "version": "dev-d8-2975",
+            "version": "3.0.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "b07dd3a4ece32cd38183dce82de4cba4fde8217a"
+                "reference": "f55b9735cefceb9eaa3ddd325a8584785ba9b9e5"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
                 "gioni06/gpt3-tokenizer": "^1.2",
                 "openai-php/client": "^0.10"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0+"
@@ -500,7 +501,7 @@
                 "issues": "https://github.com/connectci-platform/access/issues",
                 "source": "https://github.com/connectci-platform/access"
             },
-            "time": "2026-11-12T20:19:40+00:00"
+            "time": "2026-11-15T16:03:21+00:00"
         },
         {
             "name": "connectci/asp-theme",
@@ -556,11 +557,11 @@
         },
         {
             "name": "connectci/operations_cider",
-            "version": "dev-d8-2975",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "b3a7992eedc83cf8365642372e26aa85a109753d"
+                "reference": "95725ca296b499e013580c641d8c76fc9ccf3e48"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -569,6 +570,7 @@
             "replace": {
                 "access/operations_cider": "self.version"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "Apache License, Version 2.0"
@@ -588,7 +590,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-11-12T20:18:53+00:00"
+            "time": "2026-11-15T16:03:47+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -19085,12 +19087,13 @@
         },
         {
             "name": "connectci/amp_dev",
-            "version": "dev-d8-2975",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "bcfa9a89beb03d1885dc2a830de46fa0931b73a1"
+                "reference": "ca558da57f0f733ce1cf8944bd5e4ac90fb216ce"
             },
+            "default-branch": true,
             "type": "drupal-custom-module",
             "license": [
                 "GPL-2.0-or-later"
@@ -19100,7 +19103,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-11-12T20:14:58+00:00"
+            "time": "2026-11-15T21:34:21+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
