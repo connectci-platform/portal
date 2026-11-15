@@ -121,12 +121,22 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   protected string $linkSha = '';
 
   /**
+   * Whether buildPage() reads the tool's report alone (D8-3091).
+   *
+   * Set for the repo owner before the decision is sent: the reviewer's work
+   * in progress (changed severities, rewording, dismissals, added findings,
+   * ratings, conclusions, the assessment) is theirs until then.
+   */
+  protected bool $toolOnly = FALSE;
+
+  /**
    * The view a viewer gets.
    *
    * Reviewers get the editable page, or the public summary when they ask for
-   * it (?view=public) to see what visitors see. The repo's owner gets the full
-   * page read-only, including the response written to them. Everyone else gets
-   * the public summary: no evidence, no response, no internal notes.
+   * it (?view=public) to see what visitors see. The repo's owner gets the
+   * public summary with a band of their own above it: the decision, the
+   * response written to them and Re-submit (D8-3091). Everyone else gets the
+   * public summary: no response, no internal notes.
    */
   public static function viewModeFor(bool $isReviewer, bool $isContributor, ?string $requested): string {
     if ($isReviewer) {
@@ -211,6 +221,8 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     $mode = self::viewModeFor($isReviewer, $isContributor, $this->getRequest()->query->get('view'));
     $reviewerView = $mode === self::MODE_EDIT;
 
+    // Until the decision is sent, the owner's page is the tool's report.
+    $this->toolOnly = $mode === self::MODE_CONTRIBUTOR && ReviewDecisionApplier::sent($node) === NULL;
     // The duplicate check is the reviewer's alone.
     $page = $this->buildPage($node, $reviewerView);
     // Once the decision is sent the review is a record of it: the reviewer
@@ -222,8 +234,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     $updating = $reviewerView && $page['decision']['sent'] && $this->getRequest()->query->get('update')
       && $page['decision']['update_blocker'] === NULL;
     $form['#theme'] = match ($mode) {
-      self::MODE_PUBLIC => 'appverse_review_summary',
-      self::MODE_CONTRIBUTOR => 'appverse_review_contributor',
+      self::MODE_PUBLIC, self::MODE_CONTRIBUTOR => 'appverse_review_summary',
       default => 'appverse_review_form',
     };
     $form['#attached']['library'][] = 'ood_software/appverse_review';
@@ -257,6 +268,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
           $contributorCache = TRUE;
         }
         $form['#contributor_view'] = $view;
+        $form['#page'] = ContributorReviewView::withGateRows($page);
       }
       $form['#progress'] = [
         '#theme' => 'appverse_progress',
@@ -601,6 +613,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
           '#description' => match (TRUE) {
             !empty($app['catalog']['backed']) => $this->t('Required for a different approach or a duplicate: which apps you compared, and how this one differs or which one it duplicates.'),
             $basis['mode'] === 'compare' => $this->t('Required: which apps you compared, and how this one differs or which one it duplicates.'),
+            $basis['mode'] === 'suggested' => $this->t("Required: the software is the review tool's suggestion, so say whether it is right and which apps you compared. If it is wrong, assign the right Software entry on the app."),
             default => $this->t('Required: no Software entry matched, so say which apps you compared by name, and how this one differs or which one it duplicates.'),
           },
         ],
@@ -1333,11 +1346,13 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       $toolLevels = json_decode((string) ($verdict->get('field_rvv_indicators_default')->value ?? ''), TRUE) ?: [];
       foreach (self::AXES as $axis => $prefix) {
         $levels[$axis] = [
-          'level' => $verdict->get("field_rvv_{$prefix}_level")->value,
+          // The level field is seeded with the tool's rating and the reviewer
+          // may change it; the tool-only page reads the tool's.
+          'level' => $this->toolOnly ? ($toolLevels[$axis]['level'] ?? NULL) : $verdict->get("field_rvv_{$prefix}_level")->value,
           'tool_level' => $toolLevels[$axis]['level'] ?? NULL,
           'summary' => (string) ($verdict->get("field_rvv_{$prefix}_summary")->value ?? ''),
           'anchor' => (string) ($verdict->get("field_rvv_{$prefix}_anchor")->value ?? ''),
-          'note' => (string) ($verdict->get("field_rvv_{$prefix}_level_note")->value ?? ''),
+          'note' => $this->toolOnly ? '' : (string) ($verdict->get("field_rvv_{$prefix}_level_note")->value ?? ''),
         ];
       }
       $appRef = $verdict->get('field_rvv_app_ref')->entity;
@@ -1345,9 +1360,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
         'app_id' => $verdict->get('field_rvv_app_id')->value ?? 'root',
         'name' => $appRef ? $appRef->label() : ($verdict->get('field_rvv_app_id')->value ?? 'App'),
         'criteria' => json_decode((string) ($verdict->get('field_rvv_criteria')->value ?? '{}'), TRUE) ?: [],
-        'conclusion' => $sent !== NULL ? ($sent['apps'][(string) $verdict->id()] ?? NULL) : $verdict->get('field_rvv_conclusion')->value,
+        'conclusion' => $sent !== NULL ? ($sent['apps'][(string) $verdict->id()] ?? NULL) : ($this->toolOnly ? NULL : $verdict->get('field_rvv_conclusion')->value),
         'levels' => $levels,
-        'findings' => array_map([$this, 'findingArray'], $verdict->get('field_rvv_findings')->referencedEntities()),
+        'findings' => $this->findingArrays($verdict->get('field_rvv_findings')->referencedEntities()),
       ], $previous);
       $app['pid'] = $verdict->id();
       // The app's catalog checks as rows (A4b, schema 1.5); none on a review
@@ -1400,14 +1415,15 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       '@tags' => (int) ($catalogSource['counts']['implementation_tags'] ?? 0),
     ]) : '';
 
+    $maintToolLevel = (json_decode((string) ($node->get('field_arv_indicators_default')->value ?? ''), TRUE) ?: [])['maintenance']['level'] ?? NULL;
     $repoSection = ReviewPageData::buildRepo(
-      array_map([$this, 'findingArray'], $node->get('field_arv_repo_findings')->referencedEntities()),
+      $this->findingArrays($node->get('field_arv_repo_findings')->referencedEntities()),
       [
-        'level' => $node->get('field_arv_maint_level')->value,
-        'tool_level' => (json_decode((string) ($node->get('field_arv_indicators_default')->value ?? ''), TRUE) ?: [])['maintenance']['level'] ?? NULL,
+        'level' => $this->toolOnly ? $maintToolLevel : $node->get('field_arv_maint_level')->value,
+        'tool_level' => $maintToolLevel,
         'summary' => (string) ($node->get('field_arv_maint_summary')->value ?? ''),
         'anchor' => (string) ($node->get('field_arv_maint_anchor')->value ?? ''),
-        'note' => (string) ($node->get('field_arv_maint_level_note')->value ?? ''),
+        'note' => $this->toolOnly ? '' : (string) ($node->get('field_arv_maint_level_note')->value ?? ''),
       ],
       $previous,
     );
@@ -1511,7 +1527,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       ],
       'conclusion_labels' => $this->conclusionOptions(),
       'response' => $sent !== NULL ? $sent['response'] : (string) ($node->get('field_arv_contributor_response')->value ?? ''),
-      'assessment' => (string) ($node->get('field_arv_assessment')->value ?? ''),
+      'assessment' => $this->toolOnly ? '' : (string) ($node->get('field_arv_assessment')->value ?? ''),
       'notes' => $notes,
       'rerun' => $rerun['eligible'] ? [
         'url' => Url::fromRoute('ood_software.review_rerun_confirm', ['node' => $node->id()])->toString(),
@@ -1629,16 +1645,39 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   }
 
   /**
-   * A finding paragraph as the array ReviewPageData works on.
+   * Finding paragraphs as the arrays ReviewPageData works on.
    *
-   * @return array<mixed>
+   * @param \Drupal\paragraphs\ParagraphInterface[] $paragraphs
+   *   The findings.
+   *
+   * @return array<int, array<string, mixed>>
+   *   The findings, as findingArray() builds them.
+   */
+  protected function findingArrays(array $paragraphs): array {
+    $findings = array_map([$this, 'findingArray'], $paragraphs);
+    // The tool-only page leaves out the findings a reviewer added.
+    return $this->toolOnly
+      ? array_values(array_filter($findings, static fn (array $f): bool => $f['source'] !== 'reviewer'))
+      : $findings;
+  }
+
+  /**
+   * One finding as the page reads it.
+   *
+   * On the tool-only page (see $toolOnly) a finding is as the tool reported
+   * it: its severity and wording, not dismissed, and with no note.
+   *
+   * @return array<string, mixed>
+   *   The finding.
    */
   protected function findingArray(ParagraphInterface $p): array {
     $source = $p->hasField('field_rvf_source') ? (string) ($p->get('field_rvf_source')->value ?? '') : '';
     $isReviewer = $source === 'reviewer';
     $author = $isReviewer ? $p->get('field_rvf_author')->entity : NULL;
     $toolSeverity = (string) ($p->get('field_rvf_severity')->value ?? '');
-    $change = FindingOverride::stored($p);
+    $change = $this->toolOnly
+      ? ['severity' => NULL, 'dismissed' => FALSE, 'summary' => NULL, 'evidence' => NULL]
+      : FindingOverride::stored($p);
     $changedBy = $p->hasField('field_rvf_override_by') ? $p->get('field_rvf_override_by')->entity : NULL;
     return [
       // Findings seeded before field_rvf_source existed are automated.
@@ -1681,7 +1720,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       'defect_key' => (string) ($p->get('field_rvf_defect_key')->value ?? ''),
       // unintentional / potentially_malicious on a security finding, else ''.
       'tag' => $p->hasField('field_rvf_tag') ? (string) ($p->get('field_rvf_tag')->value ?? '') : '',
-      'prose' => (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
+      'prose' => $this->toolOnly ? '' : (string) ($p->get('field_rvf_reviewer_prose')->value ?? ''),
     ];
   }
 
@@ -2571,9 +2610,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     }
     // From the review as it is now, never the cached form's #page.
     $backed = [];
+    $stored = [];
     $lines = [];
     foreach ($this->buildPage($this->node)['apps'] ?? [] as $app) {
       $backed[$app['pid']] = $app['catalog']['backed'] ?? TRUE;
+      $stored[$app['pid']] = (string) ($app['duplicate']['outcome'] ?? '');
       $lines[(string) $app['pid']] = [
         'line' => (string) ($app['duplicate']['basis']['line'] ?? ''),
         'mode' => (string) ($app['duplicate']['basis']['mode'] ?? ''),
@@ -2605,7 +2646,12 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       return FALSE;
     }
     foreach ($form_state->getValue('duplicate') ?? [] as $pid => $input) {
-      if (DuplicateCheck::needsNote((string) ($input['outcome'] ?? ''), (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {
+      $outcome = (string) ($input['outcome'] ?? '');
+      // A "No other app" saved before the check needed a rationale for it
+      // (a suggestion was once clear) stands while it is left unchanged, so
+      // it doesn't block saving the rest of the review.
+      $kept = $outcome === 'none' && $outcome === ($stored[$pid] ?? NULL);
+      if (!$kept && DuplicateCheck::needsNote($outcome, (string) ($input['note'] ?? ''), $backed[$pid] ?? TRUE)) {
         $form_state->setErrorByName('duplicate][' . $pid . '][note', $this->t('Give the rationale for the duplicate check: which apps you compared, and how this one differs or which one it duplicates.'));
       }
     }

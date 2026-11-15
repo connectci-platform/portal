@@ -466,7 +466,7 @@ class ReviewWorklistTest extends UnitTestCase {
    */
   public function testUnsettledDuplicateCheckIsAnItem(): void {
     $apps = [['title' => 'OSC RStudio', 'url' => 'https://example.org/node/1']];
-    foreach (['compare', 'misspelled', 'unknown', 'clear', 'legacy'] as $mode) {
+    foreach (['compare', 'suggested', 'misspelled', 'unknown', 'clear', 'legacy'] as $mode) {
       foreach ([NULL, 'none'] as $outcome) {
         $medium = self::row(['pid' => 2, 'rule' => 'QUA-03', 'severity' => 'medium']);
         $app = self::app(5, 'App A', ['code_quality' => [$medium]]);
@@ -479,7 +479,7 @@ class ReviewWorklistTest extends UnitTestCase {
         $app['duplicate'] = ['outcome' => $outcome, 'basis' => $basis];
         $items = ReviewWorklist::build(self::page([$app]), [])[1]['items'];
         $duplicates = array_values(array_filter($items, static fn (array $i): bool => $i['kind'] === 'duplicate'));
-        $expected = $outcome === NULL && in_array($mode, ['compare', 'misspelled', 'unknown'], TRUE);
+        $expected = $outcome === NULL && in_array($mode, ['compare', 'suggested', 'misspelled', 'unknown'], TRUE);
         $this->assertSame($expected, ReviewWorklist::duplicateIsItem($app), "$mode, " . ($outcome ?? 'nothing stored'));
         if (!$expected) {
           $this->assertSame([], $duplicates, "$mode, " . ($outcome ?? 'nothing stored'));

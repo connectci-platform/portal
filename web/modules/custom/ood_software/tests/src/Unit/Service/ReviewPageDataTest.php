@@ -311,26 +311,53 @@ class ReviewPageDataTest extends UnitTestCase {
   }
 
   /**
-   * The README's software, when the review tool matched it to an entry.
+   * The review tool's suggested software, worded by where it was found.
    *
    * @covers ::duplicateBasis
    */
-  public function testDuplicateBasisReadmeSuggestion(): void {
-    $checks = [
+  public function testDuplicateBasisSuggestion(): void {
+    $checks = static fn (string $source): array => [
       'software' => [
         'status' => 'inferred',
-        'suggested' => ['value' => 'llama.cpp', 'source' => 'readme', 'entry' => 'llama.cpp'],
+        'suggested' => ['value' => 'rstudio', 'source' => $source, 'entry' => 'RStudio'],
       ],
       'suggested_same_software_apps' => [],
     ];
-    $b = ReviewPageData::duplicateBasis(NULL, $checks);
-    $this->assertSame(['clear', 'readme'], [$b['mode'], $b['source']]);
-    $this->assertSame('The README names llama.cpp, which matches the Software entry llama.cpp. No other published app implements it.', $b['line']);
-    $checks['suggested_same_software_apps'] = [
-      ['title' => 'Llama', 'github_url' => 'https://github.com/l/l', 'this_repo' => FALSE],
+    $lines = [
+      'app_path' => "The review tool suggests the Software entry RStudio from the app's folder name.",
+      'repo_name' => 'The review tool suggests the Software entry RStudio from the repository name.',
+      'manifest' => 'The review tool suggests the Software entry RStudio from the manifest.yml name.',
+      'readme' => 'The review tool suggests the Software entry RStudio from the README title.',
+      'something_new' => 'The review tool suggests the Software entry RStudio.',
     ];
-    $b = ReviewPageData::duplicateBasis(NULL, $checks);
-    $this->assertSame(['compare', ['Llama']], [$b['mode'], array_column($b['apps'], 'title')]);
+    foreach ($lines as $source => $line) {
+      $b = ReviewPageData::duplicateBasis(NULL, $checks($source));
+      $this->assertSame(['suggested', 'suggested', 'RStudio'], [$b['mode'], $b['source'], $b['entry']], $source);
+      $this->assertSame($line . ' No other published app implements it.', $b['line'], $source);
+    }
+    // With other apps it is compared like any other software.
+    $withApps = $checks('repo_name');
+    $withApps['suggested_same_software_apps'] = [
+      ['title' => 'OSC RStudio', 'github_url' => 'https://github.com/o/r', 'this_repo' => FALSE],
+    ];
+    $b = ReviewPageData::duplicateBasis(NULL, $withApps);
+    $this->assertSame(
+      ['compare', 'suggested', ['OSC RStudio']],
+      [$b['mode'], $b['source'], array_column($b['apps'], 'title')],
+    );
+    $this->assertSame('The review tool suggests the Software entry RStudio from the repository name. 1 other published app implements it:', $b['line']);
+    // Assigned and declared software still come first, and stay clear.
+    $b = ReviewPageData::duplicateBasis(self::assigned('Jupyter'), $checks('readme'));
+    $this->assertSame(['clear', 'assigned', 'Jupyter'], [$b['mode'], $b['source'], $b['entry']]);
+    $declared = $checks('readme');
+    $declared['software'] = [
+      'status' => 'match',
+      'value' => 'jupyter',
+      'entry' => 'Jupyter',
+      'suggested' => $declared['software']['suggested'],
+    ];
+    $b = ReviewPageData::duplicateBasis(NULL, $declared);
+    $this->assertSame(['clear', 'declared', 'Jupyter'], [$b['mode'], $b['source'], $b['entry']]);
   }
 
   /**
@@ -343,6 +370,12 @@ class ReviewPageDataTest extends UnitTestCase {
     $b = ReviewPageData::duplicateBasis(NULL, $checks);
     $this->assertSame('misspelled', $b['mode']);
     $this->assertNull($b['source']);
+    $this->assertSame('appverse.yml declares Jupiterlab, which has no Software entry. It may mean JupyterLab.', $b['line']);
+    // The declared name still leads when the tool also suggests one from the
+    // repo's names.
+    $checks['software']['suggested'] = ['value' => 'jupyterlab', 'source' => 'repo_name', 'entry' => 'JupyterLab'];
+    $b = ReviewPageData::duplicateBasis(NULL, $checks);
+    $this->assertSame('misspelled', $b['mode']);
     $this->assertSame('appverse.yml declares Jupiterlab, which has no Software entry. It may mean JupyterLab.', $b['line']);
   }
 

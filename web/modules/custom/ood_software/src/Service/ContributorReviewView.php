@@ -3,18 +3,22 @@
 namespace Drupal\ood_software\Service;
 
 /**
- * What a contributor may read of a review (Task 2 of the review page work).
+ * What the repo owner's page of a review adds to the public summary.
  *
- * Takes the "page" array ReviewPageForm::buildPage() builds for the reviewer
- * and returns the part a contributor sees. Before the decision is sent the
- * contributor sees only the tool's own report, with none of the reviewer's
- * work in progress: no overrides, rewording, dismissals, added findings or
- * response. Once it is sent they see the decision as the reviewer left it.
+ * The owner sees the public summary's layout (D8-3091) with a band above it.
+ * build() says what the band shows: the state, the decision and response once
+ * sent, and whether the review is closed. Before the decision is sent,
+ * ReviewPageForm builds the page from the tool's report alone, so none of the
+ * reviewer's work in progress shows: no overrides, rewording, dismissals,
+ * added findings, ratings, conclusions or summary.
+ *
+ * withGateRows() puts back what the summary leaves out but the owner needs: a
+ * failing or warning gate that no listed finding explains.
  */
 final class ContributorReviewView {
 
   /**
-   * The contributor's view of one review.
+   * The band's state for one review.
    *
    * @param array<mixed> $page
    *   As ReviewPageForm::buildPage() returns it.
@@ -22,15 +26,13 @@ final class ContributorReviewView {
    *   Whether the reviewer has sent the decision.
    *
    * @return array<string, mixed>
-   *   state (waiting, precheck or decided), findings, passed, decision,
-   *   response and closed (superseded, withdrawn or NULL).
+   *   state (waiting, precheck or decided), decision, response and closed
+   *   (superseded, withdrawn or NULL).
    */
   public static function build(array $page, bool $sent): array {
     $closed = !empty($page['superseded_by']) ? 'superseded' : (!empty($page['withdrawn']) ? 'withdrawn' : NULL);
     $view = [
       'state' => 'waiting',
-      'findings' => [],
-      'passed' => [],
       'decision' => NULL,
       'response' => '',
       'closed' => $closed,
@@ -44,146 +46,109 @@ final class ContributorReviewView {
       $view['decision'] = $page['decision'] ?? NULL;
       $view['response'] = (string) ($page['response'] ?? '');
     }
-
-    $sections = [];
-    foreach ((array) ($page['apps'] ?? []) as $app) {
-      foreach ((array) ($app['blocks'] ?? []) as $key => $block) {
-        $sections[] = [(string) ($app['name'] ?? ''), (string) $key, (array) $block];
-      }
-    }
-    foreach ((array) ($page['repo_blocks'] ?? []) as $key => $block) {
-      $sections[] = ['', (string) $key, (array) $block];
-    }
-    if (!empty($page['maintenance'])) {
-      $sections[] = ['', 'maintenance', (array) $page['maintenance']];
-    }
-
-    $findings = [];
-    // Failing and warning repo gates sit in the first app's Structure block
-    // on the reviewer page, so they sort there.
-    $repoGateOrder = 0;
-    foreach ($sections as $order => [$app, $key, $block]) {
-      if ($key === 'structure') {
-        $repoGateOrder = $order;
-        break;
-      }
-    }
-    // A repo gate can be explained by a finding in any section (a single
-    // app's root findings sit in its own blocks).
-    $allRows = [];
-    foreach ($sections as [, , $block]) {
-      $allRows = array_merge($allRows, self::blockRows($block, $sent));
-    }
-    foreach (self::gateRows((array) ($page['repo_gate_block']['others'] ?? []), $allRows, $sent) as $row) {
-      $item = self::finding($row, '', 'Structure', $sent);
-      if ($item !== NULL) {
-        $item['_order'] = $repoGateOrder;
-        $findings[] = $item;
-      }
-    }
-
-    foreach ($sections as $order => [$app, $key, $block]) {
-      $title = (string) ($block['title'] ?? $key);
-      // The block's own gates: passes read as passed checks, anything else
-      // as a finding.
-      foreach ((array) ($block['gate_summary']['passes'] ?? []) as $pill) {
-        $view['passed'][] = ['section' => $title, 'label' => (string) ($pill['label'] ?? '')];
-      }
-      $blockRows = self::blockRows($block, $sent);
-      foreach (self::gateRows((array) ($block['gate_summary']['others'] ?? []), $blockRows, $sent) as $row) {
-        $item = self::finding($row, $app, $title, $sent);
-        if ($item !== NULL) {
-          $item['_order'] = $order;
-          $findings[] = $item;
-        }
-      }
-      $checked = (array) ($block['checked']['rows'] ?? []);
-      $dismissed = $sent ? [] : (array) ($block['dismissed'] ?? []);
-      foreach ($blockRows as $row) {
-        $item = self::finding((array) $row, $app, $title, $sent);
-        if ($item !== NULL) {
-          $item['_order'] = $order;
-          $findings[] = $item;
-        }
-      }
-      foreach (array_merge($checked, $dismissed) as $row) {
-        $isPass = strtoupper(trim((string) ($row['result'] ?? ''))) === 'PASS';
-        if ($isPass && ($sent || ($row['source'] ?? '') !== 'reviewer')) {
-          $label = self::toolOrEffective((array) $row, 'summary', $sent);
-          $view['passed'][] = ['section' => $title, 'label' => $label];
-        }
-      }
-    }
-    // Gates the repo passed read as passed checks too.
-    foreach ((array) ($page['repo_gate_block']['passes'] ?? []) as $pill) {
-      $view['passed'][] = ['section' => 'Structure', 'label' => (string) ($pill['label'] ?? '')];
-    }
-
-    // PHP's sort is stable, so equal severity and section keep page order.
-    usort($findings, static function (array $a, array $b): int {
-      return [self::severityRank($a['severity']), $a['_order']]
-        <=> [self::severityRank($b['severity']), $b['_order']];
-    });
-    $view['findings'] = array_map(static function (array $f): array {
-      unset($f['_order']);
-      return $f;
-    }, $findings);
     return $view;
   }
 
   /**
-   * One finding row as the contributor sees it, or NULL if they do not.
+   * The page with each unexplained failing or warning gate as a finding.
    *
-   * @param array<mixed> $row
-   *   A finding row from the page.
-   * @param string $app
-   *   The app's name, empty for a repo-level finding.
-   * @param string $section
-   *   The block's title.
-   * @param bool $sent
-   *   Whether the decision has been sent.
+   * The public summary lists findings only. A gate is the tool's tally of
+   * finding rows, so one whose row is listed needs nothing more; one set by a
+   * check the report does not list would otherwise leave the owner with a
+   * failed check they cannot see. Such a gate joins its block's findings,
+   * worded as a sentence; a repo-wide gate joins the first app's Structure,
+   * or the repository's when there is no app.
    *
-   * @return array<string, mixed>|null
-   *   The finding, or NULL when the contributor does not see it.
+   * @param array<mixed> $page
+   *   As ReviewPageForm::buildPage() returns it, already limited to what the
+   *   owner may see.
+   *
+   * @return array<mixed>
+   *   The page, with gate rows in the blocks' groups.
    */
-  private static function finding(array $row, string $app, string $section, bool $sent): ?array {
-    $reviewer = ($row['source'] ?? '') === 'reviewer';
-    if ($reviewer && !$sent) {
-      return NULL;
+  public static function withGateRows(array $page): array {
+    // A repo gate can be explained by a finding in any section (a single
+    // app's root findings sit in its own blocks).
+    // Dismissed rows are read too: a gate whose row the reviewer dismissed is
+    // accounted for (see gateExplained()).
+    $allRows = [];
+    foreach ((array) ($page['apps'] ?? []) as $app) {
+      foreach ((array) ($app['blocks'] ?? []) as $block) {
+        $allRows = array_merge($allRows, self::blockRows((array) $block, FALSE));
+      }
     }
-    if ($sent && !empty($row['dismissed'])) {
-      return NULL;
+    foreach ((array) ($page['repo_blocks'] ?? []) as $block) {
+      $allRows = array_merge($allRows, self::blockRows((array) $block, FALSE));
     }
-    $severity = $sent ? ($row['severity'] ?? '') : ($row['tool_severity'] ?? $row['severity'] ?? '');
-    $evidence = self::toolOrEffective($row, 'evidence', $sent);
-    // The link is built from the evidence the page shows; a tool original the
-    // reviewer reworded has none.
-    $url = NULL;
-    if ($sent || empty($row['original'])) {
-      foreach ((array) ($row['evidence_parts'] ?? []) as $part) {
-        if (!empty($part['url'])) {
-          $url = (string) $part['url'];
-          break;
+    if (!empty($page['maintenance'])) {
+      $allRows = array_merge($allRows, self::blockRows((array) $page['maintenance'], FALSE));
+    }
+
+    foreach ((array) ($page['apps'] ?? []) as $a => $app) {
+      foreach ((array) ($app['blocks'] ?? []) as $key => $block) {
+        $rows = self::gateRows((array) ($block['gate_summary']['others'] ?? []), self::blockRows((array) $block, FALSE), TRUE);
+        if ($rows !== []) {
+          $page['apps'][$a]['blocks'][$key] = self::withRows((array) $block, $rows);
         }
       }
     }
-    $file = NULL;
-    $line = NULL;
-    if (preg_match('#^([^\s:,;()]+):(\d+)#', $evidence, $m)) {
-      $file = $m[1];
-      $line = (int) $m[2];
+    $repoRows = self::gateRows((array) ($page['repo_gate_block']['others'] ?? []), $allRows, TRUE);
+    if ($repoRows !== []) {
+      foreach ((array) ($page['apps'] ?? []) as $a => $app) {
+        if (isset($app['blocks']['structure'])) {
+          $page['apps'][$a]['blocks']['structure'] = self::withRows((array) $app['blocks']['structure'], $repoRows);
+          return $page;
+        }
+      }
+      // No app to file them under: a repo the tool found no apps in, which is
+      // when a repo gate (YAML valid, layout) is most likely the reason. The
+      // template shows a repo block with findings under Repository.
+      $page['repo_blocks']['structure'] = isset($page['repo_blocks']['structure'])
+        ? self::withRows((array) $page['repo_blocks']['structure'], $repoRows)
+        : ReviewPageData::buildBlock('structure', 'Structure', $repoRows, NULL, []);
     }
-    return [
-      'app' => $app,
-      'section' => $section,
-      'severity' => strtolower((string) $severity),
-      'source' => $reviewer ? 'reviewer' : 'tool',
-      'summary' => self::toolOrEffective($row, 'summary', $sent),
-      'file' => $file,
-      'line' => $line,
-      'url' => $url,
-      'note' => $sent ? (string) ($row['prose'] ?? '') : '',
-    ];
+    return $page;
+  }
+
+  /**
+   * A block with extra finding rows grouped in by severity.
+   *
+   * @param array<mixed> $block
+   *   A block from the page.
+   * @param array<int, array<mixed>> $rows
+   *   Rows shaped like a finding row.
+   *
+   * @return array<mixed>
+   *   The block.
+   */
+  private static function withRows(array $block, array $rows): array {
+    $findings = [];
+    foreach ((array) ($block['groups'] ?? []) as $group) {
+      $findings = array_merge($findings, (array) ($group['findings'] ?? []));
+    }
+    $findings = array_merge($findings, $rows);
+    $block['groups'] = ReviewPageData::groupBySeverity($findings);
+    // A block with no rating summary shows the count line, which must agree
+    // with the findings below it.
+    $none = ($block['key'] ?? '') === 'security' ? ReviewPageData::SECURITY_NONE : 'No findings';
+    $block['count_line'] = ReviewPageData::countLine($findings, $none);
+    return $block;
+  }
+
+  /**
+   * Whether the contributor sees a finding row.
+   *
+   * @param array<mixed> $row
+   *   A finding row from the page.
+   * @param bool $sent
+   *   Whether the decision has been sent.
+   */
+  private static function visible(array $row, bool $sent): bool {
+    // A reviewer's finding is theirs until sent; a dismissal stands once sent.
+    if (($row['source'] ?? '') === 'reviewer') {
+      return $sent;
+    }
+    return !$sent || empty($row['dismissed']);
   }
 
   /**
@@ -239,13 +204,14 @@ final class ContributorReviewView {
       if (!in_array($value, ['fail', 'warn'], TRUE)) {
         continue;
       }
-      if (self::gateExplained((string) ($pill['key'] ?? ''), $value, $rows, $sent)) {
+      if (self::gateExplained((string) ($pill['key'] ?? ''), $value, $rows, $sent, TRUE)) {
         continue;
       }
       $label = (string) ($pill['label'] ?? '');
       $severity = (string) ($pill['severity'] ?? '') ?: ($value === 'fail' ? 'high' : 'low');
       $out[] = [
         'source' => 'ai',
+        'rule' => '',
         'severity' => $severity,
         'tool_severity' => $severity,
         'summary' => (string) ($pill['summary'] ?? sprintf($value === 'fail' ? 'The "%s" check failed.' : 'The "%s" check raised a warning.', $label)),
@@ -275,15 +241,23 @@ final class ContributorReviewView {
    *   Defect rows.
    * @param bool $sent
    *   Whether the decision has been sent.
+   * @param bool $dismissedAccounts
+   *   Whether a row the reviewer dismissed accounts for the gate: on the
+   *   owner's page it does, since the reviewer looked at that failure and
+   *   cleared it, and a bare "check failed" row would contradict them.
    */
-  public static function gateExplained(string $gate, string $value, array $rows, bool $sent): bool {
+  public static function gateExplained(string $gate, string $value, array $rows, bool $sent, bool $dismissedAccounts = FALSE): bool {
     [$rules, $tags] = ReviewPageData::GATE_RULES[$gate] ?? [[], NULL];
     $results = $value === 'fail' ? ['FAIL'] : ['FAIL', 'WARN'];
     foreach ($rows as $row) {
       $rule = strtoupper(trim((string) ($row['rule'] ?? '')));
       // A row with no result is a FAIL, as on the reviewer page.
       $result = strtoupper(trim((string) ($row['result'] ?? ''))) ?: 'FAIL';
-      if (!in_array($rule, $rules, TRUE) || !in_array($result, $results, TRUE) || self::finding((array) $row, '', '', $sent) === NULL) {
+      // Only a tool finding is dismissed (a reviewer's own is deleted instead);
+      // the source check keeps it that way should that change.
+      $dismissed = !empty($row['dismissed']) && ($row['source'] ?? '') !== 'reviewer';
+      $accounts = self::visible((array) $row, $sent) || ($dismissedAccounts && $dismissed);
+      if (!in_array($rule, $rules, TRUE) || !in_array($result, $results, TRUE) || !$accounts) {
         continue;
       }
       $key = (string) ($row['defect_key'] ?? '');
@@ -293,29 +267,6 @@ final class ContributorReviewView {
       }
     }
     return FALSE;
-  }
-
-  /**
-   * A row's wording: the tool's before the decision is sent, else effective.
-   *
-   * The page keeps the tool's wording in "original" only when the reviewer
-   * changed it; otherwise the effective value is the tool's.
-   *
-   * @param array<mixed> $row
-   *   A finding row from the page.
-   * @param string $key
-   *   The row key to read, summary or evidence.
-   * @param bool $sent
-   *   Whether the decision has been sent.
-   *
-   * @return string
-   *   The wording to show.
-   */
-  private static function toolOrEffective(array $row, string $key, bool $sent): string {
-    if (!$sent && isset($row['original'][$key])) {
-      return (string) $row['original'][$key];
-    }
-    return (string) ($row[$key] ?? '');
   }
 
   /**
@@ -330,14 +281,6 @@ final class ContributorReviewView {
   private static function isDefect(array $row): bool {
     $result = strtoupper(trim((string) ($row['result'] ?? '')));
     return $result === '' || $result === 'FAIL' || $result === 'WARN';
-  }
-
-  /**
-   * Position of a severity, most severe first; unknown ones last.
-   */
-  private static function severityRank(string $severity): int {
-    $rank = array_search($severity, ReviewPageData::SEVERITY_ORDER, TRUE);
-    return $rank === FALSE ? count(ReviewPageData::SEVERITY_ORDER) : $rank;
   }
 
 }

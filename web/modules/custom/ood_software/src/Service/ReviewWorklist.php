@@ -177,8 +177,9 @@ final class ReviewWorklist {
    * Whether an app's duplicate check is a worklist item.
    *
    * It is while nothing is recorded and the check has apps to compare
-   * (compare), or a declared name with no entry (misspelled), or nothing to
-   * go on (unknown). The item then carries the control, and the slot under
+   * (compare), or a suggested Software entry to confirm (suggested), or a
+   * declared name with no entry (misspelled), or nothing to go on
+   * (unknown). The item then carries the control, and the slot under
    * the app's ratings shows nothing.
    *
    * @param array<mixed> $app
@@ -186,7 +187,7 @@ final class ReviewWorklist {
    */
   public static function duplicateIsItem(array $app): bool {
     return empty($app['duplicate']['outcome'])
-      && in_array($app['duplicate']['basis']['mode'] ?? NULL, ['compare', 'misspelled', 'unknown'], TRUE);
+      && in_array($app['duplicate']['basis']['mode'] ?? NULL, ['compare', 'suggested', 'misspelled', 'unknown'], TRUE);
   }
 
   /**

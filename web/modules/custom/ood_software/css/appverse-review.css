@@ -415,90 +415,9 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
-.arv-contributor__findings {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--gray-300);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.arv-contributor__finding {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-  padding: 16px 20px;
-}
-.arv-contributor__finding + .arv-contributor__finding {
-  border-top: 1px solid var(--gray-150);
-}
-.arv-contributor__sev {
-  justify-self: start;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: .8rem;
-  font-weight: 700;
-}
-.arv-contributor__sev--critical,
-.arv-contributor__sev--high { background: var(--tint-fail); }
-.arv-contributor__sev--medium { background: var(--tint-medium); }
-.arv-contributor__sev--low { background: var(--tint-warn); }
-.arv-contributor__finding-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.arv-contributor__summary {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.arv-contributor__details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  font-size: .88rem;
-  color: var(--ink);
-}
-.arv-contributor__details code {
-  font-size: .82rem;
-  overflow-wrap: anywhere;
-  background: none;
-  color: inherit;
-  padding: 0;
-}
-.arv-contributor__note {
-  margin: 0;
-  font-size: .94rem;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-.arv-contributor__folds {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.arv-contributor__folds details {
-  padding: 6px 0;
-}
-.arv-contributor__folds summary {
-  cursor: pointer;
-  font-weight: 600;
-  min-height: 32px;
-}
-.arv-contributor__folds ul {
-  margin: 8px 0 0;
-  padding-left: 1.2em;
-}
-.arv-contributor__passed .arv-contributor__details {
-  display: inline;
-  margin-left: 4px;
-}
-.arv-contributor__passed .arv-contributor__details::before {
-  content: "· ";
+/* The owner's band sits between the summary's header and its report. */
+.arv-owner-band {
+  margin: 4px 0 24px;
 }
 @media (max-width: 36rem) {
   .arv-contributor {
@@ -511,11 +430,6 @@
     padding: 16px;
   }
   .arv-contributor__response {
-    padding: 14px 16px;
-  }
-  .arv-contributor__finding {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
     padding: 14px 16px;
   }
   .arv-contributor__resubmit {
@@ -1791,23 +1705,22 @@
 .arv-page .summary-rows {
   margin: 0;
 }
+/* Each category is a heading over its rating and findings (D8-3091): a label
+   column took a fifth of the width from every finding under it. */
 .arv-page .summary-row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
   border-top: 1px solid var(--gray-150);
 }
 .arv-page .summary-row:first-child {
   border-top: 0;
 }
-.arv-page .summary-row dt {
-  font-weight: 700;
-  font-size: .9rem;
-}
-.arv-page .summary-row dd {
+.arv-page .summary-row-title {
   margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
 }
 .arv-page .summary-row-head {
   display: flex;
@@ -1835,10 +1748,20 @@
   color: var(--gray-500);
   font-weight: 400;
 }
+/* The rule id sits above the finding rather than in a column beside it. */
 .arv-page .summary-findings .frow {
-  grid-template-columns: 70px 1fr;
+  display: block;
   padding: 6px 0;
   border-top: 1px solid var(--gray-150);
+}
+.arv-page .summary-findings .frow .rule {
+  padding-top: 0;
+}
+.arv-page .summary-row .finding-note {
+  margin-top: 4px;
+  font-size: .86rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 .arv-page .summary-line {
   font-size: .86rem;
@@ -1849,13 +1772,6 @@
   color: var(--gray-500);
   margin-top: 18px;
 }
-@media (max-width: 600px) {
-  .arv-page .summary-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
-
 /* JS collapse (sev groups, finding notes, override boxes). */
 .arv-page .collapsed {
   display: none;

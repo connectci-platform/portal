@@ -581,14 +581,31 @@ final class ReviewPageData {
   }
 
   /**
+   * Where the review tool found a suggested Software entry.
+   *
+   * Keyed by the catalog checks' software.suggested.source (appverse-review
+   * schema 1.7), as the duplicate check's line names it.
+   */
+  const SUGGESTED_FROM = [
+    'app_path' => "the app's folder name",
+    'repo_name' => 'the repository name',
+    'manifest' => 'the manifest.yml name',
+    'readme' => 'the README title',
+  ];
+
+  /**
    * What the duplicate check compares the app against, and what was found.
    *
    * The software is, first, the one staff assigned on the app; then the
-   * Software entry appverse.yml declares; then the one the README names. The
-   * mode says what the page offers: a one-click "No other app" (clear), the
-   * other apps to compare (compare), a declared name with no entry
-   * (misspelled), nothing to go on (unknown), or a review from a tool that
-   * sends no catalog data (legacy).
+   * Software entry appverse.yml declares; then the one the review tool
+   * suggests from the app's names or README title. The mode says what the
+   * page offers: a one-click "No other app" (clear), the other apps to
+   * compare (compare), a suggestion no other app implements (suggested), a
+   * declared name with no entry (misspelled), nothing to go on (unknown), or
+   * a review from a tool that sends no catalog data (legacy). A suggestion
+   * is a guess, so it is never clear: "No other app" on it needs a
+   * rationale, and the reviewer corrects a wrong one by assigning the
+   * software on the app.
    *
    * @param array{entry: string, apps: array<int, array{title: string, url: string}>}|null $assigned
    *   The app's assigned Software entry and the other published apps that
@@ -597,7 +614,7 @@ final class ReviewPageData {
    *   The app's catalog checks (field_rvv_catalog), or [].
    *
    * @return array{mode: string, source: ?string, entry: ?string, line: string, segments: array<int, array{text: string, link?: string}>, apps: array<int, array{title: string, url: string}>}
-   *   The mode; assigned, declared, readme or NULL; the Software entry; the
+   *   The mode; assigned, declared, suggested or NULL; the Software entry; the
    *   line the page shows, as plain text and as segments (a segment with a
    *   link names what it links to: "catalog"); and the apps to compare.
    */
@@ -642,16 +659,21 @@ final class ReviewPageData {
       $apps = self::otherRepoApps($checks['same_software_apps'] ?? []);
       $parts[] = sprintf('appverse.yml declares %s.', $entry);
     }
-    elseif (!empty($sw['suggested']['entry'])) {
-      $source = 'readme';
+    // A declared name with no entry is the app's own word, so it is shown
+    // ahead of a suggestion the review tool made from its names.
+    elseif (!empty($sw['suggested']['entry']) && !($status === 'no_match' && !empty($sw['closest']))) {
+      $source = 'suggested';
       $entry = (string) $sw['suggested']['entry'];
       $apps = self::otherRepoApps($checks['suggested_same_software_apps'] ?? []);
-      $parts[] = sprintf('The README names %s, which matches the Software entry %s.', (string) ($sw['suggested']['value'] ?? $entry), $entry);
+      $from = self::SUGGESTED_FROM[(string) ($sw['suggested']['source'] ?? '')] ?? NULL;
+      $parts[] = $from !== NULL
+        ? sprintf('The review tool suggests the Software entry %s from %s.', $entry, $from)
+        : sprintf('The review tool suggests the Software entry %s.', $entry);
     }
 
     if ($source !== NULL) {
       $n = count($apps);
-      $mode = $n === 0 ? 'clear' : 'compare';
+      $mode = $n > 0 ? 'compare' : ($source === 'suggested' ? 'suggested' : 'clear');
       $parts[] = $n === 0
         ? 'No other published app implements it.'
         : sprintf('%d other published %s %s %s:', $n, $n === 1 ? 'app' : 'apps', $n === 1 ? 'implements' : 'implement', $both ? 'one of them' : 'it');
