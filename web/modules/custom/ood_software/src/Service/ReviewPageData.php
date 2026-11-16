@@ -539,21 +539,7 @@ final class ReviewPageData {
     };
     if (($sw['status'] ?? '') === 'match') {
       $entry = (string) ($sw['entry'] ?? $sw['value'] ?? '');
-      $links = [];
-      foreach ((array) ($checks['same_software_apps'] ?? []) as $app) {
-        if (!is_array($app) || !empty($app['this_repo'])) {
-          continue;
-        }
-        $url = (string) ($app['github_url'] ?? '');
-        // The artifact is not trusted input: only a web link is a link.
-        if (!preg_match('#^https?://#i', $url)) {
-          $url = '';
-        }
-        if ($url !== '' && !empty($app['subpath'])) {
-          $url = rtrim($url, '/') . '/tree/HEAD/' . trim((string) $app['subpath'], '/');
-        }
-        $links[] = ['title' => (string) ($app['title'] ?? $url), 'url' => $url];
-      }
+      $links = self::otherRepoApps($checks['same_software_apps'] ?? []);
       $n = count($links);
       $rows[] = $n === 0
         ? ['check' => 'Same software', 'result' => 'PASS', 'text' => sprintf('No other published app implements %s', $entry)]
@@ -566,26 +552,162 @@ final class ReviewPageData {
   }
 
   /**
-   * The duplicate-check outcome the catalog alone supports, with why, or
-   * NULL: only "no other app", and only when the app's software matched an
-   * entry that no other repo's app implements. Telling a different approach
-   * from a duplicate takes the reviewer.
+   * The artifact's apps from other repos, as links.
    *
-   * @param array<string, mixed> $checks
+   * @param mixed $apps
+   *   A same_software_apps list from the artifact.
    *
-   * @return array{outcome: string, reason: string}|null
+   * @return array<int, array{title: string, url: string}>
+   *   Each app not in the reviewed repo, with its GitHub link, or '' when the
+   *   artifact's is not a web link.
    */
-  public static function duplicateSuggestion(array $checks): ?array {
-    $sw = (array) ($checks['software'] ?? []);
-    if (($sw['status'] ?? '') !== 'match') {
-      return NULL;
+  protected static function otherRepoApps(mixed $apps): array {
+    $links = [];
+    foreach ((array) $apps as $app) {
+      if (!is_array($app) || !empty($app['this_repo'])) {
+        continue;
+      }
+      $url = (string) ($app['github_url'] ?? '');
+      // The artifact is not trusted input: only a web link is a link.
+      if (!preg_match('#^https?://#i', $url)) {
+        $url = '';
+      }
+      if ($url !== '' && !empty($app['subpath'])) {
+        $url = rtrim($url, '/') . '/tree/HEAD/' . trim((string) $app['subpath'], '/');
+      }
+      $links[] = ['title' => (string) ($app['title'] ?? $url), 'url' => $url];
     }
-    foreach ((array) ($checks['same_software_apps'] ?? []) as $app) {
-      if (is_array($app) && empty($app['this_repo'])) {
-        return NULL;
+    return $links;
+  }
+
+  /**
+   * Where the review tool found a suggested Software entry.
+   *
+   * Keyed by the catalog checks' software.suggested.source (appverse-review
+   * schema 1.7), as the duplicate check's line names it.
+   */
+  const SUGGESTED_FROM = [
+    'app_path' => "the app's folder name",
+    'repo_name' => 'the repository name',
+    'manifest' => 'the manifest.yml name',
+    'readme' => 'the README title',
+  ];
+
+  /**
+   * What the duplicate check compares the app against, and what was found.
+   *
+   * The software is, first, the one staff assigned on the app; then the
+   * Software entry appverse.yml declares; then the one the review tool
+   * suggests from the app's names or README title. The mode says what the
+   * page offers: a one-click "No other app" (clear), the other apps to
+   * compare (compare), a suggestion no other app implements (suggested), a
+   * declared name with no entry (misspelled), nothing to go on (unknown), or
+   * a review from a tool that sends no catalog data (legacy). A suggestion
+   * is a guess, so it is never clear: "No other app" on it needs a
+   * rationale, and the reviewer corrects a wrong one by assigning the
+   * software on the app.
+   *
+   * @param array{entry: string, apps: array<int, array{title: string, url: string}>}|null $assigned
+   *   The app's assigned Software entry and the other published apps that
+   *   implement it, or NULL when none is assigned.
+   * @param array<string, mixed> $checks
+   *   The app's catalog checks (field_rvv_catalog), or [].
+   *
+   * @return array{mode: string, source: ?string, entry: ?string, line: string, segments: array<int, array{text: string, link?: string}>, apps: array<int, array{title: string, url: string}>}
+   *   The mode; assigned, declared, suggested or NULL; the Software entry; the
+   *   line the page shows, as plain text and as segments (a segment with a
+   *   link names what it links to: "catalog"); and the apps to compare.
+   */
+  public static function duplicateBasis(?array $assigned, array $checks): array {
+    $sw = (array) ($checks['software'] ?? []);
+    $status = (string) ($sw['status'] ?? '');
+    $value = trim((string) ($sw['value'] ?? ''));
+    $source = NULL;
+    $entry = NULL;
+    $apps = [];
+    $parts = [];
+    // Whether two Software entries are in play: the assigned one and the
+    // one appverse.yml declares.
+    $both = FALSE;
+    if ($assigned !== NULL) {
+      $source = 'assigned';
+      $entry = (string) $assigned['entry'];
+      $apps = array_values($assigned['apps']);
+      $parts[] = sprintf('Assigned software: %s.', $entry);
+      // A different Software entry, not just another spelling of this one
+      // (a declared alias that matched it).
+      $declaredEntry = $status === 'match' ? trim((string) ($sw['entry'] ?? $value)) : '';
+      $otherEntry = $declaredEntry !== '' && mb_strtolower($declaredEntry) !== mb_strtolower($entry);
+      if ($value !== '' && (mb_strtolower($value) !== mb_strtolower($entry) || $otherEntry)) {
+        $parts[] = sprintf('appverse.yml declares %s.', $value);
+        if ($otherEntry) {
+          // A duplicate the review tool found is never hidden.
+          $both = TRUE;
+          $titles = array_column($apps, 'title');
+          foreach (self::otherRepoApps($checks['same_software_apps'] ?? []) as $link) {
+            if (!in_array($link['title'], $titles, TRUE)) {
+              $apps[] = $link;
+              $titles[] = $link['title'];
+            }
+          }
+        }
       }
     }
-    return ['outcome' => 'none', 'reason' => sprintf('The catalog lists no other app for %s.', $sw['entry'] ?? $sw['value'] ?? '')];
+    elseif ($status === 'match') {
+      $source = 'declared';
+      $entry = (string) ($sw['entry'] ?? $sw['value'] ?? '');
+      $apps = self::otherRepoApps($checks['same_software_apps'] ?? []);
+      $parts[] = sprintf('appverse.yml declares %s.', $entry);
+    }
+    // A declared name with no entry is the app's own word, so it is shown
+    // ahead of a suggestion the review tool made from its names.
+    elseif (!empty($sw['suggested']['entry']) && !($status === 'no_match' && !empty($sw['closest']))) {
+      $source = 'suggested';
+      $entry = (string) $sw['suggested']['entry'];
+      $apps = self::otherRepoApps($checks['suggested_same_software_apps'] ?? []);
+      $from = self::SUGGESTED_FROM[(string) ($sw['suggested']['source'] ?? '')] ?? NULL;
+      $parts[] = $from !== NULL
+        ? sprintf('The review tool suggests the Software entry %s from %s.', $entry, $from)
+        : sprintf('The review tool suggests the Software entry %s.', $entry);
+    }
+
+    if ($source !== NULL) {
+      $n = count($apps);
+      $mode = $n > 0 ? 'compare' : ($source === 'suggested' ? 'suggested' : 'clear');
+      $parts[] = $n === 0
+        ? 'No other published app implements it.'
+        : sprintf('%d other published %s %s %s:', $n, $n === 1 ? 'app' : 'apps', $n === 1 ? 'implements' : 'implement', $both ? 'one of them' : 'it');
+    }
+    elseif ($checks === []) {
+      $mode = 'legacy';
+    }
+    elseif ($status === 'no_match' && !empty($sw['closest'])) {
+      $mode = 'misspelled';
+      $parts[] = sprintf('appverse.yml declares %s, which has no Software entry. It may mean %s.', $value, (string) $sw['closest']);
+    }
+    else {
+      $mode = 'unknown';
+    }
+    // The line as segments, so a page can link one without parsing the copy.
+    $segments = [];
+    foreach ($parts as $i => $part) {
+      $segments[] = ['text' => ($i > 0 ? ' ' : '') . $part];
+    }
+    if ($mode === 'unknown') {
+      $segments = [
+        ['text' => "The software couldn't be identified. Check the "],
+        ['text' => 'catalog', 'link' => 'catalog'],
+        ['text' => ' for an existing app.'],
+      ];
+    }
+    return [
+      'mode' => $mode,
+      'source' => $source,
+      'entry' => $entry,
+      'line' => implode('', array_column($segments, 'text')),
+      'segments' => $segments,
+      'apps' => $apps,
+    ];
   }
 
   /**

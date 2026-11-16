@@ -1,14 +1,193 @@
 /**
  * @file
- * Review page: collapsible severity groups, per-finding note boxes, and the
- * per-axis override box. Mirrors the wireframe's interactions; everything is
- * plain markup that works without JS (all boxes open), JS only collapses.
+ * Review page: per-finding note boxes, the per-axis override box, and the
+ * worklists' add forms. Everything is plain markup that works without JS (all
+ * boxes open, each add form at the end of its list); JS only collapses and
+ * moves.
+ *
+ * A finding's Save, Add and Delete post over AJAX and replace the whole form
+ * (#arv-review-form). What the reviewer had open is recorded when one is
+ * pressed and put back on the new form, and while the request is out the
+ * text fields are read-only, so nothing typed meanwhile is lost.
  */
 (function (Drupal, once) {
   'use strict';
 
+  const WRAPPER = 'arv-review-form';
+  const ERROR = '.error, [aria-invalid="true"]';
+
+  // What was open when a save was pressed, for the form that replaces it.
+  let pending = null;
+  // The findings whose edit box the arv-note behavior opens on this attach.
+  let reopen = new Set();
+
+  /**
+   * The open folds and edit boxes, and where a moved add form sits.
+   *
+   * @param {HTMLElement} wrapper
+   *   The form's wrapper.
+   * @param {HTMLElement} [pressed]
+   *   The button pressed. A duplicate check it confirms closes again.
+   *
+   * @return {object}
+   *   The state, by element id.
+   */
+  function record(wrapper, pressed) {
+    const state = { folds: [], boxes: [], after: {} };
+    wrapper.querySelectorAll('details[id^="fold-"]').forEach((fold) => {
+      if (fold.open) {
+        state.folds.push(fold.id);
+      }
+      // Moved by "Add a finding here": put back after the same row.
+      if (fold.dataset.arvAfter) {
+        state.after[fold.id] = fold.dataset.arvAfter;
+      }
+    });
+    wrapper.querySelectorAll('.finding[id]').forEach((finding) => {
+      const box = finding.querySelector('.fnote');
+      if (box && !box.classList.contains('collapsed')) {
+        state.boxes.push(finding.id);
+      }
+    });
+    // A duplicate check opened with Change.
+    wrapper.querySelectorAll('.duplicate-check-block[id]').forEach((block) => {
+      const fields = block.querySelector('[data-duplicate-toggle]');
+      if (fields && !fields.classList.contains('collapsed') && !(pressed && block.contains(pressed))) {
+        state.boxes.push(block.id);
+      }
+    });
+    return state;
+  }
+
+  /**
+   * Puts the recorded state back on the form that replaced it.
+   *
+   * @param {object} state
+   *   From record().
+   */
+  function restore(state) {
+    Object.keys(state.after).forEach((id) => {
+      const fold = document.getElementById(id);
+      const row = document.getElementById(state.after[id]);
+      if (fold && row) {
+        row.after(fold);
+        fold.dataset.arvAfter = row.id;
+      }
+    });
+    state.folds.forEach((id) => {
+      const fold = document.getElementById(id);
+      if (fold) {
+        fold.open = true;
+      }
+    });
+    reopen = new Set(state.boxes);
+  }
+
+  /**
+   * Marks the form busy and its text read-only while a save is out.
+   *
+   * @param {HTMLElement} wrapper
+   *   The form's wrapper.
+   * @param {boolean} busy
+   *   Whether a save is in flight.
+   */
+  function lock(wrapper, busy) {
+    if (busy) {
+      wrapper.setAttribute('aria-busy', 'true');
+    }
+    else {
+      wrapper.removeAttribute('aria-busy');
+    }
+    wrapper.querySelectorAll('input[type="text"], textarea').forEach((field) => {
+      if (busy && !field.readOnly) {
+        field.readOnly = true;
+        field.dataset.arvLocked = 'true';
+      }
+      else if (!busy && field.dataset.arvLocked) {
+        field.readOnly = false;
+        delete field.dataset.arvLocked;
+      }
+    });
+    // Nothing else can be pressed or changed while the save is out. The
+    // request is serialized before beforeSend runs, so disabling here does
+    // not drop any value, and the pressed button travels as extra data.
+    wrapper.querySelectorAll('select, input[type="checkbox"], input[type="radio"], input[type="submit"], button[type="submit"]').forEach((control) => {
+      if (busy && !control.disabled) {
+        control.disabled = true;
+        control.dataset.arvDisabled = 'true';
+      }
+      else if (!busy && control.dataset.arvDisabled) {
+        control.disabled = false;
+        delete control.dataset.arvDisabled;
+      }
+    });
+  }
+
+  /**
+   * Hooks Drupal's AJAX for the form's own buttons, once per page.
+   */
+  function hookAjax() {
+    if (!Drupal.Ajax || Drupal.Ajax.prototype.arvHooked) {
+      return;
+    }
+    const proto = Drupal.Ajax.prototype;
+    const { beforeSend, success, error } = proto;
+    proto.arvHooked = true;
+    proto.beforeSend = function arvBeforeSend(...args) {
+      const wrapper = this.element && this.element.closest ? this.element.closest(`#${WRAPPER}`) : null;
+      if (wrapper) {
+        pending = record(wrapper, this.element);
+        lock(wrapper, true);
+        this.arvWrapper = wrapper;
+      }
+      return beforeSend.apply(this, args);
+    };
+    proto.success = function arvSuccess(...args) {
+      const result = success.apply(this, args);
+      if (this.arvWrapper) {
+        const old = this.arvWrapper;
+        this.arvWrapper = null;
+        // The form is normally replaced; if it was not, unlock it.
+        const done = () => {
+          lock(old, false);
+          pending = null;
+        };
+        Promise.resolve(result).then(done, done);
+      }
+      return result;
+    };
+    proto.error = function arvError(...args) {
+      if (this.arvWrapper) {
+        lock(this.arvWrapper, false);
+        this.arvWrapper = null;
+        pending = null;
+      }
+      return error.apply(this, args);
+    };
+  }
+
   Drupal.behaviors.appverseReview = {
     attach(context) {
+      hookAjax();
+      // The form a save replaced: open what was open.
+      const wrapper = context.id === WRAPPER ? context : (context.querySelector && context.querySelector(`#${WRAPPER}`));
+      reopen = new Set();
+      if (pending && wrapper) {
+        restore(pending);
+        pending = null;
+      }
+      // An error is never hidden: open every fold that holds one. The edit
+      // boxes holding one open below.
+      if (context.querySelectorAll) {
+        context.querySelectorAll(ERROR).forEach((field) => {
+          let fold = field.closest('details');
+          while (fold) {
+            fold.open = true;
+            fold = fold.parentElement ? fold.parentElement.closest('details') : null;
+          }
+        });
+      }
+
       // The send button names the decision it will send and waits until every
       // app has one and, unless all are Accept, a response is written
       // (appverse-planning#52). The server sets the same from the saved page;
@@ -76,21 +255,6 @@
         update();
       });
 
-      once('arv-sev', '.arv-page .sev-head', context).forEach((head) => {
-        const body = head.nextElementSibling;
-        if (!body) {
-          return;
-        }
-        // Collapse everything but the worst group by default, as the wireframe.
-        if (!head.classList.contains('sev-head--open')) {
-          body.classList.add('collapsed');
-        }
-        head.addEventListener('click', () => {
-          body.classList.toggle('collapsed');
-          head.classList.toggle('sev-head--open');
-        });
-      });
-
       // Long evidence clamps to two lines with a toggle. OODT-05 cites a
       // dozen file:line references and filled a third of its card
       // (appverse-planning#53). The threshold is characters rather than
@@ -115,7 +279,8 @@
       });
 
       // A finding's edit box starts closed; the note and any change show in
-      // the row itself. It stays open when it holds a validation error.
+      // the row itself. It stays open when it holds a validation error, or
+      // was open when a save replaced the form.
       once('arv-note', '.arv-page .finding', context).forEach((finding) => {
         const box = finding.querySelector('.fnote');
         const hint = finding.querySelector('.expand-hint');
@@ -127,7 +292,9 @@
           box.classList.toggle('collapsed', !open);
           hint.setAttribute('aria-expanded', open ? 'true' : 'false');
         };
-        setOpen(box.querySelector('.error') !== null);
+        // A save that went through leaves its own row's box closed (.arv-saved
+        // renders only there); a refused one keeps it open.
+        setOpen(box.querySelector(ERROR) !== null || (reopen.has(finding.id) && !finding.querySelector('.arv-saved')));
         hint.addEventListener('click', (e) => {
           e.stopPropagation();
           const open = box.classList.contains('collapsed');
@@ -158,11 +325,38 @@
         }
       });
 
+      // A duplicate check with an outcome, or a one-click Confirm, shows its
+      // line; Change reveals the radios and the note. Without JS they show
+      // under the line and Change stays hidden. They stay open when they
+      // hold an error, or were open when a save replaced the form.
+      once('arv-duplicate', '.arv-page .duplicate-check-block', context).forEach((block) => {
+        const fields = block.querySelector('[data-duplicate-toggle]');
+        const change = block.querySelector('.duplicate-change');
+        if (!fields || !change) {
+          return;
+        }
+        const setOpen = (open) => {
+          fields.classList.toggle('collapsed', !open);
+          change.setAttribute('aria-expanded', String(open));
+        };
+        change.removeAttribute('hidden');
+        setOpen(Boolean(fields.querySelector(ERROR)) || reopen.has(block.id));
+        change.addEventListener('click', () => {
+          const open = fields.classList.contains('collapsed');
+          setOpen(open);
+          const first = fields.querySelector('input:checked, input, textarea');
+          if (open && first) {
+            first.focus();
+          }
+        });
+      });
+
       // The rating shows as a badge until the edit icon is clicked, which
       // swaps in the dropdown and the note (appverse-planning#54). The markup
       // carries both and starts with the dropdown shown, so without this the
       // page still works; the class added here is what hides one of them.
-      once('arv-override', '.arv-page .catblock', context).forEach((block) => {
+      // Each rating in a list's ratings line has its own icon.
+      once('arv-override', '.arv-page .arv-ratings .arv-rating', context).forEach((block) => {
         const btn = block.querySelector('.edit-icon-btn');
         const box = block.querySelector('.override-box');
         const readonly = block.querySelector('.level-readonly');
@@ -192,6 +386,62 @@
           const select = control ? control.querySelector('select') : null;
           if (select && !block.classList.contains('level-collapsed')) {
             select.focus();
+          }
+        });
+      });
+
+      // The add form's rule and section follow each other. Picking a rule
+      // moves the section to the rule's own, so an OODT code is not filed
+      // under Code quality by accident; moving the section (by hand or by
+      // "Add a finding here") starts the rule on that section's first, unless
+      // the rule is already one of its own or Other.
+      once('arv-add-rule', '.arv-page select[data-rule-sections]', context).forEach((rule) => {
+        const map = JSON.parse(rule.dataset.ruleSections || '{}');
+        const fields = rule.closest('.finding-fields');
+        const section = fields ? fields.querySelector('select.arv-add-section') : null;
+        if (!section) {
+          return;
+        }
+        rule.addEventListener('change', () => {
+          if (map[rule.value]) {
+            section.value = map[rule.value];
+          }
+        });
+        section.addEventListener('change', () => {
+          if (!map[rule.value] || map[rule.value] === section.value) {
+            return;
+          }
+          const first = Object.keys(map).find((code) => map[code] === section.value);
+          rule.value = first || '_other';
+          rule.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+
+      // "Add a finding here": the list's add form moves under the row, on the
+      // row's section, open, with the summary focused. Without JS the button
+      // stays hidden and the form sits at the end of the list.
+      once('arv-add-here', '.arv-page .arv-add-here', context).forEach((btn) => {
+        const list = btn.closest('.arv-worklist');
+        const fold = list ? list.querySelector('details.add-finding') : null;
+        const row = btn.closest('.finding');
+        if (!fold || !row) {
+          return;
+        }
+        btn.hidden = false;
+        btn.addEventListener('click', () => {
+          const section = fold.querySelector('select.arv-add-section');
+          if (section && Array.from(section.options).some((o) => o.value === btn.dataset.section)) {
+            section.value = btn.dataset.section;
+            // So the rule follows the section.
+            section.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          row.after(fold);
+          // So a save that replaces the form puts it back here.
+          fold.dataset.arvAfter = row.id;
+          fold.open = true;
+          const summary = fold.querySelector('.arv-add-summary');
+          if (summary) {
+            summary.focus();
           }
         });
       });

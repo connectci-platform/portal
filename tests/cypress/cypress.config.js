@@ -534,6 +534,16 @@ module.exports = defineConfig({
         }
       });
 
+      // Date for the anonymous test event created by events-add.cy.js and
+      // checked by events-page.cy.js. It is computed once per run so both
+      // specs agree even if the run crosses midnight, and kept in the future
+      // so the event still offers registration. Read it with anonEventDate()
+      // from support/event-dates.js.
+      if (!config.env.ANON_EVENT_DATE) {
+        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+        config.env.ANON_EVENT_DATE = new Date(Date.now() + thirtyDays).toISOString().slice(0, 10);
+      }
+
       return config;
     },
 

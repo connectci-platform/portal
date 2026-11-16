@@ -33,11 +33,17 @@ class AppverseReviewSeeder {
   protected FileSystemInterface $fileSystem;
   protected LoggerInterface $logger;
 
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, FileRepositoryInterface $file_repository, FileSystemInterface $file_system, LoggerChannelFactoryInterface $logger_factory) {
+  /**
+   * Finds the repo's app for an artifact's app_id.
+   */
+  protected RepoMemberApps $memberApps;
+
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, FileRepositoryInterface $file_repository, FileSystemInterface $file_system, LoggerChannelFactoryInterface $logger_factory, RepoMemberApps $member_apps) {
     $this->entityTypeManager = $entity_type_manager;
     $this->fileRepository = $file_repository;
     $this->fileSystem = $file_system;
     $this->logger = $logger_factory->get('ood_software');
+    $this->memberApps = $member_apps;
   }
 
   /**
@@ -229,7 +235,7 @@ class AppverseReviewSeeder {
       'field_rvv_catalog' => isset($app['catalog']) && is_array($app['catalog']) ? json_encode($app['catalog']) : NULL,
     ]);
 
-    $app_node = $this->resolveAppNode($repo, $app_id);
+    $app_node = $this->memberApps->appFor($repo, $app_id);
     if ($app_node !== NULL) {
       $verdict->set('field_rvv_app_ref', $app_node->id());
     }
@@ -299,35 +305,6 @@ class AppverseReviewSeeder {
       $paragraph->set('field_rvf_line', (int) $finding['line']);
     }
     return $paragraph;
-  }
-
-  /**
-   * Matches an apps[] app_id to an appverse_app node of this repo.
-   *
-   * "root" matches an app with an empty subpath (or the repo's only app);
-   * anything else matches field_appverse_app_subpath.
-   */
-  protected function resolveAppNode(NodeInterface $repo, string $app_id): ?NodeInterface {
-    $storage = $this->entityTypeManager->getStorage('node');
-    $nids = $storage->getQuery()
-      ->accessCheck(FALSE)
-      ->condition('type', 'appverse_app')
-      ->condition('field_appverse_repo', $repo->id())
-      ->execute();
-    if ($nids === []) {
-      return NULL;
-    }
-    $apps = $storage->loadMultiple($nids);
-    if ($app_id === 'root' && count($apps) === 1) {
-      return reset($apps);
-    }
-    foreach ($apps as $app) {
-      $subpath = $app->hasField('field_appverse_app_subpath') ? ($app->get('field_appverse_app_subpath')->value ?? '') : '';
-      if ($app_id === 'root' ? $subpath === '' : $subpath === $app_id) {
-        return $app;
-      }
-    }
-    return NULL;
   }
 
   /**

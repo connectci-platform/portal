@@ -80,35 +80,47 @@
     }
   }
 
+  // The review page's poller starts once per page. Its save buttons replace
+  // the page's form, status line included, and attach behaviors again.
+  let reviewPollerStarted = false;
+
   Drupal.behaviors.oodReviewStatus = {
     attach(context) {
       const settings = drupalSettings.oodReviewStatus;
-      if (settings && settings.inFlight) {
-        once('ood-review-status', '[data-review-run-status]', context).forEach((status) => {
-          const page = status.closest('.review-history') || document;
-          startPoller(settings.url, (data) => {
-            if (data.in_flight) {
-              return;
-            }
+      if (
+        settings &&
+        settings.inFlight &&
+        !reviewPollerStarted &&
+        once('ood-review-status', '[data-review-run-status]', context).length
+      ) {
+        reviewPollerStarted = true;
+        startPoller(settings.url, (data) => {
+          if (data.in_flight) {
+            return;
+          }
+          // Looked up on each update: a save may have replaced them.
+          const status = document.querySelector('[data-review-run-status]');
+          const page = (status && status.closest('.review-history')) || document;
+          if (status) {
             status.textContent = data.status === 'complete'
               ? Drupal.t('Automated check finished')
               : Drupal.t('Automated check failed');
-            const rerun = page.querySelector('[data-review-rerun]');
-            const fresh = page.querySelector('[data-review-new]');
-            if (data.latest_review === settings.review) {
-              reveal(rerun);
-            }
-            else if (
-              fresh &&
-              data.status === 'complete' &&
-              data.latest_review_url &&
-              data.latest_review !== settings.latestAtLoad
-            ) {
-              // The run produced a report newer than any at page load.
-              fresh.href = data.latest_review_url;
-              reveal(fresh);
-            }
-          });
+          }
+          const rerun = page.querySelector('[data-review-rerun]');
+          const fresh = page.querySelector('[data-review-new]');
+          if (data.latest_review === settings.review) {
+            reveal(rerun);
+          }
+          else if (
+            fresh &&
+            data.status === 'complete' &&
+            data.latest_review_url &&
+            data.latest_review !== settings.latestAtLoad
+          ) {
+            // The run produced a report newer than any at page load.
+            fresh.href = data.latest_review_url;
+            reveal(fresh);
+          }
         });
       }
 
