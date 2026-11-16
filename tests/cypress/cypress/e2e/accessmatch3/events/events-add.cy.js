@@ -8,6 +8,8 @@
 
 */
 
+import { anonEventDate } from "../../../support/event-dates";
+
 // The exposed "Search My Events" title filter on /events/mine
 const MY_EVENTS_SEARCH = '[data-drupal-selector="edit-title"]';
 
@@ -113,8 +115,10 @@ describe("Authenticated user tests the Events Form without Affinity Group", () =
 
     // Date and Time of Event
     cy.get("#edit-recur-type-custom").click();
-    cy.get("#edit-custom-date-0-value-date").type("2026-11-15", { delay: 0 });
-    cy.get("#edit-custom-date-0-end-value-date").type("2026-11-15", { delay: 0 });
+    // A future date shared with events-page.cy.js, so the event stays upcoming
+    // and still offers registration.
+    cy.get("#edit-custom-date-0-value-date").type(anonEventDate().iso, { delay: 0 });
+    cy.get("#edit-custom-date-0-end-value-date").type(anonEventDate().iso, { delay: 0 });
     cy.get("#edit-custom-date-0-value-time").type("10:00:00", { delay: 0 });
     cy.get("#edit-custom-date-0-end-value-time").type("11:00:00", { delay: 0 });
 
