@@ -93,3 +93,21 @@ resourceFields:
     publicName: field_domain_admin
     enhancer:
       id: ''
+  field_assistant_consent:
+    disabled: true
+    fieldName: field_assistant_consent
+    publicName: field_assistant_consent
+    enhancer:
+      id: ''
+  field_assistant_consent_asked:
+    disabled: true
+    fieldName: field_assistant_consent_asked
+    publicName: field_assistant_consent_asked
+    enhancer:
+      id: ''
+  field_assistant_consent_version:
+    disabled: true
+    fieldName: field_assistant_consent_version
+    publicName: field_assistant_consent_version
+    enhancer:
+      id: ''
