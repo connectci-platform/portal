@@ -33,6 +33,11 @@ export const SKILL = { beginner: 304, intermediate: 305, advanced: 306 };
  *   picks "ACCESS CSSN", which is the domain of accessmatch.ddev.site.
  * @param {boolean} [options.approved]
  *   Tick the "approved" box. Defaults to true.
+ * @param {boolean} [options.private]
+ *   Mark the resource private. Defaults to false. The `private` checkbox is
+ *   hidden by #states until an affinity group is chosen (and the affinity group
+ *   is disabled when "approved" is ticked), so the form cannot set it for an
+ *   approved resource. It is set with drush after the form is saved instead.
  *
  * @returns {Cypress.Chainable<number>}
  *   Yields the new submission id, read from the confirmation URL
@@ -45,6 +50,7 @@ export function createKbResource({
   tags = [],
   domain = "ACCESS",
   approved = true,
+  private: isPrivate = false,
 }) {
   cy.visit("/form/resource");
   if (approved) {
@@ -71,7 +77,23 @@ export function createKbResource({
   return cy
     .location("pathname")
     .should("match", /\/webform\/resource\/submissions\/\d+$/)
-    .then((path) => Number(path.split("/").pop()));
+    .then((path) => Number(path.split("/").pop()))
+    .then((sid) => {
+      if (!isPrivate) {
+        return cy.wrap(sid);
+      }
+      const php =
+        `$sub = \\Drupal\\webform\\Entity\\WebformSubmission::load(${sid});` +
+        '$sub->setElementData("private", 1);' +
+        "$sub->save();" +
+        'print "done";';
+      return cy.drush("php:eval", [`'${php}'`]).then((result) => {
+        if (result.exitCode !== 0 || result.stdout.trim() !== "done") {
+          throw new Error(`createKbResource: setting private failed: ${JSON.stringify(result)}`);
+        }
+        return sid;
+      });
+    });
 }
 
 /**

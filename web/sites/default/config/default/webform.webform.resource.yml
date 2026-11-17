@@ -257,21 +257,19 @@ access:
     permissions: {  }
   view_any:
     roles:
-      - anonymous
-      - authenticated
+      - administrator
+      - kb_pm
     users: {  }
     permissions: {  }
   update_any:
     roles:
       - administrator
-      - match_pm
       - kb_pm
     users: {  }
     permissions: {  }
   delete_any:
     roles:
       - administrator
-      - match_pm
       - kb_pm
     users: {  }
     permissions: {  }
