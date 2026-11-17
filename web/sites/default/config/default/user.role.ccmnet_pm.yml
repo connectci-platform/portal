@@ -7,12 +7,14 @@ dependencies:
   module:
     - field_permissions
     - file
+    - navigation
     - node
 id: ccmnet_pm
 label: 'CCMNet PM'
 weight: 22
 is_admin: null
 permissions:
+  - 'access navigation'
   - 'create field_admin_notes'
   - 'delete own files'
   - 'edit any mentorship_engagement content'

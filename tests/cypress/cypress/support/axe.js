@@ -23,10 +23,11 @@ function categorizeViolation(violation) {
   return 'warning';
 }
 
-// Admin toolbar (incl. environment indicator) has a known, accepted color-contrast
+// Admin navigation sidebar (incl. environment indicator) has a known, accepted color-contrast
 // issue on the active tab - see MD-2782. Excluded from all axe scans rather than
 // fixed, since the root cause is in the environment_indicator contrib module's JS.
-const DEFAULT_EXCLUDE = [['#toolbar-administration']];
+// Selector is the core Navigation module's <aside id="admin-toolbar"> root.
+const DEFAULT_EXCLUDE = [['#admin-toolbar']];
 
 // Merge default excludes into whatever context a spec passes (or none).
 function withDefaultExclude(context) {
