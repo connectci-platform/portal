@@ -772,7 +772,7 @@ display:
           admin_label: ''
           plugin_id: text_custom
           empty: true
-          content: "<div class=\"bg-light-teal bg-light d-flex flex-wrap flex p-4 mb-2 prose max-w-full items-center align-items-center\">\r\n  <span class=\"h5 font-weight-bold m-0 me-4 mr-3\">Upcoming Events</span>\r\n  <a class=\"me-4 mr-3\" href=\"/events/past\">Past Events</a>\r\n  <a class=\"me-4 mr-3\" href=\"/events/mine\">\r\n    My Events\r\n  </a>\r\n  <a href=\"/events/add\" class=\"btn-sm btn-small btn-secondary-outline py-0 px-4 btn btn-md-teal ms-auto ml-auto mb-0\" data-drupal-link-system-path=\"events/add\">+ Add Event</a>\r\n</div>"
+          content: "<div class=\"open-ondemand prose text-2xl\">\r\n  Join Open OnDemand community calls, office hours, and trainings, or add your own event.\r\n</div>\r\n\r\n<div class=\"bg-light-teal bg-light d-flex flex-wrap flex p-4 mb-2 prose max-w-full items-center align-items-center\">\r\n  <span class=\"h5 font-weight-bold m-0 me-4 mr-3\">Upcoming Events</span>\r\n  <a class=\"me-4 mr-3\" href=\"/events/past\">Past Events</a>\r\n  <a class=\"me-4 mr-3\" href=\"/events/mine\">\r\n    My Events\r\n  </a>\r\n  <a href=\"/events/add\" class=\"btn-sm btn-small btn-secondary-outline py-0 px-4 btn btn-md-teal ms-auto ml-auto mb-0\" data-drupal-link-system-path=\"events/add\">+ Add Event</a>\r\n</div>"
           tokenize: false
       footer: {  }
       display_extenders: {  }
