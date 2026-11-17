@@ -1,0 +1,19 @@
+uuid: c08ea2b4-7f4e-4a7d-90e2-15dec9a3bd7c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_queue_node_type
+    - paragraphs.paragraphs_type.rp_queue_node
+id: paragraph.rp_queue_node.field_rp_queue_node_type
+field_name: field_rp_queue_node_type
+entity_type: paragraph
+bundle: rp_queue_node
+label: 'Node type'
+description: 'Must match a node type label on this resource exactly.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

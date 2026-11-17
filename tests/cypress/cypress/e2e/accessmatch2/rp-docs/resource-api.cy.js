@@ -114,13 +114,14 @@ describe("Resource Documentation API", () => {
 
   // CI loads the nightly database from main, built by enabling and then
   // uninstalling amp_dev, so a fixture added to amp_dev on a branch is not
-  // there yet. Seed Delta here; the install function updates the node in
-  // place when it already exists. Loud by default so a broken seed fails at
-  // setup rather than as a missing row later.
+  // there yet. Seed Alpha (node types and queues, D8-3090) and Delta here;
+  // the install functions update the node in place when it already exists.
+  // Loud by default so a broken seed fails at setup rather than as a missing
+  // row later.
   before(() => {
     cy.exec(
       `ddev drush php:eval 'require_once DRUPAL_ROOT . "/" . \\Drupal::service("extension.list.module")->getPath("amp_dev") . "/amp_dev.install";` +
-        `amp_dev_install_create_rp_no_cider();'`,
+        `amp_dev_install_create_rp_alpha(); amp_dev_install_create_rp_no_cider();'`,
       { timeout: 120000 }
     );
   });
@@ -265,18 +266,18 @@ describe("Resource Documentation API", () => {
       expect(project.summary).to.eq("10 TB, 5,000,000 files");
 
       expect(body.queue_specs).to.be.an("array");
-      // One entry per paragraph (7 rows over 5 queues in the fixture). The
-      // page groups repeated queue names into one row group; the API does not
-      // — it stays a flat list and leaves grouping to the consumer.
-      expect(body.queue_specs).to.have.length(7);
+      // queue_specs is the deprecated per-row shape, derived from node types
+      // and queues: one entry per queue and node type (8 rows over 5 queues in
+      // the fixture). It stays a flat list and leaves grouping to the consumer.
+      expect(body.queue_specs).to.have.length(8);
       expect(body.queue_specs.map((q) => q.name)).to.deep.eq([
         "gpu-standard", "gpu-standard", "gpu-large", "gpu-large",
-        "debug", "cpu-shared", "gpu-cloud",
+        "debug", "cpu-shared", "gpu-cloud", "gpu-cloud",
       ]);
       // Structured queue fields stay raw and typed (GB), with a derived summary.
       const gpuStandard = body.queue_specs[0];
       expect(gpuStandard.name).to.eq("gpu-standard");
-      // node_count is the per-partition node count (field_rp_node_count).
+      // node_count is how many nodes of that type the queue can use.
       expect(gpuStandard.node_count).to.eq(100);
       expect(gpuStandard.cpu_count).to.eq(64);
       expect(gpuStandard.cpu_type).to.eq("AMD EPYC 7763");
@@ -291,7 +292,8 @@ describe("Resource Documentation API", () => {
       );
       // CPU-only queue: no GPU clause in the summary.
       const cpuShared = body.queue_specs.find((q) => q.name === "cpu-shared");
-      expect(cpuShared.gpu_count).to.eq(0);
+      expect(cpuShared.gpu_count).to.be.null;
+      expect(cpuShared.gpu_type).to.be.null;
       expect(cpuShared.node_count).to.eq(200);
       expect(cpuShared.summary).to.eq(
         "200 nodes, 128-core Intel Xeon Platinum 8480+, 256 GB RAM"
@@ -302,6 +304,58 @@ describe("Resource Documentation API", () => {
       expect(gpuCloud.summary).to.eq(
         "NVIDIA H100 (80 GB vRAM), 32-core AMD EPYC 9004, 384 GB RAM"
       );
+      // Mixed-GPU node: models joined, known counts summed, vRAM dropped
+      // because it differs per model.
+      const mixed = body.queue_specs[7];
+      expect(mixed.gpu_type).to.eq("AMD MI100, AMD MI210");
+      expect(mixed.gpu_count).to.eq(8);
+      expect(mixed.gpu_vram).to.be.null;
+      expect(mixed.node_count).to.eq(8);
+
+      // Node types: hardware entered once, each with its list of GPUs.
+      expect(body.node_types.map((t) => t.label)).to.deep.eq([
+        "NVIDIA A100 (4 GPU)", "NVIDIA H100 (4 GPU)", "NVIDIA A100 (8 GPU)",
+        "NVIDIA H100 (8 GPU)", "NVIDIA A100 (debug)", "CPU node",
+        "NVIDIA H100 (cloud)", "AMD MI100 + MI210",
+      ]);
+      const mixedType = body.node_types[7];
+      expect(mixedType.cpu_type).to.eq("AMD EPYC 7763");
+      expect(mixedType.cpu_count).to.eq(64);
+      expect(mixedType.ram).to.eq(512);
+      expect(mixedType.gpus).to.deep.eq([
+        { type: "AMD MI100", count: 4, vram: 32 },
+        { type: "AMD MI210", count: 4, vram: 64 },
+      ]);
+      expect(mixedType.summary).to.eq(
+        "4× AMD MI100 (32 GB vRAM), 4× AMD MI210 (64 GB vRAM), 64-core AMD EPYC 7763, 512 GB RAM"
+      );
+      expect(body.node_types[3].description).to.eq("Full-node jobs on the newer H100 partition.");
+      expect(body.node_types[5].gpus, "CPU node has no GPUs").to.deep.eq([]);
+
+      // Queues: one entry per queue name, pointing at node types by label
+      // with the per-queue node count.
+      expect(body.queues.map((q) => q.name)).to.deep.eq([
+        "gpu-standard", "gpu-large", "debug", "cpu-shared", "gpu-cloud",
+      ]);
+      expect(body.queues[0].purpose).to.eq("General purpose GPU jobs with up to 4 GPUs per node.");
+      expect(body.queues[0].max_wall_time_hours).to.eq(48);
+      expect(body.queues[0].max_wall_time_display).to.eq("48 hours");
+      expect(body.queues[0].nodes).to.deep.eq([
+        { node_type: "NVIDIA A100 (4 GPU)", node_count: 100 },
+        { node_type: "NVIDIA H100 (4 GPU)", node_count: 25 },
+      ]);
+      // Unknown node count stays null, not 0.
+      expect(body.queues[4].nodes).to.deep.eq([
+        { node_type: "NVIDIA H100 (cloud)", node_count: null },
+        { node_type: "AMD MI100 + MI210", node_count: 8 },
+      ]);
+      // Every queue reference resolves to a node type on the resource.
+      const labels = body.node_types.map((t) => t.label);
+      body.queues.forEach((queue) => {
+        queue.nodes.forEach((n) => {
+          expect(labels, `${queue.name} node type`).to.include(n.node_type);
+        });
+      });
 
       // Max wall time: the field stores minutes; the API exposes hours (possibly
       // fractional) under the original key plus a friendly display string.

@@ -1,0 +1,19 @@
+uuid: d7b6beb5-8e84-4c1a-a7f1-d2bf35da6f5a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_gpus
+    - paragraphs.paragraphs_type.rp_node_gpu
+id: paragraph.rp_node_gpu.field_rp_gpus
+field_name: field_rp_gpus
+entity_type: paragraph
+bundle: rp_node_gpu
+label: 'GPU model'
+description: 'Type of GPU'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

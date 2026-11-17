@@ -1,0 +1,42 @@
+uuid: 0503c178-8b76-457f-855e-01ca64648ce4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.rp_node_gpu.field_rp_gpu_count
+    - field.field.paragraph.rp_node_gpu.field_rp_gpu_vram
+    - field.field.paragraph.rp_node_gpu.field_rp_gpus
+    - paragraphs.paragraphs_type.rp_node_gpu
+id: paragraph.rp_node_gpu.default
+targetEntityType: paragraph
+bundle: rp_node_gpu
+mode: default
+content:
+  field_rp_gpu_count:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_rp_gpu_vram:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_rp_gpus:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 0
+    region: content
+hidden:
+  search_api_excerpt: true

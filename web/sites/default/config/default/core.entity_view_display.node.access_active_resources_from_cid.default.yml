@@ -43,6 +43,7 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_rp_mfa_required
     - field.field.node.access_active_resources_from_cid.field_rp_office_hours
     - field.field.node.access_active_resources_from_cid.field_rp_ondemand_url
+    - field.field.node.access_active_resources_from_cid.field_rp_node_types
     - field.field.node.access_active_resources_from_cid.field_rp_ood_software
     - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
     - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
@@ -379,6 +380,15 @@ content:
       format_custom_true: ''
     third_party_settings: {  }
     weight: 20
+    region: content
+  field_rp_node_types:
+    type: entity_reference_revisions_entity_view
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+    weight: 28
     region: content
   field_rp_office_hours:
     type: link

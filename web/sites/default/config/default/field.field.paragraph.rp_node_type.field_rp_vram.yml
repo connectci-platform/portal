@@ -1,0 +1,23 @@
+uuid: efcecaae-378a-4cb7-8221-8532d3c0a1b4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_vram
+    - paragraphs.paragraphs_type.rp_node_type
+id: paragraph.rp_node_type.field_rp_vram
+field_name: field_rp_vram
+entity_type: paragraph
+bundle: rp_node_type
+label: 'Node RAM (GB)'
+description: 'GB of RAM per node'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: null
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

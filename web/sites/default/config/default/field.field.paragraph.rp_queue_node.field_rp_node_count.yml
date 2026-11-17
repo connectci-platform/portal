@@ -1,0 +1,23 @@
+uuid: f10d2ad5-2959-4ba5-ac56-034b9a9d5afe
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_node_count
+    - paragraphs.paragraphs_type.rp_queue_node
+id: paragraph.rp_queue_node.field_rp_node_count
+field_name: field_rp_node_count
+entity_type: paragraph
+bundle: rp_queue_node
+label: 'Number of nodes'
+description: 'How many nodes of this type this queue can use.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

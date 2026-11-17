@@ -1,0 +1,30 @@
+uuid: 6ce57d15-7668-485a-af00-7c10c307c64d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_node_gpus
+    - paragraphs.paragraphs_type.rp_node_type
+  module:
+    - entity_reference_revisions
+id: paragraph.rp_node_type.field_rp_node_gpus
+field_name: field_rp_node_gpus
+entity_type: paragraph
+bundle: rp_node_type
+label: GPUs
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      rp_node_gpu: rp_node_gpu
+    negate: 0
+    target_bundles_drag_drop:
+      rp_node_gpu:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

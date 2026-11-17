@@ -1,0 +1,32 @@
+uuid: d624cfb7-5628-42a4-9016-23243e08ad25
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.rp_queue_node.field_rp_node_count
+    - field.field.paragraph.rp_queue_node.field_rp_queue_node_type
+    - paragraphs.paragraphs_type.rp_queue_node
+id: paragraph.rp_queue_node.default
+targetEntityType: paragraph
+bundle: rp_queue_node
+mode: default
+content:
+  field_rp_node_count:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_rp_queue_node_type:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 0
+    region: content
+hidden:
+  search_api_excerpt: true

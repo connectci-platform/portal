@@ -1,0 +1,31 @@
+uuid: c357c57e-556c-4cf4-953e-4d009ebe314c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.rp_queue_node.field_rp_node_count
+    - field.field.paragraph.rp_queue_node.field_rp_queue_node_type
+    - paragraphs.paragraphs_type.rp_queue_node
+id: paragraph.rp_queue_node.default
+targetEntityType: paragraph
+bundle: rp_queue_node
+mode: default
+content:
+  field_rp_node_count:
+    type: number
+    weight: 1
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_queue_node_type:
+    type: string_textfield
+    weight: 0
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+hidden:
+  created: true
+  status: true

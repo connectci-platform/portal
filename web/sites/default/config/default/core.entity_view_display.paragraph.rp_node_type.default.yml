@@ -1,0 +1,81 @@
+uuid: 6951d557-e367-42ca-829b-35725a1e94ad
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.rp_node_type.field_rp_cpu_count
+    - field.field.paragraph.rp_node_type.field_rp_cpus
+    - field.field.paragraph.rp_node_type.field_rp_node_count
+    - field.field.paragraph.rp_node_type.field_rp_node_gpus
+    - field.field.paragraph.rp_node_type.field_rp_node_type_description
+    - field.field.paragraph.rp_node_type.field_rp_node_type_label
+    - field.field.paragraph.rp_node_type.field_rp_vram
+    - paragraphs.paragraphs_type.rp_node_type
+  module:
+    - entity_reference_revisions
+id: paragraph.rp_node_type.default
+targetEntityType: paragraph
+bundle: rp_node_type
+mode: default
+content:
+  field_rp_cpu_count:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 4
+    region: content
+  field_rp_cpus:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_rp_node_count:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_rp_node_gpus:
+    type: entity_reference_revisions_entity_view
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+    weight: 6
+    region: content
+  field_rp_node_type_description:
+    type: basic_string
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_rp_node_type_label:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_rp_vram:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 5
+    region: content
+hidden:
+  search_api_excerpt: true

@@ -11,10 +11,13 @@ dependencies:
     - field.field.paragraph.rp_queue_spec.field_rp_max_wall_time
     - field.field.paragraph.rp_queue_spec.field_rp_node_count
     - field.field.paragraph.rp_queue_spec.field_rp_queue_name
+    - field.field.paragraph.rp_queue_spec.field_rp_queue_nodes
     - field.field.paragraph.rp_queue_spec.field_rp_queue_purpose
     - field.field.paragraph.rp_queue_spec.field_rp_ram
     - field.field.paragraph.rp_queue_spec.field_rp_vram
     - paragraphs.paragraphs_type.rp_queue_spec
+  module:
+    - entity_reference_revisions
 id: paragraph.rp_queue_spec.default
 targetEntityType: paragraph
 bundle: rp_queue_spec
@@ -70,6 +73,15 @@ content:
       link_to_entity: false
     third_party_settings: {  }
     weight: 0
+    region: content
+  field_rp_queue_nodes:
+    type: entity_reference_revisions_entity_view
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+    weight: 9
     region: content
   field_rp_queue_purpose:
     type: string

@@ -1,0 +1,23 @@
+uuid: 4c1445f4-c554-41f8-a833-91dde2c9b9d6
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_node_count
+    - paragraphs.paragraphs_type.rp_node_type
+id: paragraph.rp_node_type.field_rp_node_count
+field_name: field_rp_node_count
+entity_type: paragraph
+bundle: rp_node_type
+label: 'Number of nodes'
+description: 'Total nodes of this type in the system (optional).'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer
