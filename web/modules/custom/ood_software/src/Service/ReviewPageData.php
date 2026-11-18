@@ -584,13 +584,15 @@ final class ReviewPageData {
    * Where the review tool found a suggested Software entry.
    *
    * Keyed by the catalog checks' software.suggested.source (appverse-review
-   * schema 1.7), as the duplicate check's line names it.
+   * schema 1.7; container since D8-2960), as the duplicate check's line
+   * names it. A source not listed here is shown without a "from" phrase.
    */
   const SUGGESTED_FROM = [
     'app_path' => "the app's folder name",
     'repo_name' => 'the repository name',
     'manifest' => 'the manifest.yml name',
     'readme' => 'the README title',
+    'container' => 'the container image name',
   ];
 
   /**

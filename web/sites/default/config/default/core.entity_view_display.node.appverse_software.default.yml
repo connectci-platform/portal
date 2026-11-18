@@ -5,6 +5,7 @@ dependencies:
   config:
     - field.field.node.appverse_software.body
     - field.field.node.appverse_software.field_appverse_logo
+    - field.field.node.appverse_software.field_appverse_software_aliases
     - field.field.node.appverse_software.field_appverse_software_doc
     - field.field.node.appverse_software.field_appverse_software_website
     - field.field.node.appverse_software.field_appverse_topics
@@ -93,6 +94,7 @@ content:
     weight: 100
     region: content
 hidden:
+  field_appverse_software_aliases: true
   field_domain_access: true
   field_domain_all_affiliates: true
   field_domain_source: true

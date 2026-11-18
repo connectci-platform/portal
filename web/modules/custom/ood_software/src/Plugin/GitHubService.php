@@ -669,7 +669,8 @@ class GitHubService {
    * }
    *   - declared: the raw input.
    *   - resolvedTitle / resolvedNid: the matched appverse_software title +
-   *     nid if exact match found (case-insensitive); NULL otherwise.
+   *     nid if the value is a title or, failing that, one of an entry's
+   *     "Also known as" names (case-insensitive); NULL otherwise.
    *   - suggestion: closest Software title by Levenshtein distance, if
    *     declared is non-empty and no exact match found and a candidate
    *     within distance <= 3 exists; NULL otherwise.
@@ -696,6 +697,7 @@ class GitHubService {
       ->condition('type', 'appverse_software')
       ->condition('status', 1)
       ->accessCheck(FALSE)
+      ->sort('nid')
       ->execute();
     if (empty($allSoftwareIds)) {
       return $result;
@@ -709,6 +711,22 @@ class GitHubService {
         $result['resolvedTitle'] = $sw->getTitle();
         $result['resolvedNid'] = (int) $sw->id();
         return $result;
+      }
+    }
+
+    // Then an entry's "Also known as" names (D8-2960), after every title so a
+    // title always wins over another entry's alias; the first entry wins
+    // between two aliases. The Appverse review tool matches the same way.
+    foreach ($software as $sw) {
+      if (!$sw->hasField('field_appverse_software_aliases')) {
+        continue;
+      }
+      foreach ($sw->get('field_appverse_software_aliases')->getValue() as $item) {
+        if (mb_strtolower(trim((string) ($item['value'] ?? ''))) === $declaredLower) {
+          $result['resolvedTitle'] = $sw->getTitle();
+          $result['resolvedNid'] = (int) $sw->id();
+          return $result;
+        }
       }
     }
 

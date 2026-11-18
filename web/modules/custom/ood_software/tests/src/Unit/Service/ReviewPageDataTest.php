@@ -328,6 +328,7 @@ class ReviewPageDataTest extends UnitTestCase {
       'repo_name' => 'The review tool suggests the Software entry RStudio from the repository name.',
       'manifest' => 'The review tool suggests the Software entry RStudio from the manifest.yml name.',
       'readme' => 'The review tool suggests the Software entry RStudio from the README title.',
+      'container' => 'The review tool suggests the Software entry RStudio from the container image name.',
       'something_new' => 'The review tool suggests the Software entry RStudio.',
     ];
     foreach ($lines as $source => $line) {
