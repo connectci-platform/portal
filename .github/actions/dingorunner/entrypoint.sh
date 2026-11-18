@@ -25,9 +25,35 @@ terminusApi () {
   terminus auth:login --machine-token=$terminus_api
 }
 
-# Poll `terminus workflow:list` for running workflows on a single environment.
+# Workflows still "running" after this many seconds are treated as stale. A
+# release run cancelled mid-deploy can leave Pantheon listing its workflow as
+# running for good (D8-3140); a real deploy to test takes about 15 minutes.
+STALE_WORKFLOW_SECONDS=7200
+
+# Print how many workflows are running on <site>.<env>, leaving out ones that
+# started more than STALE_WORKFLOW_SECONDS ago (each logged to stderr).
 # terminus workflow:list ignores the .env suffix and returns every environment
-# on the site, so we filter the csv on the env column ourselves.
+# on the site, so the env is filtered here.
+runningWorkflows () {
+  terminus workflow:list "$1" --format=json --fields=id,env,status,started_at 2>/dev/null | php -r '
+    $rows = json_decode(stream_get_contents(STDIN), TRUE);
+    $count = 0;
+    foreach (is_array($rows) ? $rows : [] as $row) {
+      if (($row["env"] ?? "") !== $argv[1] || ($row["status"] ?? "") !== "running") {
+        continue;
+      }
+      $age = time() - (int) ($row["started_at"] ?? time());
+      if ($age > (int) $argv[2]) {
+        fwrite(STDERR, sprintf("Ignoring workflow %s on %s: running for %d minutes, treated as stale.\n", $row["id"] ?? "?", $argv[1], intdiv($age, 60)));
+        continue;
+      }
+      $count++;
+    }
+    echo $count;
+  ' "$2" "$STALE_WORKFLOW_SECONDS"
+}
+
+# Poll for running workflows on a single environment.
 # On timeout: exit 1 if <fatal> is non-empty, otherwise log and return 0.
 waitForWorkflows () {
   site=$1
@@ -38,7 +64,7 @@ waitForWorkflows () {
   echo "Waiting for Pantheon workflows on $site.$env_filter to complete..."
   i=1
   while [ "$i" -le "$attempts" ]; do
-    running=$(terminus workflow:list "$site" --format=csv --fields=env,status 2>/dev/null | tail -n +2 | tr -d '"' | awk -F, -v e="$env_filter" '$1 == e && $2 == "running" {c++} END{print c+0}')
+    running=$(runningWorkflows "$site" "$env_filter")
     if [ "$running" = "0" ]; then
       echo "Workflows complete."
       return 0
