@@ -11,4 +11,10 @@ id: node--appverse_software
 disabled: false
 path: node/appverse_software
 resourceType: node--appverse_software
-resourceFields: {  }
+resourceFields:
+  field_appverse_software_aliases:
+    disabled: false
+    fieldName: field_appverse_software_aliases
+    publicName: field_appverse_software_aliases
+    enhancer:
+      id: ''
