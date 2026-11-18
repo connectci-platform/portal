@@ -39,6 +39,13 @@ final class ReviewDecisionApplier {
 
   use StringTranslationTrait;
 
+  /**
+   * Seconds a send or update holds its lock: longer than the moves can take,
+   * so a second click can't start while the first is still running. The
+   * default 30 s was shorter than a large review's save (D8-3136).
+   */
+  const LOCK_TIMEOUT = 300.0;
+
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager,
     protected AccountInterface $currentUser,
@@ -52,6 +59,7 @@ final class ReviewDecisionApplier {
     protected Connection $database,
     protected LockBackendInterface $lock,
     protected DateFormatterInterface $dateFormatter,
+    protected ReviewSaver $reviewSaver,
   ) {}
 
   /**
@@ -171,7 +179,7 @@ final class ReviewDecisionApplier {
    */
   public function send(NodeInterface $review, string $response): ?TranslatableMarkup {
     $lock = 'ood_software_review_decision:' . $review->id();
-    if (!$this->lock->acquire($lock)) {
+    if (!$this->lock->acquire($lock, self::LOCK_TIMEOUT)) {
       return $this->t('A decision on this review is already being sent. Reload the review to see it.');
     }
     $email = NULL;
@@ -312,7 +320,7 @@ final class ReviewDecisionApplier {
    */
   public function update(NodeInterface $review, string $response): ?TranslatableMarkup {
     $lock = 'ood_software_review_decision:' . $review->id();
-    if (!$this->lock->acquire($lock)) {
+    if (!$this->lock->acquire($lock, self::LOCK_TIMEOUT)) {
       return $this->t('A decision on this review is already being sent. Reload the review to see it.');
     }
     $email = NULL;
@@ -817,7 +825,15 @@ final class ReviewDecisionApplier {
       && $workflow->getState($from)->canTransitionTo($state);
   }
 
+  /**
+   * Saves a node the decision moves: an app or a repo as a new revision with
+   * a log message, the review in place (ReviewSaver).
+   */
   protected function saveRevision(NodeInterface $node, string $message): void {
+    if ($node->bundle() === 'appverse_review') {
+      $this->reviewSaver->save($node, $message);
+      return;
+    }
     $node->setNewRevision(TRUE);
     $node->setRevisionUserId((int) $this->currentUser->id());
     $node->setRevisionCreationTime($this->time->getCurrentTime());

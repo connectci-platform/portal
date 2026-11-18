@@ -260,6 +260,92 @@ class ReviewDecisionSendTest extends KernelTestBase {
   }
 
   /**
+   * Send and publish save the review without a new revision.
+   *
+   * A new revision would copy every paragraph (D8-3136).
+   */
+  public function testSendAndPublishSaveTheReviewInPlace(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $review = $this->makeReview($repo, [
+      'accept_with_suggestions' => $this->makeApp($repo, 'ready_for_review', 'Jupyter'),
+      'request_changes' => $this->makeApp($repo, 'ready_for_review', 'RStudio'),
+    ]);
+    $vids = $this->reviewRevisionIds($review);
+    $children = $this->childRevisions($review);
+    $paragraphRevisions = $this->paragraphRevisionCount();
+
+    $this->assertNull($this->applier()->send($review, 'Thanks.'));
+    $this->assertState('in_review', $review);
+    $this->assertNull($this->applier()->publish($this->reload($review)));
+
+    $fresh = $this->reload($review);
+    $this->assertState('published', $fresh);
+    $this->assertTrue($fresh->isPublished());
+    $this->assertNotNull(ReviewDecisionApplier::sent($fresh));
+    $this->assertSame($vids, $this->reviewRevisionIds($fresh), 'No new review revision.');
+    $this->assertSame($children, $this->childRevisions($fresh), 'Verdicts keep their revisions.');
+    $this->assertSame($paragraphRevisions, $this->paragraphRevisionCount(), 'No paragraph revisions copied.');
+    $this->assertState('published', $repo);
+  }
+
+  /**
+   * Moderation moves through the review workflow on one revision.
+   *
+   * A new revision of a review copies every verdict and finding paragraph,
+   * minutes on a large monorepo review (D8-3136). Content moderation forces a
+   * new revision on every save that isn't syncing, so review saves sync.
+   */
+  public function testModerationMovesInPlace(): void {
+    $repo = $this->makeRepo('ready_for_review');
+    $review = $this->makeReview($repo, ['accept' => $this->makeApp($repo, 'ready_for_review')]);
+    $vid = (int) $review->getRevisionId();
+    $children = $this->childRevisions($review);
+    $paragraphRevisions = $this->paragraphRevisionCount();
+
+    foreach (['in_review', 'published'] as $state) {
+      $review = $this->reload($review);
+      $review->set('moderation_state', $state);
+      $review->setNewRevision(FALSE);
+      $review->setSyncing(TRUE);
+      $review->save();
+    }
+
+    $fresh = $this->reload($review);
+    $this->assertSame([$vid], $this->reviewRevisionIds($fresh), 'One review revision.');
+    $this->assertSame('published', $fresh->get('moderation_state')->value);
+    $this->assertTrue($fresh->isPublished());
+    $this->assertSame($children, $this->childRevisions($fresh), 'Verdicts keep their revisions.');
+    $this->assertSame($paragraphRevisions, $this->paragraphRevisionCount(), 'No paragraph revisions copied.');
+  }
+
+  /**
+   * The verdict paragraphs' revision ids, as the review references them.
+   *
+   * @return array<int, int>
+   */
+  protected function childRevisions(NodeInterface $review): array {
+    return array_map(fn (array $item): int => (int) $item['target_revision_id'], $review->get('field_arv_verdicts')->getValue());
+  }
+
+  /**
+   * All revision ids the review has.
+   *
+   * @return array<int, int>
+   */
+  protected function reviewRevisionIds(NodeInterface $review): array {
+    $vids = \Drupal::entityTypeManager()->getStorage('node')->getQuery()
+      ->allRevisions()->accessCheck(FALSE)->condition('nid', $review->id())->execute();
+    return array_map('intval', array_keys($vids));
+  }
+
+  /**
+   * Paragraph revision rows in the database.
+   */
+  protected function paragraphRevisionCount(): int {
+    return (int) \Drupal::database()->select('paragraphs_item_revision')->countQuery()->execute()->fetchField();
+  }
+
+  /**
    * The decision applier.
    */
   protected function applier(): ReviewDecisionApplier {
