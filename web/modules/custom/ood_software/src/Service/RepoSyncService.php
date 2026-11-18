@@ -771,7 +771,21 @@ class RepoSyncService {
         $this->logger->warning('Could not parse @path/appverse.yml: @msg', ['@path' => $subpath, '@msg' => $e->getMessage()]);
       }
     }
+    // A per-subpath appverse.yml may give its title as `title:`, as a
+    // single-app root appverse.yml may (applyDeclaredSingleApp()).
+    if (isset($perSubpathAppverse['title']) && !isset($perSubpathAppverse['name'])) {
+      $perSubpathAppverse['name'] = $perSubpathAppverse['title'];
+    }
+    unset($perSubpathAppverse['title']);
     $rootInline = is_array($entry) ? $entry : [];
+    // A root apps[] name that is only the app's folder name identifies the
+    // entry; it isn't a title, so the app's own appverse.yml or manifest.yml
+    // names it (D8-3138: EESSI lists `name: bc_eessi_bokeh` with the same
+    // path).
+    if (isset($rootInline['name']) && is_scalar($rootInline['name'])
+      && trim((string) $rootInline['name'], " /") === trim($subpath, " /")) {
+      unset($rootInline['name']);
+    }
     // array_replace lets root-inline override per-subpath. Drop the
     // structural 'path' key from the merged layer — it identifies the
     // subpath, not an app field.
