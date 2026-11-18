@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   width="100"
+   height="100"
+   version="1.1"
+>
+  <defs>
+    <linearGradient
+       id="linear_gradient_for_letters"
+       x1="60.296875"
+       y1="1026.6521"
+       x2="141.11719"
+       y2="1026.6521"
+       gradientUnits="userSpaceOnUse"
+    >
+      <stop
+         offset="0"
+         stop-color="#cd022f"
+         stop-opacity="1"
+      />
+      <stop
+         offset="1"
+         stop-color="#cd022f"
+         stop-opacity="0"
+      />
+    </linearGradient>
+    <filter
+       id="filter_for_shadow"
+       width="1.5"
+       height="1.5"
+       x="-0.25"
+       y="-0.25"
+    >
+      <feGaussianBlur
+         in="SourceAlpha"
+         stdDeviation="1"
+         result="blur"
+      />
+      <feColorMatrix
+         result="bluralpha"
+         type="matrix"
+         values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.9 0"
+      />
+      <feOffset
+         in="bluralpha"
+         dx="2"
+         dy="2"
+         result="offsetBlur"
+      />
+      <feMerge>
+        <feMergeNode
+           in="offsetBlur"
+        />
+        <feMergeNode
+           in="SourceGraphic"
+        />
+      </feMerge>
+    </filter>
+  </defs>
+  <g
+     transform="translate(-50.707033,-976.6521)"
+     opacity="1"
+     fill-opacity="1"
+     fill-rule="nonzero"
+     stroke="none"
+  >
+    <!-- shadows -->
+    <g
+       fill="black"
+       filter="url(#filter_for_shadow)"
+    >
+      <!-- shadow for letter "F" -->
+      <path
+         d="m 60.296875,1012.072 20.292969,0 0,5.6836 -12.773438,0 0,5.4297 12.011719,0 0,5.6836 -12.011719,0 0,12.3633 -7.519531,0 0,-29.1602"
+      />
+      <!-- shadow for letter "E" -->
+      <path
+         d="m 87.640625,1012.072 20.292965,0 0,5.6836 -12.77343,0 0,5.4297 12.01172,0 0,5.6836 -12.01172,0 0,6.6797 13.20312,0 0,5.6836 -20.722655,0 0,-29.1602"
+      />
+      <!-- shadow for letter "H" -->
+      <path
+         d="m 114.98438,1012.072 7.51953,0 0,11.1133 11.09375,0 0,-11.1133 7.51953,0 0,29.1602 -7.51953,0 0,-12.3633 -11.09375,0 0,12.3633 -7.51953,0 0,-29.1602"
+      />
+    </g>
+    <!-- letters -->
+    <g
+      fill="url(#linear_gradient_for_letters)"
+    >
+      <!-- letter "F" -->
+      <path
+         d="m 60.296875,1012.072 20.292969,0 0,5.6836 -12.773438,0 0,5.4297 12.011719,0 0,5.6836 -12.011719,0 0,12.3633 -7.519531,0 0,-29.1602"
+      />
+      <!-- letter "E" -->
+      <path
+         d="m 87.640625,1012.072 20.292965,0 0,5.6836 -12.77343,0 0,5.4297 12.01172,0 0,5.6836 -12.01172,0 0,6.6797 13.20312,0 0,5.6836 -20.722655,0 0,-29.1602"
+      />
+      <!-- letter "H" -->
+      <path
+         d="m 114.98438,1012.072 7.51953,0 0,11.1133 11.09375,0 0,-11.1133 7.51953,0 0,29.1602 -7.51953,0 0,-12.3633 -11.09375,0 0,12.3633 -7.51953,0 0,-29.1602"
+      />
+    </g>
+  </g>
+</svg>

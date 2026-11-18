@@ -1,0 +1,19 @@
+uuid: de984b4a-eff6-4d84-95e2-4bb3a3930ff4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_appverse_software_aliases
+    - node.type.appverse_software
+id: node.appverse_software.field_appverse_software_aliases
+field_name: field_appverse_software_aliases
+entity_type: node
+bundle: appverse_software
+label: 'Also known as'
+description: 'Other names apps use for this software, one per line item, such as "VSCode" or "code-server" for Visual Studio Code. The Appverse review tool treats each as this entry''s title when it suggests an app''s software for the duplicate check.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

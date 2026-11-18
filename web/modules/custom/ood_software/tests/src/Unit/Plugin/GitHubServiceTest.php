@@ -5,6 +5,7 @@ namespace Drupal\Tests\ood_software\Unit\Plugin;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Query\QueryInterface;
+use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\key\KeyRepositoryInterface;
@@ -129,6 +130,40 @@ class GitHubServiceTest extends UnitTestCase {
   }
 
   /**
+   * An entry's "Also known as" name resolves to that entry (D8-2960).
+   *
+   * @covers ::resolveSoftwareForApp
+   */
+  public function testResolveSoftwareAlias(): void {
+    $this->mockSoftwareCatalog(
+      ['Visual Studio Code', 'Jupyter', 'RStudio', 'Gradio App'],
+      [
+        'Visual Studio Code' => ['VSCode', 'code-server'],
+        'Jupyter' => ['RStudio', 'Gradio'],
+        'Gradio App' => ['Gradio'],
+      ],
+    );
+
+    // An alias, ignoring case and surrounding space.
+    $r = $this->service->resolveSoftwareForApp(' vscode ');
+    $this->assertSame('Visual Studio Code', $r['resolvedTitle']);
+    $this->assertSame(1, $r['resolvedNid']);
+    $this->assertNull($r['suggestion']);
+
+    // A title wins over another entry's alias of the same name.
+    $r = $this->service->resolveSoftwareForApp('RStudio');
+    $this->assertSame('RStudio', $r['resolvedTitle']);
+
+    // Between two entries' aliases, the first entry wins.
+    $r = $this->service->resolveSoftwareForApp('Gradio');
+    $this->assertSame('Jupyter', $r['resolvedTitle']);
+
+    // Not an alias and too far from every title: nothing.
+    $r = $this->service->resolveSoftwareForApp('code server x');
+    $this->assertNull($r['resolvedTitle']);
+  }
+
+  /**
    * Helper: install a mock catalog of Software titles into the service.
    *
    * Builds NodeInterface mocks (one per title), wires a node-storage mock
@@ -138,19 +173,29 @@ class GitHubServiceTest extends UnitTestCase {
    *
    * @param string[] $titles
    *   Titles to mock as appverse_software node rows.
+   * @param array<string, string[]> $aliases
+   *   "Also known as" names per title; a title not listed has none.
    */
-  protected function mockSoftwareCatalog(array $titles): void {
+  protected function mockSoftwareCatalog(array $titles, array $aliases = []): void {
     $mockNodes = [];
     foreach ($titles as $i => $title) {
       $node = $this->createMock(NodeInterface::class);
       $node->method('getTitle')->willReturn($title);
       $node->method('id')->willReturn($i + 1);
+      $items = $this->createMock(FieldItemListInterface::class);
+      $items->method('getValue')->willReturn(array_map(
+        static fn (string $v): array => ['value' => $v],
+        $aliases[$title] ?? []
+      ));
+      $node->method('hasField')->with('field_appverse_software_aliases')->willReturn(TRUE);
+      $node->method('get')->with('field_appverse_software_aliases')->willReturn($items);
       $mockNodes[$i + 1] = $node;
     }
 
     $query = $this->createMock(QueryInterface::class);
     $query->method('condition')->willReturnSelf();
     $query->method('accessCheck')->willReturnSelf();
+    $query->method('sort')->willReturnSelf();
     $query->method('execute')->willReturn(array_keys($mockNodes));
 
     $storage = $this->createMock(EntityStorageInterface::class);

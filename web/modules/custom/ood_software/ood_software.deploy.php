@@ -1566,3 +1566,206 @@ function ood_software_deploy_10017_clear_invalid_software_links(array &$sandbox)
     '@cleared' => $sandbox['cleared'],
   ]);
 }
+
+/**
+ * Fill in the first "Also known as" names on Software entries (D8-2960).
+ *
+ * The Appverse review tool matches an app's names against each Software
+ * entry's title and these aliases to suggest its software for the duplicate
+ * check. The list is the apps the published catalog's titles alone could not
+ * match: 14 of the 15 apps the tool found no entry for now get the right
+ * one, and none gets a wrong one. RStudio Server and GNU Octave are the names
+ * the EESSI collection declares for the RStudio and Octave entries. Only an entry whose alias field is empty
+ * is filled, on its default and latest revision, so staff edits are never
+ * overwritten and a re-run changes nothing. A title missing from the catalog
+ * is skipped and named in the result.
+ */
+function ood_software_deploy_10018_seed_software_aliases(): TranslatableMarkup {
+  $aliases = [
+    'Visual Studio Code' => ['VS Code', 'VSCode', 'code-server', 'Code Server'],
+    'Gradio App' => ['Gradio'],
+    'Nsight Eclipse' => ['Nsight'],
+    'Multitenant Apps' => ['Multitenant'],
+    'Workflow Composers' => ['Drona Composer', 'Open Composer', 'OpenComposer'],
+    'SSH Terminal' => ['Compute Node Shell'],
+    'RStudio' => ['RStudio Server'],
+    'Octave' => ['GNU Octave'],
+  ];
+  $field = 'field_appverse_software_aliases';
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+
+  $fill = static function (NodeInterface $node, array $names) use ($field): bool {
+    if (!$node->hasField($field) || !$node->get($field)->isEmpty()) {
+      return FALSE;
+    }
+    $node->set($field, $names);
+    $node->setNewRevision(FALSE);
+    $node->setSyncing(TRUE);
+    $node->save();
+    return TRUE;
+  };
+
+  $filled = [];
+  $missing = [];
+  foreach ($aliases as $title => $names) {
+    $nids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('type', 'appverse_software')
+      ->condition('title', $title)
+      ->execute();
+    if (!$nids) {
+      $missing[] = $title;
+      continue;
+    }
+    foreach ($storage->loadMultiple($nids) as $node) {
+      $default_vid = (int) $node->getRevisionId();
+      $done = $fill($node, $names);
+      $latest_vid = (int) $storage->getLatestRevisionId($node->id());
+      if ($latest_vid && $latest_vid !== $default_vid) {
+        $latest = $storage->loadRevision($latest_vid);
+        if ($latest instanceof NodeInterface) {
+          $done = $fill($latest, $names) || $done;
+        }
+      }
+      if ($done) {
+        $filled[] = $title;
+      }
+    }
+  }
+
+  return t('Added aliases to @count Software entries (@filled). Not in the catalog: @missing.', [
+    '@count' => count($filled),
+    '@filled' => $filled ? implode(', ', $filled) : 'none',
+    '@missing' => $missing ? implode(', ', $missing) : 'none',
+  ]);
+}
+
+/**
+ * Add the Software entries the EESSI collection declares (D8-2960).
+ *
+ * doitnowgroup/eessi-ood-appverse declares 25 apps; 18 name software the
+ * catalog had no entry for, so the hub's sync saved those apps as rejected
+ * ("software not found"). Each entry is created published, since the sync
+ * matches published entries only, with a description drawn from the
+ * project's own site, its website, tags from the shared tags vocabulary,
+ * a license term, and the logo the EESSI app ships where it is the project's
+ * mark (logos/eessi/, from the repo at e086833). Gmsh, jgmenu, MLflow and
+ * VisPy have no logo here: their app icons are not the projects' logos. The
+ * owner is the original catalog import's (10001). A title that already
+ * exists, in any case, is left alone and skipped, so a re-run changes
+ * nothing. A tag or license term missing from its vocabulary is skipped and
+ * named, never created. RStudio Server and GNU Octave are not here: 10018
+ * makes them aliases of the existing RStudio and Octave entries.
+ */
+function ood_software_deploy_10019_add_eessi_software(): TranslatableMarkup {
+  $oss = 'Open-Source License';
+  $software = [
+    'Bokeh' => ['https://bokeh.org', 'Bokeh is a Python library for interactive plots, dashboards and data applications in notebooks and web browsers.', ['python', 'plotting', 'visualization', 'data-analysis'], $oss, 'bokeh.svg'],
+    'feh' => ['https://feh.finalrewind.org', 'feh is a fast and light image viewer for X11.', ['image-processing', 'gui', 'x11'], $oss, 'feh.svg'],
+    'Gmsh' => ['https://gmsh.info', 'Gmsh is a three-dimensional finite element mesh generator with built-in pre- and post-processing.', ['finite-element-analysis', 'modeling', 'simulation', 'gui'], $oss, NULL],
+    'gnuplot' => ['http://www.gnuplot.info', 'gnuplot is a portable, command-line driven graphing utility for Linux, Windows, macOS and other platforms.', ['plotting', 'data-analysis', 'visualization'], $oss, 'gnuplot.png'],
+    'Graphviz' => ['https://graphviz.org', 'Graphviz is open source graph visualization software that draws structural information as diagrams of graphs and networks.', ['visualization', 'gui'], $oss, 'graphviz.png'],
+    'GRASS GIS' => ['https://grass.osgeo.org', 'GRASS is an open source geospatial processing engine for modeling, time series analysis and spatial data management.', ['gis', 'earth-sciences', 'modeling', 'data-analysis'], $oss, 'grass.png'],
+    'ImageMagick Display' => ['https://imagemagick.org', 'ImageMagick is an open source suite for creating, editing, converting and manipulating images in over 200 formats.', ['image-processing', 'gui'], $oss, 'imagemagick.png'],
+    'IPython QtConsole' => ['https://qtconsole.readthedocs.io', 'The Jupyter Qt Console is a Qt-based desktop console for Jupyter kernels such as IPython.', ['python', 'programming', 'gui'], $oss, 'ipython.png'],
+    'jgmenu' => ['https://github.com/jgmenu/jgmenu', 'jgmenu is an application menu for X11 desktops.', ['x11', 'gui'], $oss, NULL],
+    'LavaVu' => ['https://github.com/lavavu/LavaVu', 'LavaVu (Lightweight, Automatable Visualisation & Analysis Viewing Utility) is a viewer for interactive and scripted visualization of scientific data.', ['visualization', 'python'], $oss, 'lavavu.png'],
+    'MLflow' => ['https://mlflow.org', 'MLflow is an open source platform for building, evaluating, monitoring and managing machine learning models and AI applications.', ['machine-learning', 'ai', 'python'], 'Apache License 2.0', NULL],
+    'OpenGL' => ['https://www.opengl.org', 'OpenGL is the industry-standard cross-platform API for high-performance 2D and 3D graphics.', ['computer-graphics', 'gpu'], 'N/A', 'opengl.svg'],
+    'Paraver' => ['https://tools.bsc.es/paraver', 'Paraver is a flexible performance analysis tool from the Barcelona Supercomputing Center for traces of parallel program runs.', ['performance-tuning', 'profiling', 'mpi', 'hpc-tools'], $oss, 'paraver.png'],
+    'ROOT' => ['https://root.cern', "ROOT is CERN's open source framework for analyzing, storing and visualizing large scientific data sets.", ['data-analysis', 'particle-physics', 'statistics', 'c++'], $oss, 'root.svg'],
+    'Valgrind' => ['https://valgrind.org', 'Valgrind is a suite of tools for debugging and profiling that detects memory management and threading bugs.', ['debugging', 'profiling', 'performance-tuning'], $oss, 'valgrind.png'],
+    'VisPy' => ['https://vispy.org', 'VisPy is a Python library for high-performance interactive scientific visualization, from plots to applications.', ['python', 'visualization', 'gpu'], $oss, NULL],
+    'Vulkan Tools' => ['https://github.com/KhronosGroup/Vulkan-Tools', "Vulkan Tools are the Khronos Group's Vulkan development tools, including vulkaninfo and the vkcube demo.", ['computer-graphics', 'gpu'], 'Apache License 2.0', 'vulkan.png'],
+    'xterm' => ['https://invisible-island.net/xterm/', 'xterm is the standard terminal emulator for the X Window System.', ['terminal-emulation-and-window-management', 'x11', 'linux'], $oss, 'xterm.svg'],
+  ];
+  $etm = \Drupal::entityTypeManager();
+  $storage = $etm->getStorage('node');
+  $terms = $etm->getStorage('taxonomy_term');
+  $existing = [];
+  foreach ($storage->loadByProperties(['type' => 'appverse_software']) as $node) {
+    $existing[mb_strtolower(trim((string) $node->label()))] = TRUE;
+  }
+
+  // A term by its exact name: the name lookup ignores case, and tags holds
+  // both "programming" and "Programming".
+  $missing_terms = [];
+  $term_id = static function (string $vid, string $name) use ($terms, &$missing_terms): ?int {
+    foreach ($terms->loadByProperties(['vid' => $vid, 'name' => $name]) as $term) {
+      if ($term->label() === $name) {
+        return (int) $term->id();
+      }
+    }
+    $missing_terms[$vid . ':' . $name] = $vid . ':' . $name;
+    return NULL;
+  };
+
+  $logos_dir = \Drupal::service('extension.list.module')->getPath('ood_software') . '/logos/eessi';
+  $destination_dir = 'public://appverse-logos';
+  $media_types = $etm->hasDefinition('media_type') ? $etm->getStorage('media_type') : NULL;
+  $logo_media = static function (string $title, ?string $filename) use ($logos_dir, $destination_dir, $media_types): ?int {
+    $path = $filename ? $logos_dir . '/' . $filename : NULL;
+    $is_svg = $filename && str_ends_with($filename, '.svg');
+    if (!$path || !file_exists($path) || !$media_types || !$media_types->load($is_svg ? 'svg' : 'image')) {
+      return NULL;
+    }
+    \Drupal::service('file_system')->prepareDirectory($destination_dir, FileSystemInterface::CREATE_DIRECTORY);
+    $file = \Drupal::service('file.repository')->writeData((string) file_get_contents($path), $destination_dir . '/eessi-' . $filename, FileExists::Replace);
+    $media = Media::create([
+      'bundle' => $is_svg ? 'svg' : 'image',
+      'name' => $title . ' logo',
+      'uid' => 1985,
+      ($is_svg ? 'field_media_image_1' : 'field_media_image') => [
+        'target_id' => $file->id(),
+        'alt' => $title . ' logo',
+      ],
+    ]);
+    $media->save();
+    return (int) $media->id();
+  };
+
+  $created = [];
+  $skipped = [];
+  foreach ($software as $title => [$website, $description, $tags, $license, $logo]) {
+    if (isset($existing[mb_strtolower($title)])) {
+      $skipped[] = $title;
+      continue;
+    }
+    $node = Node::create([
+      'type' => 'appverse_software',
+      'title' => $title,
+      'uid' => 1985,
+      'status' => 1,
+    ]);
+    $optional = [
+      'body' => ['value' => $description, 'format' => 'markdown'],
+      'field_appverse_software_website' => ['uri' => $website, 'title' => ''],
+    ];
+    if ($node->hasField('field_tags')) {
+      $optional['field_tags'] = array_map(static fn (int $tid): array => ['target_id' => $tid], array_values(array_filter(array_map(
+        static fn (string $tag): ?int => $term_id('tags', $tag),
+        $tags
+      ))));
+    }
+    if ($node->hasField('field_license') && ($license_id = $term_id('appverse_license', $license))) {
+      $optional['field_license'] = ['target_id' => $license_id];
+    }
+    if ($node->hasField('field_appverse_logo') && ($media_id = $logo_media($title, $logo))) {
+      $optional['field_appverse_logo'] = ['target_id' => $media_id];
+    }
+    foreach ($optional as $field => $value) {
+      if ($node->hasField($field)) {
+        $node->set($field, $value);
+      }
+    }
+    $node->save();
+    $created[] = $title;
+  }
+
+  return t('Created @count Software entries (@created). Already in the catalog: @skipped. Terms not found: @terms.', [
+    '@count' => count($created),
+    '@created' => $created ? implode(', ', $created) : 'none',
+    '@skipped' => $skipped ? implode(', ', $skipped) : 'none',
+    '@terms' => $missing_terms ? implode(', ', $missing_terms) : 'none',
+  ]);
+}

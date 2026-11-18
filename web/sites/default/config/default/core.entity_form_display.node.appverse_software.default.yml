@@ -5,6 +5,7 @@ dependencies:
   config:
     - field.field.node.appverse_software.body
     - field.field.node.appverse_software.field_appverse_logo
+    - field.field.node.appverse_software.field_appverse_software_aliases
     - field.field.node.appverse_software.field_appverse_software_doc
     - field.field.node.appverse_software.field_appverse_software_website
     - field.field.node.appverse_software.field_appverse_topics
@@ -48,6 +49,14 @@ content:
     region: content
     settings:
       media_types: {  }
+    third_party_settings: {  }
+  field_appverse_software_aliases:
+    type: string_textfield
+    weight: 10
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
     third_party_settings: {  }
   field_appverse_software_doc:
     type: link_default
