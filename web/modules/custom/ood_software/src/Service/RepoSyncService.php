@@ -772,11 +772,9 @@ class RepoSyncService {
       }
     }
     $rootInline = is_array($entry) ? $entry : [];
-    // array_replace lets root-inline override per-subpath. Drop the
-    // structural 'path' key from the merged layer — it identifies the
-    // subpath, not an app field.
-    $appverseLayer = array_replace($perSubpathAppverse, $rootInline);
-    unset($appverseLayer['path']);
+    // Root-inline overrides per-subpath, as the Add Repo preview reads it;
+    // see AppverseLayer::merge() for the title rules.
+    $appverseLayer = AppverseLayer::merge($perSubpathAppverse, $rootInline, $subpath, AppverseLayer::manifestName($files['manifestYml'] ?? NULL));
 
     // Repo-level maintainer inheritance (monorepo apps[] path only).
     // Rule: inherit the ENTIRE root-level maintainer mapping ONLY when the

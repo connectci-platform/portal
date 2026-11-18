@@ -308,6 +308,111 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
   }
 
   /**
+   * A root apps[] name that is only the folder name doesn't become the title.
+   *
+   * The EESSI monorepo lists each app as name: bc_eessi_bokeh with the same
+   * path, and gives the title in the app's own appverse.yml (D8-3138).
+   *
+   * @covers ::applyDeclaredApp
+   */
+  public function testFolderNameDefersToTheAppsOwnTitle(): void {
+    $sync = $this->container->get('ood_software.repo_sync');
+    $repo = $this->createRepo();
+    $perApp = "title: \"Bokeh - EESSI\"\ndescription: \"Bokeh dashboards.\"\nsoftware: \"Jupyter\"\napp_type: \"batch-connect-basic\"\nmaintainer:\n  name: \"Team\"\n  support_url: \"https://e.org\"\n";
+    $sync->applyDeclaredApps(
+      $repo,
+      ['apps' => [['name' => 'bc_eessi_bokeh', 'path' => 'bc_eessi_bokeh']]],
+      ['bc_eessi_bokeh' => ['manifestYml' => "name: \"Bokeh (manifest)\"\n", 'appverseYml' => $perApp]],
+      'https://github.com/x/y',
+      [],
+    );
+    $app = $this->loadApp($repo, 'bc_eessi_bokeh');
+    self::assertSame('Bokeh - EESSI', $app->label(), 'Errors: ' . $this->errors($app));
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
+  }
+
+  /**
+   * With no title anywhere else, manifest.yml's name is used.
+   *
+   * @covers ::applyDeclaredApp
+   */
+  public function testFolderNameDefersToTheManifestName(): void {
+    $sync = $this->container->get('ood_software.repo_sync');
+    $repo = $this->createRepo();
+    $sync->applyDeclaredApps(
+      $repo,
+      ['apps' => [[
+        'name' => 'bc_gmsh',
+        'path' => 'bc_gmsh',
+        'description' => 'desc',
+        'app_type' => 'batch-connect-basic',
+        'software' => 'Jupyter',
+        'maintainer' => ['name' => 'Team', 'support_url' => 'https://e.org'],
+      ],
+      ]],
+      ['bc_gmsh' => ['manifestYml' => "name: \"Gmsh\"\n", 'appverseYml' => NULL]],
+      'https://github.com/x/y',
+      [],
+    );
+    self::assertSame('Gmsh', $this->loadApp($repo, 'bc_gmsh')->label());
+  }
+
+  /**
+   * An app named only by its folder, with nothing else to name it, stays
+   * valid with the folder as its title.
+   *
+   * @covers ::applyDeclaredApp
+   */
+  public function testFolderNameWithNothingElseStaysValid(): void {
+    $sync = $this->container->get('ood_software.repo_sync');
+    $repo = $this->createRepo();
+    $sync->applyDeclaredApps(
+      $repo,
+      ['apps' => [[
+        'name' => 'jup',
+        'path' => 'jup',
+        'description' => 'desc',
+        'app_type' => 'batch-connect-basic',
+        'software' => 'Jupyter',
+        'maintainer' => ['name' => 'Team', 'support_url' => 'https://e.org'],
+      ],
+      ]],
+      ['jup' => ['manifestYml' => NULL, 'appverseYml' => NULL]],
+      'https://github.com/x/y',
+      [],
+    );
+    $app = $this->loadApp($repo, 'jup');
+    self::assertSame('jup', $app->label());
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
+  }
+
+  /**
+   * A root name that differs from the path is still the title, and wins.
+   *
+   * @covers ::applyDeclaredApp
+   */
+  public function testARealRootNameStillWins(): void {
+    $sync = $this->container->get('ood_software.repo_sync');
+    $repo = $this->createRepo();
+    $sync->applyDeclaredApps(
+      $repo,
+      ['apps' => [[
+        'name' => 'Jupyter (Example)',
+        'path' => 'jup',
+        'description' => 'desc',
+        'app_type' => 'batch-connect-basic',
+        'software' => 'Jupyter',
+        'maintainer' => ['name' => 'Team', 'support_url' => 'https://e.org'],
+      ],
+      ]],
+      ['jup' => ['manifestYml' => NULL, 'appverseYml' => "title: \"Other\"\n"]],
+      'https://github.com/x/y',
+      [],
+    );
+    self::assertSame('Jupyter (Example)', $this->loadApp($repo, 'jup')->label());
+  }
+
+  /**
    * An app with no tags of its own inherits the shared tags.
    *
    * @covers ::applyDeclaredApps

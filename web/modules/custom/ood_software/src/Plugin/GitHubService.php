@@ -2,6 +2,7 @@
 
 namespace Drupal\ood_software\Plugin;
 
+use Drupal\ood_software\Service\AppverseLayer;
 use Drupal\Component\Utility\Xss;
 use Drupal\Component\Serialization\Yaml;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -994,8 +995,7 @@ class GitHubService {
           }
         }
         $rootInline = is_array($entry) ? $entry : [];
-        $appverseLayer = array_replace($perSubpathAppverse, $rootInline);
-        unset($appverseLayer['path']);
+        $appverseLayer = AppverseLayer::merge($perSubpathAppverse, $rootInline, (string) $path, $manifest['name'] ?? NULL);
 
         // appverse layer is canonical for the catalog; falls through to
         // manifest.yml when a field isn't declared in the layer.
