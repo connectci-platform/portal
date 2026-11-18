@@ -343,7 +343,7 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
       $repo,
       ['apps' => [[
         'name' => 'bc_gmsh',
-        'path' => 'bc_gmsh/',
+        'path' => 'bc_gmsh',
         'description' => 'desc',
         'app_type' => 'batch-connect-basic',
         'software' => 'Jupyter',
@@ -355,6 +355,35 @@ class DeclaredAppSharedTagsInheritanceTest extends KernelTestBase {
       [],
     );
     self::assertSame('Gmsh', $this->loadApp($repo, 'bc_gmsh')->label());
+  }
+
+  /**
+   * An app named only by its folder, with nothing else to name it, stays
+   * valid with the folder as its title.
+   *
+   * @covers ::applyDeclaredApp
+   */
+  public function testFolderNameWithNothingElseStaysValid(): void {
+    $sync = $this->container->get('ood_software.repo_sync');
+    $repo = $this->createRepo();
+    $sync->applyDeclaredApps(
+      $repo,
+      ['apps' => [[
+        'name' => 'jup',
+        'path' => 'jup',
+        'description' => 'desc',
+        'app_type' => 'batch-connect-basic',
+        'software' => 'Jupyter',
+        'maintainer' => ['name' => 'Team', 'support_url' => 'https://e.org'],
+      ],
+      ]],
+      ['jup' => ['manifestYml' => NULL, 'appverseYml' => NULL]],
+      'https://github.com/x/y',
+      [],
+    );
+    $app = $this->loadApp($repo, 'jup');
+    self::assertSame('jup', $app->label());
+    self::assertSame('valid', $this->validationStatus($app), 'Errors: ' . $this->errors($app));
   }
 
   /**
