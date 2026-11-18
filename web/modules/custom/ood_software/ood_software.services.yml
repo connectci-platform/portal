@@ -60,6 +60,11 @@ services:
     class: Drupal\ood_software\Service\InPlaceSaver
     arguments: ['@entity_type.manager']
 
+  # Review saves on the review's own revision, so its paragraphs aren't copied.
+  ood_software.review_saver:
+    class: Drupal\ood_software\Service\ReviewSaver
+    arguments: ['@datetime.time', '@current_user', '@logger.factory']
+
   ood_software.review_seeder:
     class: Drupal\ood_software\Service\AppverseReviewSeeder
     arguments: ['@entity_type.manager', '@file.repository', '@file_system', '@logger.factory', '@ood_software.repo_member_apps']
@@ -110,7 +115,7 @@ services:
   # (appverse-planning#29, #30, #32).
   ood_software.review_decision_applier:
     class: Drupal\ood_software\Service\ReviewDecisionApplier
-    arguments: ['@entity_type.manager', '@current_user', '@datetime.time', '@messenger', '@ood_software.repo_member_apps', '@content_moderation.moderation_information', '@ood_software.repo_notifier', '@config.factory', '@logger.factory', '@database', '@lock', '@date.formatter']
+    arguments: ['@entity_type.manager', '@current_user', '@datetime.time', '@messenger', '@ood_software.repo_member_apps', '@content_moderation.moderation_information', '@ood_software.repo_notifier', '@config.factory', '@logger.factory', '@database', '@lock', '@date.formatter', '@ood_software.review_saver']
   ood_software.review_node_page_redirect:
     class: Drupal\ood_software\EventSubscriber\ReviewNodePageRedirectSubscriber
     tags:

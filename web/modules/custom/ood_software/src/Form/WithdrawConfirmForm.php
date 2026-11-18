@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Service\AppverseReviewService;
 use Drupal\ood_software\Service\RepoMemberApps;
+use Drupal\ood_software\Service\ReviewSaver;
 use Drupal\ood_software\Service\RepoProgress;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -35,6 +36,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     protected TimeInterface $time,
     protected AppverseReviewService $reviews,
     protected RepoMemberApps $repoMemberApps,
+    protected ReviewSaver $reviewSaver,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -44,6 +46,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
       $container->get('datetime.time'),
       $container->get('ood_software.review_dispatcher'),
       $container->get('ood_software.repo_member_apps'),
+      $container->get('ood_software.review_saver'),
     );
   }
 
@@ -112,12 +115,7 @@ final class WithdrawConfirmForm extends ConfirmFormBase {
     $review = $ids ? $storage->load(reset($ids)) : NULL;
     if ($review instanceof NodeInterface && $review->get('field_arv_decision_sent_at')->isEmpty() && $review->get('field_arv_withdrawn_at')->isEmpty()) {
       $review->set('field_arv_withdrawn_at', $now);
-      $review->setNewRevision(TRUE);
-      $review->setRevisionUserId((int) $this->currentUser()->id());
-      $review->setRevisionCreationTime($now);
-      $review->setRevisionLogMessage('Withdrawn by ' . $who);
-      $review->setValidationRequired(FALSE);
-      $review->save();
+      $this->reviewSaver->save($review, 'Withdrawn by ' . $who);
     }
 
     $repo = $storage->loadUnchanged($this->repo->id());

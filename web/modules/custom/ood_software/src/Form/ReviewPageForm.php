@@ -35,6 +35,7 @@ use Drupal\ood_software\Service\RepoProgress;
 use Drupal\ood_software\Service\ReviewAssignment;
 use Drupal\ood_software\Service\ReviewDecision;
 use Drupal\ood_software\Service\ReviewDecisionApplier;
+use Drupal\ood_software\Service\ReviewSaver;
 use Drupal\ood_software\Service\ReviewFloors;
 use Drupal\ood_software\Service\ReviewPageData;
 use Drupal\ood_software\Service\ReviewProgress;
@@ -157,6 +158,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     protected ReviewDecisionApplier $applier,
     protected RepoMemberApps $memberApps,
     protected RendererInterface $renderer,
+    protected ReviewSaver $reviewSaver,
   ) {}
 
   public static function create(ContainerInterface $container): self {
@@ -172,6 +174,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       $container->get('ood_software.review_decision_applier'),
       $container->get('ood_software.repo_member_apps'),
       $container->get('renderer'),
+      $container->get('ood_software.review_saver'),
     );
   }
 
@@ -330,11 +333,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     $form['#pre_render'][] = [self::class, 'showFieldErrors'];
     $form['#prefix'] = '<div id="arv-review-form">';
     $form['#suffix'] = '</div>';
-    // The revision this page was built from: validateForm() refuses a save
-    // from a page the review has moved on from in another window.
+    // The review as this page was built from it: validateForm() refuses a
+    // save from a page the review has moved on from in another window.
     $form['arv_revision'] = [
       '#type' => 'hidden',
-      '#default_value' => (string) $node->getRevisionId(),
+      '#default_value' => self::pageToken($node),
     ];
     // What the AJAX save just did, shown where it happened (in the finding's
     // row, or the list's add form for a delete). Only on the rebuild that
@@ -689,9 +692,9 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   public function backToDuplicate(array &$form, FormStateInterface $form_state): void {
     $focus = (string) $form_state->get('arv_focus');
     if ($this->isAjax()) {
-      // As submitForm() does: the rebuilt page carries the new revision.
+      // As submitForm() does: the rebuilt page carries the saved review.
       $form_state->setRebuild();
-      self::setInputValue($form_state, ['arv_revision'], (string) $this->node->getRevisionId());
+      self::setInputValue($form_state, ['arv_revision'], self::pageToken($this->node));
       $form_state->set('arv_confirm', [
         'finding' => NULL,
         'list' => NULL,
@@ -733,9 +736,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       }
     }
     $this->setText($this->node, 'field_arv_contributor_response', $values['response'] ?? '');
-    $this->node->setNewRevision(TRUE);
-    $this->stampRevision($this->node, 'Review page: decision update drafted by ' . $this->currentUser->getDisplayName());
-    $this->node->save();
+    $this->reviewSaver->save($this->node, 'Review page: decision update drafted by ' . $this->currentUser->getDisplayName());
   }
 
   /**
@@ -924,12 +925,11 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     if (($node->get('moderation_state')->value ?? '') === 'draft') {
       $node->set('moderation_state', 'in_review');
     }
-    $node->setNewRevision(TRUE);
     $changes = array_values(array_filter($changes));
-    // An add or a delete names itself; it is the same one revision.
+    // An add or a delete names itself; it is the same one save. On the
+    // review's own revision: a new one would copy every paragraph (D8-3136).
     $log = $form_state->get('arv_stamp') ?? 'Review page: saved by ' . $this->currentUser->getDisplayName();
-    $this->stampRevision($node, $log . ($changes !== [] ? '; ' . implode('; ', $changes) : ''));
-    $node->save();
+    $this->reviewSaver->save($node, $log . ($changes !== [] ? '; ' . implode('; ', $changes) : ''));
     // The send button saves, then goes on to the email preview.
     if (($form_state->getTriggeringElement()['#name'] ?? '') === 'send_decision') {
       $this->messenger()->addStatus($this->t('Your edits are saved. Nothing is sent until you confirm.'));
@@ -944,7 +944,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
       // The page is rebuilt from what was posted, so everything typed stays.
       // What the save itself changed is brought into line: the note is saved
       // (posting it again would add it twice), the first save assigned the
-      // saver, and the review has a new revision.
+      // saver, and the review was saved.
       $form_state->setRebuild();
       self::setInputValue($form_state, ['new_note'], '');
       if ($repo instanceof NodeInterface && array_key_exists('assignee', $form)) {
@@ -953,7 +953,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
         $assignee = $saved instanceof NodeInterface ? $this->reviewAssignment->assignee($saved) : NULL;
         self::setInputValue($form_state, ['assignee'], $assignee ? (string) $assignee->id() : '');
       }
-      self::setInputValue($form_state, ['arv_revision'], (string) $node->getRevisionId());
+      self::setInputValue($form_state, ['arv_revision'], self::pageToken($node));
       $form_state->set('arv_announce', $form_state->get('arv_announce') ?? (string) $this->t('Saved.'));
       $form_state->set('arv_focus', $focus);
       // A delete is confirmed at its list's add form, anything else in the
@@ -2081,15 +2081,13 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
   }
 
   /**
-   * Records who made a revision and when.
+   * Which save of the review a page was built from, for the stale-page check.
    *
-   * Without this every revision saved from the review page reads as
-   * anonymous, all with the same time.
+   * The review saves on its own revision (ReviewSaver), so the revision id
+   * alone no longer moves; its changed time does, strictly, on every save.
    */
-  protected function stampRevision(NodeInterface $node, string $message): void {
-    $node->setRevisionUserId((int) $this->currentUser->id());
-    $node->setRevisionCreationTime($this->time->getCurrentTime());
-    $node->setRevisionLogMessage($message);
+  public static function pageToken(NodeInterface $review): string {
+    return $review->getRevisionId() . ':' . $review->getChangedTime();
   }
 
   /**
@@ -2595,7 +2593,7 @@ final class ReviewPageForm extends FormBase implements TrustedCallbackInterface 
     // compare.
     $posted = $form_state->getUserInput()['arv_revision'] ?? NULL;
     $stale = !$form_state->isProgrammed() && isset($form['arv_revision'])
-      && (!is_scalar($posted) || (string) $posted !== (string) $this->node->getRevisionId());
+      && (!is_scalar($posted) || (string) $posted !== self::pageToken($this->node));
     if (!$this->buttonPressed($form_state) || $stale) {
       $this->refuseStale($form, $form_state);
       return FALSE;

@@ -24,6 +24,7 @@ use Drupal\Tests\ood_software\Kernel\Traits\ProdConfigTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
 use Drupal\user\Entity\Role;
 use Drupal\user\UserInterface;
+use Psr\Log\AbstractLogger;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -100,6 +101,13 @@ class ReviewWorklistPageTest extends KernelTestBase {
   protected UserInterface $reviewer;
 
   /**
+   * Messages review saves logged.
+   *
+   * @var array<int, string>
+   */
+  protected array $reviewLog = [];
+
+  /**
    * The test's browser session.
    */
   protected ?Session $session = NULL;
@@ -156,6 +164,25 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->owner = $this->createUser(['access content'], 'owner');
     $this->reviewer = $this->createUser(['access content', 'administer appverse content'], 'reviewer');
     $this->setCurrentUser($this->reviewer);
+    // What review saves log, in place of a revision log (ReviewSaver).
+    $log = &$this->reviewLog;
+    $this->container->get('logger.factory')->addLogger(new class($log) extends AbstractLogger {
+
+      /**
+       * @param array<int, string> $log
+       */
+      public function __construct(protected array &$log) {}
+
+      /**
+       * {@inheritdoc}
+       */
+      public function log($level, string|\Stringable $message, array $context = []): void {
+        if (($context['channel'] ?? '') === 'ood_software' && isset($context['@message'])) {
+          $this->log[] = (string) $context['@message'];
+        }
+      }
+
+    });
   }
 
   /**
@@ -739,15 +766,15 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $review = $this->inferredReview($this->software('S'), TRUE);
     $pid = $this->verdictPids($review)[0];
     $this->assertStringContainsString('confirm_duplicate__' . $pid, $this->renderAs($this->reviewer, $review, 'update=1'));
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     [, $formState, $response] = $this->post($review, $this->keys($review, 'update=1') + [
       'duplicate' => [$pid => ['note' => '']],
       'response' => 'Sent.',
     ], 'confirm_duplicate__' . $pid, 'Confirm', FALSE, 'update=1');
     $this->assertSame([], $formState->getErrors());
     $this->assertSame('none', Paragraph::load($pid)->get('field_rvv_duplicate')->value);
-    $this->assertSame($before + 1, $this->revisionCount($review));
-    $this->assertStringContainsString('decision update drafted by', (string) Node::load($review->id())->getRevisionLogMessage());
+    $this->assertNotSame($before, $this->saveToken($review), 'Saved.');
+    $this->assertLogged('decision update drafted by');
     $this->assertInstanceOf(RedirectResponse::class, $response);
     $this->assertStringEndsWith('/appverse/review/' . $review->id() . '?update=1#duplicate-' . $pid, $response->getTargetUrl());
     $this->assertStringNotContainsString('/decision', $response->getTargetUrl());
@@ -764,7 +791,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertSame([], $formState->getErrors());
     $this->assertTrue($formState->isRebuilding());
     $this->assertSame('none', Paragraph::load($pid)->get('field_rvv_duplicate')->value);
-    $this->assertSame((string) Node::load($review->id())->getRevisionId(), (string) $form['arv_revision']['#value']);
+    $this->assertSame($this->saveToken($review), (string) $form['arv_revision']['#value']);
     $this->assertTrue($form['#updating']);
     $this->assertSame('duplicate-' . $pid, $formState->get('arv_focus'));
   }
@@ -1129,7 +1156,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     ]);
     $this->assertSame([], $form_state->getErrors());
     $this->assertSame('Please quote it.', Paragraph::load($high->id())->get('field_rvf_reviewer_prose')->value);
-    $this->assertSame('in_review', Node::load($review->id())->get('moderation_state')->value);
+    $this->assertSame('in_review', $this->moderationState($review));
     $this->assertCount(1, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities(), 'The empty add form added nothing.');
   }
 
@@ -1197,7 +1224,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $review = $this->makeReview(['root' => []]);
     $pid = $this->verdictPids($review)[0];
     $key = 'app-' . $pid;
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     [, $formState] = $this->post($review, $this->keys($review) + [
       'add_finding' => [$key => $this->addInput('code_quality', 'QUA-03', 'low', 'No error handling.')],
       'response' => 'Thanks for the app.',
@@ -1210,8 +1237,8 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertSame('request_changes', Paragraph::load($pid)->get('field_rvv_conclusion')->value);
     $node = Node::load($review->id());
     $this->assertSame('Thanks for the app.', $node->get('field_arv_contributor_response')->value);
-    $this->assertSame($before + 1, $this->revisionCount($review));
-    $this->assertStringContainsString('added finding QUA-03', (string) $node->getRevisionLogMessage());
+    $this->assertNotSame($before, $this->saveToken($review), 'Saved.');
+    $this->assertLogged('added finding QUA-03');
     $this->assertSame('Finding added.', $formState->get('arv_announce'));
     $this->assertSame('finding-' . $added[0]->id(), $formState->get('arv_focus'));
   }
@@ -1258,7 +1285,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $review = $this->makeReview(['root' => [$high]]);
     $pid = $this->verdictPids($review)[0];
     $key = 'app-' . $pid;
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     [, $formState] = $this->post($review, $this->keys($review) + [
       'override' => [(string) $high->id() => ['severity' => 'low']],
       'add_finding' => [$key => $this->addInput('code_quality', 'QUA-03', 'low', 'No error handling.')],
@@ -1266,7 +1293,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertNotSame([], $formState->getErrors());
     $this->assertCount(1, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities(), 'No finding was added.');
     $this->assertEmpty(Paragraph::load($high->id())->get('field_rvf_override_severity')->value, 'No override was stored.');
-    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertSame($before, $this->saveToken($review));
   }
 
   /**
@@ -1276,13 +1303,13 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
     $review = $this->makeReview(['root' => [$high]]);
     $pid = (string) $high->id();
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     [, $formState] = $this->post($review, $this->keys($review) + [
       'override' => [$pid => ['severity' => 'low']],
     ], 'save_finding__' . $pid, 'Save', TRUE);
     $this->assertArrayHasKey('prose][' . $pid, $formState->getErrors());
     $this->assertEmpty(Paragraph::load($pid)->get('field_rvf_override_severity')->value);
-    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertSame($before, $this->saveToken($review));
     $this->assertSame('finding-' . $pid, $formState->get('arv_focus'));
   }
 
@@ -1306,16 +1333,17 @@ class ReviewWorklistPageTest extends KernelTestBase {
       'apps' => [$this->verdictPids($review)[0] => 'request_changes'],
       'response' => 'Sent.',
     ]));
-    $node->setNewRevision(TRUE);
-    $node->save();
+    // As the page saves now: on the same revision (D8-3136), and in the same
+    // second the page was built.
+    $this->container->get('ood_software.review_saver')->save($node, 'Decision sent');
     $repo = Node::load($node->get('field_arv_repo')->target_id);
     $repo->set('moderation_state', 'needs_adjustment')->save();
-    $sent = (int) Node::load($review->id())->getRevisionId();
+    $sent = $this->saveToken($review);
     foreach ([TRUE, FALSE] as $ajax) {
       \Drupal::messenger()->deleteAll();
       [, $formState] = $this->post($review, $keys + ['prose' => [$pid => 'Late note.']], 'save_finding__' . $pid, 'Save', $ajax);
       $this->assertContains('This review changed in another window. Reload the page to see the latest version.', array_map('strval', \Drupal::messenger()->messagesByType('error')), $ajax ? 'AJAX' : 'no JS');
-      $this->assertSame($sent, (int) Node::load($review->id())->getRevisionId());
+      $this->assertSame($sent, $this->saveToken($review));
       $this->assertEmpty(Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
       $this->assertSame('needs_adjustment', Node::load($repo->id())->get('moderation_state')->value, 'No next round was started.');
       if ($ajax) {
@@ -1325,21 +1353,24 @@ class ReviewWorklistPageTest extends KernelTestBase {
   }
 
   /**
-   * The page's own saves move its revision along, so they never look stale.
+   * The page's own saves move its token along, so they never look stale.
    */
   public function testOwnSavesDoNotTripTheStaleCheck(): void {
     $high = $this->finding('OODT-01', 'high', 'fail', 'Runs input through a shell.', ['field_rvf_aspect' => 'security']);
     $review = $this->makeReview(['root' => [$high]]);
     $pid = (string) $high->id();
     $input = $this->keys($review);
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     foreach (['One.', 'Two.', 'Three.'] as $i => $note) {
       [$form, $formState] = $this->post($review, ['prose' => [$pid => $note]] + $input, 'save_finding__' . $pid, 'Save', TRUE);
       $this->assertSame([], $formState->getErrors(), "Save $i");
       $this->assertSame($note, Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
       $input = $this->nextInput($form, $input);
     }
-    $this->assertSame($before + 3, $this->revisionCount($review));
+    // Three saves in the same second, each moving the token along, and none a
+    // new revision: that would copy every paragraph (D8-3136).
+    $this->assertNotSame($before, $this->saveToken($review));
+    $this->assertSame(1, $this->revisionCount($review), 'Saved in place.');
   }
 
   /**
@@ -1424,7 +1455,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertSame('Finding deleted.', $formState->get('arv_announce'));
     $this->assertSame('fold-app-' . $pid . '-add', $formState->get('arv_focus'));
     $this->assertArrayNotHasKey($mid, $form['edit_finding'] ?? []);
-    $this->assertStringContainsString('deleted finding QUA-03', (string) Node::load($review->id())->getRevisionLogMessage());
+    $this->assertLogged('deleted finding QUA-03');
   }
 
   /**
@@ -1464,12 +1495,12 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $input = $this->nextInput($form, $input);
     $p = Paragraph::load($mid);
     $p->set('field_rvf_source', 'tool')->save();
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     \Drupal::messenger()->deleteAll();
     [, $formState] = $this->post($review, $input, 'delete_finding__' . $mid, 'Delete finding', TRUE);
     $this->assertContains('Only a finding a reviewer added can be deleted.', array_map('strval', $formState->getErrors()));
     $this->assertCount(1, Paragraph::load($pid)->get('field_rvv_findings')->referencedEntities());
-    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertSame($before, $this->saveToken($review));
     $this->assertNotContains('Review saved.', array_map('strval', \Drupal::messenger()->messagesByType('status')));
   }
 
@@ -1522,7 +1553,7 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $this->assertSame([], $formState->getErrors());
     $this->assertSame('Saved.', $formState->get('arv_announce'));
     $this->assertSame('finding-' . $hid, $formState->get('arv_focus'));
-    $log = (string) Node::load($review->id())->getRevisionLogMessage();
+    $log = end($this->reviewLog);
     $this->assertStringStartsWith('Review page: saved by ', $log);
     $this->assertStringNotContainsString('added finding', $log);
   }
@@ -1580,11 +1611,11 @@ class ReviewWorklistPageTest extends KernelTestBase {
     $pid = (string) $high->id();
     $input = $this->keys($review);
     unset($input['arv_revision']);
-    $before = $this->revisionCount($review);
+    $before = $this->saveToken($review);
     \Drupal::messenger()->deleteAll();
     $this->post($review, $input + ['prose' => [$pid => 'Noted.']], 'save_finding__' . $pid, 'Save', TRUE);
     $this->assertContains('This review changed in another window. Reload the page to see the latest version.', array_map('strval', \Drupal::messenger()->messagesByType('error')));
-    $this->assertSame($before, $this->revisionCount($review));
+    $this->assertSame($before, $this->saveToken($review));
     $this->assertEmpty(Paragraph::load($pid)->get('field_rvf_reviewer_prose')->value);
   }
 
@@ -1714,6 +1745,37 @@ class ReviewWorklistPageTest extends KernelTestBase {
       $this->session->start();
     }
     return $this->session;
+  }
+
+  /**
+   * The review's moderation state as the next request reads it.
+   *
+   * The review moves state on its own revision (ReviewSaver), and the kernel
+   * tests' memory cache backend keeps the moderation state entity's old
+   * revision; on the site the next request reads the new state (checked on
+   * Pantheon dev, D8-3136). So the state entity is read past the cache.
+   */
+  protected function moderationState(NodeInterface $review): string {
+    $this->container->get('entity_type.manager')->getStorage('content_moderation_state')->resetCache();
+    $fresh = $this->container->get('entity_type.manager')->getStorage('node')->loadUnchanged($review->id());
+    $this->assertInstanceOf(NodeInterface::class, $fresh);
+    return (string) $fresh->get('moderation_state')->value;
+  }
+
+  /**
+   * Which save the review is at, as its page token reads it.
+   */
+  protected function saveToken(NodeInterface $review): string {
+    $fresh = $this->container->get('entity_type.manager')->getStorage('node')->loadUnchanged($review->id());
+    $this->assertInstanceOf(NodeInterface::class, $fresh);
+    return ReviewPageForm::pageToken($fresh);
+  }
+
+  /**
+   * Asserts a review save logged a message containing $text.
+   */
+  protected function assertLogged(string $text): void {
+    $this->assertNotEmpty(array_filter($this->reviewLog, fn (string $m): bool => str_contains($m, $text)), "Logged: $text");
   }
 
   /**
