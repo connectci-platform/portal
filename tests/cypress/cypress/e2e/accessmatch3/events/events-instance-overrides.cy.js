@@ -16,6 +16,8 @@
   breadcrumbs, or admin UI text can't collide with the override content.
 */
 
+import { eventDate } from '../../../support/event-dates';
+
 const stamp = Date.now();
 const seriesTitle       = `cypress-overrides-${stamp}`;
 const seriesLocation    = `series-loc-${stamp}`;
@@ -37,8 +39,8 @@ describe('Per-instance override fields', () => {
     cy.get('#edit-summary-text').type('Series summary.', { delay: 0 });
 
     cy.get('#edit-recur-type-custom').click();
-    cy.get('#edit-custom-date-0-value-date').type('2027-05-01', { delay: 0 });
-    cy.get('#edit-custom-date-0-end-value-date').type('2027-05-01', { delay: 0 });
+    cy.get('#edit-custom-date-0-value-date').type(eventDate(180).iso, { delay: 0 });
+    cy.get('#edit-custom-date-0-end-value-date').type(eventDate(180).iso, { delay: 0 });
     cy.get('#edit-custom-date-0-value-time').type('14:00:00', { delay: 0 });
     cy.get('#edit-custom-date-0-end-value-time').type('15:00:00', { delay: 0 });
 
@@ -62,8 +64,8 @@ describe('Per-instance override fields', () => {
     cy.loginAs('walnut@pie.org', 'Walnut');
     cy.visit(`/events/series/${seriesId}/add`);
 
-    cy.get('#edit-date-0-value-date').clear().type('2027-06-01', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-06-01', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(211).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(211).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('14:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('15:00:00', { delay: 0 });
 
@@ -81,8 +83,8 @@ describe('Per-instance override fields', () => {
     cy.loginAs('walnut@pie.org', 'Walnut');
     cy.visit(`/events/series/${seriesId}/add`);
 
-    cy.get('#edit-date-0-value-date').clear().type('2027-07-01', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-07-01', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(241).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(241).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('14:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('15:00:00', { delay: 0 });
 
@@ -103,8 +105,8 @@ describe('Per-instance override fields', () => {
     cy.loginAs('walnut@pie.org', 'Walnut');
     cy.visit(`/events/series/${seriesId}/add`);
 
-    cy.get('#edit-date-0-value-date').clear().type('2027-08-01', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-08-01', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(272).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(272).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('14:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('15:00:00', { delay: 0 });
 
@@ -126,8 +128,8 @@ describe('Per-instance override fields', () => {
     cy.loginAs('walnut@pie.org', 'Walnut');
     cy.visit(`/events/series/${seriesId}/add`);
 
-    cy.get('#edit-date-0-value-date').clear().type('2027-09-01', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-09-01', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(303).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(303).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('14:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('15:00:00', { delay: 0 });
 

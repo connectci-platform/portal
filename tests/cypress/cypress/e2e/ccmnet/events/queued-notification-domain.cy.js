@@ -44,6 +44,8 @@
   0); keep it that way.
 */
 
+import { eventDate } from '../../../support/event-dates';
+
 const DRAIN = 'ddev drush queue:run recurring_events_registration_email_notifications_queue_worker';
 const ADMIN = ['administrator@amptesting.com', 'b8QW]X9h7#5n'];
 const WALNUT = ['walnut@pie.org', 'Walnut'];
@@ -83,8 +85,8 @@ describe('Queued event notices send with the ccmnet domain identity (D8-2835)', 
     // Select the custom recurrence radio FIRST — the custom-date fields are hidden
     // behind a #states visibility condition on recur_type=custom until this is clicked.
     cy.get('#edit-recur-type-custom').click({ force: true });
-    cy.get('#edit-custom-date-0-value-date').type('2027-11-01', { delay: 0, force: true });
-    cy.get('#edit-custom-date-0-end-value-date').type('2027-11-01', { delay: 0, force: true });
+    cy.get('#edit-custom-date-0-value-date').type(eventDate(400).iso, { delay: 0, force: true });
+    cy.get('#edit-custom-date-0-end-value-date').type(eventDate(400).iso, { delay: 0, force: true });
     cy.get('#edit-custom-date-0-value-time').type('10:00:00', { delay: 0, force: true });
     cy.get('#edit-custom-date-0-end-value-time').type('11:00:00', { delay: 0, force: true });
     cy.get('#edit-field-location-0-value').type('Zoom', { delay: 0, force: true });
@@ -109,8 +111,8 @@ describe('Queued event notices send with the ccmnet domain identity (D8-2835)', 
     // supersede or collide with another's queued notice.
     cy.loginUser(...ADMIN);
     cy.visit(`/events/series/${seriesId}/add`);
-    cy.get('#edit-date-0-value-date').clear({ force: true }).type('2027-11-15', { delay: 0, force: true });
-    cy.get('#edit-date-0-end-value-date').clear({ force: true }).type('2027-11-15', { delay: 0, force: true });
+    cy.get('#edit-date-0-value-date').clear({ force: true }).type(eventDate(414).iso, { delay: 0, force: true });
+    cy.get('#edit-date-0-end-value-date').clear({ force: true }).type(eventDate(414).iso, { delay: 0, force: true });
     cy.get('#edit-date-0-value-time').clear({ force: true }).type('10:00:00', { delay: 0, force: true });
     cy.get('#edit-date-0-end-value-time').clear({ force: true }).type('11:00:00', { delay: 0, force: true });
     cy.get('form:not(#search-block-form) #edit-submit').click({ force: true });

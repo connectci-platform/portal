@@ -16,6 +16,8 @@
     the series body without duplicating it.
 */
 
+import { eventDate } from '../../../support/event-dates';
+
 describe('Add new instance to an event series', () => {
   const seriesTitle = `cypress-add-instance-${Date.now()}`;
   const seriesBody = 'Series-level body content for inheritance testing.';
@@ -37,8 +39,8 @@ describe('Add new instance to an event series', () => {
 
     // Single custom date so we get exactly one auto-created instance.
     cy.get('#edit-recur-type-custom').click();
-    cy.get('#edit-custom-date-0-value-date').type('2027-01-15', { delay: 0 });
-    cy.get('#edit-custom-date-0-end-value-date').type('2027-01-15', { delay: 0 });
+    cy.get('#edit-custom-date-0-value-date').type(eventDate(90).iso, { delay: 0 });
+    cy.get('#edit-custom-date-0-end-value-date').type(eventDate(90).iso, { delay: 0 });
     cy.get('#edit-custom-date-0-value-time').type('14:00:00', { delay: 0 });
     cy.get('#edit-custom-date-0-end-value-time').type('15:00:00', { delay: 0 });
 
@@ -68,8 +70,8 @@ describe('Add new instance to an event series', () => {
     // form_alter regression returns, this assertion catches it before save.
     cy.get('input[name^="domain_access"]').should('not.exist');
 
-    cy.get('#edit-date-0-value-date').clear().type('2027-02-15', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-02-15', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(121).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(121).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('14:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('15:00:00', { delay: 0 });
 
@@ -88,8 +90,8 @@ describe('Add new instance to an event series', () => {
 
     cy.visit(`/events/series/${seriesId}/add`);
 
-    cy.get('#edit-date-0-value-date').clear().type('2027-03-15', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-03-15', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(149).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(149).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('14:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('15:00:00', { delay: 0 });
 

@@ -534,14 +534,17 @@ module.exports = defineConfig({
         }
       });
 
-      // Date for the anonymous test event created by events-add.cy.js and
-      // checked by events-page.cy.js. It is computed once per run so both
-      // specs agree even if the run crosses midnight, and kept in the future
-      // so the event still offers registration. Read it with anonEventDate()
-      // from support/event-dates.js.
-      if (!config.env.ANON_EVENT_DATE) {
-        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-        config.env.ANON_EVENT_DATE = new Date(Date.now() + thirtyDays).toISOString().slice(0, 10);
+      // The run date (YYYY-MM-DD, UTC) that every generated event date is an
+      // offset from. It is computed once per run so specs agree even if the
+      // run crosses midnight. Override it with CYPRESS_RUN_DATE, e.g. a date a
+      // year out to prove no spec depends on a fixed date. Read dates with
+      // eventDate() / anonEventDate() from support/event-dates.js.
+      if (!config.env.RUN_DATE) {
+        config.env.RUN_DATE = new Date().toISOString().slice(0, 10);
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(config.env.RUN_DATE)
+        || Number.isNaN(Date.parse(`${config.env.RUN_DATE}T00:00:00Z`))) {
+        throw new Error(`RUN_DATE must be a valid YYYY-MM-DD date, got "${config.env.RUN_DATE}"`);
       }
 
       return config;
