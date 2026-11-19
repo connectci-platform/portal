@@ -5,6 +5,7 @@
  * Deploy hooks for the Open OnDemand general module.
  */
 
+use Drupal\block_content\Entity\BlockContent;
 use Drupal\block_content\BlockContentInterface;
 use Drupal\node\NodeInterface;
 
@@ -61,4 +62,39 @@ function ood_general_deploy_d82634_intro_text(): string {
   $summary[] = $message;
 
   return implode(' ', $summary);
+}
+
+/**
+ * D8-2634: Create the intro block for the /events page.
+ *
+ * Creates the reusable "OOD Events Intro" block content with a fixed UUID so
+ * that the block placement in config can reference it. Skipped, without
+ * saving, when the block content already exists.
+ */
+function ood_general_deploy_d82634_events_intro(): string {
+  $uuid = '686f27a9-1168-4e5e-abb5-06f1c2a53980';
+  $logger = \Drupal::logger('ood_general');
+
+  $existing = \Drupal::service('entity.repository')->loadEntityByUuid('block_content', $uuid);
+  if ($existing instanceof BlockContentInterface) {
+    $message = 'Events intro block already exists; skipped.';
+    $logger->notice('D8-2634: @message', ['@message' => $message]);
+    return $message;
+  }
+
+  BlockContent::create([
+    'uuid' => $uuid,
+    'type' => 'basic',
+    'info' => 'OOD Events Intro',
+    'reusable' => TRUE,
+    'langcode' => 'en',
+    'body' => [
+      'value' => '<p class="page-intro">Join Open OnDemand community calls, office hours, and trainings, or add your own event.</p>',
+      'format' => 'full_html',
+    ],
+  ])->save();
+
+  $message = 'Events intro block created.';
+  $logger->notice('D8-2634: @message', ['@message' => $message]);
+  return $message;
 }
