@@ -24,9 +24,8 @@ function add_pecan_as_ag_coord() {
   cy.loginAs('administrator@amptesting.com', 'b8QW]X9h7#5n');
   cy.visit("/affinity-groups/access-support");
 
-  // click the Edit tab in the tabs available to admins
-  cy.get('.tabs')
-    .contains("Edit")
+  // click the Edit button in the Navigation top bar
+  cy.getTopBarEdit()
     .should('have.attr', 'href', '/node/327/edit')
     .click();
 
@@ -66,9 +65,8 @@ function remove_pecan_as_ag_coord() {
   cy.loginAs('administrator@amptesting.com', 'b8QW]X9h7#5n');
   cy.visit("/affinity-groups/access-support");
 
-  // click the Edit tab in the tabs available to admins
-  cy.get('.tabs')
-    .contains("Edit")
+  // click the Edit button in the Navigation top bar
+  cy.getTopBarEdit()
     .should('have.attr', 'href', '/node/327/edit')
     .click();
 

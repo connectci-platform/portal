@@ -20,7 +20,7 @@ describe("Test Affinity Group API", () => {
     cy.contains('test-affinity-group-api');
 
     cy.get('.font-medium > .block').contains('cypress-example-event').click();
-    cy.get('.tabs > :nth-child(2) > a').contains('Edit').click();
+    cy.clickTopBarEdit();
     cy.contains('Edit the series').click();
     cy.get('input[data-drupal-selector="edit-field-affinity-group-node-0-target-id"]').clear();
     cy.get('input[data-drupal-selector="edit-field-affinity-group-node-0-target-id"]').type('test-affinity-group-api{downArrow}{enter}', {delay: 0});

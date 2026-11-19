@@ -8,6 +8,7 @@ core_version_requirement: ^10 || ^11
 libraries:
   - nect/global-styling-and-scripts
   - nect/js-header
+  - nect/admin-navigation
 regions:
   primary_menu: 'Primary menu'
   secondary_menu: 'Secondary menu'

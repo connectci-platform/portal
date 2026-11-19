@@ -201,14 +201,45 @@ Cypress.Commands.add("verifyCallToActionBlock", (url, text, href) => {
 });
 
 /**
+ * Core Navigation moves entity local tasks (View/Edit/Delete tabs) out of the
+ * theme's local tasks block and into its fixed top bar. The featured action
+ * (Edit) is a primary button; the rest live in a "More actions" dropdown.
+ *
+ * Gets the featured "Edit" button in the top bar without clicking it, for
+ * specs that assert attributes before clicking.
+ */
+Cypress.Commands.add("getTopBarEdit", () => {
+  return cy
+    .get('.top-bar .top-bar__actions a.toolbar-button--primary')
+    .contains('Edit');
+});
+
+/**
+ * Clicks the featured "Edit" button in the Navigation top bar (this replaces
+ * clicking the Edit local task tab). Optional `options` go to .click().
+ */
+Cypress.Commands.add("clickTopBarEdit", (options) => {
+  return cy.getTopBarEdit().click(options);
+});
+
+/**
+ * Opens the Navigation top bar "More actions" dropdown and clicks the action
+ * with the given label (e.g. "Delete", "Copy"). The dropdown menu is hidden
+ * until the button is clicked.
+ */
+Cypress.Commands.add("clickTopBarAction", (label) => {
+  cy.get('.top-bar .top-bar__actions [data-drupal-dropdown]').click();
+  return cy.contains('.top-bar .toolbar-dropdown__link', label).click();
+});
+
+/**
  * Deletes last node created.
  */
 Cypress.Commands.add("deleteLastNode", () => {
   cy.visit("/admin/content");
   cy.get("tbody > :nth-child(1) > .views-field-title > a").click();
-  cy.get("#block-dingo-local-tasks > ul > :nth-child(3) > a").click({
-    force: true,
-  });
+  // Third local task was "Delete"; it now lives in the top bar dropdown.
+  cy.clickTopBarAction("Delete");
   cy.get('[value="Delete"]').click();
 });
 

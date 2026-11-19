@@ -111,8 +111,8 @@ describe("CCMNet Mentorship Email Notifications", () => {
     cy.visit("/mentorships");
     cy.get('h2.ccmnet-link a').contains('Test Mentorship for Email Verification').click({ force: true });
     
-    // Click the Edit tab in the local tasks menu - use col-12 to target the correct area
-    cy.get('.col-12 #block-nect-local-tasks .primary-tabs .nav-item a.nav-link').contains('Edit').click({ force: true });
+    // Click the Edit button in the Navigation top bar
+    cy.clickTopBarEdit();
     
     // Verify we're on the correct edit page
     cy.url().then((url) => {
@@ -136,8 +136,9 @@ describe("CCMNet Mentorship Email Notifications", () => {
     cy.loginWith("pecan@pie.org", "Pecan");
     cy.visit("/mentorships");
     cy.get('h2.ccmnet-link a').contains('Test Mentorship for Email Verification').click({ force: true });
-    // Click the Edit tab in the local tasks menu - use col-12 to target the correct area
-    cy.get('.col-12 #block-nect-local-tasks .primary-tabs .nav-item a.nav-link').contains('Edit').click({ force: true });
+    // Click the Edit button in the Navigation top bar (pecan has ccmnet_pm,
+    // which grants "access navigation").
+    cy.clickTopBarEdit();
 
     // Clear mailpit before making changes
     cy.clearMailpit();
@@ -195,8 +196,8 @@ describe("CCMNet Mentorship Email Notifications", () => {
     cy.visit("/mentorships");
     cy.get('h2.ccmnet-link a').contains('Test Mentorship for Email Verification').click({ force: true });
     
-    // Click the Edit tab in the local tasks menu - use col-12 to target the correct area
-    cy.get('.col-12 #block-nect-local-tasks .primary-tabs .nav-item a.nav-link').contains('Edit').click({ force: true });
+    // Click the Edit button in the Navigation top bar
+    cy.clickTopBarEdit();
 
     // Add Julie Ma as liaison (Select2 dropdown)
     cy.window().then(win => {
@@ -212,8 +213,9 @@ describe("CCMNet Mentorship Email Notifications", () => {
     cy.visit("/mentorships");
     cy.get('h2.ccmnet-link a').contains('Test Mentorship for Email Verification').click({ force: true });
     
-    // Click the Edit tab in the local tasks menu - use col-12 to target the correct area
-    cy.get('.col-12 #block-nect-local-tasks .primary-tabs .nav-item a.nav-link').contains('Edit').click({ force: true });
+    // Click the Edit button in the Navigation top bar (pecan has ccmnet_pm,
+    // which grants "access navigation").
+    cy.clickTopBarEdit();
 
     // Clear mailpit before state change
     cy.clearMailpit();

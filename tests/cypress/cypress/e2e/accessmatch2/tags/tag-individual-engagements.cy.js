@@ -64,9 +64,7 @@ describe("Verify a tag's page list of engagements", () => {
       cy.contains('Thank you for sending your project for review.', { timeout: 20000 });
 
       // update to In Progress
-      cy.get('.tabs')
-        .contains('Edit')
-        .click();
+      cy.clickTopBarEdit();
       cy.get('#edit-moderation-state-0-state').select('In Progress');
       cy.get('#edit-submit').click();
       cy.contains('has been updated.', { timeout: 20000 });

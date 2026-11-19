@@ -1,0 +1,19 @@
+/**
+ * @file
+ * Offsets the page for core Navigation's fixed sidebar and top bar.
+ *
+ * Core only offsets a .dialog-off-canvas-main-canvas that directly follows
+ * the toolbar. The nect, pascience, ood and champions themes override
+ * off-canvas-page-wrapper.html.twig and omit that wrapper, so the body is
+ * offset instead, using the values Drupal.displace() measures. The other
+ * themes attach this library (nect/admin-navigation) from their info.yml. The variables are unset for users without Navigation, so the
+ * fallbacks of 0 leave the page unchanged.
+ */
+body {
+  padding-block-start: var(--drupal-displace-offset-top, 0);
+  padding-inline-start: var(--drupal-displace-offset-left, 0);
+}
+
+[dir="rtl"] body {
+  padding-inline-start: var(--drupal-displace-offset-right, 0);
+}
