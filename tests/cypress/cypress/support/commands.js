@@ -209,9 +209,10 @@ Cypress.Commands.add("verifyCallToActionBlock", (url, text, href) => {
  * specs that assert attributes before clicking.
  */
 Cypress.Commands.add("getTopBarEdit", () => {
-  return cy
-    .get('.top-bar .top-bar__actions a.toolbar-button--primary')
-    .contains('Edit');
+  return cy.contains(
+    '.top-bar .top-bar__actions a.toolbar-button--primary',
+    'Edit',
+  );
 });
 
 /**
@@ -605,7 +606,13 @@ Cypress.Commands.add("clearSearchAndWait", (selector) => {
     if (!$input.val()) {
       return;
     }
-    cy.wrap($input, { log: false }).clear();
+    // Don't use .clear(). After an AJAX refresh, BEF waits (IntersectionObserver)
+    // for the input to scroll into view, then focuses it and moves the caret
+    // to the end. When the input sits just off-screen (e.g. under the
+    // Navigation top bar), .clear()'s own scroll fires that observer between
+    // {selectall} and {del}, so nothing is deleted and the old value is
+    // resubmitted. Set the value directly and fire the keyup BEF listens for.
+    cy.wrap($input, { log: false }).invoke('val', '').trigger('keyup');
     cy.waitForExposedFilterRequest(alias, name, '');
   });
   cy.waitForAjaxIdle();

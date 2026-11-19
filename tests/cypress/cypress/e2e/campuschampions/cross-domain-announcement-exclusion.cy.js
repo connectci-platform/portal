@@ -52,9 +52,7 @@ describe("Cross-Domain Announcement Exclusion Test", () => {
       cy.get(".form-submit").contains("Log in").click();
 
       // Navigate to create announcement - use direct navigation since menu might not be available after login
-      cy.get('a').contains('Content').first().click();
-      cy.get('a[href*="node/add"]').eq(2).click();
-      cy.get('a[href="/node/add/access_news"]').click();
+      cy.visit('/node/add/access_news');
 
       // Create ACCESS announcement
       cy.get('#edit-title-0-value').type(accessTitle);
@@ -74,9 +72,9 @@ describe("Cross-Domain Announcement Exclusion Test", () => {
 
       // Cleanup ACCESS announcement while still in this origin
       cy.contains(accessTitle).click();
-      cy.get('.region-content a').contains('Edit').click();
-      cy.get('a').contains('Delete').click();
-      cy.get('.button--primary').click();
+      cy.clickTopBarEdit();
+      cy.get('#edit-delete').click();
+      cy.get('.ui-dialog-buttonpane button.button--primary').click();
       cy.log(`✓ ACCESS announcement cleaned up`);
     });
     

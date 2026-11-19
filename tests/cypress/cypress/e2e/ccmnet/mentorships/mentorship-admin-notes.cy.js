@@ -64,9 +64,9 @@ describe("Admin Notes on Mentorships", () => {
     
     // Also check if there's an edit link for the creator and verify they don't see admin fields
     cy.get('body').should('exist'); // Ensure page is loaded
-    cy.get('.col-12 #block-nect-local-tasks').then($block => {
-      if ($block.find('a:contains("Edit")').length > 0) {
-        cy.get('.col-12 #block-nect-local-tasks a').contains('Edit').click();
+    cy.get('body').then($body => {
+      if ($body.find('.top-bar .top-bar__actions a.toolbar-button--primary:contains("Edit")').length > 0) {
+        cy.clickTopBarEdit();
         
         // Verify admin notes field is not visible to the creator
         cy.get('#edit-field-admin-notes-0-value').should('not.exist');

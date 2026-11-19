@@ -649,7 +649,7 @@ describe('Event Registration Surveys and Reminders', () => {
 
           // Delete the series
           cy.get('a[href*="/delete"]:visible').first().click();
-          cy.get('#edit-submit').click();
+          cy.get('.ui-dialog-buttonpane .button--primary').click();
         }
       });
 
@@ -707,7 +707,7 @@ describe('Event Registration Surveys and Reminders', () => {
           cy.clickTopBarEdit();
           cy.contains('a', 'Edit the series').click();
           cy.get('a[href*="/delete"]:visible').first().click();
-          cy.get('#edit-submit').click();
+          cy.get('.ui-dialog-buttonpane .button--primary').click();
         }
       });
 
@@ -763,7 +763,7 @@ describe('Event Registration Surveys and Reminders', () => {
           cy.clickTopBarEdit();
           cy.contains('a', 'Edit the series').click();
           cy.get('a[href*="/delete"]:visible').first().click();
-          cy.get('#edit-submit').click();
+          cy.get('.ui-dialog-buttonpane .button--primary').click();
         }
       });
     });

@@ -280,8 +280,8 @@ describe("CCMNet Mentorship Email Notifications", () => {
     cy.visit("/mentorships");
     cy.contains('Mentee Test - Email Verification').click({ force: true });
     
-    // Click the Edit tab in the local tasks menu - use col-12 to target the correct area
-    cy.get('.col-12 #block-nect-local-tasks .primary-tabs .nav-item a.nav-link').contains('Edit').click({ force: true });
+    // Click the Edit button in the Navigation top bar
+    cy.clickTopBarEdit();
 
     // Add a mentee - more reliable approach
     cy.get('#edit-field-mentee-0-target-id').clear();
@@ -509,7 +509,7 @@ describe("CCMNet Mentorship Email Notifications", () => {
       cy.get('.view-content').then($content => {
         if ($content.text().includes(title)) {
           cy.get('.view-content').contains(title).closest('tr').find('.dropbutton-toggle button').click();
-          cy.contains('Delete').click({ force: true });
+          cy.get('.view-content').contains(title).closest('tr').find('.delete a').click({ force: true });
           // Confirm deletion in the dialog
           cy.get('.ui-dialog-buttonpane .button--primary').contains('Delete').click();
         }

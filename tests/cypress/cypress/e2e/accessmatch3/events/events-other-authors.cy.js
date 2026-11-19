@@ -63,7 +63,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
-    cy.get('.region-content').contains('Edit').click()
+    cy.clickTopBarEdit()
 
     // Then navigate to edit the series from the instance edit page
     cy.contains('a', 'Edit the series').click()
@@ -85,7 +85,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance
-    cy.get('.region-content').contains('Edit').click()
+    cy.clickTopBarEdit()
 
     // Verify we can access edit form for the instance
     cy.url().should('include', '/edit')
@@ -160,7 +160,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
-    cy.get('.region-content').contains('Edit').click()
+    cy.clickTopBarEdit()
 
     // Then navigate to edit the series
     cy.contains('a', 'Edit the series').click()
@@ -206,7 +206,7 @@ describe('Test Other Authors feature for Event Series', () => {
     cy.contains('cypress-example-event').click()
 
     // Navigate to edit the event instance first
-    cy.get('.region-content').contains('Edit').click()
+    cy.clickTopBarEdit()
 
     // Then navigate to edit the series
     cy.contains('a', 'Edit the series').click()
