@@ -12,14 +12,71 @@ use Drupal\Component\Utility\Crypt;
 class GeneralCommands extends Tasks {
 
   /**
+   * Whether this command is running inside the DDEV web container.
+   *
+   * @return bool
+   *   TRUE when inside the container.
+   */
+  private function inContainer(): bool {
+    return getenv('IS_DDEV_PROJECT') === 'true' || (bool) getenv('DDEV_PROJECT');
+  }
+
+  /**
+   * Command prefix: empty in the container, "ddev " on the host.
+   *
+   * @return string
+   *   The prefix.
+   */
+  private function prefix(): string {
+    return $this->inContainer() ? '' : 'ddev ';
+  }
+
+  /**
    * DDEV command prefix.
    */
   private function ddev() {
-    $ddev = "ddev";
-    if (getenv('IS_DDEV_PROJECT') == 'true') {
-      $ddev = "";
+    return trim($this->prefix());
+  }
+
+  /**
+   * Run a critical command and throw if it fails.
+   *
+   * @param string $cmd
+   *   The shell command.
+   * @param string $failMessage
+   *   The exception message on failure.
+   */
+  private function run(string $cmd, string $failMessage): void {
+    if (!$this->_exec($cmd)->wasSuccessful()) {
+      throw new TaskException($this, $failMessage);
     }
-    return $ddev;
+  }
+
+  /**
+   * Parse a simple KEY=VALUE env file.
+   *
+   * @param string $path
+   *   The file path.
+   *
+   * @return array
+   *   Values keyed by variable name.
+   */
+  private function readEnvFile(string $path): array {
+    $values = [];
+    if (!is_readable($path)) {
+      return $values;
+    }
+    foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+      if (!preg_match('/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/', $line, $m)) {
+        continue;
+      }
+      $value = trim($m[2]);
+      if (preg_match('/^(["\'])(.*)\1$/', $value, $q)) {
+        $value = $q[2];
+      }
+      $values[$m[1]] = $value;
+    }
+    return $values;
   }
 
   /**
@@ -34,42 +91,38 @@ class GeneralCommands extends Tasks {
       $domain_id = '';
     }
 
-    // Detect if we're in DDEV container or native environment.
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $prefix = $this->prefix();
 
-    if ($is_ddev) {
-      // When inside DDEV container, commands don't need ddev prefix.
-      $cmd_prefix = "";
+    if (!is_readable('backups/site.sql.gz')) {
+      throw new TaskException($this, "backups/site.sql.gz not found. Run robo gh:pulldb first.");
+    }
+
+    if ($this->inContainer()) {
+      // The import-db command only exists on the host, so import with drush.
+      $this->run("drush sql:drop -y", "Dropping the database failed.");
+      $this->run("bash -o pipefail -c 'gunzip -c backups/site.sql.gz | drush sql:cli'", "Database import failed.");
     }
     else {
-      // Native environment - use DDEV commands from host.
-      $cmd_prefix = "ddev ";
+      $this->run("ddev import-db --file=backups/site.sql.gz", "Database import failed.");
     }
 
-    // Use DDEV's built-in database import (works from both host and container)
-    $this->_exec($cmd_prefix . "import-db --file=backups/site.sql.gz");
-
-    $this->_exec("sleep 1");
-    $this->_exec($cmd_prefix . "composer install");
-    $this->_exec($cmd_prefix . "drush cset --input-format=yaml jsonapi_extras.settings validate_configuration_integrity false -y");
-    $this->_exec($cmd_prefix . "drush deploy -y");
-    $this->_exec("sleep 1");
-    $this->_exec($cmd_prefix . "drush cim -y");
+    $this->run($prefix . "composer install", "composer install failed.");
+    $this->run($prefix . "drush cset --input-format=yaml jsonapi_extras.settings validate_configuration_integrity false -y", "Setting jsonapi_extras config failed.");
+    $this->run($prefix . "drush deploy -y", "drush deploy failed.");
+    $this->run($prefix . "drush cim -y", "drush cim failed.");
     // Disable seamless CILogon — it survives config import via
     // config_exclude_modules and redirects authenticated users without the
     // SSO cookie to logout.
-    $this->_exec($cmd_prefix . "drush sset drupal_seamless_cilogon.seamless_login_enabled 0 2>/dev/null || true");
-    $this->_exec("sleep 1");
+    $this->_exec($prefix . "drush sset drupal_seamless_cilogon.seamless_login_enabled 0 2>/dev/null || true");
     if (!empty($domain_id)) {
-      $this->_exec($cmd_prefix . "robo ds $domain_id");
+      $this->_exec($prefix . "composer robo ds " . escapeshellarg($domain_id));
     }
     else {
-      $this->_exec("sleep 1");
       // Enable symfony_mailer_log module for testing.
-      $this->_exec($cmd_prefix . "drush en symfony_mailer_log -y");
+      $this->_exec($prefix . "drush en symfony_mailer_log -y");
       // Use sendmail transport locally (DDEV routes to Mailpit)
-      $this->_exec($cmd_prefix . "drush cset symfony_mailer.settings default_transport sendmail -y");
-      $this->_exec($cmd_prefix . "drush cr");
+      $this->_exec($prefix . "drush cset symfony_mailer.settings default_transport sendmail -y");
+      $this->_exec($prefix . "drush cr");
     }
     $this->uli();
   }
@@ -107,27 +160,39 @@ class GeneralCommands extends Tasks {
    *
    * @command ddevsetup
    * @description Setup DDEV environment with GitHub auth and database.
+   * @option skip-files Skip downloading the files backup.
    */
-  public function ddevsetup(array $args) {
-    // Detect if we're running inside DDEV container.
-    $in_container = getcwd() == '/var/www/html' || getenv('DDEV_PROJECT');
-
-    if ($in_container) {
+  public function ddevsetup(array $args, array $opts = ['skip-files' => FALSE]) {
+    if ($this->inContainer()) {
       $this->say("❗️ This command should be run from the host, not inside the DDEV container. ❗️");
       $this->say("Please exit the container and run: vendor/bin/robo ddevsetup");
       return;
     }
 
-    if ($args) {
-      $token = $args[0];
-      $uid = $args[1];
+    $env_path = '.ddev/.env';
+    $existing = $this->readEnvFile($env_path);
+
+    $token = isset($args[0]) && is_string($args[0]) ? trim($args[0]) : '';
+    if ($token === '') {
+      $token = $existing['GITHUB_TOKEN'] ?? '';
     }
-    else {
-      $token = $this->ask("What is your GitHub token: ");
-      $uid = $this->ask("What is your drupal user id: ");
+    if ($token === '') {
+      $token = trim((string) $this->ask("What is your GitHub token: "));
+    }
+    $uid = isset($args[1]) && is_string($args[1]) ? trim($args[1]) : '';
+    if ($uid === '') {
+      $uid = $existing['AMP_UID'] ?? '';
+    }
+    if ($uid === '') {
+      $uid = trim((string) $this->ask("What is your drupal user id: "));
     }
 
-    $db_backup = 'backups';
+    if (preg_match('/[\r\n]/', $token) || preg_match('/[\r\n]/', $uid)) {
+      throw new TaskException($this, "Token and user id must not contain newlines.");
+    }
+    if ($uid !== '' && !ctype_digit($uid)) {
+      throw new TaskException($this, "The drupal user id must be digits only.");
+    }
 
     // Create symlink if needed (DDEV uses 'web' as docroot)
     if (!file_exists('docroot') && file_exists('web')) {
@@ -135,39 +200,64 @@ class GeneralCommands extends Tasks {
     }
 
     // Setup directories and settings.
-    $this->_exec("mkdir -p web/sites/default/settings");
-    $this->_exec("cp robo/assets/ddev.local.settings.php web/sites/default/settings/local.settings.php");
+    $this->run("mkdir -p web/sites/default/settings", "Could not create settings directory.");
+    $this->run("cp robo/assets/ddev.local.settings.php web/sites/default/settings/local.settings.php", "Could not copy local settings.");
 
-    // Generate hash and create .env file.
-    $hash = Crypt::randomBytesBase64(55);
-    $this->_exec("echo 'PANTHEON_ENVIRONMENT=local
-DRUPAL_HASH_SALT=$hash
-AMP_UID=$uid
-GITHUB_TOKEN=$token'>.env");
+    // Merge values into .ddev/.env, preserving existing lines.
+    $hash = $existing['DRUPAL_HASH_SALT'] ?? '';
+    if ($hash === '') {
+      $hash = Crypt::randomBytesBase64(55);
+    }
+    $new = [
+      'PANTHEON_ENVIRONMENT' => 'local',
+      'DRUPAL_HASH_SALT' => $hash,
+      'AMP_UID' => $uid,
+      'GITHUB_TOKEN' => $token,
+    ];
+    $lines = is_readable($env_path) ? (file($env_path, FILE_IGNORE_NEW_LINES) ?: []) : [];
+    foreach ($lines as $i => $line) {
+      if (preg_match('/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/', $line, $m) && array_key_exists($m[1], $new)) {
+        $lines[$i] = $m[1] . '=' . $new[$m[1]];
+        unset($new[$m[1]]);
+      }
+    }
+    foreach ($new as $key => $value) {
+      $lines[] = $key . '=' . $value;
+    }
+    if (!is_dir('.ddev') && !mkdir('.ddev', 0755, TRUE)) {
+      throw new TaskException($this, "Could not create .ddev directory.");
+    }
+    if (file_put_contents($env_path, implode("\n", $lines) . "\n") === FALSE) {
+      throw new TaskException($this, "Failed to write $env_path.");
+    }
+    chmod($env_path, 0600);
 
     $this->say("❗️ Environment vars setup, now starting DDEV. ❗️");
-    $this->_exec("ddev start");
-    // Often mutegen takes a while and this needs to be restarted.
-    $this->_exec("ddev restart");
-
-    // Setup GitHub auth in DDEV.
-    $this->_exec("echo \"$token\" | ddev exec gh auth login --with-token");
-    $this->_exec("ddev exec composer config --global github-protocols https");
-    $this->_exec("ddev exec composer config -g github-oauth.github.com $token");
-
-    // Download database if needed.
-    if (!file_exists($db_backup)) {
-      $this->_exec("mkdir backups");
-      $this->_exec("ddev exec vendor/bin/robo gh:pulldb");
+    if (!$this->_exec("ddev start")->wasSuccessful()) {
+      // Often mutagen takes a while and this needs to be restarted.
+      $this->run("ddev restart", "ddev restart failed.");
     }
 
-    // Download files (always get fresh files for setup)
-    $this->say("Downloading files from backup...");
-    $this->_exec("ddev exec vendor/bin/robo gh:pullfiles");
+    $this->run("ddev exec composer config --global github-protocols https", "Configuring composer github protocol failed.");
+    if ($token !== '') {
+      // Silent so the token is not echoed to the console.
+      $result = $this->taskExec("ddev exec composer config -g github-oauth.github.com " . escapeshellarg($token))->silent(TRUE)->run();
+      $this->say($result->wasSuccessful() ? "Composer GitHub token configured." : "Could not configure the composer GitHub token.");
+    }
 
-    // Import database and deploy.
-    $this->_exec("ddev exec vendor/bin/robo did");
-    $this->_exec("ddev exec drush deploy");
+    // Download database if needed.
+    if (!is_readable('backups/site.sql.gz')) {
+      $this->run("mkdir -p backups", "Could not create backups directory.");
+      $this->run("ddev exec vendor/bin/robo gh:pulldb", "Database download failed.");
+    }
+
+    if (empty($opts['skip-files'])) {
+      $this->say("Downloading files from backup...");
+      $this->run("ddev exec vendor/bin/robo gh:pullfiles", "Files download failed.");
+    }
+
+    // Import database and deploy, from the host.
+    $this->did([]);
 
     $this->say("✅ DDEV setup complete! ✅");
   }
@@ -213,7 +303,7 @@ GITHUB_TOKEN=$token'>.env");
    * @description Export config files and checkout deleted files.
    */
   public function cex() {
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $is_ddev = $this->inContainer();
     $cmd_prefix = $is_ddev ? "" : "ddev ";
     $this->_exec($cmd_prefix . "drush cex -y");
     // Checkout deleted files.
@@ -284,7 +374,7 @@ GITHUB_TOKEN=$token'>.env");
     $snap_deploy = $this->ask("Would you like to run deploy? (Y/n)");
     $this->_exec("git checkout " . $snap_name[$snap_selected][1]);
     $this->say("Restored Branch: " . $snap_name[$snap_selected][1]);
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $is_ddev = $this->inContainer();
     $cmd_prefix = $is_ddev ? "" : "ddev ";
 
     $this->_exec($cmd_prefix . "composer install");
@@ -398,7 +488,7 @@ GITHUB_TOKEN=$token'>.env");
     if (!is_numeric($domain_id)) {
       $domain_id = '';
     }
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $is_ddev = $this->inContainer();
     $cmd_prefix = $is_ddev ? "" : "ddev ";
     $this->_exec($cmd_prefix . "drush deploy -y");
     $this->_exec("robo ds $domain_id");
@@ -491,7 +581,7 @@ GITHUB_TOKEN=$token'>.env");
     if (!is_numeric($domain_id)) {
       $domain_id = '';
     }
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $is_ddev = $this->inContainer();
     $cmd_prefix = $is_ddev ? "" : "ddev ";
     if (!file_exists('robo/assets/domains.json')) {
       $this->_exec("touch robo/assets/domains.json");
@@ -523,7 +613,7 @@ GITHUB_TOKEN=$token'>.env");
    */
   public function mds() {
     $branch = shell_exec("git rev-parse --abbrev-ref HEAD");
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $is_ddev = $this->inContainer();
     $cmd_prefix = $is_ddev ? "" : "ddev ";
     if (!file_exists('robo/assets/md/domains.json')) {
       $domain_get = shell_exec($cmd_prefix . "drush domain:list --format=json");
@@ -557,9 +647,21 @@ GITHUB_TOKEN=$token'>.env");
     if (empty($branch)) {
       $branch = $this->ask("Which branch should be checked out?");
     }
-    $this->_exec("git checkout $branch");
-    $this->_exec("git pull origin $branch");
-    $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
+    $worktree = $this->findWorktreeForBranch($branch);
+    if ($worktree !== NULL) {
+      $this->yell("Branch $branch is checked out in a worktree.");
+      $this->say("Switch to it instead: cd $worktree");
+      return;
+    }
+    if (!$this->_exec("git checkout $branch")->wasSuccessful()) {
+      $this->yell("git checkout $branch failed; stopping.");
+      return;
+    }
+    if (!$this->_exec("git pull origin $branch")->wasSuccessful()) {
+      $this->yell("git pull origin $branch failed; stopping.");
+      return;
+    }
+    $is_ddev = $this->inContainer();
     $cmd_prefix = $is_ddev ? "" : "ddev ";
     $this->_exec($cmd_prefix . "composer install");
     $this->_exec($cmd_prefix . "drush deploy");
@@ -567,6 +669,38 @@ GITHUB_TOKEN=$token'>.env");
       $this->_exec($cmd_prefix . "robo ds $domain");
     }
     $this->uli();
+  }
+
+  /**
+   * Find another worktree that has the given branch checked out.
+   *
+   * @param string $branch
+   *   The local branch name.
+   *
+   * @return string|null
+   *   The worktree path, or NULL if no other worktree has the branch.
+   */
+  private function findWorktreeForBranch(string $branch): ?string {
+    $branch = preg_replace('#^origin/#', '', $branch);
+    // Already on this branch here: not another worktree. Comparing branch
+    // names rather than paths keeps this working inside the DDEV container,
+    // where git reports host paths that do not resolve.
+    $current_branch = trim((string) shell_exec('git rev-parse --abbrev-ref HEAD 2>/dev/null'));
+    if ($current_branch === $branch) {
+      return NULL;
+    }
+    $lines = [];
+    exec('git worktree list --porcelain 2>/dev/null', $lines);
+    $path = NULL;
+    foreach ($lines as $line) {
+      if (str_starts_with($line, 'worktree ')) {
+        $path = substr($line, 9);
+      }
+      elseif ($line === "branch refs/heads/$branch" && $path !== NULL) {
+        return $path;
+      }
+    }
+    return NULL;
   }
 
   /**
@@ -580,19 +714,17 @@ GITHUB_TOKEN=$token'>.env");
     if (empty($branch)) {
       $branch = $this->ask("What is the branch name?");
     }
-
-    $sitename = strtolower($branch);
-    $sitename = preg_replace('/[^a-z0-9]+/', '-', $sitename);
-    $sitename = trim($sitename, '-');
-    if (empty($sitename)) {
-      $sitename = 'site';
+    // Reject a leading "-" so the branch cannot be read as a git option.
+    if (!preg_match('#^[A-Za-z0-9._/][A-Za-z0-9._/-]*$#', $branch) || str_contains($branch, '..')) {
+      throw new TaskException($this, "Invalid branch name: $branch");
     }
 
+    $sitename = $this->siteName($branch);
     $worktree = "../worktrees/$branch";
+    $wt = escapeshellarg($worktree);
 
-    $this->_exec("git worktree add -f $worktree $branch");
-    // $this->_exec("chmod -R 777 $worktree/web/sites/default/files");
-    $this->_exec("cd $worktree && composer install");
+    $this->run("git worktree add $wt " . escapeshellarg($branch), "git worktree add failed.");
+    $this->run("cd $wt && composer install", "composer install failed in the worktree.");
     $source_env = '.ddev/.env';
     $destination_env = "$worktree/.ddev/.env";
     if (file_exists($source_env)) {
@@ -607,16 +739,61 @@ GITHUB_TOKEN=$token'>.env");
     // Symlink files from main project.
     $files_path = realpath('web/sites/default/files');
     if ($files_path && !file_exists("$worktree/web/sites/default/files")) {
-      $this->_exec("ln -s $files_path $worktree/web/sites/default/files");
+      $this->run("ln -s " . escapeshellarg($files_path) . " " . escapeshellarg("$worktree/web/sites/default/files"), "Could not symlink files.");
     }
 
     // Symlink backups from main project so ddevsetup finds the DB.
     $backups_path = realpath('backups');
     if ($backups_path && !file_exists("$worktree/backups")) {
-      $this->_exec("ln -s $backups_path $worktree/backups");
+      $this->run("ln -s " . escapeshellarg($backups_path) . " " . escapeshellarg("$worktree/backups"), "Could not symlink backups.");
     }
 
-    $config_file = file_get_contents("$worktree/.ddev/config.yaml");
+    // Symlink the gitignored .claude folder so worktrees share Claude Code
+    // settings and skills with the main project.
+    $claude_path = realpath('.claude');
+    if ($claude_path && !file_exists("$worktree/.claude") && !is_link("$worktree/.claude")) {
+      $this->run("ln -s " . escapeshellarg($claude_path) . " " . escapeshellarg("$worktree/.claude"), "Could not symlink .claude.");
+    }
+
+    $this->rewriteDdevConfig("$worktree/.ddev/config.yaml", $sitename);
+
+    $this->_exec("cd $wt && git update-index --assume-unchanged .ddev/config.yaml");
+
+    $this->run("cd $wt && vendor/bin/robo ddevsetup --skip-files", "ddevsetup failed in the worktree.");
+  }
+
+  /**
+   * Build a DDEV-safe site name from a branch name.
+   *
+   * @param string $branch
+   *   The branch name.
+   *
+   * @return string
+   *   The slug.
+   */
+  private function siteName(string $branch): string {
+    $sitename = strtolower($branch);
+    $sitename = preg_replace('/[^a-z0-9]+/', '-', $sitename);
+    $sitename = trim($sitename, '-');
+    if (empty($sitename)) {
+      $sitename = 'site';
+    }
+    return $sitename;
+  }
+
+  /**
+   * Rewrite a DDEV config.yaml with a project name and hostname prefix.
+   *
+   * @param string $path
+   *   The config.yaml path.
+   * @param string $sitename
+   *   The site name slug.
+   */
+  private function rewriteDdevConfig(string $path, string $sitename): void {
+    $config_file = file_get_contents($path);
+    if ($config_file === FALSE) {
+      throw new TaskException($this, "Failed to read $path.");
+    }
     $config_file = str_replace('name: cyberteam-drupal', 'name: ' . $sitename, $config_file);
     $config_file = preg_replace_callback(
       '/^(additional_hostnames:\s*\n)((?:\s+-\s+.+\n)*)/m',
@@ -629,11 +806,9 @@ GITHUB_TOKEN=$token'>.env");
       },
       $config_file
     );
-    file_put_contents("$worktree/.ddev/config.yaml", $config_file);
-
-    $this->_exec("cd $worktree && git update-index --assume-unchanged .ddev/config.yaml");
-
-    $this->_exec("cd $worktree && vendor/bin/robo ddevsetup ''");
+    if (file_put_contents($path, $config_file) === FALSE) {
+      throw new TaskException($this, "Failed to write $path.");
+    }
   }
 
   /**
@@ -649,12 +824,7 @@ GITHUB_TOKEN=$token'>.env");
       return;
     }
 
-    $sitename = strtolower($branch);
-    $sitename = preg_replace('/[^a-z0-9]+/', '-', $sitename);
-    $sitename = trim($sitename, '-');
-    if (empty($sitename)) {
-      $sitename = 'site';
-    }
+    $sitename = $this->siteName($branch);
 
     $config_path = ".ddev/config.yaml";
     if (!file_exists($config_path)) {
@@ -666,20 +836,7 @@ GITHUB_TOKEN=$token'>.env");
     $this->_exec("git update-index --no-assume-unchanged .ddev/config.yaml");
     $this->_exec("git checkout HEAD -- .ddev/config.yaml");
 
-    $config_file = file_get_contents($config_path);
-    $config_file = str_replace('name: cyberteam-drupal', 'name: ' . $sitename, $config_file);
-    $config_file = preg_replace_callback(
-      '/^(additional_hostnames:\s*\n)((?:\s+-\s+.+\n)*)/m',
-      function ($matches) use ($sitename) {
-        if (empty($matches[2])) {
-          return $matches[0];
-        }
-        $lines = preg_replace('/^(\s+-\s+)(.+)$/m', '${1}' . $sitename . '.${2}', rtrim($matches[2]));
-        return $matches[1] . $lines . "\n";
-      },
-      $config_file
-    );
-    file_put_contents($config_path, $config_file);
+    $this->rewriteDdevConfig($config_path, $sitename);
 
     $this->_exec("git update-index --assume-unchanged .ddev/config.yaml");
     $this->say("config.yaml reset for branch '$branch' (site: $sitename).");

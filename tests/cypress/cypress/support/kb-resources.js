@@ -15,6 +15,20 @@ export const AUTHENTICATED = ["authenticated@amptesting.com", "6%l7iF}6(4tI"];
 export const SKILL = { beginner: 304, intermediate: 305, advanced: 306 };
 
 /**
+ * Chooses an Affinity Group in the select2 "associate with an Affinity Group"
+ * control of the resource form. Its select2:select handler copies the choice
+ * into the hidden `affinity_group` element that the form submits.
+ *
+ * @param {string} title
+ *   Title of the Affinity Group (the option label).
+ */
+export function selectAffinityGroup(title) {
+  cy.get(".js-form-item-field-ag-nodes-select .select2-selection").click();
+  cy.get(".select2-container--open .select2-search__field").type(title);
+  cy.get(".select2-results__option--highlighted").contains(title).click();
+}
+
+/**
  * Creates a KB resource through /form/resource. Log in as an administrator
  * first: only administrators and KB project managers may set "approved".
  *
@@ -30,9 +44,23 @@ export const SKILL = { beginner: 304, intermediate: 305, advanced: 306 };
  *   at most six tags.
  * @param {string} [options.domain]
  *   Text typed into the domain select2, whose first match is chosen. "ACCESS"
- *   picks "ACCESS CSSN", which is the domain of accessmatch.ddev.site.
+ *   picks "ACCESS CSSN", which is the domain of accessmatch.ddev.site. Pass
+ *   null to leave it alone: the domain select is only shown to administrators,
+ *   so a non-admin submitter gets the current domain.
  * @param {boolean} [options.approved]
  *   Tick the "approved" box. Defaults to true.
+ * @param {string} [options.affinityGroup]
+ *   Title of the Affinity Group to choose in the "associate with an Affinity
+ *   Group" select (a select2 listing the AGs of the current domain). Chosen
+ *   before "approved" is ticked, because ticking it disables the select.
+ * @param {boolean} [options.private]
+ *   Tick the "private" box, which keeps the resource off the public KB
+ *   Resources page. The box is only visible once an Affinity Group is chosen
+ *   (its #states hide it while the AG is empty), so this requires
+ *   `affinityGroup`. Defaults to false. Do not combine it with `approved`:
+ *   ticking "approved" disables the AG elements, so the form saves neither the
+ *   Affinity Group nor the private flag. To get an approved private resource,
+ *   create it unapproved and approve it afterwards (see approveSubmission()).
  *
  * @returns {Cypress.Chainable<number>}
  *   Yields the new submission id, read from the confirmation URL
@@ -45,8 +73,19 @@ export function createKbResource({
   tags = [],
   domain = "ACCESS",
   approved = true,
+  affinityGroup = undefined,
+  private: isPrivate = false,
 }) {
+  if (isPrivate && !affinityGroup) {
+    throw new Error("createKbResource: `private` requires `affinityGroup`");
+  }
   cy.visit("/form/resource");
+  if (affinityGroup) {
+    selectAffinityGroup(affinityGroup);
+  }
+  if (isPrivate) {
+    cy.get("#edit-private").check();
+  }
   if (approved) {
     cy.get("#edit-approved").check();
   }
@@ -61,9 +100,11 @@ export function createKbResource({
   tags.forEach((slug) => {
     cy.get(`#tag-${slug}`).click();
   });
-  cy.get(".form-item-domain")
-    .find(".select2-search__field")
-    .type(`${domain}{enter}`);
+  if (domain) {
+    cy.get(".form-item-domain")
+      .find(".select2-search__field")
+      .type(`${domain}{enter}`);
+  }
   // Scoped to the webform: on themes with a header search form, that form
   // takes #edit-submit and the webform's button gets a suffixed id.
   cy.get('form.webform-submission-resource-form [data-drupal-selector="edit-submit"]').click();
@@ -72,6 +113,32 @@ export function createKbResource({
     .location("pathname")
     .should("match", /\/webform\/resource\/submissions\/\d+$/)
     .then((path) => Number(path.split("/").pop()));
+}
+
+/**
+ * Marks an existing resource submission as approved with drush, leaving its
+ * Affinity Group and private flag as they are. The edit form cannot do this:
+ * ticking "approved" there disables the AG elements, which are then not saved.
+ * Saving through the entity API reindexes the resource immediately.
+ *
+ * @param {number} sid
+ *   Submission id returned by createKbResource().
+ *
+ * @returns {Cypress.Chainable}
+ */
+export function approveSubmission(sid) {
+  const id = Number(sid);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`approveSubmission: invalid submission id ${sid}`);
+  }
+  const php =
+    '$sub = \\Drupal\\webform\\Entity\\WebformSubmission::load(' + id + ');' +
+    '$sub->setElementData("approved", 1); $sub->save(); print "done";';
+  return cy.drush("php:eval", [`'${php}'`]).then((result) => {
+    if (result.exitCode !== 0 || result.stdout.trim() !== "done") {
+      throw new Error(`approveSubmission failed: ${JSON.stringify(result)}`);
+    }
+  });
 }
 
 /**

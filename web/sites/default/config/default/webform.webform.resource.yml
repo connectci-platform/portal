@@ -104,7 +104,7 @@ elements: |-
     '#access_create_roles':
       - administrator
       - affinity_group_leader
-      - match_pm
+      - kb_pm
   private:
     '#type': checkbox
     '#title': Private
