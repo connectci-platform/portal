@@ -35,6 +35,7 @@ jobs:
           ddev start
 
       - name: Import live DB and export config (no deploy/cim)
+        id: export
         run: |
           git remote set-url origin https://$username:$gh_token@github.com/connectci-platform/portal.git
           git config --global user.email "$email"
@@ -95,6 +96,7 @@ jobs:
           if [[ -z '$status' ]]
           then
           echo 'no config changes'
+          echo '::notice::No config drift from live, skipping PR.'
           else
           git fetch
           echo 'Adding web/sites/default/config/default'
@@ -103,7 +105,7 @@ jobs:
           echo "Committed changes"
           git status
           echo 'pushing changes'
-          git push origin md-$date
+          git push origin md-$date && echo 'pushed=true' >> \$GITHUB_OUTPUT
           fi" > commit.sh
           chmod u+x commit.sh
           ./commit.sh
@@ -117,6 +119,8 @@ jobs:
           gh_user: ${{ secrets.GH_USER }}
 
       - name: Create Pull Request
+        # Skipped when live has no drift, since nothing was pushed.
+        if: steps.export.outputs.pushed == 'true'
         run: |
           gh pr create --title "[Config sync]" --body "Sync the config from branch"
         env:
