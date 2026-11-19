@@ -509,7 +509,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "3e6a30d8b971f3e7753314db6fd3005e25048cde"
+                "reference": "744e61033d02edb829a707baf8a632c84e77575b"
             },
             "default-branch": true,
             "type": "drupal-theme",
@@ -527,7 +527,7 @@
                 "issues": "https://github.com/connectci-platform/aspTheme/issues",
                 "source": "https://github.com/connectci-platform/aspTheme"
             },
-            "time": "2026-11-05T16:49:52+00:00"
+            "time": "2026-11-19T18:15:20+00:00"
         },
         {
             "name": "connectci/campus-champions-theme",
@@ -561,7 +561,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "95725ca296b499e013580c641d8c76fc9ccf3e48"
+                "reference": "83f8a7222ec87017932917491acf57c92f1ac7ca"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -590,7 +590,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-11-15T16:03:47+00:00"
+            "time": "2026-11-19T18:15:39+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
@@ -19091,7 +19091,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "ca558da57f0f733ce1cf8944bd5e4ac90fb216ce"
+                "reference": "4dedb09682e60fe1480dafc35d4670f3a21a934b"
             },
             "default-branch": true,
             "type": "drupal-custom-module",
@@ -19103,7 +19103,7 @@
             "keywords": [
                 "Drupal"
             ],
-            "time": "2026-11-15T21:34:21+00:00"
+            "time": "2026-11-19T18:15:56+00:00"
         },
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
