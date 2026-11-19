@@ -9,6 +9,8 @@
       alpha        approved, ACCESS, tag xalt,  Learning, beginner
       beta         approved, ACCESS, tag dmtcp, Code,     advanced
       unapproved   NOT approved, ACCESS, tag xalt
+      private      approved, ACCESS, tag xalt, private (tagged with a
+                   private Affinity Group created by this spec)
       otherdomain  approved, Great Plains only, tag xalt
       sort one/two approved, ACCESS, own token, for the like sort test
       count ten/two approved, ACCESS, own token, given 10 and 2 likes, for the
@@ -33,6 +35,7 @@ import {
   ADMIN,
   AUTHENTICATED,
   SKILL,
+  approveSubmission,
   createKbResource,
   deleteSubmissions,
 } from "../../../support/kb-resources";
@@ -52,6 +55,7 @@ const TITLE = {
   alpha: `${PREFIX}-alpha`,
   beta: `${PREFIX}-beta`,
   unapproved: `${PREFIX}-unapproved`,
+  private: `${PREFIX}-private`,
   otherDomain: `${PREFIX}-otherdomain`,
   sortOne: `kbsort-${SORT_ID}-one`,
   sortTwo: `kbsort-${SORT_ID}-two`,
@@ -70,6 +74,11 @@ const MANY_TAGS = [
   ["errors", "password", "profile", "reporting", "tickets", "verification-code"],
   ["dft", "modeling", "parameter-sweeps", "random-numbers", "simulation", "cephfs"],
 ];
+
+// A private Affinity Group on the ACCESS domain, created in before() and
+// removed in after(). A resource can only be marked private when the group it
+// is tagged with is private, and no private group exists in the database dump.
+const PRIVATE_AG = `kbfacet-ag-${RUN}`;
 
 const RESOURCES = "/knowledge-base/resources";
 const RUN_ONLY = `${RESOURCES}?search_api_fulltext=${RUN}`;
@@ -119,6 +128,33 @@ function unlikeAs(emails, sids) {
   return phpEval(php).should("eq", "done");
 }
 
+/**
+ * Creates the private Affinity Group on the ACCESS domain through the entity
+ * API. The node presave hook creates the group's taxonomy term, which is what
+ * a resource is tagged with.
+ */
+function createPrivateGroup() {
+  const php =
+    '$n = \\Drupal\\node\\Entity\\Node::create(["type" => "affinity_group", "title" => "' + PRIVATE_AG + '",' +
+    '"status" => 1, "field_group_slug" => "' + PRIVATE_AG + '", "field_group_id" => "kbfacet.ag.' + RUN + '",' +
+    '"field_ag_private" => 1, "field_domain_access" => ["amp_cyberinfrastructure_org"]]);' +
+    '$n->save(); print "done";';
+  return phpEval(php).should("eq", "done");
+}
+
+/**
+ * Deletes the private Affinity Group and its taxonomy term. Looks the group up
+ * by title, so a failed before() hook does not leave it behind.
+ */
+function deletePrivateGroup() {
+  const php =
+    '$ns = \\Drupal::entityTypeManager()->getStorage("node")->loadByProperties(["type" => "affinity_group", "title" => "' + PRIVATE_AG + '"]);' +
+    'foreach ($ns as $n) { $tid = $n->get("field_affinity_group")->target_id; $n->delete();' +
+    '$t = \\Drupal\\taxonomy\\Entity\\Term::load($tid); if ($t && $t->getName() === "' + PRIVATE_AG + '") { $t->delete(); } }' +
+    'print "done";';
+  return phpEval(php).should("eq", "done");
+}
+
 /** The deep link to a single item of the listing. */
 const deepLink = (id) => `${RESOURCES}?f%5B0%5D=submission_id%3A${id}`;
 
@@ -144,10 +180,15 @@ function visibleFacetItems(alias) {
 
 describe("KB Resources page facets, copy link and sorting", () => {
   before(() => {
+    createPrivateGroup();
     cy.loginAs(...ADMIN);
     createKbResource({ title: TITLE.alpha, category: "Learning", skillLevels: [SKILL.beginner], tags: [TAG_A] }).then((id) => { sid.alpha = id; });
     createKbResource({ title: TITLE.beta, category: "Code", skillLevels: [SKILL.advanced], tags: [TAG_B] }).then((id) => { sid.beta = id; });
     createKbResource({ title: TITLE.unapproved, approved: false, tags: [TAG_A] }).then((id) => { sid.unapproved = id; });
+    // The form cannot save an approved resource with an AG and the private
+    // flag (approving disables those fields), so approve it afterwards.
+    createKbResource({ title: TITLE.private, approved: false, tags: [TAG_A], affinityGroup: PRIVATE_AG, private: true })
+      .then((id) => { sid.private = id; return approveSubmission(id); });
     createKbResource({ title: TITLE.otherDomain, domain: "Great Plains", tags: [TAG_A] }).then((id) => { sid.otherDomain = id; });
     createKbResource({ title: TITLE.sortOne, tags: [TAG_A] }).then((id) => { sid.sortOne = id; });
     createKbResource({ title: TITLE.sortTwo, tags: [TAG_A] }).then((id) => { sid.sortTwo = id; });
@@ -161,7 +202,10 @@ describe("KB Resources page facets, copy link and sorting", () => {
 
   // Remove the resources created above (and the per-user one below), by the
   // ids captured at creation.
-  after(() => deleteSubmissions([...Object.values(sid), ...manySids]));
+  after(() => {
+    deleteSubmissions([...Object.values(sid), ...manySids]);
+    deletePrivateGroup();
+  });
 
   describe("anonymous visitor", () => {
     it("sees the Topics facet and a login prompt instead of the other facets", () => {
@@ -200,7 +244,7 @@ describe("KB Resources page facets, copy link and sorting", () => {
 
     it("filters by a tag and restores the list when it is unchecked", () => {
       cy.visit(RUN_ONLY);
-      // Alpha and beta are all that is listed: the unapproved and other-domain
+      // Alpha and beta are all that is listed: the unapproved, private and other-domain
       // resources are not.
       cy.get(ITEMS).should("have.length", 2);
       item(TITLE.alpha);
@@ -318,15 +362,18 @@ describe("KB Resources page facets, copy link and sorting", () => {
       item(TITLE.alpha);
     });
 
-    it("lists neither the unapproved nor the other-domain resource", () => {
+    it("lists neither the unapproved, the private nor the other-domain resource", () => {
       cy.visit(RUN_ONLY);
       cy.get(ITEMS).should("have.length", 2);
       listedTitles().should("have.members", [TITLE.alpha, TITLE.beta]);
       cy.contains(ITEMS, TITLE.unapproved).should("not.exist");
+      cy.contains(ITEMS, TITLE.private).should("not.exist");
       cy.contains(ITEMS, TITLE.otherDomain).should("not.exist");
 
       // Not even by deep link.
       cy.visit(`${RESOURCES}?f%5B0%5D=submission_id%3A${sid.unapproved}`);
+      cy.get(ITEMS).should("not.exist");
+      cy.visit(`${RESOURCES}?f%5B0%5D=submission_id%3A${sid.private}`);
       cy.get(ITEMS).should("not.exist");
       cy.visit(`${RESOURCES}?f%5B0%5D=submission_id%3A${sid.otherDomain}`);
       cy.get(ITEMS).should("not.exist");
