@@ -19089,7 +19089,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/amp_dev.git",
-                "reference": "591b7e282a9bd1a8480f5978f68b2ab5aebd3dc9"
+                "reference": "c5f52db0c90bb4456330a109e496aa18253ea215"
             },
             "type": "drupal-custom-module",
             "license": [
