@@ -1,0 +1,28 @@
+uuid: f15d4a52-2e17-4f14-9e73-d8a5b951bdb8
+langcode: en
+status: true
+dependencies:
+  content:
+    - 'block_content:basic:686f27a9-1168-4e5e-abb5-06f1c2a53980'
+  module:
+    - block_content
+    - system
+  theme:
+    - ood
+id: ood_eventsintro
+theme: ood
+region: below_title_page_top
+weight: 0
+provider: null
+plugin: 'block_content:686f27a9-1168-4e5e-abb5-06f1c2a53980'
+settings:
+  id: 'block_content:686f27a9-1168-4e5e-abb5-06f1c2a53980'
+  label: 'OOD Events Intro'
+  label_display: '0'
+  provider: block_content
+  view_mode: full
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /events
