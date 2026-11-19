@@ -1,0 +1,27 @@
+uuid: b2cb17a2-6de6-4e2a-8823-ae5a619f8def
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rp_cpu_architecture
+field_name: field_rp_cpu_architecture
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: x86_64
+      label: 'x86_64'
+    -
+      value: arm
+      label: 'Arm'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

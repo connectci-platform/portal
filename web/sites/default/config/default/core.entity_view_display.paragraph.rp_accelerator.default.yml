@@ -1,0 +1,52 @@
+uuid: acea8809-6693-4c0b-9109-89e92f6d8830
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_count
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_memory
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_model
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_type
+    - paragraphs.paragraphs_type.rp_accelerator
+  module:
+    - options
+id: paragraph.rp_accelerator.default
+targetEntityType: paragraph
+bundle: rp_accelerator
+mode: default
+content:
+  field_rp_accelerator_count:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_rp_accelerator_memory:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 3
+    region: content
+  field_rp_accelerator_model:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_rp_accelerator_type:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 0
+    region: content
+hidden:
+  search_api_excerpt: true

@@ -11,7 +11,7 @@ entity_type: paragraph
 bundle: rp_queue_spec
 label: 'Queue Name'
 description: 'Must match the queue/partition name in XDMoD exactly. Wall time and wait time metrics are synced automatically based on this name.'
-required: false
+required: true
 translatable: false
 default_value: {  }
 default_value_callback: ''

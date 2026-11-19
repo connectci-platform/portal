@@ -1,0 +1,19 @@
+uuid: 50133628-1c16-427b-902d-68c767174a5c
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_cpus
+    - paragraphs.paragraphs_type.rp_node_type
+id: paragraph.rp_node_type.field_rp_cpus
+field_name: field_rp_cpus
+entity_type: paragraph
+bundle: rp_node_type
+label: 'CPU Type'
+description: 'Type of CPU'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

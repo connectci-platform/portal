@@ -1,0 +1,30 @@
+uuid: 0e55592d-8a45-410c-9d6f-047cbfed86fd
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_accelerators
+    - paragraphs.paragraphs_type.rp_node_type
+  module:
+    - entity_reference_revisions
+id: paragraph.rp_node_type.field_rp_accelerators
+field_name: field_rp_accelerators
+entity_type: paragraph
+bundle: rp_node_type
+label: 'Accelerators'
+description: 'GPUs or other accelerators installed in each node of this type.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      rp_accelerator: rp_accelerator
+    negate: 0
+    target_bundles_drag_drop:
+      rp_accelerator:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

@@ -1,0 +1,19 @@
+uuid: e398cc61-3b80-4c0c-8945-643c9af22421
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_queue_name
+    - paragraphs.paragraphs_type.rp_node_type_queue
+id: paragraph.rp_node_type_queue.field_rp_queue_name
+field_name: field_rp_queue_name
+entity_type: paragraph
+bundle: rp_node_type_queue
+label: 'Queue name'
+description: 'Must match the name of a queue on this resource.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

@@ -1,0 +1,10 @@
+uuid: f9a32903-3b02-40bf-9fb8-a4787a0ccf37
+langcode: en
+status: true
+dependencies: {  }
+id: rp_node_type
+label: 'Node Type'
+icon_uuid: null
+icon_default: null
+description: null
+behavior_plugins: {  }

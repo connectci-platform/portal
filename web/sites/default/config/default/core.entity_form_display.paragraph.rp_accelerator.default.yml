@@ -1,0 +1,48 @@
+uuid: de44d55e-6fed-4d54-a53e-220e8b87964e
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_count
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_memory
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_model
+    - field.field.paragraph.rp_accelerator.field_rp_accelerator_type
+    - paragraphs.paragraphs_type.rp_accelerator
+  module:
+    - options
+id: paragraph.rp_accelerator.default
+targetEntityType: paragraph
+bundle: rp_accelerator
+mode: default
+content:
+  field_rp_accelerator_count:
+    type: number
+    weight: 2
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_accelerator_memory:
+    type: number
+    weight: 3
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_accelerator_model:
+    type: string_textfield
+    weight: 1
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_accelerator_type:
+    type: options_select
+    weight: 0
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+hidden:
+  created: true
+  status: true

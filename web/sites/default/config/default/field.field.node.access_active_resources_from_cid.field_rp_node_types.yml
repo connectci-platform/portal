@@ -1,0 +1,30 @@
+uuid: 05878ce7-0b8e-4c64-a110-abd1cb14a907
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_rp_node_types
+    - node.type.access_active_resources_from_cid
+  module:
+    - entity_reference_revisions
+id: node.access_active_resources_from_cid.field_rp_node_types
+field_name: field_rp_node_types
+entity_type: node
+bundle: access_active_resources_from_cid
+label: 'Node Types'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      rp_node_type: rp_node_type
+    negate: 0
+    target_bundles_drag_drop:
+      rp_node_type:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

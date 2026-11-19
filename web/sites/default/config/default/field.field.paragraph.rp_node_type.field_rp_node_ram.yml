@@ -1,0 +1,23 @@
+uuid: 80e1e6ab-657b-4a4d-bf0d-e2ba8fb9187e
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_node_ram
+    - paragraphs.paragraphs_type.rp_node_type
+id: paragraph.rp_node_type.field_rp_node_ram
+field_name: field_rp_node_ram
+entity_type: paragraph
+bundle: rp_node_type
+label: 'Node RAM'
+description: 'RAM per node, in GB.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ' GB'
+field_type: integer

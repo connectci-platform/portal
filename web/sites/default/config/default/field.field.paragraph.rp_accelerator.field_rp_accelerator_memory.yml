@@ -1,0 +1,23 @@
+uuid: b38ec0c4-78d6-441a-8dc2-b1ba82a4d51a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_accelerator_memory
+    - paragraphs.paragraphs_type.rp_accelerator
+id: paragraph.rp_accelerator.field_rp_accelerator_memory
+field_name: field_rp_accelerator_memory
+entity_type: paragraph
+bundle: rp_accelerator
+label: 'Memory per device'
+description: 'Memory of each accelerator, in GB.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ' GB'
+field_type: integer

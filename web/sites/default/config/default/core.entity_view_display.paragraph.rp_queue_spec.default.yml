@@ -3,6 +3,7 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.paragraph.rp_queue_spec.field_rp_charged_per
     - field.field.paragraph.rp_queue_spec.field_rp_cpu_count
     - field.field.paragraph.rp_queue_spec.field_rp_cpus
     - field.field.paragraph.rp_queue_spec.field_rp_gpu_count
@@ -10,16 +11,26 @@ dependencies:
     - field.field.paragraph.rp_queue_spec.field_rp_gpus
     - field.field.paragraph.rp_queue_spec.field_rp_max_wall_time
     - field.field.paragraph.rp_queue_spec.field_rp_node_count
+    - field.field.paragraph.rp_queue_spec.field_rp_queue_access
     - field.field.paragraph.rp_queue_spec.field_rp_queue_name
     - field.field.paragraph.rp_queue_spec.field_rp_queue_purpose
     - field.field.paragraph.rp_queue_spec.field_rp_ram
     - field.field.paragraph.rp_queue_spec.field_rp_vram
     - paragraphs.paragraphs_type.rp_queue_spec
+  module:
+    - options
 id: paragraph.rp_queue_spec.default
 targetEntityType: paragraph
 bundle: rp_queue_spec
 mode: default
 content:
+  field_rp_charged_per:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 10
+    region: content
   field_rp_cpu_count:
     type: number_integer
     label: above
@@ -27,7 +38,7 @@ content:
       thousand_separator: ''
       prefix_suffix: true
     third_party_settings: {  }
-    weight: 7
+    weight: 8
     region: content
   field_rp_cpus:
     type: string
@@ -35,7 +46,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {  }
-    weight: 2
+    weight: 3
     region: content
   field_rp_gpu_count:
     type: number_integer
@@ -44,7 +55,7 @@ content:
       thousand_separator: ''
       prefix_suffix: true
     third_party_settings: {  }
-    weight: 5
+    weight: 6
     region: content
   field_rp_gpu_vram:
     type: number_integer
@@ -53,7 +64,7 @@ content:
       thousand_separator: ''
       prefix_suffix: true
     third_party_settings: {  }
-    weight: 6
+    weight: 7
     region: content
   field_rp_gpus:
     type: string
@@ -61,7 +72,23 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {  }
-    weight: 3
+    weight: 4
+    region: content
+  field_rp_max_wall_time:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_rp_queue_access:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 11
     region: content
   field_rp_queue_name:
     type: string
@@ -85,7 +112,7 @@ content:
     settings:
       link_to_entity: false
     third_party_settings: {  }
-    weight: 4
+    weight: 5
     region: content
   field_rp_vram:
     type: number_integer
@@ -94,9 +121,8 @@ content:
       thousand_separator: ''
       prefix_suffix: true
     third_party_settings: {  }
-    weight: 8
+    weight: 9
     region: content
 hidden:
-  field_rp_max_wall_time: true
   field_rp_node_count: true
   search_api_excerpt: true

@@ -44,6 +44,7 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_rp_mfa_required
     - field.field.node.access_active_resources_from_cid.field_rp_office_hours
     - field.field.node.access_active_resources_from_cid.field_rp_ondemand_url
+    - field.field.node.access_active_resources_from_cid.field_rp_node_types
     - field.field.node.access_active_resources_from_cid.field_rp_ood_software
     - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
     - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
@@ -123,6 +124,7 @@ hidden:
   field_rp_login_text: true
   field_rp_login_to_anvil_gpu_link: true
   field_rp_mfa_required: true
+  field_rp_node_types: true
   field_rp_office_hours: true
   field_rp_ondemand_url: true
   field_rp_ood_software: true
