@@ -557,8 +557,20 @@ GITHUB_TOKEN=$token'>.env");
     if (empty($branch)) {
       $branch = $this->ask("Which branch should be checked out?");
     }
-    $this->_exec("git checkout $branch");
-    $this->_exec("git pull origin $branch");
+    $worktree = $this->findWorktreeForBranch($branch);
+    if ($worktree !== NULL) {
+      $this->yell("Branch $branch is checked out in a worktree.");
+      $this->say("Switch to it instead: cd $worktree");
+      return;
+    }
+    if (!$this->_exec("git checkout $branch")->wasSuccessful()) {
+      $this->yell("git checkout $branch failed; stopping.");
+      return;
+    }
+    if (!$this->_exec("git pull origin $branch")->wasSuccessful()) {
+      $this->yell("git pull origin $branch failed; stopping.");
+      return;
+    }
     $is_ddev = file_exists('/.ddev') || getenv('DDEV_PROJECT') || file_exists('/var/www/html/.ddev');
     $cmd_prefix = $is_ddev ? "" : "ddev ";
     $this->_exec($cmd_prefix . "composer install");
@@ -567,6 +579,38 @@ GITHUB_TOKEN=$token'>.env");
       $this->_exec($cmd_prefix . "robo ds $domain");
     }
     $this->uli();
+  }
+
+  /**
+   * Find another worktree that has the given branch checked out.
+   *
+   * @param string $branch
+   *   The local branch name.
+   *
+   * @return string|null
+   *   The worktree path, or NULL if no other worktree has the branch.
+   */
+  private function findWorktreeForBranch(string $branch): ?string {
+    $branch = preg_replace('#^origin/#', '', $branch);
+    // Already on this branch here: not another worktree. Comparing branch
+    // names rather than paths keeps this working inside the DDEV container,
+    // where git reports host paths that do not resolve.
+    $current_branch = trim((string) shell_exec('git rev-parse --abbrev-ref HEAD 2>/dev/null'));
+    if ($current_branch === $branch) {
+      return NULL;
+    }
+    $lines = [];
+    exec('git worktree list --porcelain 2>/dev/null', $lines);
+    $path = NULL;
+    foreach ($lines as $line) {
+      if (str_starts_with($line, 'worktree ')) {
+        $path = substr($line, 9);
+      }
+      elseif ($line === "branch refs/heads/$branch" && $path !== NULL) {
+        return $path;
+      }
+    }
+    return NULL;
   }
 
   /**
