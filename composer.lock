@@ -559,7 +559,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "4db1f6f280cabb5a5c2b319371e2237c274aada2"
+                "reference": "54b0b1035a684f2aadfd1096469707eca31e1bd2"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
@@ -587,7 +587,7 @@
                 "issues": "https://github.com/connectci-platform/operations_cider/issues",
                 "source": "https://github.com/connectci-platform/operations_cider"
             },
-            "time": "2026-11-19T20:14:41+00:00"
+            "time": "2026-11-19T22:33:30+00:00"
         },
         {
             "name": "connectci/webform_submission_search_api",
