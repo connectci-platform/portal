@@ -559,7 +559,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/operations_cider.git",
-                "reference": "529894948e016bcf32a4fc306fc7c0f18ef6d01e"
+                "reference": "2351d7419e94a0291c9d9e6055b7dd4154749922"
             },
             "require": {
                 "drupal/feeds": "^3.0@beta",
