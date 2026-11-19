@@ -108,12 +108,20 @@ class GhCommands extends Tasks {
   }
 
   /**
-   * Pull latest Database from artifacts.
+   * Pull latest files backup from artifacts.
    *
    * @command gh:pullfiles
-   * @description Pulls latest database artifact from Github.
+   * @description Pulls latest files artifact from Github.
    */
   public function pullfiles() {
+    $prev_files = 'web/sites/default/files';
+
+    // Never overwrite a symlinked files directory; it may point elsewhere.
+    if (is_link($prev_files)) {
+      $this->say("$prev_files is a symlink; refusing to overwrite it. Remove the link first to pull fresh files.");
+      return;
+    }
+
     $this->say("Downloading latest file backup from GitHub artifacts...");
 
     // List available workflows/runs to debug
@@ -130,6 +138,10 @@ class GhCommands extends Tasks {
 
     // Download the artifact to explicit directory to work around gh CLI path traversal check
     $result = $this->_exec("gh run download -R github.com/connectci-platform/portal -n amp-file-backup -D $downloadDir");
+    if (!$result->wasSuccessful()) {
+      $this->_exec("rm -fR $downloadDir");
+      throw new \Exception('Failed to download files artifact');
+    }
 
     // Check what files were downloaded
     $this->say("Checking downloaded files...");
@@ -145,22 +157,47 @@ class GhCommands extends Tasks {
       throw new \Exception('Failed to find files backup file');
     }
 
-    // Remove existing files directory if it exists
-    $prev_files = 'web/sites/default/files';
-    if (file_exists($prev_files)) {
-      $result = $this->_exec("mv $prev_files /tmp/files-$date 2>/dev/null || sudo mv $prev_files /tmp/files-$date");
-      if ($result->getExitCode() !== 0) {
-        $this->_exec("sudo rm -rf $prev_files");
-        $this->say("Old files removed (mv to /tmp failed).");
-      }
-      else {
-        $this->say("Old files moved to /tmp/files-$date");
-      }
+    // Extract inside the temp directory, not the project root.
+    $extract = $this->_exec("tar -xzf $tarFile -C $downloadDir");
+    if (!$extract->wasSuccessful()) {
+      $this->_exec("rm -fR $downloadDir");
+      throw new \Exception('Failed to extract files backup');
+    }
+    if (!is_dir("$downloadDir/files")) {
+      $this->_exec("rm -fR $downloadDir");
+      throw new \Exception('Extracted files backup does not contain a files directory');
     }
 
-    // Extract and move files
-    $this->_exec("tar -xzvf $tarFile");
-    $this->_exec("mv files web/sites/default/files");
+    // Move the old files directory aside. Inside DDEV the files directory is
+    // a bind mount (upload_dirs) and cannot be moved, so fall back to
+    // replacing its contents in place.
+    $moved_aside = !file_exists($prev_files)
+      || $this->_exec("mv $prev_files /tmp/files-$date 2>/dev/null")->wasSuccessful();
+
+    if ($moved_aside) {
+      if (file_exists("/tmp/files-$date")) {
+        $this->say("Old files moved to /tmp/files-$date");
+      }
+      $move = $this->_exec("mv $downloadDir/files $prev_files");
+      if (!$move->wasSuccessful()) {
+        $this->_exec("rm -fR $downloadDir");
+        throw new \Exception("Failed to move extracted files into $prev_files");
+      }
+    }
+    else {
+      $this->say("$prev_files cannot be moved (mount point); replacing its contents in place.");
+      $clear = $this->_exec("find $prev_files -mindepth 1 -delete 2>/dev/null || sudo find $prev_files -mindepth 1 -delete");
+      if (!$clear->wasSuccessful()) {
+        $this->_exec("rm -fR $downloadDir");
+        throw new \Exception("Could not clear $prev_files");
+      }
+      // Trailing "/." copies dotfiles such as .htaccess too.
+      $copy = $this->_exec("cp -a $downloadDir/files/. $prev_files/");
+      if (!$copy->wasSuccessful()) {
+        $this->_exec("rm -fR $downloadDir");
+        throw new \Exception("Failed to copy extracted files into $prev_files");
+      }
+    }
 
     // Clean up
     $this->_exec("rm -fR $downloadDir");
