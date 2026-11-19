@@ -37,9 +37,3 @@ definitions:
     weight: -48
     expanded: true
     enabled: true
-  change_pwd_page__change_password:
-    menu_name: account
-    parent: ''
-    weight: -9
-    expanded: false
-    enabled: false
