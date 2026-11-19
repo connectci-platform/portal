@@ -508,7 +508,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/aspTheme.git",
-                "reference": "88c36378bc9fe93689748af7481f79152377a491"
+                "reference": "93c3cc46706dcccdbf84f7f7527c462e4e4d2aa0"
             },
             "type": "drupal-theme",
             "license": [
