@@ -1,0 +1,21 @@
+uuid: 2d3bac90-e215-4876-92ec-aff9da17f898
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_queue_access
+    - paragraphs.paragraphs_type.rp_queue_spec
+  module:
+    - options
+id: paragraph.rp_queue_spec.field_rp_queue_access
+field_name: field_rp_queue_access
+entity_type: paragraph
+bundle: rp_queue_spec
+label: 'Access'
+description: 'How users get access to this queue.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

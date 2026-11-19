@@ -1,0 +1,21 @@
+uuid: 1d8c86e2-bb63-4afb-8114-06f9b1066a2a
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_cpu_architecture
+    - paragraphs.paragraphs_type.rp_node_type
+  module:
+    - options
+id: paragraph.rp_node_type.field_rp_cpu_architecture
+field_name: field_rp_cpu_architecture
+entity_type: paragraph
+bundle: rp_node_type
+label: 'CPU architecture'
+description: 'Instruction set of the CPUs in this node type.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

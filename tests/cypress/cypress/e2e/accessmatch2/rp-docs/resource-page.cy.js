@@ -127,44 +127,51 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
     cy.contains(".rp-queue-specs h3", "Node types");
     // Hardware is entered once per node type, however many queues use it.
     cy.get("#rp-node-types + div table").as("types");
-    cy.get("@types").find("tbody tr").should("have.length", 8);
+    cy.get("@types").find("tbody tr").should("have.length", 10);
     cy.get("@types").contains("th", "CPU cores / node");
     cy.get("@types").contains("th", "Node RAM");
-    cy.get("@types").contains("th", "GPUs / node");
+    cy.get("@types").contains("th", "Architecture");
+    cy.get("@types").contains("th", "Accelerators / node");
     // The fixture sets no per-type totals, so the optional column is hidden.
     cy.get("@types").contains("th", "Num nodes").should("not.exist");
 
-    // GPU cell: "<count>× <model> (<vram> GB)"; CPU core count parenthesized.
+    const cellText = (selector) =>
+      cy.get(selector).last().invoke("text").then((text) => text.replace(/\s+/g, " ").trim());
+
+    // GPU cell: "<count>× <model>, <memory> GB vRAM each", so per-device
+    // memory can't be read as node RAM. CPU core count parenthesized.
     cy.get("#node-type-NVIDIA-A100-4-GPU").within(() => {
       cy.get("th[scope=row]").should("contain", "NVIDIA A100 (4 GPU)");
       cy.contains("AMD EPYC 7763 (64 cores)");
+      cy.contains("x86_64");
       cy.contains("256 GB");
-      cy.contains("4× NVIDIA A100 (80 GB)");
+      cy.contains("4× NVIDIA A100, 80 GB vRAM each");
     });
     // A node type's description sits under its label.
     cy.get("#node-type-NVIDIA-H100-8-GPU .rp-queue-group__purpose")
       .should("contain", "Full-node jobs on the newer H100 partition.");
-    // CPU-only node shows the empty-cell placeholder "N/A" for GPUs.
-    cy.get("#node-type-CPU-node td").last().invoke("text").then((text) => {
-      expect(text.trim()).to.equal("N/A");
-    });
-    // GPU model + vRAM but no per-node count: no leading count.
-    cy.get("#node-type-NVIDIA-H100-cloud td").last().invoke("text").then((text) => {
-      expect(text.trim()).to.equal("NVIDIA H100 (80 GB)");
-    });
-    // Mixed-GPU node lists each model with its own count and vRAM.
-    cy.get("#node-type-AMD-MI100--MI210 td").last().invoke("text").then((text) => {
-      expect(text.trim()).to.equal("4× AMD MI100 (32 GB), 4× AMD MI210 (64 GB)");
-    });
+    // CPU-only node shows the empty-cell placeholder "N/A" for accelerators.
+    cellText("#node-type-CPU-node td").should("equal", "N/A");
+    // GPU model + memory but no per-node count: no leading count.
+    cellText("#node-type-NVIDIA-H100-cloud td").should("equal", "NVIDIA H100, 80 GB vRAM each");
+    // Mixed-GPU node lists each model with its own count and memory.
+    cellText("#node-type-AMD-MI100--MI210 td").should(
+      "equal",
+      "4× AMD MI100, 32 GB vRAM each 4× AMD MI210, 64 GB vRAM each"
+    );
+    // A non-GPU accelerator names its type and says "memory", not "vRAM".
+    cellText("#node-type-FPGA-node td").should("equal", "2× Xilinx Alveo U250 (FPGA), 64 GB memory each");
+    // Arm nodes show their architecture.
+    cy.get("#node-type-Arm-node").contains("td", "Arm");
   });
 
   it("renders one queue row per queue, linked to its node types", () => {
     cy.contains(".rp-queue-specs h3", "Queues");
     cy.get("#rp-queue-specs-content table").as("queues");
     // One row per queue: no rowgroup headings or per-hardware sub-rows.
-    cy.get("@queues").find("tbody tr").should("have.length", 5);
+    cy.get("@queues").find("tbody tr").should("have.length", 6);
     cy.get("@queues").find("th[scope=rowgroup]").should("not.exist");
-    ["gpu-standard", "gpu-large", "debug", "cpu-shared", "gpu-cloud"].forEach((name, i) => {
+    ["gpu-standard", "gpu-large", "debug", "cpu-shared", "gpu-cloud", "fpga"].forEach((name, i) => {
       cy.get("@queues").find("tbody th[scope=row]").eq(i).should("contain", name);
     });
     // The hardware columns moved to the node types table.
@@ -313,7 +320,17 @@ describe("Resource Documentation Page — Alpha (full data)", () => {
 
 });
 
-describe("Resource Documentation Page — Beta (sparse data, in Test Resource Group)", () => {
+describe("Resource Documentation Page — Beta (sparse data, legacy queue rows, in Test Resource Group)", () => {
+
+  // Beta carries legacy-shaped queue rows and no node types (D8-3090); seed it
+  // so a nightly DB built from main does not predate them.
+  before(() => {
+    cy.exec(
+      `ddev drush php:eval 'require_once DRUPAL_ROOT . "/" . \\Drupal::service("extension.list.module")->getPath("amp_dev") . "/amp_dev.install";` +
+        `amp_dev_install_create_rp_beta();'`,
+      { timeout: 120000 }
+    );
+  });
 
   beforeEach(() => {
     cy.visit("/documentation/resources/beta");
@@ -327,23 +344,41 @@ describe("Resource Documentation Page — Beta (sparse data, in Test Resource Gr
   it("does not render empty main-content sections", () => {
     cy.get(".rp-file-transfer").should("not.exist");
     cy.get(".rp-storage").should("not.exist");
-    cy.get(".rp-queue-specs").should("not.exist");
+    // Beta's legacy queue rows do render the Jobs section (see below).
+    cy.get(".rp-queue-specs").should("exist");
     // .rp-top-software renders for Beta because it inherits software_list_url
     // from the Group, even without its own top_software data.
     cy.get(".rp-datasets").should("not.exist");
     cy.get(".rp-login").should("not.exist");
   });
 
+  it("renders the legacy queue table when there are queue rows and no node types", () => {
+    // Fallback markup: one "Queue specifications" table with the hardware
+    // columns on the queue rows, and none of the node-type model's tables.
+    cy.contains(".rp-queue-specs h3", "Queue specifications");
+    cy.contains(".rp-queue-specs h3", "Node types").should("not.exist");
+    cy.get("#rp-node-types").should("not.exist");
+    cy.get("a[href^='#node-type-']").should("not.exist");
+    cy.get("#rp-queue-specs-content table").as("legacy");
+    cy.get("@legacy").contains("th", "GPUs / node");
+    cy.get("@legacy").contains("th", "CPU cores / node");
+    cy.get("@legacy").contains("th", "Num nodes");
+    cy.get("@legacy").contains("batch");
+    cy.get("@legacy").contains("gpu");
+    cy.get("@legacy").contains("NVIDIA A40");
+    cy.get("@legacy").contains("120");
+  });
+
   it("jump-to anchor nav lists only the sections Beta actually has", () => {
-    // Beta's only main-content section is Software (inherited software_list_url
-    // from the Group, per the section test above), so the nav renders with just
-    // that one link — not absent, and not listing the empty sections.
+    // Beta's main-content sections are Jobs (its legacy queue rows) and
+    // Software (inherited software_list_url from the Group, per the section
+    // test above), so the nav lists those and not the empty sections.
     cy.get(".rp-jump-to").should("exist");
     cy.get(".rp-jump-to").contains("Software");
+    cy.get(".rp-jump-to").contains("Jobs");
     cy.get(".rp-jump-to").should("not.contain.text", "Login");
     cy.get(".rp-jump-to").should("not.contain.text", "File Transfer");
     cy.get(".rp-jump-to").should("not.contain.text", "Storage");
-    cy.get(".rp-jump-to").should("not.contain.text", "Jobs");
     cy.get(".rp-jump-to").should("not.contain.text", "Datasets");
   });
 

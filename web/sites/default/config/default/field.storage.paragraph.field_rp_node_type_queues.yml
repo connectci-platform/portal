@@ -1,12 +1,12 @@
-uuid: b77de19c-7acd-463a-915b-02018b0162c2
+uuid: b5062437-38df-4131-910f-20ba0226773c
 langcode: en
 status: true
 dependencies:
   module:
     - entity_reference_revisions
     - paragraphs
-id: paragraph.field_rp_node_gpus
-field_name: field_rp_node_gpus
+id: paragraph.field_rp_node_type_queues
+field_name: field_rp_node_type_queues
 entity_type: paragraph
 type: entity_reference_revisions
 settings:

@@ -3,13 +3,15 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.paragraph.rp_node_type.field_rp_accelerators
+    - field.field.paragraph.rp_node_type.field_rp_cpu_architecture
     - field.field.paragraph.rp_node_type.field_rp_cpu_count
     - field.field.paragraph.rp_node_type.field_rp_cpus
     - field.field.paragraph.rp_node_type.field_rp_node_count
-    - field.field.paragraph.rp_node_type.field_rp_node_gpus
+    - field.field.paragraph.rp_node_type.field_rp_node_ram
     - field.field.paragraph.rp_node_type.field_rp_node_type_description
     - field.field.paragraph.rp_node_type.field_rp_node_type_label
-    - field.field.paragraph.rp_node_type.field_rp_vram
+    - field.field.paragraph.rp_node_type.field_rp_node_type_queues
     - paragraphs.paragraphs_type.rp_node_type
   module:
     - paragraphs
@@ -18,9 +20,33 @@ targetEntityType: paragraph
 bundle: rp_node_type
 mode: default
 content:
+  field_rp_accelerators:
+    type: paragraphs
+    weight: 7
+    region: content
+    settings:
+      title: Accelerator
+      title_plural: Accelerators
+      edit_mode: open
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: rp_accelerator
+      features:
+        collapse_edit_all: collapse_edit_all
+        duplicate: duplicate
+    third_party_settings: {  }
+  field_rp_cpu_architecture:
+    type: options_select
+    weight: 4
+    region: content
+    settings: {  }
+    third_party_settings: {  }
   field_rp_cpu_count:
     type: number
-    weight: 4
+    weight: 5
     region: content
     settings:
       placeholder: ''
@@ -40,23 +66,12 @@ content:
     settings:
       placeholder: ''
     third_party_settings: {  }
-  field_rp_node_gpus:
-    type: paragraphs
+  field_rp_node_ram:
+    type: number
     weight: 6
     region: content
     settings:
-      title: GPU
-      title_plural: GPUs
-      edit_mode: open
-      closed_mode: summary
-      autocollapse: none
-      closed_mode_threshold: 0
-      add_mode: dropdown
-      form_display_mode: default
-      default_paragraph_type: rp_node_gpu
-      features:
-        collapse_edit_all: collapse_edit_all
-        duplicate: duplicate
+      placeholder: ''
     third_party_settings: {  }
   field_rp_node_type_description:
     type: string_textarea
@@ -74,12 +89,23 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_rp_vram:
-    type: number
-    weight: 5
+  field_rp_node_type_queues:
+    type: paragraphs
+    weight: 8
     region: content
     settings:
-      placeholder: ''
+      title: Queue
+      title_plural: Queues
+      edit_mode: open
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: rp_node_type_queue
+      features:
+        collapse_edit_all: collapse_edit_all
+        duplicate: duplicate
     third_party_settings: {  }
 hidden:
   created: true

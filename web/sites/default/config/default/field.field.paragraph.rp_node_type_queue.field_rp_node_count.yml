@@ -1,15 +1,15 @@
-uuid: f10d2ad5-2959-4ba5-ac56-034b9a9d5afe
+uuid: 8fb48a36-abd4-4957-b526-29d7809bd58c
 langcode: en
 status: true
 dependencies:
   config:
     - field.storage.paragraph.field_rp_node_count
-    - paragraphs.paragraphs_type.rp_queue_node
-id: paragraph.rp_queue_node.field_rp_node_count
+    - paragraphs.paragraphs_type.rp_node_type_queue
+id: paragraph.rp_node_type_queue.field_rp_node_count
 field_name: field_rp_node_count
 entity_type: paragraph
-bundle: rp_queue_node
-label: 'Number of nodes'
+bundle: rp_node_type_queue
+label: 'Nodes'
 description: 'How many nodes of this type this queue can use.'
 required: false
 translatable: false

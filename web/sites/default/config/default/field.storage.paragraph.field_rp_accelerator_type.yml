@@ -1,0 +1,33 @@
+uuid: c1a59f32-509c-430b-acce-d62bd476efce
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rp_accelerator_type
+field_name: field_rp_accelerator_type
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: gpu
+      label: 'GPU'
+    -
+      value: fpga
+      label: 'FPGA'
+    -
+      value: vector_engine
+      label: 'Vector engine'
+    -
+      value: other
+      label: 'Other'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

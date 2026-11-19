@@ -19,6 +19,8 @@ const FIXTURES = {
     software_list_url_fragment: "alpha.test.example.edu/software",
     office_hours_url_fragment: "alpha.test.example.edu/office-hours",
   },
+  // Legacy-shaped (D8-3090): queue rows carry their own hardware and the
+  // resource has no node types. Covers the fallback in the API and aspTheme.
   beta: {
     resource_id: "test-beta-9998",
   },
@@ -114,14 +116,15 @@ describe("Resource Documentation API", () => {
 
   // CI loads the nightly database from main, built by enabling and then
   // uninstalling amp_dev, so a fixture added to amp_dev on a branch is not
-  // there yet. Seed Alpha (node types and queues, D8-3090) and Delta here;
+  // there yet. Seed Alpha (node types and queues, D8-3090), Beta (legacy queue
+  // rows, no node types) and the no-CiDeR resource here;
   // the install functions update the node in place when it already exists.
   // Loud by default so a broken seed fails at setup rather than as a missing
   // row later.
   before(() => {
     cy.exec(
       `ddev drush php:eval 'require_once DRUPAL_ROOT . "/" . \\Drupal::service("extension.list.module")->getPath("amp_dev") . "/amp_dev.install";` +
-        `amp_dev_install_create_rp_alpha(); amp_dev_install_create_rp_no_cider();'`,
+        `amp_dev_install_create_rp_alpha(); amp_dev_install_create_rp_beta(); amp_dev_install_create_rp_no_cider();'`,
       { timeout: 120000 }
     );
   });
@@ -267,12 +270,12 @@ describe("Resource Documentation API", () => {
 
       expect(body.queue_specs).to.be.an("array");
       // queue_specs is the deprecated per-row shape, derived from node types
-      // and queues: one entry per queue and node type (8 rows over 5 queues in
+      // and queues: one entry per queue and node type (10 rows over 6 queues in
       // the fixture). It stays a flat list and leaves grouping to the consumer.
-      expect(body.queue_specs).to.have.length(8);
+      expect(body.queue_specs).to.have.length(10);
       expect(body.queue_specs.map((q) => q.name)).to.deep.eq([
         "gpu-standard", "gpu-standard", "gpu-large", "gpu-large",
-        "debug", "cpu-shared", "gpu-cloud", "gpu-cloud",
+        "debug", "cpu-shared", "cpu-shared", "gpu-cloud", "gpu-cloud", "fpga",
       ]);
       // Structured queue fields stay raw and typed (GB), with a derived summary.
       const gpuStandard = body.queue_specs[0];
@@ -284,7 +287,7 @@ describe("Resource Documentation API", () => {
       expect(gpuStandard.gpu_count).to.eq(4);
       expect(gpuStandard.gpu_type).to.eq("NVIDIA A100");
       expect(gpuStandard.gpu_vram).to.eq(80);
-      // `ram` carries node RAM (field_rp_vram, GB) despite the legacy name.
+      // `ram` carries node RAM (field_rp_node_ram, GB) despite the legacy name.
       expect(gpuStandard.ram).to.eq(256);
       // Summary includes the node count between the GPU and CPU clauses.
       expect(gpuStandard.summary).to.eq(
@@ -306,36 +309,79 @@ describe("Resource Documentation API", () => {
       );
       // Mixed-GPU node: models joined, known counts summed, vRAM dropped
       // because it differs per model.
-      const mixed = body.queue_specs[7];
+      const mixed = body.queue_specs.filter((q) => q.name === "gpu-cloud")[1];
       expect(mixed.gpu_type).to.eq("AMD MI100, AMD MI210");
       expect(mixed.gpu_count).to.eq(8);
       expect(mixed.gpu_vram).to.be.null;
       expect(mixed.node_count).to.eq(8);
+      // Non-GPU accelerators never feed the deprecated gpu_* columns: the FPGA
+      // node's row has no GPU data, only its CPU, RAM and the queue's count.
+      const fpgaRow = body.queue_specs.find((q) => q.name === "fpga");
+      expect(fpgaRow.gpu_type, "FPGA is not a GPU").to.be.null;
+      expect(fpgaRow.gpu_count).to.be.null;
+      expect(fpgaRow.gpu_vram).to.be.null;
+      expect(fpgaRow.node_count).to.eq(6);
+      expect(fpgaRow.ram).to.eq(256);
+      expect(fpgaRow.purpose).to.eq("FPGA development and acceleration jobs.");
 
       // Node types: hardware entered once, each with its list of GPUs.
       expect(body.node_types.map((t) => t.label)).to.deep.eq([
         "NVIDIA A100 (4 GPU)", "NVIDIA H100 (4 GPU)", "NVIDIA A100 (8 GPU)",
         "NVIDIA H100 (8 GPU)", "NVIDIA A100 (debug)", "CPU node",
-        "NVIDIA H100 (cloud)", "AMD MI100 + MI210",
+        "NVIDIA H100 (cloud)", "AMD MI100 + MI210", "Arm node", "FPGA node",
       ]);
       const mixedType = body.node_types[7];
       expect(mixedType.cpu_type).to.eq("AMD EPYC 7763");
       expect(mixedType.cpu_count).to.eq(64);
       expect(mixedType.ram).to.eq(512);
-      expect(mixedType.gpus).to.deep.eq([
-        { type: "AMD MI100", count: 4, vram: 32 },
-        { type: "AMD MI210", count: 4, vram: 64 },
+      expect(mixedType.cpu_architecture).to.eq("x86_64");
+      // `gpus` is gone: every accelerator is one entry with a type.
+      expect(mixedType).to.not.have.property("gpus");
+      expect(mixedType.accelerators).to.deep.eq([
+        { type: "gpu", model: "AMD MI100", count: 4, memory: 32 },
+        { type: "gpu", model: "AMD MI210", count: 4, memory: 64 },
       ]);
       expect(mixedType.summary).to.eq(
         "4× AMD MI100 (32 GB vRAM), 4× AMD MI210 (64 GB vRAM), 64-core AMD EPYC 7763, 512 GB RAM"
       );
       expect(body.node_types[3].description).to.eq("Full-node jobs on the newer H100 partition.");
-      expect(body.node_types[5].gpus, "CPU node has no GPUs").to.deep.eq([]);
+      expect(body.node_types[5].accelerators, "CPU node has no accelerators").to.deep.eq([]);
+      // GPU without a per-node count keeps the model and memory, count null.
+      expect(body.node_types[6].accelerators).to.deep.eq([
+        { type: "gpu", model: "NVIDIA H100", count: null, memory: 80 },
+      ]);
+
+      // Arm CPU architecture is its own key, defaulting to x86_64 in the fixture.
+      const armType = body.node_types.find((t) => t.label === "Arm node");
+      expect(armType.cpu_architecture).to.eq("arm");
+      expect(armType.cpu_type).to.eq("Ampere Altra Max");
+      expect(armType.cpu_count).to.eq(128);
+      expect(armType.ram).to.eq(512);
+      expect(armType.accelerators).to.deep.eq([]);
+      expect(armType.summary).to.eq("128-core Ampere Altra Max (Arm), 512 GB RAM");
+      body.node_types.filter((t) => t.label !== "Arm node").forEach((t) => {
+        expect(t.cpu_architecture, `${t.label} architecture`).to.eq("x86_64");
+      });
+
+      // Non-GPU accelerator: an FPGA with its own model, count and memory.
+      const fpgaType = body.node_types.find((t) => t.label === "FPGA node");
+      expect(fpgaType.accelerators).to.deep.eq([
+        { type: "fpga", model: "Xilinx Alveo U250", count: 2, memory: 64 },
+      ]);
+      expect(fpgaType.summary).to.eq(
+        "2× Xilinx Alveo U250 (FPGA, 64 GB memory), 48-core AMD EPYC 7413, 256 GB RAM"
+      );
+      // Every accelerator carries one of the allowed types.
+      body.node_types.forEach((t) => {
+        t.accelerators.forEach((a) => {
+          expect(["gpu", "fpga", "vector_engine", "other"], `${t.label} accelerator type`).to.include(a.type);
+        });
+      });
 
       // Queues: one entry per queue name, pointing at node types by label
       // with the per-queue node count.
       expect(body.queues.map((q) => q.name)).to.deep.eq([
-        "gpu-standard", "gpu-large", "debug", "cpu-shared", "gpu-cloud",
+        "gpu-standard", "gpu-large", "debug", "cpu-shared", "gpu-cloud", "fpga",
       ]);
       expect(body.queues[0].purpose).to.eq("General purpose GPU jobs with up to 4 GPUs per node.");
       expect(body.queues[0].max_wall_time_hours).to.eq(48);
@@ -343,6 +389,25 @@ describe("Resource Documentation API", () => {
       expect(body.queues[0].nodes).to.deep.eq([
         { node_type: "NVIDIA A100 (4 GPU)", node_count: 100 },
         { node_type: "NVIDIA H100 (4 GPU)", node_count: 25 },
+      ]);
+      // Queue-level charging unit and access, null when the queue sets none.
+      const queue = (name) => body.queues.find((q) => q.name === name);
+      expect(queue("gpu-standard").charged_per).to.eq("gpu");
+      expect(queue("gpu-standard").access).to.eq("batch");
+      expect(queue("gpu-large").charged_per).to.eq("node");
+      expect(queue("gpu-large").access).to.eq("by_request");
+      expect(queue("debug").access).to.eq("interactive");
+      expect(queue("cpu-shared").charged_per).to.eq("core");
+      expect(queue("cpu-shared").access).to.be.null;
+      expect(queue("gpu-cloud").charged_per).to.be.null;
+      expect(queue("gpu-cloud").access).to.be.null;
+      // A queue lists every node type that serves it, x86_64 and Arm alike.
+      expect(queue("cpu-shared").nodes).to.deep.eq([
+        { node_type: "CPU node", node_count: 200 },
+        { node_type: "Arm node", node_count: 40 },
+      ]);
+      expect(queue("fpga").nodes).to.deep.eq([
+        { node_type: "FPGA node", node_count: 6 },
       ]);
       // Unknown node count stays null, not 0.
       expect(body.queues[4].nodes).to.deep.eq([
@@ -411,6 +476,37 @@ describe("Resource Documentation API", () => {
     });
   });
 
+  it("Legacy resource (Beta) falls back to its queue rows and has no node types", () => {
+    cy.request(`/api/1.0/resources/${FIXTURES.beta.resource_id}`).then((response) => {
+      const body = response.body;
+      expect(body.node_types, "no node types").to.be.an("array").and.have.length(0);
+
+      // queue_specs are the legacy rows as entered, hardware included.
+      expect(body.queue_specs.map((q) => q.name)).to.deep.eq(["batch", "gpu"]);
+      const batch = body.queue_specs[0];
+      expect(batch.cpu_type).to.eq("AMD EPYC 7543");
+      expect(batch.cpu_count).to.eq(64);
+      expect(batch.node_count).to.eq(120);
+      expect(batch.ram).to.eq(256);
+      expect(batch.gpu_type).to.be.null;
+      expect(batch.max_wall_time_hours).to.eq(24);
+      const gpu = body.queue_specs[1];
+      expect(gpu.gpu_type).to.eq("NVIDIA A40");
+      expect(gpu.gpu_count).to.eq(2);
+      expect(gpu.gpu_vram).to.eq(48);
+      expect(gpu.node_count).to.eq(10);
+
+      // queues still list every queue row, with no node-type links.
+      expect(body.queues.map((q) => q.name)).to.deep.eq(["batch", "gpu"]);
+      body.queues.forEach((q) => {
+        expect(q.nodes, `${q.name} nodes`).to.deep.eq([]);
+        expect(q.charged_per, `${q.name} charged_per`).to.be.null;
+        expect(q.access, `${q.name} access`).to.be.null;
+      });
+      expect(body.queues[0].purpose).to.eq("General purpose CPU jobs.");
+    });
+  });
+
   it("Sparse resource (Beta) returns empty paragraph arrays", () => {
     cy.request(`/api/1.0/resources/${FIXTURES.beta.resource_id}`).then((response) => {
       expect(response.status).to.eq(200);
@@ -418,7 +514,8 @@ describe("Resource Documentation API", () => {
       expect(response.body.description).to.include("CPU-only cluster");
       expect(response.body.file_transfer).to.have.length(0);
       expect(response.body.storage).to.have.length(0);
-      expect(response.body.queue_specs).to.have.length(0);
+      // Beta's only content beyond the sparse sections is its legacy queue rows.
+      expect(response.body.queue_specs).to.have.length(2);
       expect(response.body.datasets).to.have.length(0);
     });
   });

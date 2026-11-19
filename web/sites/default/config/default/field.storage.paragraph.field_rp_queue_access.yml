@@ -1,0 +1,30 @@
+uuid: 83a71c10-116a-4c2d-833e-cfdb3a30a66f
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_rp_queue_access
+field_name: field_rp_queue_access
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values:
+    -
+      value: batch
+      label: 'Batch'
+    -
+      value: interactive
+      label: 'Interactive only'
+    -
+      value: by_request
+      label: 'By request'
+  allowed_values_function: ''
+module: options
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

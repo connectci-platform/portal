@@ -1,23 +1,42 @@
-uuid: 6951d557-e367-42ca-829b-35725a1e94ad
+uuid: a76e7a21-d4cd-49c4-a040-bc0a3fcd5ee2
 langcode: en
 status: true
 dependencies:
   config:
+    - field.field.paragraph.rp_node_type.field_rp_accelerators
+    - field.field.paragraph.rp_node_type.field_rp_cpu_architecture
     - field.field.paragraph.rp_node_type.field_rp_cpu_count
     - field.field.paragraph.rp_node_type.field_rp_cpus
     - field.field.paragraph.rp_node_type.field_rp_node_count
-    - field.field.paragraph.rp_node_type.field_rp_node_gpus
+    - field.field.paragraph.rp_node_type.field_rp_node_ram
     - field.field.paragraph.rp_node_type.field_rp_node_type_description
     - field.field.paragraph.rp_node_type.field_rp_node_type_label
-    - field.field.paragraph.rp_node_type.field_rp_vram
+    - field.field.paragraph.rp_node_type.field_rp_node_type_queues
     - paragraphs.paragraphs_type.rp_node_type
   module:
     - entity_reference_revisions
+    - options
 id: paragraph.rp_node_type.default
 targetEntityType: paragraph
 bundle: rp_node_type
 mode: default
 content:
+  field_rp_accelerators:
+    type: entity_reference_revisions_entity_view
+    label: above
+    settings:
+      view_mode: default
+      link: ''
+    third_party_settings: {  }
+    weight: 7
+    region: content
+  field_rp_cpu_architecture:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 4
+    region: content
   field_rp_cpu_count:
     type: number_integer
     label: above
@@ -25,7 +44,7 @@ content:
       thousand_separator: ''
       prefix_suffix: true
     third_party_settings: {  }
-    weight: 4
+    weight: 5
     region: content
   field_rp_cpus:
     type: string
@@ -44,12 +63,12 @@ content:
     third_party_settings: {  }
     weight: 2
     region: content
-  field_rp_node_gpus:
-    type: entity_reference_revisions_entity_view
+  field_rp_node_ram:
+    type: number_integer
     label: above
     settings:
-      view_mode: default
-      link: ''
+      thousand_separator: ''
+      prefix_suffix: true
     third_party_settings: {  }
     weight: 6
     region: content
@@ -68,14 +87,14 @@ content:
     third_party_settings: {  }
     weight: 0
     region: content
-  field_rp_vram:
-    type: number_integer
+  field_rp_node_type_queues:
+    type: entity_reference_revisions_entity_view
     label: above
     settings:
-      thousand_separator: ''
-      prefix_suffix: true
+      view_mode: default
+      link: ''
     third_party_settings: {  }
-    weight: 5
+    weight: 8
     region: content
 hidden:
   search_api_excerpt: true

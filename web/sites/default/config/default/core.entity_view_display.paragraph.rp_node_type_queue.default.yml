@@ -1,14 +1,15 @@
-uuid: d624cfb7-5628-42a4-9016-23243e08ad25
+uuid: b82dbce5-9215-49e9-8052-3932d05c5fd5
 langcode: en
 status: true
 dependencies:
   config:
-    - field.field.paragraph.rp_queue_node.field_rp_node_count
-    - field.field.paragraph.rp_queue_node.field_rp_queue_node_type
-    - paragraphs.paragraphs_type.rp_queue_node
-id: paragraph.rp_queue_node.default
+    - field.field.paragraph.rp_node_type_queue.field_rp_node_count
+    - field.field.paragraph.rp_node_type_queue.field_rp_queue_name
+    - paragraphs.paragraphs_type.rp_node_type_queue
+  module: {  }
+id: paragraph.rp_node_type_queue.default
 targetEntityType: paragraph
-bundle: rp_queue_node
+bundle: rp_node_type_queue
 mode: default
 content:
   field_rp_node_count:
@@ -20,7 +21,7 @@ content:
     third_party_settings: {  }
     weight: 1
     region: content
-  field_rp_queue_node_type:
+  field_rp_queue_name:
     type: string
     label: above
     settings:

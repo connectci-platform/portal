@@ -1,17 +1,16 @@
-uuid: 8fd19d7f-4c1a-40c3-8e52-4f9de0abf031
+uuid: eb3f7ac6-98f4-433b-8f66-4b83661ed712
 langcode: en
 status: true
 dependencies:
   module:
     - paragraphs
-id: paragraph.field_rp_queue_node_type
-field_name: field_rp_queue_node_type
+id: paragraph.field_rp_node_ram
+field_name: field_rp_node_ram
 entity_type: paragraph
-type: string
+type: integer
 settings:
-  max_length: 255
-  case_sensitive: false
-  is_ascii: false
+  unsigned: false
+  size: normal
 module: core
 locked: false
 cardinality: 1

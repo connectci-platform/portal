@@ -10,7 +10,7 @@ field_name: field_rp_node_type_label
 entity_type: paragraph
 bundle: rp_node_type
 label: 'Node type name'
-description: 'A name for this kind of node, for example "A100 GPU node". Queues refer to node types by this name.'
+description: 'A name for this kind of node, for example "A100 GPU node". Shown on the resource page; renaming it needs no other change.'
 required: true
 translatable: false
 default_value: {  }

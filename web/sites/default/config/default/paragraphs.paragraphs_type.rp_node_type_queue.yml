@@ -1,9 +1,9 @@
-uuid: 9174151a-f219-4e47-ba63-1513aab3ee20
+uuid: d3fc8052-e793-4103-9a00-3d4ec8730535
 langcode: en
 status: true
 dependencies: {  }
-id: rp_queue_node
-label: 'Queue Node'
+id: rp_node_type_queue
+label: 'Node Type Queue'
 icon_uuid: null
 icon_default: null
 description: null
