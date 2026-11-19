@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a5e249cf605ba564889a772efdbed499",
+    "content-hash": "28419d59efdfda2eef0b3c20f0660986",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -529,13 +529,12 @@
         },
         {
             "name": "connectci/campus-champions-theme",
-            "version": "dev-main",
+            "version": "dev-d8-3104",
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/campus-champions-theme.git",
-                "reference": "06ca4f4194a8650a0f3cb2e5e402556d94d09f28"
+                "reference": "1744ad765462300dd3ca1584e18b9a3d0da44957"
             },
-            "default-branch": true,
             "type": "drupal-theme",
             "license": [
                 "Apache License, Version 2.0"
@@ -551,7 +550,7 @@
                 "issues": "https://github.com/connectci-platform/campus-champions-theme/issues",
                 "source": "https://github.com/connectci-platform/campus-champions-theme"
             },
-            "time": "2026-11-05T16:50:28+00:00"
+            "time": "2026-11-19T16:45:15+00:00"
         },
         {
             "name": "connectci/operations_cider",
