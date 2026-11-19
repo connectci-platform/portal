@@ -478,7 +478,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/connectci-platform/access.git",
-                "reference": "f583a4cea0e189291843ebd248390e6d6fa3a40f"
+                "reference": "eeca6658ee282b0eb4e0d3e36747d95ddd857bb8"
             },
             "require": {
                 "firebase/php-jwt": "^6.0 || ^7.0",
