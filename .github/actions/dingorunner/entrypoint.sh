@@ -446,11 +446,11 @@ fi
 
 if [ "$runner" = deletepr ];
 then
-  branch=$PR_BRANCH
-  echo $branch
+  branch="$PR_BRANCH"
+  echo "$branch"
   storeKey
   terminusApi
-  terminus multidev:delete --delete-branch --yes -- accessmatch.$branch
+  terminus multidev:delete --delete-branch --yes -- "accessmatch.$branch"
 fi
 
 if [ "$runner" = sync ];
