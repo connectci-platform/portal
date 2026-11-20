@@ -1,6 +1,9 @@
 /*
    Verify the community-outreach tag page.
 */
+
+import { eventDate } from "../../../support/event-dates";
+
 describe("Verify the the community-outreach tag page", () => {
   it("Tests the tags page", () => {
 
@@ -196,8 +199,8 @@ describe("Verify the the community-outreach tag page", () => {
       cy.get("#custom-date-values > thead > tr > .field-label").contains(
         "Custom Date(s) and Time(s)"
       );
-      cy.get("#edit-custom-date-0-value-date").type("2026-12-12", { delay: 0 });
-      cy.get("#edit-custom-date-0-end-value-date").type("2027-12-12", { delay: 0 });
+      cy.get("#edit-custom-date-0-value-date").type(eventDate(60).iso, { delay: 0 });
+      cy.get("#edit-custom-date-0-end-value-date").type(eventDate(425).iso, { delay: 0 });
       cy.get("#edit-custom-date-0-value-time").type("04:30:00", { delay: 0 });
       cy.get("#edit-custom-date-0-end-value-time").type("04:30:00", { delay: 0 });
 
