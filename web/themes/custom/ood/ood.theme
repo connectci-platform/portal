@@ -194,22 +194,6 @@ function ood_preprocess_node__organization(&$variables) {
 }
 
 /**
- * Implements hook_preprocess_toolbar().
- *
- * Fix accessibility issue where the admin toolbar's outer wrapper uses
- * role="group" (not a landmark), causing axe-core to flag the toolbar
- * content as not contained by any landmark. Switching to role="navigation"
- * makes the wrapper itself a landmark. The existing aria-label
- * ("Site administration toolbar") distinguishes it from the inner
- * <nav id="toolbar-bar"> which is labelled "Toolbar items".
- */
-function ood_preprocess_toolbar(&$variables) {
-  if (isset($variables['attributes']['role']) && $variables['attributes']['role'] === 'group') {
-    $variables['attributes']['role'] = 'navigation';
-  }
-}
-
-/**
  * Implements hook_preprocess_webform_element_help().
  *
  * Fix accessibility issues with webform help tooltips.
