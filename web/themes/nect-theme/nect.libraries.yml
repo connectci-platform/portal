@@ -23,3 +23,11 @@ js-header:
     'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js': { type: external, minified: true }
     js/bootstrap-jquery.js: {}
     'https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js': { type: external, minified: true }
+
+# Offsets the page for core Navigation's sidebar and top bar. Shared with the
+# pascience, ood and champions themes, which attach it from their info.yml.
+admin-navigation:
+  version: 1.x
+  css:
+    theme:
+      css/admin-navigation.css: {}

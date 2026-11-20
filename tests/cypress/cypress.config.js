@@ -29,6 +29,9 @@ module.exports = defineConfig({
     experimentalStudio: true,
     viewportWidth: 1440,
     viewportHeight: 900,
+    // Default Admin's sticky table headers and the Navigation top bar cover
+    // elements that Cypress scrolls to the top of the viewport.
+    scrollBehavior: 'center',
 
     setupNodeEvents(on, config) {
       // implement node event listeners here

@@ -160,8 +160,8 @@ describe('Badge CSV Lifecycle — badges / MATCH', () => {
       } else {
         expect(status, 'Cherry Tart row exists in pending').to.eq('pending');
         cy.visit('/admin/people/badge-assignments');
-        cy.contains('a', 'Delete').should('exist');
-        cy.contains('a', 'Delete').first().click();
+        cy.get('main').contains('a', 'Delete').should('exist');
+        cy.get('main').contains('a', 'Delete').first().click();
         cy.get('.messages--status').should('contain', 'Pending row deleted');
       }
     });

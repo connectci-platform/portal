@@ -129,6 +129,7 @@ module:
   mgv: 0
   multiple_registration: 0
   mysql: 0
+  navigation: 0
   node: 0
   ondemand: 0
   ood_contributions: 0
@@ -173,7 +174,6 @@ module:
   select2: 0
   serialization: 0
   shortcode: 0
-  shortcut: 0
   simple_sitemap: 0
   social_api: 0
   social_auth: 0
@@ -189,7 +189,6 @@ module:
   ticketing: 0
   token: 0
   token_views_filter: 0
-  toolbar: 0
   twig_tweak: 0
   typed_data: 0
   ultimate_cron: 0
@@ -231,11 +230,11 @@ module:
   readonlymode: 9999
 theme:
   nect: 0
-  claro: 0
   stable: 0
   champions: 0
   stable9: 0
   aspTheme: 0
   ood: 0
   pascience: 0
+  default_admin: 0
 profile: standard

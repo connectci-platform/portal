@@ -14,7 +14,7 @@ describe("test KB Resource submission page as an administrator user", () => {
     cy.contains('Link to Resource');
     cy.contains('Operations');
     cy.get('table.webform-results-table > tbody > tr:nth-child(1) > :nth-child(2) > a').click();
-    cy.get('[data-original-order="1"] > .tabs__link').contains('Edit').click();
+    cy.clickTopBarEdit();
     cy.get('#edit-approved').check();
     cy.get('.form-item--domain').find('.select2-search__field').type('Careers{enter}');
     cy.get('input[name="op"]').contains('Save').click();

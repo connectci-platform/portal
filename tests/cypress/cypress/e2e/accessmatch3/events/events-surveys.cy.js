@@ -390,7 +390,7 @@ describe('Event Registration Surveys and Reminders', () => {
       cy.contains('Successfully saved').should('be.visible');
 
       // After save, we're on the eventseries page - click on the event instance link (shown as date)
-      cy.contains('Event Instances').should('be.visible');
+      cy.get('main').contains('Event Instances').should('be.visible');
       cy.get('a[href*="/events/"]').filter(':visible').not('[href*="/series"]').not('[href*="/add"]').first().click();
 
       // Now register for the event (while it's still in the future)
@@ -538,7 +538,7 @@ describe('Event Registration Surveys and Reminders', () => {
       cy.contains('Successfully saved').should('be.visible');
 
       // Navigate to the event instance and register
-      cy.contains('Event Instances').should('be.visible');
+      cy.get('main').contains('Event Instances').should('be.visible');
       cy.get('a[href*="/events/"]').filter(':visible').not('[href*="/series"]').not('[href*="/add"]').first().click();
 
       // Register for the event
@@ -644,12 +644,12 @@ describe('Event Registration Surveys and Reminders', () => {
           cy.clearSearchAndWait(EVENTS_SEARCH);
           cy.searchAndWait(EVENTS_SEARCH, 'survey-test');
           cy.contains(testEventName).click();
-          cy.get('.region-content').contains('Edit').click();
+          cy.clickTopBarEdit();
           cy.contains('a', 'Edit the series').click();
 
           // Delete the series
           cy.get('a[href*="/delete"]:visible').first().click();
-          cy.get('#edit-submit').click();
+          cy.get('.ui-dialog-buttonpane .button--primary').click();
         }
       });
 
@@ -704,10 +704,10 @@ describe('Event Registration Surveys and Reminders', () => {
           cy.clearSearchAndWait(EVENTS_SEARCH);
           cy.searchAndWait(EVENTS_SEARCH, 'past-survey-event');
           cy.contains('cypress-past-survey-event').click();
-          cy.get('.region-content').contains('Edit').click();
+          cy.clickTopBarEdit();
           cy.contains('a', 'Edit the series').click();
           cy.get('a[href*="/delete"]:visible').first().click();
-          cy.get('#edit-submit').click();
+          cy.get('.ui-dialog-buttonpane .button--primary').click();
         }
       });
 
@@ -760,10 +760,10 @@ describe('Event Registration Surveys and Reminders', () => {
           cy.clearSearchAndWait(EVENTS_SEARCH);
           cy.searchAndWait(EVENTS_SEARCH, 'reminder-html-event');
           cy.contains('cypress-reminder-html-event').click();
-          cy.get('.region-content').contains('Edit').click();
+          cy.clickTopBarEdit();
           cy.contains('a', 'Edit the series').click();
           cy.get('a[href*="/delete"]:visible').first().click();
-          cy.get('#edit-submit').click();
+          cy.get('.ui-dialog-buttonpane .button--primary').click();
         }
       });
     });
