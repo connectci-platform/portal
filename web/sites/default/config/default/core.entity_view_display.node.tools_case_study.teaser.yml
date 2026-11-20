@@ -19,6 +19,7 @@ dependencies:
     - field.field.node.tools_case_study.field_tcs_researcher_name
     - field.field.node.tools_case_study.field_tcs_role
     - field.field.node.tools_case_study.field_tcs_service_units
+    - field.field.node.tools_case_study.field_tcs_sessions_completed
     - field.field.node.tools_case_study.field_tcs_software
     - field.field.node.tools_case_study.field_tcs_time_to_science
     - field.field.node.tools_case_study.field_tcs_total_cpu_hours
@@ -60,6 +61,7 @@ hidden:
   field_tcs_researcher_name: true
   field_tcs_role: true
   field_tcs_service_units: true
+  field_tcs_sessions_completed: true
   field_tcs_software: true
   field_tcs_time_to_science: true
   field_tcs_total_cpu_hours: true

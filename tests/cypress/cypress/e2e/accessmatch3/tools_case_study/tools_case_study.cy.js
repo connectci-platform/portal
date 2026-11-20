@@ -52,11 +52,14 @@ describe('Tools Case Study - create and verify on researcher stories view', () =
     cy.get('#edit-field-tcs-software-0-uri').type('https://claude.ai', { delay: 0 });
     cy.get('#edit-field-tcs-software-0-title').type('Claude', { delay: 0 });
 
-    // Researcher Name (entity_reference to user)
+    // Access Resource (entity_reference to CiDeR resource). Wait for the
+    // autocomplete suggestion and click it; submit-time validation only
+    // accepts an exact title match, so typed text alone is not enough.
     cy.get('#edit-field-tcs-access-resource-0-target-id')
-      .type('UD DARWIN Storage')
-      .wait(500)
-      .type('{downarrow}{enter}');
+      .type('UD DARWIN Storage');
+    cy.get('.ui-autocomplete:visible li', { timeout: 10000 })
+      .contains('UD DARWIN Storage')
+      .click();
 
     // Field of science
     cy.get('#edit-field-tcs-field-of-science-0-value').type('200', { delay: 0 });
@@ -76,6 +79,9 @@ describe('Tools Case Study - create and verify on researcher stories view', () =
     // # of jobs completed
     cy.get('#edit-field-tcs-jobs-completed-0-value').type('1000', { delay: 0 });
 
+    // # of sessions completed (cloud resources such as Jetstream2)
+    cy.get('#edit-field-tcs-sessions-completed-0-value').type('250', { delay: 0 });
+
     // Publish
     cy.get('#edit-status-value').check();
 
@@ -83,6 +89,28 @@ describe('Tools Case Study - create and verify on researcher stories view', () =
 
     // Should land on node page
     cy.get('h1').contains(TITLE);
+
+    // Jobs and Sessions both display, with Sessions directly after Jobs
+    cy.get('.field--name-field-tcs-jobs-completed')
+      .should('contain', '# of Jobs Completed')
+      .and('contain', '1000');
+    cy.get('.field--name-field-tcs-sessions-completed')
+      .should('contain', '# of Sessions Completed')
+      .and('contain', '250');
+    cy.get('.field--name-field-tcs-jobs-completed, .field--name-field-tcs-sessions-completed')
+      .should('have.length', 2)
+      .first()
+      .should('have.class', 'field--name-field-tcs-jobs-completed');
+
+    // Jetstream2-style story: clear Jobs, only Sessions should display
+    cy.window().then((win) => {
+      cy.visit('/' + win.drupalSettings.path.currentPath + '/edit');
+    });
+    cy.get('#edit-field-tcs-jobs-completed-0-value').clear();
+    cy.get('form.node-tools-case-study-edit-form #edit-submit').scrollIntoView().click();
+    cy.get('h1').contains(TITLE);
+    cy.get('.field--name-field-tcs-sessions-completed').should('contain', '250');
+    cy.get('.field--name-field-tcs-jobs-completed').should('not.exist');
 
     // Verify node appears on researcher stories view
     cy.visit('/tools/researcher-stories');

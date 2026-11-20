@@ -18,6 +18,7 @@ dependencies:
     - field.field.node.tools_case_study.field_tcs_researcher_name
     - field.field.node.tools_case_study.field_tcs_role
     - field.field.node.tools_case_study.field_tcs_service_units
+    - field.field.node.tools_case_study.field_tcs_sessions_completed
     - field.field.node.tools_case_study.field_tcs_software
     - field.field.node.tools_case_study.field_tcs_time_to_science
     - field.field.node.tools_case_study.field_tcs_total_cpu_hours
@@ -138,6 +139,14 @@ content:
   field_tcs_service_units:
     type: string_textfield
     weight: 22
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_tcs_sessions_completed:
+    type: string_textfield
+    weight: 29
     region: content
     settings:
       size: 60
