@@ -46,3 +46,13 @@ export function eventDate(offsetDays) {
 export function anonEventDate() {
   return eventDate(30);
 }
+
+/**
+ * The start date of cypress-example-event, created by events-add.cy.js and
+ * checked by events-page-auth.cy.js.
+ *
+ * @returns {{iso: string, short: string, day: string, month: string}}
+ */
+export function authEventDate() {
+  return eventDate(60);
+}
