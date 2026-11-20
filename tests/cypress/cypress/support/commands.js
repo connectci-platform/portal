@@ -202,22 +202,36 @@ Cypress.Commands.add("verifyCallToActionBlock", (url, text, href) => {
 
 /**
  * Core Navigation moves entity local tasks (View/Edit/Delete tabs) out of the
- * theme's local tasks block and into its fixed top bar. The featured action
- * (Edit) is a primary button; the rest live in a "More actions" dropdown.
+ * theme's local tasks block and into its fixed top bar, but only for users
+ * with the "access navigation" permission (administrator, ccmnet_pm). The
+ * featured action (Edit) is a primary button; the rest live in a "More
+ * actions" dropdown.
  *
  * Gets the featured "Edit" button in the top bar without clicking it, for
- * specs that assert attributes before clicking.
+ * specs that assert attributes before clicking. When the page has no
+ * Navigation top bar (users without the permission), falls back to the
+ * theme's local task "Edit" tab (nect/campus champions: ul.primary-tabs;
+ * asp-theme: ul.tabs.primary).
  */
 Cypress.Commands.add("getTopBarEdit", () => {
-  return cy.contains(
-    '.top-bar .top-bar__actions a.toolbar-button--primary',
-    'Edit',
-  );
+  return cy.get("body").then(($body) => {
+    if ($body.find(".top-bar .top-bar__actions").length) {
+      return cy.contains(
+        ".top-bar .top-bar__actions a.toolbar-button--primary",
+        "Edit",
+      );
+    }
+    return cy.contains(
+      "ul.primary-tabs > li > a, ul.tabs.primary > li > a",
+      /^\s*Edit\s*(\(active tab\))?\s*$/,
+    );
+  });
 });
 
 /**
- * Clicks the featured "Edit" button in the Navigation top bar (this replaces
- * clicking the Edit local task tab). Optional `options` go to .click().
+ * Clicks the "Edit" button in the Navigation top bar, or the theme's Edit
+ * local task tab when there is no top bar (see getTopBarEdit). Optional
+ * `options` go to .click().
  */
 Cypress.Commands.add("clickTopBarEdit", (options) => {
   return cy.getTopBarEdit().click(options);

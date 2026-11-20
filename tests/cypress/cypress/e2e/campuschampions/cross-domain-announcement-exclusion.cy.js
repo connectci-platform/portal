@@ -72,7 +72,9 @@ describe("Cross-Domain Announcement Exclusion Test", () => {
 
       // Cleanup ACCESS announcement while still in this origin
       cy.contains(accessTitle).click();
-      cy.clickTopBarEdit();
+      // Custom commands are not loaded inside cy.origin; the admin has the
+      // Navigation top bar, so use its Edit button directly.
+      cy.contains('.top-bar .top-bar__actions a.toolbar-button--primary', 'Edit').click();
       cy.get('#edit-delete').click();
       cy.get('.ui-dialog-buttonpane button.button--primary').click();
       cy.log(`✓ ACCESS announcement cleaned up`);

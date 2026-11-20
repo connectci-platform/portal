@@ -35,7 +35,7 @@ describe("Create private group and test visibility", () => {
     cy.visit('/admin/content');
     cy.get('tbody > :nth-child(1) > .views-field-title > a').click();
     cy.contains('test-private-affinity-group');
-    cy.get('.nav > :nth-child(2) > .nav-link').click();
+    cy.clickTopBarEdit();
     cy.get('input[name="field_ag_private_users[0][target_id]"]').clear();
     cy.get('.node-affinity-group-edit-form #edit-submit').click();
   });
