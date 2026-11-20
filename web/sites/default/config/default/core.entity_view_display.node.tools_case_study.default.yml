@@ -18,6 +18,7 @@ dependencies:
     - field.field.node.tools_case_study.field_tcs_researcher_name
     - field.field.node.tools_case_study.field_tcs_role
     - field.field.node.tools_case_study.field_tcs_service_units
+    - field.field.node.tools_case_study.field_tcs_sessions_completed
     - field.field.node.tools_case_study.field_tcs_software
     - field.field.node.tools_case_study.field_tcs_time_to_science
     - field.field.node.tools_case_study.field_tcs_total_cpu_hours
@@ -76,7 +77,7 @@ third_party_settings:
                 settings:
                   link_to_entity: false
                 third_party_settings: {  }
-            weight: 10
+            weight: 11
             additional:
               layout_builder_styles_style:
                 accordion_wrapper: 0
@@ -389,7 +390,7 @@ third_party_settings:
                 settings:
                   link_to_entity: false
                 third_party_settings: {  }
-            weight: 9
+            weight: 10
             additional:
               layout_builder_styles_style:
                 accordion_wrapper: 0
@@ -421,7 +422,7 @@ third_party_settings:
                 settings:
                   link_to_entity: false
                 third_party_settings: {  }
-            weight: 8
+            weight: 9
             additional:
               layout_builder_styles_style:
                 accordion_wrapper: 0
@@ -454,6 +455,38 @@ third_party_settings:
                   link_to_entity: false
                 third_party_settings: {  }
             weight: 7
+            additional:
+              layout_builder_styles_style:
+                accordion_wrapper: 0
+                bg_light_teal: 0
+                mb_10: 0
+                mb_3: 0
+                mb_5: 0
+                md_teal_box: 0
+                page_title: 0
+                pb_4: 0
+                pe_3: 0
+                pt_4: 0
+                tags: 0
+                __div_h_full: 0
+          ed691328-b927-466d-b238-2b5b9c281bb5:
+            uuid: ed691328-b927-466d-b238-2b5b9c281bb5
+            region: second
+            configuration:
+              id: 'field_block:node:tools_case_study:field_tcs_sessions_completed'
+              label: '# of Sessions Completed'
+              label_display: '0'
+              provider: layout_builder
+              context_mapping:
+                entity: layout_builder.entity
+                view_mode: view_mode
+              formatter:
+                type: string
+                label: inline
+                settings:
+                  link_to_entity: false
+                third_party_settings: {  }
+            weight: 8
             additional:
               layout_builder_styles_style:
                 accordion_wrapper: 0
@@ -602,6 +635,14 @@ content:
     third_party_settings: {  }
     weight: 114
     region: content
+  field_tcs_sessions_completed:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 118
+    region: first
   field_tcs_software:
     type: link
     label: above
