@@ -221,7 +221,9 @@ class GhCommands extends Tasks {
     $issue_number = $branch_parts[1];
     $issue_number = preg_replace('/\r\n|\r|\n/', '', $issue_number);
 
-    $description = $this->getDescription($issue_number);
+    $summary = $this->getJiraSummary($issue_number);
+    $description = $summary !== '' ? $summary : $this->ask("Describe context / purpose for this PR");
+    $title = $this->buildPrTitle($issue_number, $summary);
     $custom_repos = $this->findCustomModuleRepos($issue_number);
 
     $body = $this->buildPrBody($description, $issue_number, '-');
@@ -231,7 +233,7 @@ class GhCommands extends Tasks {
     $pr_urls = [];
 
     // Create main repo PR first.
-    $main_pr_url = $this->createPr(NULL, NULL, $target_branch, "#$issue_number", $body);
+    $main_pr_url = $this->createPr(NULL, NULL, $target_branch, $title, $body);
     if ($main_pr_url) {
       $pr_urls[] = $main_pr_url;
     }
@@ -250,7 +252,7 @@ class GhCommands extends Tasks {
         continue;
       }
 
-      $pr_url = $this->createPr($repo_info['ghRepo'], $repo_info['branch'], $default_branch, "#$issue_number", $body);
+      $pr_url = $this->createPr($repo_info['ghRepo'], $repo_info['branch'], $default_branch, $title, $body);
       if ($pr_url) {
         $pr_urls[] = $pr_url;
       }
@@ -274,19 +276,36 @@ class GhCommands extends Tasks {
   }
 
   /**
-   * Fetch PR description from Jira via acli, or fall back to interactive prompt.
+   * Fetch the Jira ticket summary (title) via acli.
+   *
+   * @return string
+   *   The summary, or an empty string if acli is missing or returns nothing.
    */
-  private function getDescription(string $issueNumber): string {
+  private function getJiraSummary(string $issueNumber): string {
     $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
-    if ($acli_path !== '') {
-      $output = shell_exec("acli jira workitem view " . escapeshellarg("D8-$issueNumber") . " --fields summary --json 2>/dev/null") ?? '';
-      $decoded = json_decode(trim($output), TRUE);
-      $summary = trim($decoded['fields']['summary'] ?? '');
-      if ($summary !== '') {
-        return $summary;
-      }
+    if ($acli_path === '') {
+      return '';
     }
-    return $this->ask("Describe context / purpose for this PR");
+    $output = shell_exec("acli jira workitem view " . escapeshellarg("D8-$issueNumber") . " --fields summary --json 2>/dev/null") ?? '';
+    $decoded = json_decode(trim($output), TRUE);
+    return trim($decoded['fields']['summary'] ?? '');
+  }
+
+  /**
+   * Build the PR title: "#NNNN - Ticket title", truncated to GitHub's limit.
+   *
+   * Falls back to "#NNNN" when no Jira summary is available.
+   */
+  private function buildPrTitle(string $issueNumber, string $summary): string {
+    $max_length = 256;
+    $title = "#$issueNumber";
+    if ($summary !== '') {
+      $title .= " - $summary";
+    }
+    if (mb_strlen($title) > $max_length) {
+      $title = rtrim(mb_substr($title, 0, $max_length - 1)) . '…';
+    }
+    return $title;
   }
 
   /**
