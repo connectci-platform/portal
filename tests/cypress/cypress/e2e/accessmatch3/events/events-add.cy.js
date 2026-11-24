@@ -8,7 +8,7 @@
 
 */
 
-import { anonEventDate } from "../../../support/event-dates";
+import { anonEventDate, authEventDate, eventDate } from "../../../support/event-dates";
 
 // The exposed "Search My Events" title filter on /events/mine
 const MY_EVENTS_SEARCH = '[data-drupal-selector="edit-title"]';
@@ -43,8 +43,8 @@ describe("Authenticated user tests the Events Form without Affinity Group", () =
     cy.get("#custom-date-values > thead > tr > .field-label").contains(
       "Custom Date(s) and Time(s)"
     );
-    cy.get("#edit-custom-date-0-value-date").type("2026-12-12", { delay: 0 });
-    cy.get("#edit-custom-date-0-end-value-date").type("2027-12-12", { delay: 0 });
+    cy.get("#edit-custom-date-0-value-date").type(authEventDate().iso, { delay: 0 });
+    cy.get("#edit-custom-date-0-end-value-date").type(eventDate(425).iso, { delay: 0 });
     cy.get("#edit-custom-date-0-value-time").type("04:30:00", { delay: 0 });
     cy.get("#edit-custom-date-0-end-value-time").type("04:30:00", { delay: 0 });
 
