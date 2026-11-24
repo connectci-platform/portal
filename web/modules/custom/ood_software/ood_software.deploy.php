@@ -13,6 +13,7 @@ use Drupal\Core\File\FileSystemInterface;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
+use Drupal\ood_software\Service\AppverseContributors;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\taxonomy\Entity\Term;
@@ -1767,5 +1768,57 @@ function ood_software_deploy_10019_add_eessi_software(): TranslatableMarkup {
     '@created' => $created ? implode(', ', $created) : 'none',
     '@skipped' => $skipped ? implode(', ', $skipped) : 'none',
     '@terms' => $missing_terms ? implode(', ', $missing_terms) : 'none',
+  ]);
+}
+
+/**
+ * Create the Appverse Contributor badge and award it to existing authors.
+ *
+ * New publishes award the badge from hook_node_insert()/hook_node_update();
+ * this backfills everyone who already has a published app (D8-3133).
+ */
+function ood_software_deploy_10020_appverse_contributor_badge(): TranslatableMarkup {
+  $storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+  $existing = $storage->loadByProperties([
+    'vid' => AppverseContributors::BADGE_VOCABULARY,
+    'name' => AppverseContributors::BADGE_NAME,
+  ]);
+  $created = FALSE;
+  if ($existing) {
+    $term = reset($existing);
+  }
+  else {
+    $term = $storage->create([
+      'vid' => AppverseContributors::BADGE_VOCABULARY,
+      'name' => AppverseContributors::BADGE_NAME,
+      'weight' => 0,
+      'description' => [
+        'value' => 'Contributed an app to the Open OnDemand Appverse, the community catalog of apps for Open OnDemand.<br><br>See: <a href="https://openondemand.connectci.org/appverse">The Appverse</a>',
+        'format' => 'full_html',
+      ],
+    ]);
+    $term->save();
+    $created = TRUE;
+  }
+
+  if (!\Drupal::hasService('access_badges.badgeTools')) {
+    return t('Appverse Contributor badge term @status; backfill skipped because access_badges is not available.', [
+      '@status' => $created ? 'created' : 'already existed',
+    ]);
+  }
+
+  $badge_tools = \Drupal::service('access_badges.badgeTools');
+  $uids = \Drupal::service('ood_software.appverse_contributors')->getAuthorUids();
+  $assigned = 0;
+  foreach ($uids as $uid) {
+    if ($badge_tools->assignBadgeToUser($uid, (int) $term->id(), AppverseContributors::BADGE_VOCABULARY)) {
+      $assigned++;
+    }
+  }
+
+  return t('Appverse Contributor badge term @status. Awarded to @assigned of @total contributors.', [
+    '@status' => $created ? 'created' : 'already existed',
+    '@assigned' => $assigned,
+    '@total' => count($uids),
   ]);
 }
