@@ -540,6 +540,7 @@ class GeneralCommands extends Tasks {
         'knowledge-base-resources',
         'x-api',
         'qa-bot',
+        'tools_case_study',
       ];
 
       foreach ($sub_dirs as $dir) {
