@@ -24,6 +24,8 @@
   series births a Published, registerable instance.
 */
 
+import { eventDate } from '../../../support/event-dates';
+
 const DRAIN = 'ddev drush queue:run recurring_events_registration_email_notifications_queue_worker';
 const ADMIN = ['administrator@amptesting.com', 'b8QW]X9h7#5n'];
 const WALNUT = ['walnut@pie.org', 'Walnut'];
@@ -89,8 +91,8 @@ describe('Event notification emails carry the event domain (D8-2811)', () => {
     // Select the custom recurrence radio FIRST — the custom-date fields are hidden
     // behind a #states visibility condition on recur_type=custom until this is clicked.
     cy.get('#edit-recur-type-custom').click();
-    cy.get('#edit-custom-date-0-value-date').type('2027-11-01', { delay: 0 });
-    cy.get('#edit-custom-date-0-end-value-date').type('2027-11-01', { delay: 0 });
+    cy.get('#edit-custom-date-0-value-date').type(eventDate(400).iso, { delay: 0 });
+    cy.get('#edit-custom-date-0-end-value-date').type(eventDate(400).iso, { delay: 0 });
     cy.get('#edit-custom-date-0-value-time').type('10:00:00', { delay: 0 });
     cy.get('#edit-custom-date-0-end-value-time').type('11:00:00', { delay: 0 });
     cy.get('#edit-field-location-0-value').type('Zoom', { delay: 0 });
@@ -115,8 +117,8 @@ describe('Event notification emails carry the event domain (D8-2811)', () => {
     // collide with another's queued notice.
     cy.loginAs(...ADMIN);
     cy.visit(`/events/series/${seriesId}/add`);
-    cy.get('#edit-date-0-value-date').clear().type('2027-11-15', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-11-15', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(414).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(414).iso, { delay: 0 });
     cy.get('#edit-date-0-value-time').clear().type('10:00:00', { delay: 0 });
     cy.get('#edit-date-0-end-value-time').clear().type('11:00:00', { delay: 0 });
     cy.get('#edit-submit').click();
@@ -176,8 +178,8 @@ describe('Event notification emails carry the event domain (D8-2811)', () => {
     // from this request host; it must now come from the domain record.
     cy.loginAs(...ADMIN);
     cy.visit(`/events/${instanceId}/edit`);
-    cy.get('#edit-date-0-value-date').clear().type('2027-12-08', { delay: 0 });
-    cy.get('#edit-date-0-end-value-date').clear().type('2027-12-08', { delay: 0 });
+    cy.get('#edit-date-0-value-date').clear().type(eventDate(437).iso, { delay: 0 });
+    cy.get('#edit-date-0-end-value-date').clear().type(eventDate(437).iso, { delay: 0 });
     cy.get('#edit-moderation-state-0-state').select('Published');
     cy.get('#edit-submit').click();
     cy.exec(DRAIN, { failOnNonZeroExit: false, timeout: 120000 });
@@ -194,7 +196,7 @@ describe('Event notification emails carry the event domain (D8-2811)', () => {
     // The ticket's literal reproduction: a drush run has no HTTP request, so the
     // request context falls back to the install's own base URL
     // (cyberteam-drupal.ddev.site here) and the pre-fix links pointed there.
-    cy.exec(rescheduleViaDrush(instanceId, '2027-12-09'), { timeout: 120000 });
+    cy.exec(rescheduleViaDrush(instanceId, eventDate(438).iso), { timeout: 120000 });
     cy.exec(DRAIN, { failOnNonZeroExit: false, timeout: 120000 });
     cy.waitForEmail({ to: WALNUT[0], subject: 'Event Rescheduled:' }).then((message) => {
       assertLinksOnEventDomain(message, [REQUEST_HOST, 'cyberteam-drupal.ddev.site']);
@@ -206,7 +208,7 @@ describe('Event notification emails carry the event domain (D8-2811)', () => {
     // enqueued from a request on domain X carried X's host. --uri gives the CLI
     // request context ccmnet's host, so X and Y are genuinely different domain
     // RECORDS here, not just different aliases of one.
-    cy.exec(rescheduleViaDrush(instanceId, '2027-12-10', OTHER_URI), { timeout: 120000 });
+    cy.exec(rescheduleViaDrush(instanceId, eventDate(439).iso, OTHER_URI), { timeout: 120000 });
     cy.exec(DRAIN, { failOnNonZeroExit: false, timeout: 120000 });
     cy.waitForEmail({ to: WALNUT[0], subject: 'Event Rescheduled:' }).then((message) => {
       assertLinksOnEventDomain(message, [OTHER_HOST, 'ccmnet.ddev.site', REQUEST_HOST]);

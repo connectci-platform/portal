@@ -26,6 +26,7 @@ use Drupal\Component\Utility\Xss;
 use Drupal\content_moderation\Plugin\views\filter\ModerationStateFilter;
 use Drupal\node\NodeInterface;
 use Drupal\ood_software\Plugin\views\filter\ModerationStateNeedsAttention;
+use Drupal\ood_software\Service\AppverseContributors;
 use Drupal\ood_software\Service\DecisionEmail;
 use Drupal\ood_software\Service\ReviewPageData;
 use League\CommonMark\Environment\Environment;
@@ -1512,6 +1513,7 @@ function ood_software_node_presave(NodeInterface $node): void {
  */
 function ood_software_node_insert(NodeInterface $node): void {
   _ood_software_mark_appverse_cache_dirty($node);
+  _ood_software_award_contributor_badge($node);
   if ($node->bundle() === 'appverse_app') {
     $flag_service = \Drupal::service('flag');
     $flag = $flag_service->getFlagById('appverse_apps');
@@ -1601,6 +1603,7 @@ function _ood_software_sync_repo_to_app_review(NodeInterface $node): void {
  */
 function ood_software_node_update(NodeInterface $node): void {
   _ood_software_mark_appverse_cache_dirty($node);
+  _ood_software_award_contributor_badge($node);
 
   // An app sent for review has to carry its parent repo with it. A review is a
   // review of a repo and the queue filters repos on their own state, so an app
@@ -3223,3 +3226,33 @@ function ood_software_views_data_alter(array &$data): void {
   ];
 }
 
+/**
+ * Awards the Appverse Contributor badge to the owner of a published app.
+ *
+ * Runs on every save of a published app, so an app published later (or handed
+ * to a new owner) awards at that moment. The badge is never removed: it
+ * recognizes a past contribution. access_badges is a soft dependency, so sites
+ * and tests without it simply skip, and a badge failure never blocks saving.
+ */
+function _ood_software_award_contributor_badge(NodeInterface $node): void {
+  if ($node->bundle() !== 'appverse_app' || !$node->isPublished() || (int) $node->getOwnerId() <= 0) {
+    return;
+  }
+  if (!\Drupal::hasService('access_badges.badgeTools')) {
+    return;
+  }
+  try {
+    $badge_tools = \Drupal::service('access_badges.badgeTools');
+    $tid = $badge_tools->getBadgeTid(AppverseContributors::BADGE_NAME, AppverseContributors::BADGE_VOCABULARY);
+    if ($tid === '') {
+      return;
+    }
+    $badge_tools->assignBadgeToUser((int) $node->getOwnerId(), (int) $tid, AppverseContributors::BADGE_VOCABULARY);
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('ood_software')->error('Could not award the Appverse Contributor badge for node @nid: @message', [
+      '@nid' => $node->id(),
+      '@message' => $e->getMessage(),
+    ]);
+  }
+}

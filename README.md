@@ -87,28 +87,112 @@ This project uses **DDEV** for local development. DDEV provides a consistent, co
 
 ## robo
 
-We switched to the robo command so we could remove BLT as it's no longer supported. Some of the commands have been revised as well.
+We switched to the robo command so we could remove BLT as it's no longer supported. Some of the commands have been revised as well. Run `vendor/bin/robo list` to see every command.
 
-| Command          | Description                                                                                                                                                                                                                                                            |
-| -------------    | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                             |
-| ddevsetup    | Runs the commands needed for an initial setup of the site with DDEV.                                                                                                                                                                                                   |
-| cypress      | Runs cypress tests on accessmatch1. Add a space and the test you want to run for other tests (ie: robo cypress crct).                                                                                                                                                  |
-| did          | Runs composer install then reloads from 'backups/site.sql.gz', by running ```gh:pulldb``` you can replaces this with the latest backup. You can add the corresponding number to do a domain switch that you get from the ds command as an argument.                    |
-| ds           | Switch default domain.                                                                                                                                                                                                                                                 |
-| mds          | Create file (robo/assets/md/md-xxx) that will set the default domain on multidev site.                                                                                                                                                                                 |
-| cex          | Export config files and then restore the deleted files. This is helpful if you aren't deleted any config files and want to get past the deleted views.                                                                                                                 |
-| snap:create  | Create snapshot.                                                                                                                                                                                                                                                       |
-| snap:restore | Restore snapshot.                                                                                                                                                                                                                                                      |
-| checkout     | Arguments: `branch` `domain_number`. Use this command to checkout a branch and run the commands needed to get setup and ready to go.                                                                                                                                   |
-| gh:keepalive     | This will echo bing every 2 minutes in order to keep a codespace running. Use with caution as if you forget this is running and don't close your codespace, you may run up your minutes. You can use ctrl+c to stop this command from running.                         |
-| gh:pulldb        | Daily github action pulls in and processes the production database and places it into an [artifact](https://github.com/connectci-platform/portal/actions/workflows/backupdb.yml). This pulls the latest artifact.                                                   |
-| gh:pullfiles     | Daily github action pulls in last pantheon backup and cleans up the private files directory to decrease the size and places it into an [artifact](https://github.com/connectci-platform/portal/actions/workflows/backupfiles.yml).  This pulls the latest artifact. |
-| gh:pr            | This command will create a github pull request. It will ask you for the description and then fill in the rest of the template for you.                                                                                                                                 |
-| uli          | Login locally with your personal username set via AMP_UID env var. Falls back to uid 1 if not set.                                                                                                                                                                     |
-| su           | Checks for composer security updates and triggers the GitHub composer updates action for each one found.                                                                                                                                                               |
-| deploy       | Runs ```drush deploy``` and then sets the default domain. Accepts an optional domain number argument.                                                                                                                                                                  |
-| pmd:check    | Checks if a multidev environment exists on Pantheon.                                                                                                                                                                                                                   |
-| pmd:create   | Creates a multidev environment on Pantheon and runs deploy.                                                                                                                                                                                                            |
+| Command | Description |
+| ------- | ----------- |
+| ddevsetup | Arguments: `[GITHUB_TOKEN]` `[AMP_UID]`. Option: `--skip-files` skips the files download. Initial setup of the site with DDEV. Run from the host, not inside the container. Writes `.ddev/.env` (prompting for any value not passed or already set), starts DDEV, sets the composer GitHub token, pulls the database if `backups/site.sql.gz` is missing, pulls the files, then runs `did`. |
+| did | Argument: optional domain number (from `ds`). Imports `backups/site.sql.gz` (fails if the file is missing; run `gh:pulldb` to get the latest backup), then runs `composer install`, `drush deploy` and `drush cim`, and turns off seamless CILogon. With a domain number it runs `ds` with it. Without one it enables `symfony_mailer_log` and the sendmail transport so mail goes to Mailpit. Ends with `uli`. |
+| uli | Login locally with your personal username set via AMP_UID env var. Falls back to uid 1 if not set. |
+| ds | Long form: `domain-switch`. Argument: optional domain number. Switches the default domain. With no argument it lists the domains and asks which one to use. |
+| mds | Create file (robo/assets/md/md-xxx) that will set the default domain on multidev site. |
+| deploy | Runs `drush deploy` and then sets the default domain. Accepts an optional domain number argument. |
+| cex | Export config files and then restore the deleted files. This is helpful if you aren't deleted any config files and want to get past the deleted views. |
+| snap:create | Create snapshot. |
+| snap:restore | Restore snapshot. |
+| checkout | Arguments: `branch` `[domain_number]`. Checks out and pulls the branch, then runs `composer install`, `drush deploy`, `ds` (when a domain number is given) and `uli`. Refuses if the branch is checked out in another worktree and prints that worktree's path. Stops if the checkout or pull fails. |
+| tree:new | Argument: `branch`. Creates a git worktree at `../worktrees/<branch>`, runs `composer install` in it, copies `.ddev/.env`, symlinks `files`, `backups` and `.claude` from the main project, rewrites `.ddev/config.yaml` with a project name and hostnames for the branch (marked assume-unchanged), then runs `ddevsetup --skip-files` in the worktree. |
+| tree:config | Run inside a worktree. Resets its `.ddev/config.yaml` after a merge or rebase, rewrites the project name and hostnames for the branch, and marks it assume-unchanged again. |
+| tree:del | Argument: `branch`. Deletes the worktree's DDEV project, then removes the worktree at `../worktrees/<branch>`. |
+| cypress | Arguments: `[test_folder]` `[1]`. Runs cypress tests on accessmatch1. Add a space and the test you want to run for other tests (ie: robo cypress crct). A second argument of `1` runs `drush updatedb` and `drush cr` first. |
+| su | Checks for composer security updates and triggers the GitHub composer updates action for each one found. |
+| ciupdate | Arguments: `module` `[version]`. Used by the GitHub composer updates action. Updates the module (or Drupal core for `drupal/core`) and logs the version change. |
+| log:all | Rsyncs the accessmatch.live logs into `backups/logs/`, replacing what is there. Needs Terminus. |
+| gh:keepalive | This will echo bing every 2 minutes in order to keep a codespace running. Use with caution as if you forget this is running and don't close your codespace, you may run up your minutes. You can use ctrl+c to stop this command from running. |
+| gh:pulldb | Daily github action pulls in and processes the production database and places it into an [artifact](https://github.com/connectci-platform/portal/actions/workflows/backupdb.yml). This pulls the latest artifact. |
+| gh:pullfiles | Daily github action pulls in last pantheon backup and cleans up the private files directory to decrease the size and places it into an [artifact](https://github.com/connectci-platform/portal/actions/workflows/backupfiles.yml). This pulls the latest artifact. |
+| gh:pr | This command will create a github pull request. It will ask you for the description and then fill in the rest of the template for you. |
+| gh:unpin | Resets custom module versions in `composer.json`/`composer.lock` to what `origin/<base>` uses. Option: `--base=<md-dev\|main>` (default `main`). Warns if a pinned module branch has commits not in the base version, never commits. |
+| gh:tag | Argument: `x.y.z`. Returns the tag with the patch number incremented. Used internally. |
+| pmd:check | Checks if a multidev environment exists on Pantheon. |
+| pmd:create | Argument: `md-xxxx`. Creates a multidev environment on Pantheon from accessmatch.test and runs `drush deploy` on it. |
+
+## drush
+
+Drush commands added by our custom modules. Run them with `ddev drush <command>`, and use `ddev drush list` or `ddev drush help <command>` for the full list and options.
+
+### access
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| access:ingest-orgs | ingest-organizations | Imports ACCESS organizations. |
+
+### access_affinitygroup
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| access_affinitygroup:initConstantContact | initConstantContact | Saves every affinity group so its Constant Contact list is created, then adds the group's existing members to that list. |
+| access_affinitygroup:showAffinityGroups | showAffinityGroups | Lists affinity groups and their members. Argument: optional group title (case-sensitive). Options: `--uidonly` shows only user IDs, `--headonly` lists the groups without members. |
+| access_affinitygroup:showNews | showNews | Prints the news items published in the last week. |
+| access_affinitygroup:showEventsI | showEventsI | Lists event instances. |
+| access_affinitygroup:showEventsS | showEventsS | Lists event series. |
+| access_affinitygroup:newsRollup | newsRollup | Builds the weekly news digest and prints it without sending. |
+| access_affinitygroup:importAllocations | importAllocations | Runs one slice of the allocations user import that cron runs, using the settings on the Constant Contact admin form. |
+| access_affinitygroup:syncAGandCC | syncAGandCC | Syncs affinity group members with their Constant Contact lists. Currently limited to a fixed range of groups. |
+| access_affinitygroup:allocCleanObs | allocCleanObs | Cleans up users whose allocations are obsolete. Currently limited to a fixed range of users. |
+
+### access_misc
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| access:create-user-from-api | access-create-user | Argument: ACCESS username (without `@access-ci.org`). Creates a Drupal user from the allocations API, for ACCESS staff who need an account but have no active allocation. |
+
+### user_profiles
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| user_profiles:mergeUser | mergeUser | Arguments: `from_uid` `to_uid`. Moves user data from one user to another and blocks the source user. |
+
+### access_badges
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| badges:sort | badges-sort | Sorts every user's badges to match the badges taxonomy order. |
+
+### access_events
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| access-events:backfill-timezones | access-events-tz | Sets missing event series timezones from each author's account timezone and reports rows that need review. Safe to re-run. |
+
+### campuschampions
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| campuschampions:exportAffinityGroups | drush-cc, affinity-groups | Exports affinity groups and emails the CSV report. Run with `--uri` set to the Campus Champions domain. |
+| campuschampions:generateBreakdownStats | drush-cc, breakdown-stats | Generates the stats used on the front page. |
+| campuschampions:update-stats | cc-stats | Updates the Campus Champions homepage stats now. |
+| campuschampions:identify-edu-missing-carnegie | cc-edu-missing | Lists Campus Champions with .edu emails who have no Carnegie code. Options: `--export` writes a CSV, `--all-users` checks every user. |
+| campuschampions:populate-carnegie-codes | cc-populate | Populates Carnegie codes and ACCESS Organizations from each user's institution. Options: `--dry-run`, `--limit=N`, `--organizations-only`, `--auto-approve` (accept partial matches without prompting), `--all-users`, `--edu-only`. |
+
+### ood_contributions
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| ood:discourse-stats | ood-disc-stats | Fetches and stores daily Discourse post statistics. Option: `--since=YYYY-MM-DD` re-fetches every day from that date. |
+| ood:store-stats | ood-stats | Stores GitHub contribution statistics. |
+| ood:discourse-contrib | ood-disc-contrib | Stores Discourse user contribution statistics. |
+
+### ood_software
+
+| Command | Alias | Description |
+| ------- | ----- | ----------- |
+| appverse:sync-repo | avsc | Argument: GitHub repo URL. Refreshes the Repo node for that repo. |
+| ood:assign-owners | | Sets each Appverse app's author to its top GitHub contributor. Dry run by default. Options: `--apply`, `--github-owner=<owner>`. |
+| appverse:backfill-inferred-repos | appverse-backfill | Creates inferred Repos for legacy Apps with no parent Repo. Option: `--chunk=N` (default 25). |
+| appverse:repair-moderation | | Reports nodes that lost their moderation state and repairs listed ones. Dry run by default. Options: `--bundle=appverse_repo\|appverse_app`, `--nids=1,2`, `--apply` (needs `--nids`). See the command's help for the report columns. |
+| appverse:release-check | | Checks each published repo for a new GitHub release and reviews new ones. The daily cron job runs this on live. |
+| appverse:seed-review | | Argument: path to a review artifact JSON. Creates a draft Appverse review from it. Options: `--repo=<url>`, `--reports-dir=<dir>` (attaches the reports), `--force` (seed even if a review for that repo and SHA exists). |
 
 ## Testing
 
@@ -270,6 +354,10 @@ describe('My Page Accessibility', () => {
 | (M) Deploy to Prod  <br /> [![(M) Deploy to Prod](https://github.com/connectci-platform/portal/actions/workflows/deployprod.yml/badge.svg)](https://github.com/connectci-platform/portal/actions/workflows/deployprod.yml)                                                                                                                                                                      | Manual                         | Builds the site from main and deploys the built artifact to the Pantheon live (production) environment via terminus, then runs ```drush deploy``` on live. The job fails if drush deploy fails.                                                                                                                                                                                                                                                                                                                         |
 
 `drush deploy` (updb, cim, cache rebuild, deploy hooks) runs from these actions, not from a Pantheon Quicksilver hook, because Pantheon stops Quicksilver scripts after 120 seconds. A deploy started from the Pantheon dashboard, or a multidev created there instead of with `robo pmd:create`, gets the code but not the database updates or config import. Follow it with `terminus remote:drush <site>.<env> -- deploy -y`. If a drush deploy fails partway through the database updates, the site stays in maintenance mode. Check `updatedb:status` and `config:status`, then turn it off with `terminus remote:drush <site>.<env> -- state:set system.maintenance_mode 0 --input-format=integer`.
+
+### Composer pin check
+
+During a ticket you may pin a custom module to its feature branch in `composer.json` (for example `"connectci/access": "dev-d8-2865-login-lock"`). The `(M) Composer pins` workflow fails a PR into md-dev or main when a custom module's version in `composer.json` differs from the base branch, so a pin can't reach the base by accident. To fix it, merge the module PR first, then run `vendor/bin/robo gh:unpin --base=<md-dev|main>` and commit `composer.json` and `composer.lock`. The command warns if a pinned branch still has commits that aren't in the base version. For an intentional change (such as moving to a new major branch), add the `pin-change-ok` label to the PR. The md-dev → main PR compares against main, so it needs the label too.
 
 ### Release notes
 

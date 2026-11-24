@@ -72,7 +72,7 @@ jobs:
         with:
           site: "accessmatch"
           directory: "accessmatch3"
-          subdirectory: "events, knowledge-base, knowledge-base-resources, qa-bot, z-affinity-groups-api"
+          subdirectory: "events, knowledge-base, knowledge-base-resources, qa-bot, tools_case_study, z-affinity-groups-api"
           database: ${{ github.event.inputs.database }}
           database_branch: ${{ github.event.inputs.database_branch || 'main' }}
           github_token: ${{ secrets.GH_TOKEN_REPO }}

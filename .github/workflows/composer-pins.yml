@@ -1,0 +1,46 @@
+name: (M) Composer pins
+
+on:
+  pull_request:
+    branches: [main, md-dev]
+    # "edited" catches a changed base branch.
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: composer-pins-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  composer-pins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run PinChecker tests
+        run: php robo/tests/ComposerPins/PinCheckerTest.php
+
+      # In a merge queue the pull request run already gated this change, and
+      # labels are not available in merge_group events, so just pass.
+      - name: Skip check in merge queue
+        if: github.event_name == 'merge_group'
+        run: echo "Merge queue - the pull request run already checked composer pins."
+
+      - name: Skip check (pin-change-ok label)
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'pin-change-ok')
+        run: echo "The pin-change-ok label is set; skipping the composer pin check."
+
+      - name: Check custom package pins against base branch
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'pin-change-ok')
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          git show "origin/$BASE_REF:composer.json" > "$RUNNER_TEMP/base-composer.json"
+          php .github/scripts/check-composer-pins.php composer.json "$RUNNER_TEMP/base-composer.json" "$BASE_REF"

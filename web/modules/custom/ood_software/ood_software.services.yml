@@ -120,3 +120,8 @@ services:
     class: Drupal\ood_software\EventSubscriber\ReviewNodePageRedirectSubscriber
     tags:
       - { name: event_subscriber }
+
+  # Who is an Appverse contributor: the block list and the badge (D8-3133).
+  ood_software.appverse_contributors:
+    class: Drupal\ood_software\Service\AppverseContributors
+    arguments: ['@database']

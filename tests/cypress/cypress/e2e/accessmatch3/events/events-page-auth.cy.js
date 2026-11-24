@@ -9,6 +9,8 @@
     Test breadcrumbs and authenticated-only functionality
 */
 
+import { authEventDate } from '../../../support/event-dates';
+
 const EVENTS_SEARCH = '[data-drupal-selector="edit-search-api-fulltext"]';
 describe('Authenticated user tests the Events Page', () => {
     beforeEach(() => {
@@ -42,8 +44,8 @@ describe('Authenticated user tests the Events Page', () => {
             cy.get('.views-field-date-1')
               .find('.text-dark-teal')
               .within(() => {
-                cy.get('div.text-4xl').should('have.text', '12');
-                cy.get('div.text-xl').eq(1).should('have.text', 'Dec');
+                cy.get('div.text-4xl').should('have.text', authEventDate().day);
+                cy.get('div.text-xl').eq(1).should('have.text', authEventDate().month);
               });
             cy.get('[href="/tags/login"]').contains('login');
           });
@@ -73,8 +75,8 @@ describe('Authenticated user tests the Events Page', () => {
             cy.get('.views-field-date-1')
               .find('.text-dark-teal')
               .within(() => {
-                cy.get('div.text-4xl').should('have.text', '12');
-                cy.get('div.text-xl').eq(1).should('have.text', 'Dec');
+                cy.get('div.text-4xl').should('have.text', authEventDate().day);
+                cy.get('div.text-xl').eq(1).should('have.text', authEventDate().month);
               });
             cy.get('[href="/tags/login"]').contains('login');
           });
@@ -88,7 +90,7 @@ describe('Authenticated user tests the Events Page', () => {
 
         // Event Date
         cy.get('.field--name-date').contains(
-          '12/12/26'
+          authEventDate().short
         )
 
         // Event Location
