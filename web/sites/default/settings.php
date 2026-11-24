@@ -62,6 +62,12 @@ foreach (['smtp', 'smtp_ccmnet', 'smtp_ood', 'sendmail'] as $mailer_transport_id
   $config["symfony_mailer.mailer_transport.$mailer_transport_id"]['configuration']['query'] = NULL;
 }
 
+// Load Google Tag Manager only on live (D8-3118), so traffic from dev, test,
+// multidevs, local DDEV and CI never reaches the production analytics. Set
+// before the additional settings files so local.settings.php can turn it back
+// on to debug tags. The live case below removes this override.
+$config['gtm.settings']['enable'] = 0;
+
 $additionalSettingsFiles = [
   (DRUPAL_ROOT . "/../vendor/acquia/blt/settings/blt.settings.php"),
   (__DIR__ . "/settings.pantheon.php"),
@@ -156,6 +162,9 @@ if (isset($env)) {
         unset($config["symfony_mailer.mailer_transport.$mailer_transport_id"]['plugin']);
         unset($config["symfony_mailer.mailer_transport.$mailer_transport_id"]['configuration']['query']);
       }
+
+      // Live loads GTM from the stored config (see the override above).
+      unset($config['gtm.settings']['enable']);
 
       $config['environment_indicator.indicator']['bg_color'] = '#DC2525';
       $config['environment_indicator.indicator']['fg_color'] = '#FFFFFF';
