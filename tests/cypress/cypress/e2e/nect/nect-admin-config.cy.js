@@ -415,8 +415,8 @@ describe("Check admin configuration pages", () => {
     cy.visit('/admin/config/user-interface/easy-breadcrumb');
     cy.get('h1').should('contain', 'Easy Breadcrumb');
 
-    cy.visit('/admin/config/user-interface/shortcut');
-    cy.get('h1').should('contain', 'Shortcuts');
+    cy.visit('/admin/structure/menu/manage/navigation-shortcuts');
+    cy.get('h1').should('contain', 'Navigation Shortcuts');
 
   });
 

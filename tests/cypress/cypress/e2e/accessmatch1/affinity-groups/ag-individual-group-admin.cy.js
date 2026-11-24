@@ -23,9 +23,8 @@ describe("Admin user tests the Individual Affinity Groups", () => {
 
     cy.get('.page-title').contains('ACCESS Support');
 
-    // click the Edit tab in the tabs available to admins
-    cy.get('.tabs')
-      .contains("Edit")
+    // click the Edit button in the Navigation top bar
+    cy.getTopBarEdit()
       .should('have.attr', 'href', '/node/327/edit')
       .click();
 

@@ -117,7 +117,7 @@ describe('Past events should not show registration button', () => {
     cy.get('body').then($body => {
       if ($body.text().includes(pastEventName)) {
         cy.contains(pastEventName).click();
-        cy.get('.tabs a[href*="/edit"]').click();
+        cy.clickTopBarEdit();
         cy.get('#edit-delete').click();
         cy.get('.ui-dialog-buttonpane button.button--primary').click();
       }
