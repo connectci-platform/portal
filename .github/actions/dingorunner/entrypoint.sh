@@ -280,7 +280,9 @@ then
   terminusApi
   mkdir backups
   echo "Creating fresh backup on $site_name.$env..."
-  terminus backup:create $site_name.$env --element=db
+  # Pantheon caps manual backup retention at 180 days; Terminus defaults to 365.
+  # We only need it long enough to download, so keep it for 1 day.
+  terminus backup:create $site_name.$env --element=db --keep-for=1
   terminus backup:get $site_name.$env --element=db --to=backups/site.sql.gz
 fi
 

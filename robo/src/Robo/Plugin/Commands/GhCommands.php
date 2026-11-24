@@ -2,6 +2,7 @@
 
 namespace Mih\Robo\Plugin\Commands;
 
+use Mih\ComposerPins\PinChecker;
 use Robo\Exception\TaskException;
 use Robo\Result;
 use Robo\Robo;
@@ -221,7 +222,9 @@ class GhCommands extends Tasks {
     $issue_number = $branch_parts[1];
     $issue_number = preg_replace('/\r\n|\r|\n/', '', $issue_number);
 
-    $description = $this->getDescription($issue_number);
+    $summary = $this->getJiraSummary($issue_number);
+    $description = $summary !== '' ? $summary : $this->ask("Describe context / purpose for this PR");
+    $title = $this->buildPrTitle($issue_number, $summary);
     $custom_repos = $this->findCustomModuleRepos($issue_number);
 
     $body = $this->buildPrBody($description, $issue_number, '-');
@@ -231,7 +234,7 @@ class GhCommands extends Tasks {
     $pr_urls = [];
 
     // Create main repo PR first.
-    $main_pr_url = $this->createPr(NULL, NULL, $target_branch, "#$issue_number", $body);
+    $main_pr_url = $this->createPr(NULL, NULL, $target_branch, $title, $body);
     if ($main_pr_url) {
       $pr_urls[] = $main_pr_url;
     }
@@ -250,7 +253,7 @@ class GhCommands extends Tasks {
         continue;
       }
 
-      $pr_url = $this->createPr($repo_info['ghRepo'], $repo_info['branch'], $default_branch, "#$issue_number", $body);
+      $pr_url = $this->createPr($repo_info['ghRepo'], $repo_info['branch'], $default_branch, $title, $body);
       if ($pr_url) {
         $pr_urls[] = $pr_url;
       }
@@ -274,19 +277,138 @@ class GhCommands extends Tasks {
   }
 
   /**
-   * Fetch PR description from Jira via acli, or fall back to interactive prompt.
+   * Reset pinned custom module versions to match a base branch.
+   *
+   * @command gh:unpin
+   * @description Resets custom module versions in composer.json/composer.lock to the versions on origin/<base>. Never commits.
+   * @option base Base branch to compare against (md-dev or main).
    */
-  private function getDescription(string $issueNumber): string {
-    $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
-    if ($acli_path !== '') {
-      $output = shell_exec("acli jira workitem view " . escapeshellarg("D8-$issueNumber") . " --fields summary --json 2>/dev/null") ?? '';
-      $decoded = json_decode(trim($output), TRUE);
-      $summary = trim($decoded['fields']['summary'] ?? '');
-      if ($summary !== '') {
-        return $summary;
+  public function ghUnpin(array $opts = ['base' => 'main']) {
+    $base = (string) ($opts['base'] ?? 'main');
+    if (!preg_match('/^[A-Za-z0-9._\/-]+$/', $base)) {
+      $this->say("❗️ Invalid base branch name: $base");
+      return 1;
+    }
+
+    $composer_path = getcwd() . '/composer.json';
+    $working = file_exists($composer_path) ? json_decode(file_get_contents($composer_path), TRUE) : NULL;
+    if (!is_array($working)) {
+      $this->say("❗️ Could not read composer.json in " . getcwd());
+      return 1;
+    }
+
+    exec("git fetch --no-tags --quiet origin " . escapeshellarg($base) . " 2>&1", $fetch_out, $fetch_code);
+    if ($fetch_code !== 0) {
+      $this->say("⚠️  Could not fetch origin/$base; continuing with the existing local ref.");
+    }
+
+    $base_json = shell_exec("git show " . escapeshellarg("origin/$base:composer.json") . " 2>/dev/null");
+    $base_composer = is_string($base_json) ? json_decode($base_json, TRUE) : NULL;
+    if (!is_array($base_composer)) {
+      $this->say("❗️ Could not read composer.json from origin/$base.");
+      return 1;
+    }
+
+    $mismatches = PinChecker::findMismatches($working, $base_composer);
+    if (!$mismatches) {
+      $this->say("✅ All custom packages match origin/$base.");
+      return 0;
+    }
+
+    $has_gh = trim(shell_exec("which gh 2>/dev/null") ?? '') !== '';
+    $risky = FALSE;
+    foreach ($mismatches as $mismatch) {
+      $package = $mismatch['package'];
+      $this->say(PinChecker::formatMismatch($mismatch, $base));
+
+      $current_branch = PinChecker::branchFromVersion($mismatch['current']);
+      $expected_branch = PinChecker::branchFromVersion($mismatch['expected']);
+      $repo = PinChecker::githubRepo($working, $package);
+      if ($current_branch === '' || $expected_branch === '' || $repo === NULL) {
+        // Not a branch pin we can compare (e.g. a tagged release).
+        continue;
+      }
+
+      $ahead = NULL;
+      if ($has_gh) {
+        $path = "repos/$repo/compare/" . rawurlencode($expected_branch) . '...' . rawurlencode($current_branch);
+        $out = shell_exec("gh api " . escapeshellarg($path) . " --jq .ahead_by 2>/dev/null");
+        $out = is_string($out) ? trim($out) : '';
+        if ($out !== '' && ctype_digit($out)) {
+          $ahead = (int) $out;
+        }
+      }
+
+      if ($ahead === NULL) {
+        $this->say("⚠️  $package: could not verify whether branch $current_branch has commits not in $expected_branch (unverified).");
+        $risky = TRUE;
+      }
+      elseif ($ahead > 0) {
+        $this->say("⚠️  $package: branch $current_branch has $ahead commit(s) not in $expected_branch — the module PR may not be merged; resetting would drop that code from the portal.");
+        $risky = TRUE;
       }
     }
-    return $this->ask("Describe context / purpose for this PR");
+
+    if ($risky && !$this->confirm("Some modules may have unmerged work. Reset the pins anyway?", FALSE)) {
+      $this->say("Aborted; composer.json and composer.lock were not changed.");
+      return 1;
+    }
+
+    $dev_packages = $working['require-dev'] ?? [];
+    $names = [];
+    foreach ($mismatches as $mismatch) {
+      $package = $mismatch['package'];
+      $dev = isset($dev_packages[$package]) ? ' --dev' : '';
+      $result = $this->_exec("composer require --no-update$dev " . escapeshellarg($package . ':' . $mismatch['expected']));
+      if (!$result->wasSuccessful()) {
+        $this->say("❗️ Failed to update $package in composer.json. Stopping.");
+        return 1;
+      }
+      $names[] = escapeshellarg($package);
+    }
+
+    $result = $this->_exec("composer update " . implode(' ', $names) . " --no-install --no-scripts");
+    if (!$result->wasSuccessful()) {
+      $this->say("❗️ composer update failed; composer.lock may be out of date. Review with git diff.");
+      return 1;
+    }
+
+    $this->_exec("git diff --stat composer.json composer.lock");
+    $this->say("Review the diff, then commit composer.json and composer.lock.");
+    return 0;
+  }
+
+  /**
+   * Fetch the Jira ticket summary (title) via acli.
+   *
+   * @return string
+   *   The summary, or an empty string if acli is missing or returns nothing.
+   */
+  private function getJiraSummary(string $issueNumber): string {
+    $acli_path = trim(shell_exec("which acli 2>/dev/null") ?? '');
+    if ($acli_path === '') {
+      return '';
+    }
+    $output = shell_exec("acli jira workitem view " . escapeshellarg("D8-$issueNumber") . " --fields summary --json 2>/dev/null") ?? '';
+    $decoded = json_decode(trim($output), TRUE);
+    return trim($decoded['fields']['summary'] ?? '');
+  }
+
+  /**
+   * Build the PR title: "#NNNN - Ticket title", truncated to GitHub's limit.
+   *
+   * Falls back to "#NNNN" when no Jira summary is available.
+   */
+  private function buildPrTitle(string $issueNumber, string $summary): string {
+    $max_length = 256;
+    $title = "#$issueNumber";
+    if ($summary !== '') {
+      $title .= " - $summary";
+    }
+    if (mb_strlen($title) > $max_length) {
+      $title = rtrim(mb_substr($title, 0, $max_length - 1)) . '…';
+    }
+    return $title;
   }
 
   /**
@@ -305,48 +427,21 @@ class GhCommands extends Tasks {
       return [];
     }
 
-    $repositories = $composer['repositories'] ?? [];
-    $packages = array_merge(
-      $composer['require'] ?? [],
-      $composer['require-dev'] ?? []
-    );
-
     $results = [];
-    foreach ($packages as $package => $version) {
+    foreach (PinChecker::customPackages($composer) as $package => $version) {
       if (strpos($version, $issueNumber) === FALSE) {
         continue;
       }
 
-      // Extract the suffix (part after /).
-      $suffix = str_contains($package, '/') ? substr(strstr($package, '/'), 1) : $package;
-
-      // Find matching repository entry by key.
-      $repo_url = NULL;
-      foreach ($repositories as $key => $repo) {
-        if ($key === $suffix && isset($repo['url'])) {
-          $repo_url = $repo['url'];
-          break;
-        }
-      }
-
-      if ($repo_url === NULL) {
+      $gh_repo = PinChecker::githubRepo($composer, $package);
+      if ($gh_repo === NULL) {
         continue;
       }
-
-      // Extract owner/repo from GitHub URL.
-      if (!preg_match('#github\.com[/:](.+?)(?:\.git)?$#', $repo_url, $m)) {
-        continue;
-      }
-      $gh_repo = $m[1];
-
-      // Composer uses a "dev-" prefix for feature branches and a "-dev"
-      // suffix for numbered branches (e.g. 3.0.x-dev).
-      $branch = preg_replace(['/^dev-/', '/-dev$/'], '', $version);
 
       $results[] = [
         'package' => $package,
         'ghRepo'  => $gh_repo,
-        'branch'  => $branch,
+        'branch'  => PinChecker::branchFromVersion($version),
       ];
     }
 
