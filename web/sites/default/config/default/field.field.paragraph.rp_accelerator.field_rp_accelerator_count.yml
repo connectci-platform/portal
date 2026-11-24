@@ -1,0 +1,23 @@
+uuid: 4fed6426-e9db-4b26-812f-17b7d4dc2f25
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_accelerator_count
+    - paragraphs.paragraphs_type.rp_accelerator
+id: paragraph.rp_accelerator.field_rp_accelerator_count
+field_name: field_rp_accelerator_count
+entity_type: paragraph
+bundle: rp_accelerator
+label: 'Count per node'
+description: 'How many of these accelerators are in each node.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

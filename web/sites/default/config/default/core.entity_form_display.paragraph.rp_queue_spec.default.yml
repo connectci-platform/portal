@@ -3,6 +3,7 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.paragraph.rp_queue_spec.field_rp_charged_per
     - field.field.paragraph.rp_queue_spec.field_rp_cpu_count
     - field.field.paragraph.rp_queue_spec.field_rp_cpus
     - field.field.paragraph.rp_queue_spec.field_rp_gpu_count
@@ -10,66 +11,37 @@ dependencies:
     - field.field.paragraph.rp_queue_spec.field_rp_gpus
     - field.field.paragraph.rp_queue_spec.field_rp_max_wall_time
     - field.field.paragraph.rp_queue_spec.field_rp_node_count
+    - field.field.paragraph.rp_queue_spec.field_rp_queue_access
     - field.field.paragraph.rp_queue_spec.field_rp_queue_name
     - field.field.paragraph.rp_queue_spec.field_rp_queue_purpose
     - field.field.paragraph.rp_queue_spec.field_rp_ram
     - field.field.paragraph.rp_queue_spec.field_rp_vram
     - paragraphs.paragraphs_type.rp_queue_spec
+  module:
+    - options
 id: paragraph.rp_queue_spec.default
 targetEntityType: paragraph
 bundle: rp_queue_spec
 mode: default
 content:
-  field_rp_cpu_count:
-    type: number
+  field_rp_charged_per:
+    type: options_select
     weight: 3
     region: content
-    settings:
-      placeholder: ''
-    third_party_settings: {  }
-  field_rp_cpus:
-    type: string_textfield
-    weight: 2
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
-    third_party_settings: {  }
-  field_rp_gpu_count:
-    type: number
-    weight: 4
-    region: content
-    settings:
-      placeholder: ''
-    third_party_settings: {  }
-  field_rp_gpu_vram:
-    type: number
-    weight: 6
-    region: content
-    settings:
-      placeholder: ''
-    third_party_settings: {  }
-  field_rp_gpus:
-    type: string_textfield
-    weight: 5
-    region: content
-    settings:
-      size: 60
-      placeholder: ''
+    settings: {  }
     third_party_settings: {  }
   field_rp_max_wall_time:
     type: number
-    weight: 6
-    region: content
-    settings:
-      placeholder: ''
-    third_party_settings: {  }
-  field_rp_node_count:
-    type: number
     weight: 2
     region: content
     settings:
       placeholder: ''
+    third_party_settings: {  }
+  field_rp_queue_access:
+    type: options_select
+    weight: 4
+    region: content
+    settings: {  }
     third_party_settings: {  }
   field_rp_queue_name:
     type: string_textfield
@@ -87,17 +59,61 @@ content:
       size: 60
       placeholder: ''
     third_party_settings: {  }
-  field_rp_ram:
+  field_rp_node_count:
+    type: number
+    weight: 10
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_cpus:
     type: string_textfield
-    weight: 7
+    weight: 11
     region: content
     settings:
       size: 60
       placeholder: ''
     third_party_settings: {  }
+  field_rp_cpu_count:
+    type: number
+    weight: 12
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
   field_rp_vram:
     type: number
-    weight: 8
+    weight: 13
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_ram:
+    type: string_textfield
+    weight: 14
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_gpus:
+    type: string_textfield
+    weight: 15
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_gpu_count:
+    type: number
+    weight: 16
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  field_rp_gpu_vram:
+    type: number
+    weight: 17
     region: content
     settings:
       placeholder: ''

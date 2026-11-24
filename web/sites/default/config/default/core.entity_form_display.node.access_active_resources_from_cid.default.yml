@@ -44,6 +44,7 @@ dependencies:
     - field.field.node.access_active_resources_from_cid.field_rp_mfa_required
     - field.field.node.access_active_resources_from_cid.field_rp_office_hours
     - field.field.node.access_active_resources_from_cid.field_rp_ondemand_url
+    - field.field.node.access_active_resources_from_cid.field_rp_node_types
     - field.field.node.access_active_resources_from_cid.field_rp_ood_software
     - field.field.node.access_active_resources_from_cid.field_rp_queue_metrics
     - field.field.node.access_active_resources_from_cid.field_rp_queue_spec_link
@@ -139,6 +140,7 @@ third_party_settings:
         - field_rp_submitting_jobs
         - field_rp_jobs_info
         - field_rp_queue_spec_link
+        - field_rp_node_types
         - field_rp_queue_specs
         - field_rp_xdmod_resource_id
       label: 'Submitting Jobs'
@@ -559,6 +561,24 @@ content:
     settings:
       display_label: true
     third_party_settings: {  }
+  field_rp_node_types:
+    type: paragraphs
+    weight: 4
+    region: content
+    settings:
+      title: 'Node Type'
+      title_plural: 'Node Types'
+      edit_mode: open
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: dropdown
+      form_display_mode: default
+      default_paragraph_type: rp_node_type
+      features:
+        collapse_edit_all: collapse_edit_all
+        duplicate: duplicate
+    third_party_settings: {  }
   field_rp_office_hours:
     type: link_default
     weight: 28
@@ -593,7 +613,7 @@ content:
     third_party_settings: {  }
   field_rp_queue_specs:
     type: paragraphs
-    weight: 4
+    weight: 5
     region: content
     settings:
       title: 'Queue Specification'
@@ -719,7 +739,7 @@ content:
     third_party_settings: {  }
   field_rp_xdmod_resource_id:
     type: number
-    weight: 5
+    weight: 6
     region: content
     settings:
       placeholder: ''

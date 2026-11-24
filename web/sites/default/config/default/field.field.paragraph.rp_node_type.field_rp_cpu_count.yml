@@ -1,0 +1,23 @@
+uuid: 6cfee580-5c8b-4321-80cb-0ba832ab84da
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_cpu_count
+    - paragraphs.paragraphs_type.rp_node_type
+id: paragraph.rp_node_type.field_rp_cpu_count
+field_name: field_rp_cpu_count
+entity_type: paragraph
+bundle: rp_node_type
+label: 'CPU Count'
+description: 'Number of cores per node'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

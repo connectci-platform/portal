@@ -1,0 +1,21 @@
+uuid: 77b465b2-67c8-4d14-8890-ca1fbf2f6239
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_charged_per
+    - paragraphs.paragraphs_type.rp_queue_spec
+  module:
+    - options
+id: paragraph.rp_queue_spec.field_rp_charged_per
+field_name: field_rp_charged_per
+entity_type: paragraph
+bundle: rp_queue_spec
+label: 'Charged per'
+description: 'What usage on this queue is charged by.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

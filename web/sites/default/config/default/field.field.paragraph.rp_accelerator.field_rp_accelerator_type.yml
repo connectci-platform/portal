@@ -1,0 +1,23 @@
+uuid: 263ee2c3-23ee-4e30-a07d-8c8c9cc30a89
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_accelerator_type
+    - paragraphs.paragraphs_type.rp_accelerator
+  module:
+    - options
+id: paragraph.rp_accelerator.field_rp_accelerator_type
+field_name: field_rp_accelerator_type
+entity_type: paragraph
+bundle: rp_accelerator
+label: 'Accelerator type'
+description: ''
+required: true
+translatable: false
+default_value: 
+  -
+    value: gpu
+default_value_callback: ''
+settings: {  }
+field_type: list_string

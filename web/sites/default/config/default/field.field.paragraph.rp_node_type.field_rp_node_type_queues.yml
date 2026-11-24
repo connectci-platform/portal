@@ -1,0 +1,30 @@
+uuid: a70f09d7-ad6a-438c-858c-b38b345ab44d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_rp_node_type_queues
+    - paragraphs.paragraphs_type.rp_node_type
+  module:
+    - entity_reference_revisions
+id: paragraph.rp_node_type.field_rp_node_type_queues
+field_name: field_rp_node_type_queues
+entity_type: paragraph
+bundle: rp_node_type
+label: 'Queues'
+description: 'The queues that can run jobs on this node type.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:paragraph'
+  handler_settings:
+    target_bundles:
+      rp_node_type_queue: rp_node_type_queue
+    negate: 0
+    target_bundles_drag_drop:
+      rp_node_type_queue:
+        weight: 0
+        enabled: true
+field_type: entity_reference_revisions

@@ -1,0 +1,20 @@
+uuid: 1c2e5e0a-9a8e-4e75-a547-76efb5314877
+langcode: en
+status: true
+dependencies:
+  module:
+    - paragraphs
+id: paragraph.field_rp_accelerator_count
+field_name: field_rp_accelerator_count
+entity_type: paragraph
+type: integer
+settings:
+  unsigned: false
+  size: normal
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false
