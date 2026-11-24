@@ -83,6 +83,8 @@ jobs:
           runner: md_create
           terminus_api: ${{ secrets.TERMINUS_API }}
           SSH_PRIVATE_KEY: ${{ secrets.PANTHEON_DEPLOY_KEY}}
+          PANTHEON_LOCK_USERNAME: ${{ secrets.PANTHEON_LOCK_USERNAME }}
+          PANTHEON_LOCK_PASSWORD: ${{ secrets.PANTHEON_LOCK_PASSWORD }}
 
       - name: Store run file commands
         uses: ./.github/actions/dingorunner
