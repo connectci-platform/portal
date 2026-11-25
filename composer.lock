@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "505f9d40ab2cdc9d4771ba9215cd6b51",
+    "content-hash": "6432a13fc156ecb0e3ea31c45174d7a2",
     "packages": [
         {
             "name": "access/drupal_seamless_cilogon",
@@ -3201,9 +3201,14 @@
             ],
             "description": "A set of improvements to the core Views code that allows for greater control over Blocks.",
             "homepage": "https://www.drupal.org/project/ctools",
+            "keywords": [
+                "Actively maintained",
+                "Administration tools"
+            ],
             "support": {
                 "source": "https://git.drupalcode.org/project/ctools"
-            }
+            },
+            "published-time": "2026-07-24T20:53:16+00:00"
         },
         {
             "name": "drupal/datalayer",
@@ -3497,7 +3502,8 @@
             "homepage": "https://www.drupal.org/project/domain",
             "support": {
                 "source": "https://git.drupalcode.org/project/domain"
-            }
+            },
+            "published-time": "2026-05-08T09:11:34+00:00"
         },
         {
             "name": "drupal/domain_alias",
@@ -3547,7 +3553,8 @@
             "homepage": "https://www.drupal.org/project/domain",
             "support": {
                 "source": "https://git.drupalcode.org/project/domain"
-            }
+            },
+            "published-time": "2026-05-08T09:11:34+00:00"
         },
         {
             "name": "drupal/domain_config",
@@ -3597,7 +3604,8 @@
             "homepage": "https://www.drupal.org/project/domain",
             "support": {
                 "source": "https://git.drupalcode.org/project/domain"
-            }
+            },
+            "published-time": "2026-05-08T09:11:34+00:00"
         },
         {
             "name": "drupal/domain_entity",
@@ -3841,7 +3849,8 @@
             "homepage": "https://www.drupal.org/project/domain",
             "support": {
                 "source": "https://git.drupalcode.org/project/domain"
-            }
+            },
+            "published-time": "2026-05-08T09:11:34+00:00"
         },
         {
             "name": "drupal/domain_theme_switch",
@@ -5154,7 +5163,8 @@
             "homepage": "https://www.drupal.org/project/captcha",
             "support": {
                 "source": "https://git.drupalcode.org/project/captcha"
-            }
+            },
+            "published-time": "2026-02-09T14:32:06+00:00"
         },
         {
             "name": "drupal/imce",
@@ -6249,7 +6259,8 @@
             "homepage": "https://www.drupal.org/project/symfony_mailer",
             "support": {
                 "source": "https://git.drupalcode.org/project/symfony_mailer"
-            }
+            },
+            "published-time": "2025-06-27T08:30:23+00:00"
         },
         {
             "name": "drupal/mailsystem",
@@ -8468,7 +8479,8 @@
             "homepage": "https://www.drupal.org/project/schemata",
             "support": {
                 "source": "https://git.drupalcode.org/project/schemata"
-            }
+            },
+            "published-time": "2024-09-12T18:04:26+00:00"
         },
         {
             "name": "drupal/search_api",
@@ -13141,7 +13153,8 @@
             "version": "4.1.0",
             "dist": {
                 "type": "tar",
-                "url": "https://registry.npmjs.org/select2/-/select2-4.1.0.tgz"
+                "url": "https://registry.npmjs.org/select2/-/select2-4.1.0.tgz",
+                "shasum": "8b037e02a3c025beda07fed7f9ecc7d298036e1a"
             },
             "type": "npm-asset",
             "license": [
