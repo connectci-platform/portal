@@ -58,10 +58,13 @@ jobs:
             --json number --jq '.[].number' |
           while read -r pr; do
             moved=$(gh api --paginate "repos/$REPO/issues/$pr/timeline" \
-              --jq ".[] | select(.event == \"automatic_base_change_succeeded\" and .created_at >= \"$MERGED_AT\") | .id")
+              --jq ".[] | select(.event == \"automatic_base_change_succeeded\" and .created_at >= \"$MERGED_AT\") | .id") \
+              || { echo "::warning::Failed to read timeline for PR #$pr"; continue; }
             if [ -n "$moved" ]; then
               echo "Retargeting PR #$pr to md-dev"
-              gh api --method PATCH "repos/$REPO/pulls/$pr" -f base=md-dev --silent
+              # Keep going if one PR fails so the rest still get moved.
+              gh api --method PATCH "repos/$REPO/pulls/$pr" -f base=md-dev --silent \
+                || echo "::warning::Failed to retarget PR #$pr to md-dev"
             else
               echo "Skipping PR #$pr (not moved by this merge)"
             fi
