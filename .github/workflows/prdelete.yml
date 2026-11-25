@@ -11,16 +11,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set env GITHUB_REF_MD
-        run: echo "GITHUB_REF_MD=$(echo ${{ github.head_ref }} | cut -c 1-3)" >> $GITHUB_ENV
-
-      - name: Set env PR_BRANCH
-        run: echo "PR_BRANCH=$(echo ${{ github.head_ref }})" >> $GITHUB_ENV
+      # head_ref is attacker-controlled (a fork can name its branch anything)
+      # and this job has secrets, so pass it through env instead of
+      # interpolating ${{ }} into the script.
+      - name: Set env GITHUB_REF_MD and PR_BRANCH
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          printf 'GITHUB_REF_MD=%s\n' "${HEAD_REF:0:3}" >> "$GITHUB_ENV"
+          printf 'PR_BRANCH=%s\n' "$HEAD_REF" >> "$GITHUB_ENV"
 
       - name: Test Variable
         run: |
-          echo $GITHUB_REF_MD
-          echo $PR_BRANCH
+          echo "$GITHUB_REF_MD"
+          echo "$PR_BRANCH"
 
       - uses: ./.github/actions/dingorunner
         if: env.GITHUB_REF_MD == 'md-'
@@ -38,6 +42,33 @@ jobs:
           git pull origin main
           git checkout -b md-dev
           git push origin md-dev
+
+      # Deleting md-dev on merge makes GitHub retarget every open PR based on
+      # md-dev to main. Point only those PRs back at the freshly recreated
+      # md-dev; PRs opened against main on purpose (composer updates, config
+      # sync) have no automatic base change after this merge and stay put.
+      - name: Retarget open PRs back to md-dev
+        if: env.PR_BRANCH == 'md-dev' && github.event.pull_request.merged == true
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_REPO }}
+          REPO: ${{ github.repository }}
+          MERGED_AT: ${{ github.event.pull_request.merged_at }}
+        run: |
+          gh pr list --repo "$REPO" --base main --state open --limit 200 \
+            --json number --jq '.[].number' |
+          while read -r pr; do
+            moved=$(gh api --paginate "repos/$REPO/issues/$pr/timeline" \
+              --jq ".[] | select(.event == \"automatic_base_change_succeeded\" and .created_at >= \"$MERGED_AT\") | .id") \
+              || { echo "::warning::Failed to read timeline for PR #$pr"; continue; }
+            if [ -n "$moved" ]; then
+              echo "Retargeting PR #$pr to md-dev"
+              # Keep going if one PR fails so the rest still get moved.
+              gh api --method PATCH "repos/$REPO/pulls/$pr" -f base=md-dev --silent \
+                || echo "::warning::Failed to retarget PR #$pr to md-dev"
+            else
+              echo "Skipping PR #$pr (not moved by this merge)"
+            fi
+          done
 
       # The push above does not fire main.yml's push trigger (GH_TOKEN_REPO
       # pushes do not create push events), so the multidev never gets rebuilt.
