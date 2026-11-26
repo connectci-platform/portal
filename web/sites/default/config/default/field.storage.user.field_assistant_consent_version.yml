@@ -8,7 +8,9 @@ id: user.field_assistant_consent_version
 field_name: field_assistant_consent_version
 entity_type: user
 type: integer
-settings: {  }
+settings:
+  unsigned: false
+  size: normal
 module: core
 locked: false
 cardinality: 1
