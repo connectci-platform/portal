@@ -68,6 +68,9 @@ hidden:
   field_academic_status: true
   field_access_organization: true
   field_askci_username: true
+  field_assistant_consent: true
+  field_assistant_consent_asked: true
+  field_assistant_consent_version: true
   field_blocked_ag_tax: true
   field_carnegie_code: true
   field_cider_resources: true

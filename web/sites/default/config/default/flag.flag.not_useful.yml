@@ -17,6 +17,9 @@ unflag_short: Useful
 unflag_long: ''
 unflag_message: 'This KB Resource has been unflagged as not useful'
 unflag_denied_text: ''
+flood_control_active: false
+flood_control_limit: 10
+flood_control_window: 3600
 weight: 0
 flag_type: 'entity:webform_submission'
 link_type: reload
@@ -28,3 +31,5 @@ flagTypeConfig:
   extra_permissions:
     owner: '0'
 linkTypeConfig: {  }
+is_anon_enabled: false
+cron_batch_size: 0

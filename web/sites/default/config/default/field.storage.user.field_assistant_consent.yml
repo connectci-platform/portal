@@ -11,9 +11,11 @@ entity_type: user
 type: list_string
 settings:
   allowed_values:
-    - value: allow
+    -
+      value: allow
       label: Allow
-    - value: deny
+    -
+      value: deny
       label: Deny
   allowed_values_function: ''
 module: options

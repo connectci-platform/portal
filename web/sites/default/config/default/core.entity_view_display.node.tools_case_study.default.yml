@@ -509,10 +509,10 @@ third_party_settings:
               label: 'Software - Title'
               label_display: '0'
               provider: block_content
+              context_mapping: {  }
               status: true
               info: ''
               view_mode: full
-              context_mapping: {  }
             weight: 12
             additional:
               layout_builder_styles_style:
